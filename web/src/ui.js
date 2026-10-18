@@ -1,5 +1,6 @@
 // DOM overlay: the menu button, pause menu (settings, journal, how to play, tuning) and toasts.
 import { TUNE, DEFAULTS, RANGES } from './tune.js';
+import { GFX, GFX_INFO, RES_OPTS, saveGfx, overlay, debugInfo } from './gfx.js';
 
 export function createUI({ audio, G, store, species, onPause, playSong, hooks = {} }) {
   const $ = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html !== undefined) e.innerHTML = html; return e; };
@@ -54,6 +55,12 @@ export function createUI({ audio, G, store, species, onPause, playSong, hooks = 
           <li>Keyboard: Space flap, arrow keys or WASD to steer and walk, E to drink or eat, Esc for this menu.</li>
         </ul>
       </details>
+      <details>
+        <summary>Graphics</summary>
+        <div class="gfx-list"></div>
+        <small>Turn layers off if the game runs slowly on your device. Resolution "auto" lowers itself while frames are slow.</small>
+        <button data-act="debug" class="quiet">Copy debug info</button>
+      </details>
       <details class="tuning hidden">
         <summary>Tuning</summary>
         <div class="sliders"></div>
@@ -84,7 +91,21 @@ export function createUI({ audio, G, store, species, onPause, playSong, hooks = 
   function saveTune() { const o = {}; for (const k in DEFAULTS) if (TUNE[k] !== DEFAULTS[k]) o[k] = TUNE[k]; store.set('tune', o); }
   function syncSliders() { for (const row of sliders.children) { const k = row.dataset.key; row.querySelector('input').value = TUNE[k]; row.querySelector('output').textContent = (+TUNE[k]).toFixed(2); } }
 
+  const gfxList = q('.gfx-list');
+  function gfxButtons() {
+    gfxList.innerHTML = '';
+    const r = $('button', '', `Resolution: ${GFX.res === 'auto' ? 'auto' : GFX.res + 'x'}`); r.dataset.gfx = 'res'; gfxList.append(r);
+    for (const [k, name] of GFX_INFO) { const b = $('button', GFX[k] ? '' : 'off', `${name}: ${GFX[k] ? 'on' : 'off'}`); b.dataset.gfx = k; gfxList.append(b); }
+  }
+  gfxList.addEventListener('click', e => {
+    const k = e.target.dataset?.gfx; if (!k) return;
+    if (k === 'res') GFX.res = RES_OPTS[(RES_OPTS.indexOf(GFX.res) + 1) % RES_OPTS.length];
+    else GFX[k] = !GFX[k];
+    saveGfx(store); overlay(GFX.fps); hooks.gfx?.(k); gfxButtons();
+  });
+
   function refresh() {
+    gfxButtons();
     q('.sub').textContent = hooks.subtitle ? hooks.subtitle() : 'Paused';
     soundBtn.textContent = `Sound: ${audio.on ? 'on' : 'off'}`;
     musicBtn.textContent = `Music: ${G.settings.music ? 'on' : 'off'}`;
@@ -121,6 +142,10 @@ export function createUI({ audio, G, store, species, onPause, playSong, hooks = 
     if (act === 'glide') { G.settings.glide = !G.settings.glide; store.set('glide', G.settings.glide); refresh(); }
     if (act === 'photo') { menu.classList.add('hidden'); hooks.photo(); }
     if (act === 'install' && deferredInstall) { deferredInstall.prompt(); deferredInstall = null; installBtn.classList.add('hidden'); }
+    if (act === 'debug') {
+      const info = debugInfo(), el = e.target;
+      navigator.clipboard?.writeText(info).then(() => { el.textContent = 'Copied. Paste it in the chat.'; }, () => { el.textContent = info; });
+    }
     if (act === 'tune-reset') { Object.assign(TUNE, DEFAULTS); store.set('tune', {}); syncSliders(); }
     if (act === 'newgame' && confirmNew(e.target)) { hooks.newGame(); close(); }
     if (act === 'title') {

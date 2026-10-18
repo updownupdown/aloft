@@ -4,6 +4,7 @@ import { TAU, clamp, lerp, hash, vnoise, fbm, C, shade, mix } from './util.js';
 import { wash, stroke, jit, pathPts, circP, ellP, bloom, softWash, lift, mist, paperBase, paperFinish, sprite, blit, spriteFrame } from './paint.js';
 import * as W from './world.js';
 import { nightness } from './palette.js';
+import { GFX } from './gfx.js';
 import { mousePos, fishPos } from './life.js';
 
 const BS = 1.25; // hawk drawing scale
@@ -19,19 +20,19 @@ export function render(ctx, G) {
   bx.setTransform(px, 0, 0, px, 0, 0); bx.globalCompositeOperation = 'source-over'; bx.globalAlpha = 1;
   background(bx, G, P, w, h, px);
   celestial(bx, G, P, w, h);
-  for (const c of clouds(G, w, h)) cloud(bx, c, P, G);
+  if (GFX.clouds) for (const c of clouds(G, w, h)) cloud(bx, c, P, G);
   // far and mid hills: parallax in both axes so climbing high drops them away
   const lift0 = (G.camGround - cam.y);
-  hillLayer(bx, G, 'far', cam.x * .12, h * .6 + lift0 * .1, w, h, px);
-  mist(bx, h * .3 + lift0 * .1, h * .8 + lift0 * .1, w, P.paper, .6);
+  if (GFX.hills) hillLayer(bx, G, 'far', cam.x * .12, h * .6 + lift0 * .1, w, h, px);
+  if (GFX.mist) mist(bx, h * .3 + lift0 * .1, h * .8 + lift0 * .1, w, P.paper, .6);
   farBirds(bx, G, P, w, h);
   hillLayer(bx, G, 'mid', cam.x * .4, h * .7 + lift0 * .28, w, h, px);
-  mist(bx, h * .55 + lift0 * .28, h * .95 + lift0 * .28, w, P.paper, .4);
+  if (GFX.mist) mist(bx, h * .55 + lift0 * .28, h * .95 + lift0 * .28, w, P.paper, .4);
   ctx.drawImage(back, 0, 0, w, h);
 
   ctx.save(); ctx.translate(-cam.x, -cam.y);
   const x0 = cam.x - 40, x1 = cam.x + w + 40;
-  for (const t of W.thermalsIn(x0 - 60, x1 + 60)) thermal(ctx, t, G, P);
+  if (GFX.thermals) for (const t of W.thermalsIn(x0 - 60, x1 + 60)) thermal(ctx, t, G, P);
   const rings = G.visibleRings;
   for (const r of rings) ring(ctx, r, P, G, 0);
   if (G.gather) gathering(ctx, G, P);
@@ -48,7 +49,7 @@ export function render(ctx, G) {
   for (const t of trees) if (t.song?.active) { const p = t.song.perch; songbird(ctx, p.x, p.y - 3.4, t.song.sp, t.song.singingT > 0, p.x < t.x ? -1 : 1, P, G); }
   if (G.visitor) visitor(ctx, G.visitor, P, G);
   if (G.hint) hintMark(ctx, G.hint, P, G);
-  streaks(ctx, G, P);
+  if (GFX.streaks) streaks(ctx, G, P);
   if (G.glide) glideLine(ctx, G.glide, P, G);
   for (const o of G.boids) smallBird(ctx, o, P, G);
   for (const h of G.hawks) drawHawk(ctx, h, P, G, h.scale);
@@ -59,12 +60,12 @@ export function render(ctx, G) {
   particles(ctx, G, P);
   ctx.restore();
 
-  rain(ctx, G, P, w, h);
+  if (GFX.weather) rain(ctx, G, P, w, h);
   nearBirds(ctx, G, P, w, h);
   const night = nightness(G.tod) * (G.brightT > 0 ? .35 : 1);
   if (night > 0) { ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = C([150, 160, 200], night * .35); ctx.fillRect(0, 0, w, h); ctx.restore(); }
   if (G.flash > 0) { ctx.save(); ctx.fillStyle = C([255, 255, 250], G.flash * .55); ctx.fillRect(0, 0, w, h); ctx.restore(); }
-  paperFinish(ctx, w, h);
+  if (GFX.paper) paperFinish(ctx, w, h);
 }
 
 // The paper and the sky wash only change with the palette and the weather, so they are painted
