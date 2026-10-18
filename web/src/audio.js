@@ -69,5 +69,25 @@ export function createAudio() {
     else if (voice % 3 === 1) tone({ f, f2: f * .9, dur: .26, vol, vib: f * .03 });
     else { tone({ f: f * .96, f2: f * 1.04, dur: .1, vol }); tone({ f: f * .98, f2: f * 1.05, dur: .1, vol: vol * .8, delay: .11 }); }
   };
+  // the hawk's own voice for the singing string: one sustained whistle that follows the finger,
+  // with a little vibrato that grows the longer a note is held
+  let V = null;
+  A.voice = (f, on) => {
+    if (!A.ctx) return; const ctx = A.ctx, t = ctx.currentTime;
+    if (!V) {
+      const o = ctx.createOscillator(), o2 = ctx.createOscillator(), g2 = ctx.createGain(), g = ctx.createGain();
+      const l = ctx.createOscillator(), lg = ctx.createGain();
+      o.type = 'sine'; o2.type = 'sine'; g2.gain.value = .12; g.gain.value = 0; l.frequency.value = 5.5; lg.gain.value = 0;
+      l.connect(lg); lg.connect(o.frequency); lg.connect(o2.frequency);
+      o.connect(g); o2.connect(g2).connect(g); g.connect(A.master); o.start(); o2.start(); l.start();
+      V = { o, o2, g, lg, on: false };
+    }
+    if (on) {
+      V.o.frequency.setTargetAtTime(f, t, V.on ? .02 : .001); V.o2.frequency.setTargetAtTime(f * 2, t, V.on ? .02 : .001);
+      if (!V.on) { V.g.gain.setTargetAtTime(.13, t, .03); V.lg.gain.cancelScheduledValues(t); V.lg.gain.setValueAtTime(0, t); V.lg.gain.linearRampToValueAtTime(f * .007, t + .9); }
+    } else if (V.on) { V.g.gain.setTargetAtTime(0, t, .06); V.lg.gain.cancelScheduledValues(t); V.lg.gain.setValueAtTime(0, t); }
+    V.on = on;
+  };
   return A;
 }
+export const NOTE_HZ = PITCH;

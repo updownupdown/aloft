@@ -14,6 +14,8 @@ import { mousePos, fishPos, updateFlock, callVisitor, updateVisitor, makeHawk, u
 import { loadJourney, saveJourney, updateJourney, journal, drawMap, placeNote, atPerch, updateNest, seasonName, NEST_TWIGS } from './journey.js';
 import { createMusic } from './music.js';
 import { createPhoto } from './photo.js';
+import { createSinging } from './singing.js';
+import { createDial } from './dial.js';
 import { GFX, loadGfx, overlay, record, stats } from './gfx.js';
 import { spriteCount } from './paint.js';
 
@@ -52,7 +54,7 @@ export function start(canvas) {
     eaten: new Set(), berries: new Map(), ringsTaken: new Map(), twigsTaken: new Map(), visibleRings: [],
     parts: [], flocks: [], nearBirds: [], nextFlock: 4, nextNear: 12,
     boids: [], flockGoal: null, nextBoids: 10, scatterT: 0, hawks: [], visitor: null,
-    staff: { mode: null, species: null, tree: null, tries: [], lastTry: 0, wrongT: 0, singIdx: -1, doneT: 0, sang: null },
+    staff: { mode: null, species: null, tree: null, tries: [], lastTry: 0, wrongT: 0, doneT: 0, sang: null },
     learned: new Set(store.get('learned', [])),
     hint: null, paused: false, pendingEat: null, carry: null, perchT: 0, roostT: 0, roost: null,
     // song gifts
@@ -107,6 +109,9 @@ export function start(canvas) {
   input.onKey = k => {
     if (G.photo) { if (k === 'Escape') photo.end(); return; }
     if (k === 'Escape' || k === 'KeyP') ui.toggle(); if (k === 'KeyE') interact();
+    // number keys 1 to 5 sing the five song notes, for keyboards
+    const n = 'Digit1 Digit2 Digit3 Digit4 Digit5'.split(' ').indexOf(k);
+    if (n >= 0 && G.staff.mode) { audio.note(n, 1, .18); singer.glow(n); singNote(n); }
   };
   const persist = () => { if (!G.noSave) saveJourney(G, store); };
   document.addEventListener('visibilitychange', () => { if (document.hidden) { persist(); if (!G.paused) ui.open(); } });
@@ -221,7 +226,6 @@ export function start(canvas) {
   }
   function onTap(p) {
     const w = toWorld(p), z = G.view.z;
-    if (staffHit(w.lx, w.ly)) return;
     // water: drink while swimming or standing at the edge
     if ((b.state === 'swim' || (b.state === 'ground' && nearWater())) && Math.abs(w.x - b.x) < 90) {
       const wy = W.waterAt(w.x);
@@ -243,12 +247,9 @@ export function start(canvas) {
     tapFlap(Math.abs(w.x - b.x) > 4 ? Math.sign(w.x - b.x) : b.face);
   }
 
-  /* ---------- songs on the staff ---------- */
+  /* ---------- songs: listen, then play them back on the singing string ---------- */
   // learn mode: a songbird is near, listen and copy it. sing mode: perched with nobody
   // near, sing any song you know and that species answers, bringing its gift.
-  const STAFF = { w: 200, h: 54 };
-  function staffRect() { return { x: (G.view.scr.w - STAFF.w) / 2, y: 8, w: STAFF.w, h: STAFF.h }; }
-  const laneY = (r, lane) => r.y + 11 + (4 - lane) * 8;
   const PHRASE = { dawn: 'at dawn', day: 'in the daytime', dusk: 'at dusk', night: 'at night' };
   function sing(sp, perch, owner, vol = .16) {
     const d = Math.hypot(perch.x - b.x, perch.y - b.y), v = vol * clamp(1 - d / 320, 0, 1);
@@ -257,17 +258,14 @@ export function start(canvas) {
       if (G.paused && !G.photo) return;
       if (v > .005) audio.note(n, sp.voice, v);
       part('note', perch.x + 3, perch.y - 8, (hash(i + G.t) - .3) * 12, -16, 1.4, { col: shade(sp.cols.body, .8) });
-      if (G.staff.tree && G.staff.tree.song === owner) G.staff.singIdx = i;
+      if (G.staff.tree && G.staff.tree.song === owner) singer.glow(n);
     }, i * sp.gap * 1000));
-    setTimeout(() => { if (G.staff.tree?.song === owner) G.staff.singIdx = -1; }, (sp.notes.length * sp.gap + .3) * 1000);
   }
-  function staffHit(lx, ly) {
-    const S = G.staff; if (!S.mode) return false;
-    const r = staffRect(); if (lx < r.x || lx > r.x + r.w || ly < r.y - 4 || ly > r.y + r.h + 4) return false;
-    let lane = 0, bd = 1e9; for (let l = 0; l < 5; l++) { const d = Math.abs(ly - laneY(r, l)); if (d < bd) { bd = d; lane = l; } }
+  // a note held in tune on the string (or a number key on a keyboard)
+  function singNote(lane) {
+    const S = G.staff; if (!S.mode) return;
     const sp = S.mode === 'learn' ? SPECIES[S.species] : null;
-    audio.note(lane, sp ? sp.voice : 1, .2);
-    if (G.t - S.lastTry > 3 || S.wrongT > 0 || S.doneT > 0) { S.tries = []; S.wrongT = 0; S.doneT = 0; S.sang = null; }
+    if (G.t - S.lastTry > 4 || S.wrongT > 0 || S.doneT > 0) { S.tries = []; S.wrongT = 0; S.doneT = 0; S.sang = null; }
     S.lastTry = G.t;
     const i = S.tries.length; S.tries.push(lane);
     if (sp) {
@@ -283,7 +281,6 @@ export function start(canvas) {
       if (!fits.length) S.wrongT = .9;
       else if (done) { S.doneT = 2.5; S.sang = done; respond(done, null); }
     }
-    return true;
   }
   function learn(sp) {
     G.learned.add(sp.id); store.set('learned', [...G.learned]); audio.learned();
@@ -341,42 +338,23 @@ export function start(canvas) {
     updateVisitor(G, dt, v => sing(v.sp, { x: v.x, y: v.y + 3.4 }, v));
     const mode = near ? 'learn' : b.state === 'perch' && G.learned.size && G.perchT > 1.2 ? 'sing' : null;
     if (mode !== S.mode || near !== S.tree) {
-      S.mode = mode; S.tree = near; S.species = near ? near.song.sp.id : null; S.tries = []; S.singIdx = -1; S.sang = null;
-      if (mode === 'learn') once('song', 'A songbird! Listen, then tap the lines of the staff to sing its song back.');
+      S.mode = mode; S.tree = near; S.species = near ? near.song.sp.id : null; S.tries = []; S.sang = null;
+      if (mode === 'learn') once('song', 'A songbird! Tap Sing, listen, then find its notes on the string at the right. Hold each one in tune.', 6);
     }
     S.wrongT = Math.max(0, S.wrongT - dt); S.doneT = Math.max(0, S.doneT - dt);
     if (S.wrongT > 0 && S.wrongT - dt <= 0) S.tries = [];
   }
-  function drawStaff() {
-    const S = G.staff; if (!S.mode) return;
-    const sp = S.mode === 'learn' ? SPECIES[S.species] : S.sang, r = staffRect(), P = G.P;
-    const fade = S.mode === 'sing' ? .75 : 1, k = G.view.scr.s / G.view.s;
-    ctx.save(); ctx.scale(k, k);
-    lift(ctx, [[r.x, r.y], [r.x + r.w, r.y], [r.x + r.w, r.y + r.h], [r.x, r.y + r.h]], P.paper, .82 * fade);
-    wash(ctx, [[r.x, r.y], [r.x + r.w, r.y], [r.x + r.w, r.y + r.h], [r.x, r.y + r.h]], P.cloudShade, .18 * fade, { passes: 2, amp: 1.5, seed: 5, rim: .4 });
-    ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.strokeStyle = C(P.birdFar, .55 * fade); ctx.lineWidth = .6;
-    for (let l = 0; l < 5; l++) { ctx.beginPath(); ctx.moveTo(r.x + 30, laneY(r, l)); ctx.lineTo(r.x + r.w - 8, laneY(r, l)); ctx.stroke(); }
-    ctx.restore();
-    ctx.fillStyle = C(P.birdFar, .8); ctx.font = '7px Georgia, serif'; ctx.textBaseline = 'middle';
-    ctx.fillText(S.mode === 'learn' ? sp.name : sp && S.doneT > 0 ? sp.name : 'Sing', r.x + 4, r.y + 12);
-    ctx.fillStyle = C(P.birdFar, .55); ctx.font = '6px Georgia, serif';
-    ctx.fillText(S.mode === 'learn' ? (G.learned.has(sp.id) ? 'learned' : 'listen') : 'a song', r.x + 4, r.y + 22);
-    if (S.mode === 'sing') ctx.fillText('you know', r.x + 4, r.y + 29);
-    const cols = S.mode === 'learn' ? sp.notes.length : 7;
-    const col = i => r.x + 44 + i * (r.w - 60) / Math.max(1, cols - 1);
-    if (S.mode === 'learn') sp.notes.forEach((n, i) => {
-      const x = col(i), y = laneY(r, n), lit = S.singIdx === i;
-      ctx.strokeStyle = C(lit ? sp.cols.breast : P.birdFar, lit ? .95 : .4); ctx.lineWidth = lit ? 1.6 : .8;
-      ctx.beginPath(); ctx.ellipse(x, y, 3.4, 2.6, -.35, 0, TAU); ctx.stroke();
-      if (lit) { ctx.fillStyle = C(sp.cols.breast, .7); ctx.fill(); }
-    });
-    S.tries.forEach((n, i) => {
-      if (i >= cols) return;
-      const ok = S.mode === 'learn' ? sp.notes[i] === n : S.wrongT <= 0, x = col(i) + 1, y = laneY(r, n);
-      ctx.fillStyle = C(ok ? (S.doneT > 0 ? [60, 130, 70] : P.birdFar) : [180, 60, 50], .85);
-      ctx.beginPath(); ctx.ellipse(x, y, 3, 2.3, -.35, 0, TAU); ctx.fill();
-    });
-    ctx.restore();
+  const dial = createDial();
+  // the singing button and string, and the dots that show how far into a song you are
+  const singer = createSinging({ audio, onNote: singNote, onToggle: o => { G.singing = o; if (o) once('string', 'Slide along the string to sing. A note counts once you hold it in tune.', 5); } });
+  function updateSinging(dt) {
+    const S = G.staff, sp = S.mode === 'learn' ? SPECIES[S.species] : null;
+    const available = !G.photo && !G.roost && (b.state === 'perch' || S.mode === 'learn');
+    singer.update(dt, { available, label: sp ? `Sing with the ${sp.name}` : 'Sing', color: sp ? C(sp.cols.breast) : null });
+    if (!singer.open) return;
+    const state = S.wrongT > 0 ? 'wrong' : S.doneT > 0 ? 'done' : '';
+    if (sp) singer.progress(sp.notes.length, S.tries.length, state);
+    else singer.progress(Math.max(S.tries.length, S.sang ? S.sang.notes.length : 0), S.tries.length, state);
   }
 
   /* ---------- HUD meters (painted on the canvas) ---------- */
@@ -548,7 +526,7 @@ export function start(canvas) {
     G.t += dt; G.dt = dt;
     G.clockT += dt; updateClock();
     const raw = readInput(input);
-    const still = !raw.taps.length && !raw.steer && !raw.face && !raw.pitch && !raw.flaps;
+    const still = !raw.taps.length && !raw.steer && !raw.face && !raw.pitch && !raw.flaps && !singer.open;
     if (!G.roost) {
       for (const tp of raw.taps) onTap(tp);
       for (let i = 0; i < raw.flaps; i++) tapFlap(raw.face || b.face);
@@ -578,6 +556,7 @@ export function start(canvas) {
     for (const k of ['wormsT', 'followT', 'calmT', 'tailwindT', 'brightT']) G[k] = Math.max(0, G[k] - dt);
 
     updateWeather(dt); updateCritters(dt); updateSongs(dt); updateRoost(dt, still); updateZoom(dt); updateCamera(dt);
+    updateSinging(dt); dial.update(G.tod, G.day, singer.open || G.photo);
     updateJourney(G, dt, { toast: ui.toast, once, audio });
     updateNest(G, DAY, ui.toast);
     const vr = [];
@@ -654,7 +633,7 @@ export function start(canvas) {
       ctx.setTransform(G.view.px, 0, 0, G.view.px, 0, 0);
       ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
       render(ctx, G);
-      drawHUD(); if (!G.photo) drawStaff();
+      drawHUD();
       const f = roostFade();
       if (f > 0) { ctx.fillStyle = C([28, 30, 46], f * .92); ctx.fillRect(0, 0, G.view.w, G.view.h); }
     }
@@ -675,8 +654,7 @@ export function start(canvas) {
     landmark(type) { for (let x = b.x + 200; x < b.x + 60000; x += 2000) { const l = W.landmarksIn(x, x + 2000).find(l => !type || l.type === type); if (l) return l; } },
     goto(x, y) { fresh(); b.state = 'fly'; b.x = x; b.y = y ?? W.groundY(x) - 120; b.s = 85; b.g = -.17; snap(); },
     trees: W.treesIn, bushes: W.bushesIn, mice: W.miceIn, twigs: W.twigsIn, perches: W.perchesIn,
-    staffPts() { const r = staffRect(), sp = SPECIES[G.staff.species]; return sp.notes.map(n => [(r.x + 100) * G.view.s, laneY(r, n) * G.view.s]); },
-    lanePt(lane) { const r = staffRect(); return [(r.x + 100) * G.view.s, laneY(r, lane) * G.view.s]; },
+    singer, sing: singNote, lanePt: lane => singer.lanePt(lane),
     perch(q) { fresh(); perchOn(b, q, G); snap(); },
     swim(p) { fresh(); b.x = p.c; b.y = p.waterY - 3; b.state = 'swim'; snap(); },
     ground() { fresh(); const bu = W.bushesIn(b.x, b.x + 5000)[0]; b.x = bu.x + 16; b.y = W.groundY(b.x) - 6; b.state = 'ground'; b.face = -1; snap(); },

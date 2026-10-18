@@ -35,6 +35,8 @@ web/src/journey.js      migration, landmarks found, nest and chick, journal + ma
 web/src/music.js        generative music (Web Audio)
 web/src/photo.js        photo mode (pan, save or share a PNG)
 web/src/ui.js           pause menu, settings, how to play, songbook, toasts
+web/src/singing.js      perched singing: the Sing button and the fretless string down the right edge
+web/src/dial.js         time-of-day dial (top right)
 web/icons/              app icons (generated, see tools/make-icons.mjs)
 tools/serve.sh          serve web/ on localhost:8000
 tools/make-icons.mjs    regenerate icons from tools/icon.html (needs Playwright)
