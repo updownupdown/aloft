@@ -1,7 +1,7 @@
 // Draws one frame in the Wet Wash style. World layers are washed polygons; the sky,
 // far hills and weather are screen-space layers with parallax.
 import { TAU, clamp, lerp, hash, vnoise, fbm, C, shade, mix } from './util.js';
-import { wash, stroke, jit, pathPts, circP, ellP, bloom, softWash, lift, mist, paperBase, paperFinish, sprite, blit, spriteFrame } from './paint.js';
+import { wash, stroke, strokes, jit, pathPts, circP, ellP, bloom, softWash, lift, mist, paperBase, paperFinish, sprite, blit, spriteFrame, stamp, put } from './paint.js';
 import * as W from './world.js';
 import { nightness } from './palette.js';
 import { GFX } from './gfx.js';
@@ -29,6 +29,8 @@ export function render(ctx, G) {
   hillLayer(bx, G, 'mid', cam.x * .4, h * .7 + lift0 * .28, w, h, px);
   if (GFX.mist) mist(bx, h * .55 + lift0 * .28, h * .95 + lift0 * .28, w, P.paper, .4);
   ctx.drawImage(back, 0, 0, w, h);
+  // each hawk is painted on its own small layer first, so its many passes never blend on the big canvas
+  const hawks = [...G.hawks.map(hk => hawkLayer(G, hk, P, hk.scale, 'h' + G.hawks.indexOf(hk))), hawkLayer(G, G.bird, P, 1, 'me')];
 
   ctx.save(); ctx.translate(-cam.x, -cam.y);
   const x0 = cam.x - 40, x1 = cam.x + w + 40;
@@ -44,7 +46,7 @@ export function render(ctx, G) {
   if (G.nest) nest(ctx, G.nest, P, G);
   for (const b of W.bushesIn(x0, x1)) bush(ctx, b, P, G);
   if (G.wormsOk()) for (const wm of W.wormsIn(x0, x1)) if (!G.eaten.has(wm.id + G.rainId)) worm(ctx, wm, P, G);
-  for (const tw of W.twigsIn(x0, x1)) if (!G.twigGone(tw.id)) twig(ctx, tw.x, tw.y, tw.a, P);
+  for (const tw of W.twigsIn(x0, x1)) if (!G.twigGone(tw.id)) twig(ctx, tw.x, tw.y, tw.a, P, G.view.px);
   for (const m of W.miceIn(x0, x1)) if (!G.eaten.has(m.id + ':' + G.day)) mouse(ctx, m, P, G);
   for (const t of trees) if (t.song?.active) { const p = t.song.perch; songbird(ctx, p.x, p.y - 3.4, t.song.sp, t.song.singingT > 0, p.x < t.x ? -1 : 1, P, G); }
   if (G.visitor) visitor(ctx, G.visitor, P, G);
@@ -52,8 +54,7 @@ export function render(ctx, G) {
   if (GFX.streaks) streaks(ctx, G, P);
   if (G.glide) glideLine(ctx, G.glide, P, G);
   for (const o of G.boids) smallBird(ctx, o, P, G);
-  for (const h of G.hawks) drawHawk(ctx, h, P, G, h.scale);
-  drawHawk(ctx, G.bird, P, G);
+  for (const hl of hawks) ctx.drawImage(hl.c, hl.x, hl.y, hl.w, hl.w);
   if (G.carry) carried(ctx, G, P);
   stamina(ctx, G.bird, P);
   for (const r of rings) ring(ctx, r, P, G, 1);
@@ -128,9 +129,14 @@ function sky(ctx, G, P, w, h) {
 function celestial(ctx, G, P, w, h) {
   const night = nightness(G.tod);
   if (night > .01) {
-    for (let i = 0; i < 60; i++) {
-      const x = hash(i * 3.7) * w, y = hash(i * 9.1) * h * .55, tw = .5 + .5 * Math.sin(G.t * 1.5 + i);
-      ctx.fillStyle = C(P.paper, night * (1 - G.overcast) * .8 * tw); ctx.beginPath(); ctx.arc(x, y, .5 + hash(i * 5.5) * .7, 0, TAU); ctx.fill();
+    for (let g = 0; g < 4; g++) {
+      ctx.beginPath();
+      for (let i = 0; i < 60; i++) {
+        const tw = .5 + .5 * Math.sin(G.t * 1.5 + i); if (Math.min(3, Math.floor(tw * 4)) !== g) continue;
+        const x = hash(i * 3.7) * w, y = hash(i * 9.1) * h * .55, r = .5 + hash(i * 5.5) * .7;
+        ctx.moveTo(x + r, y); ctx.arc(x, y, r, 0, TAU);
+      }
+      ctx.fillStyle = C(P.paper, night * (1 - G.overcast) * .8 * (g + .5) / 4); ctx.fill();
     }
   }
   const arc = (a, r, col, al) => {
@@ -260,22 +266,25 @@ function pond(ctx, p, P, G) {
     return;
   }
   wash(ctx, poly, P.water, .45, { passes: 2, amp: 1, seed: p.k + 40, rim: .25 });
-  for (const f of p.fish) if (!G.eaten.has(f.id + ':' + G.day)) fish(ctx, fishPos(f, p, G.t), P, f.seed);
+  for (const f of p.fish) if (!G.eaten.has(f.id + ':' + G.day)) fish(ctx, fishPos(f, p, G.t), P, f.seed, G.view.px);
   softWash(ctx, p.c, p.waterY + 6, (p.x1 - p.x0) * .6, 10, P.water, .25);
-  ctx.save(); ctx.globalCompositeOperation = 'source-over'; ctx.strokeStyle = C(P.paper, .7); ctx.lineWidth = 1;
+  ctx.save(); ctx.globalCompositeOperation = 'source-over'; ctx.strokeStyle = C(P.paper, .7); ctx.lineWidth = 1; ctx.beginPath();
   for (let k = 0; k < 3; k++) {
     const y = p.waterY + 2.5 + k * 3.5, xa = lerp(p.x0, p.x1, .15 + .2 * hash(p.k + k)) + Math.sin(G.t * .8 + k) * 2, len = (p.x1 - p.x0) * (.25 - k * .05);
-    if (W.groundY(xa) < y + 1 || W.groundY(xa + len) < y + 1) continue;
-    ctx.beginPath(); ctx.moveTo(xa, y); ctx.lineTo(xa + len, y); ctx.stroke();
+    if (W.groundY(Math.round(xa)) < y + 1 || W.groundY(Math.round(xa + len)) < y + 1) continue;
+    ctx.moveTo(xa, y); ctx.lineTo(xa + len, y);
   }
-  ctx.restore();
+  ctx.stroke(); ctx.restore();
   stroke(ctx, [[p.x0, p.waterY], [p.x1, p.waterY]], shade(P.water, .7), .35, 1, p.k);
   // reeds on the banks
+  const stems = [], heads = [];
   for (const [x, s] of [[p.x0 + 2, -1], [p.x1 - 2, 1]]) for (let j = 0; j < 4; j++) {
-    const rx = x + s * j * 2.5, ry = W.groundY(rx) + 1, l = 10 + 8 * hash(p.k * 9 + j + s), sw = Math.sin(G.t * 1.2 + j) * 1.2 + G.wind * .06;
-    stroke(ctx, [[rx, ry], [rx + sw * .5, ry - l * .5], [rx + sw, ry - l]], P.pine, .55, 1, p.k + j);
-    if (j % 2) wash(ctx, ellP(rx + sw, ry - l + 1, 1.2, 3), P.trunk, .6, { passes: 1, amp: .3, seed: j, rim: 0 });
+    const rx = x + s * j * 2.5, ry = W.groundY(Math.round(rx)) + 1, l = 10 + 8 * hash(p.k * 9 + j + s), sw = Math.sin(G.t * 1.2 + j) * 1.2 + G.wind * .06;
+    stems.push([[rx, ry], [rx + sw * .5, ry - l * .5], [rx + sw, ry - l]]);
+    if (j % 2) heads.push(ellP(rx + sw, ry - l + 1, 1.2, 3, 0, 8));
   }
+  strokes(ctx, stems, P.pine, .55, 1, p.k);
+  ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = C(P.trunk, .75); ctx.beginPath(); for (const hd of heads) { ctx.moveTo(hd[0][0], hd[0][1]); for (const q of hd) ctx.lineTo(q[0], q[1]); ctx.closePath(); } ctx.fill(); ctx.restore();
 }
 
 // Trees are sprites: the trunk and canopy as one (swayed by skewing the copy, so the crown
@@ -347,8 +356,11 @@ function bush(ctx, b, P, G) {
   if (G.sea.winter > .05) lift(ctx, ellP(x - r * .1, y - r * 1.15, r * .95, r * .25), P.paper, .6 * G.sea.winter);
   for (const be of b.berries) {
     if (!G.berryOk(b, be)) continue;
-    wash(ctx, circP(be.x, be.y, 1.7, 7), P.berry, .85, { passes: 2, amp: .3, seed: b.seed + 5, rim: .4 });
-    ctx.fillStyle = C(P.paper, .7); ctx.fillRect(be.x - .8, be.y - .9, .7, .7);
+    const st = stamp('berry', P.berry.map(v => v >> 2).join(), -2.6, -2.6, 2.6, 2.6, G.view.px * 1.5, c => {
+      wash(c, circP(0, 0, 1.7, 7), P.berry, .85, { passes: 2, amp: .3, seed: 5, rim: .4 });
+      c.fillStyle = C(P.paper, .7); c.fillRect(-.8, -.9, .7, .7);
+    });
+    ctx.drawImage(st.c, be.x + st.x0, be.y + st.y0, st.w, st.h);
   }
 }
 
@@ -362,15 +374,17 @@ function worm(ctx, wm, P, G) {
 
 function songbird(ctx, x, y, sp, singing, face, P, G) {
   const c = sp.cols, bob = singing ? Math.sin(G.t * 18) * .4 : 0;
+  const lv = singing ? Math.round((Math.sin(G.t * 30) + 1) * 1.5) : -1, open = lv < 0 ? 0 : .9 + (lv / 1.5 - 1) * .5;
   ctx.save(); ctx.translate(x, y + bob); ctx.scale(face, 1);
-  wash(ctx, [[-3, 0], [-7, 3.5], [-6, 4.2], [-2, 1.2]], c.cap, .7, { passes: 1, amp: .3, seed: 7, rim: .3 });
-  wash(ctx, ellP(0, 0, 4.2, 3, -.35), c.body, .8, { passes: 2, amp: .4, seed: 8, rim: .4 });
-  wash(ctx, ellP(.8, 1, 2.6, 1.8, -.35), c.breast, .8, { passes: 1, amp: .3, seed: 9, rim: 0 });
-  wash(ctx, circP(3, -2.6, 2.3, 9), c.body, .85, { passes: 2, amp: .3, seed: 10, rim: .4 });
-  wash(ctx, ellP(2.8, -3.6, 2, 1, 0, 8), c.cap, .8, { passes: 1, amp: .2, seed: 11, rim: 0 });
-  const open = singing ? .9 + Math.sin(G.t * 30) * .5 : 0;
-  ctx.fillStyle = C(P.birdFar, .9); ctx.beginPath(); ctx.moveTo(5, -3); ctx.lineTo(7, -2.6 - open * .5); ctx.lineTo(5, -2.1); ctx.moveTo(5, -2.2); ctx.lineTo(6.6, -1.8 + open * .5); ctx.lineTo(5, -1.6); ctx.fill();
-  ctx.fillStyle = C(P.birdFar); ctx.beginPath(); ctx.arc(3.8, -3, .45, 0, TAU); ctx.fill();
+  put(ctx, stamp('song' + sp.id + ':' + lv, pk, -8, -6, 8, 5, G.view.px * 1.5, x => {
+    wash(x, [[-3, 0], [-7, 3.5], [-6, 4.2], [-2, 1.2]], c.cap, .7, { passes: 1, amp: .3, seed: 7, rim: .3 });
+    wash(x, ellP(0, 0, 4.2, 3, -.35), c.body, .8, { passes: 2, amp: .4, seed: 8, rim: .4 });
+    wash(x, ellP(.8, 1, 2.6, 1.8, -.35), c.breast, .8, { passes: 1, amp: .3, seed: 9, rim: 0 });
+    wash(x, circP(3, -2.6, 2.3, 9), c.body, .85, { passes: 2, amp: .3, seed: 10, rim: .4 });
+    wash(x, ellP(2.8, -3.6, 2, 1, 0, 8), c.cap, .8, { passes: 1, amp: .2, seed: 11, rim: 0 });
+    x.fillStyle = C(P.birdFar, .9); x.beginPath(); x.moveTo(5, -3); x.lineTo(7, -2.6 - open * .5); x.lineTo(5, -2.1); x.moveTo(5, -2.2); x.lineTo(6.6, -1.8 + open * .5); x.lineTo(5, -1.6); x.fill();
+    x.fillStyle = C(P.birdFar); x.beginPath(); x.arc(3.8, -3, .45, 0, TAU); x.fill();
+  }));
   ctx.restore();
 }
 function visitor(ctx, v, P, G) {
@@ -378,39 +392,48 @@ function visitor(ctx, v, P, G) {
   smallBird(ctx, { x: v.x, y: v.y, vx: v.dir, ph: G.t * 24, col: v.sp.cols.body, wing: v.sp.cols.cap, seed: 3, breast: v.sp.cols.breast }, P, G);
 }
 // a small bird in flight (flocks, visitors)
+// a small bird in flight (flocks, visitors), from one of eight wingbeat stamps
 function smallBird(ctx, o, P, G) {
-  const fl = Math.sin(o.ph) * 3.2, dir = o.vx < 0 ? -1 : 1;
+  const lv = Math.round((Math.sin(o.ph) + 1) * 3.5), fl = (lv / 3.5 - 1) * 3.2, dir = o.vx < 0 ? -1 : 1, sd = o.seed % 4;
   ctx.save(); ctx.translate(o.x, o.y); ctx.scale(dir * 1.3, 1.3);
-  wash(ctx, ellP(0, 0, 3.4, 1.8, -.1, 10), o.col, .7, { passes: 1, amp: .4, seed: o.seed, rim: .4 });
-  wash(ctx, circP(3, -1, 1.6, 8), o.col, .7, { passes: 1, amp: .3, seed: o.seed + 1, rim: .4 });
-  if (o.breast) wash(ctx, ellP(.8, .7, 2, 1, -.1, 8), o.breast, .7, { passes: 1, amp: .2, seed: o.seed + 4, rim: 0 });
-  wash(ctx, [[-1, -.6], [-3, -.6 - fl], [1.4, -.3]], o.wing, .75, { passes: 1, amp: .3, seed: o.seed + 2, rim: .3 });
-  wash(ctx, [[-3, 0], [-6, -.8], [-6, 1]], o.col, .6, { passes: 1, amp: .3, seed: o.seed + 3, rim: .2 });
+  put(ctx, stamp('sb' + o.col + o.wing + o.breast + sd + ':' + lv, '', -7, -5, 6, 3, G.view.px * 1.3, x => {
+    wash(x, ellP(0, 0, 3.4, 1.8, -.1, 10), o.col, .7, { passes: 1, amp: .4, seed: sd, rim: .4 });
+    wash(x, circP(3, -1, 1.6, 8), o.col, .7, { passes: 1, amp: .3, seed: sd + 1, rim: .4 });
+    if (o.breast) wash(x, ellP(.8, .7, 2, 1, -.1, 8), o.breast, .7, { passes: 1, amp: .2, seed: sd + 4, rim: 0 });
+    wash(x, [[-1, -.6], [-3, -.6 - fl], [1.4, -.3]], o.wing, .75, { passes: 1, amp: .3, seed: sd + 2, rim: .3 });
+    wash(x, [[-3, 0], [-6, -.8], [-6, 1]], o.col, .6, { passes: 1, amp: .3, seed: sd + 3, rim: .2 });
+  }));
   ctx.restore();
 }
 
 function mouse(ctx, m, P, G) {
   const q = mousePos(m, G.t); if (q.show <= .02) return;
-  const a = .85 * q.show, y = q.y + 1 - 2.2 * q.show, hop = Math.abs(Math.sin(G.t * 14 + m.seed)) * .6 * q.run;
+  const y = q.y + 1 - 2.2 * q.show, hop = Math.abs(Math.sin(G.t * 14 + m.seed)) * .6 * q.run, sd = m.seed % 4;
   ctx.save(); ctx.translate(q.x, y - hop); ctx.scale(q.dir, 1);
-  const col = mix(P.ground, [120, 110, 100], .5);
-  stroke(ctx, [[-2.5, .5], [-5, 1.2], [-7, .2]], col, a * .8, .5, m.seed);
-  wash(ctx, ellP(0, 0, 3, 1.8, 0, 10), col, a, { passes: 2, amp: .3, seed: m.seed, rim: .4 });
-  wash(ctx, circP(2.6, -.3, 1.4, 8), col, a, { passes: 1, amp: .2, seed: m.seed + 1, rim: .4 });
-  ctx.fillStyle = C(shade(col, .7), a); ctx.beginPath(); ctx.arc(2, -1.6, .8, 0, TAU); ctx.fill();
+  const col = mix(P.ground, [120, 110, 100], .5), a = .85;
+  put(ctx, stamp('mouse' + sd, pk, -8, -3, 5, 3, G.view.px, x => {
+    stroke(x, [[-2.5, .5], [-5, 1.2], [-7, .2]], col, a * .8, .5, sd);
+    wash(x, ellP(0, 0, 3, 1.8, 0, 10), col, a, { passes: 2, amp: .3, seed: sd, rim: .4 });
+    wash(x, circP(2.6, -.3, 1.4, 8), col, a, { passes: 1, amp: .2, seed: sd + 1, rim: .4 });
+    x.fillStyle = C(shade(col, .7), a); x.beginPath(); x.arc(2, -1.6, .8, 0, TAU); x.fill();
+  }), q.show);
   ctx.restore();
 }
-function fish(ctx, f, P, seed) {
+function fish(ctx, f, P, seed, px) {
+  const col = shade(P.water, .55), sd = seed % 4;
   ctx.save(); ctx.translate(f.x, f.y); ctx.scale(f.dir, 1);
-  const col = shade(P.water, .55);
-  wash(ctx, [[3.5, 0], [1, -1.3], [-2.5, -.8], [-4, 0], [-2.5, .8], [1, 1.3]], col, .45, { passes: 1, amp: .3, seed, rim: .3 });
-  wash(ctx, [[-3.6, 0], [-6, -1.6], [-5.6, 1.6]], col, .4, { passes: 1, amp: .2, seed: seed + 1, rim: 0 });
+  put(ctx, stamp('fish' + sd, col.map(v => v >> 2).join(), -7, -3, 5, 3, px, x => {
+    wash(x, [[3.5, 0], [1, -1.3], [-2.5, -.8], [-4, 0], [-2.5, .8], [1, 1.3]], col, .45, { passes: 1, amp: .3, seed: sd, rim: .3 });
+    wash(x, [[-3.6, 0], [-6, -1.6], [-5.6, 1.6]], col, .4, { passes: 1, amp: .2, seed: sd + 1, rim: 0 });
+  }));
   ctx.restore();
 }
-function twig(ctx, x, y, a, P) {
+function twig(ctx, x, y, a, P, px) {
   ctx.save(); ctx.translate(x, y); ctx.rotate(a);
-  stroke(ctx, [[-5, 0], [0, -.4], [5, .2]], P.trunk, .85, 1.1, 5);
-  stroke(ctx, [[1, -.3], [3, -2.2]], P.trunk, .8, .7, 6);
+  put(ctx, stamp('twig', pk, -6.5, -3.5, 6.5, 1.5, px, c => {
+    stroke(c, [[-5, 0], [0, -.4], [5, .2]], P.trunk, .85, 1.1, 5);
+    stroke(c, [[1, -.3], [3, -2.2]], P.trunk, .8, .7, 6);
+  }));
   ctx.restore();
 }
 function nest(ctx, n, P, G) {
@@ -431,9 +454,9 @@ function nest(ctx, n, P, G) {
 // what the hawk is carrying, held in its talons
 function carried(ctx, G, P) {
   const b = G.bird, x = b.x - b.face * 1, y = b.y + (b.state === 'fly' ? 4.5 : 3);
-  if (G.carry === 'twig') twig(ctx, x, y, b.face * .2, P);
+  if (G.carry === 'twig') twig(ctx, x, y, b.face * .2, P, G.view.px);
   else if (G.carry === 'mouse') { ctx.save(); ctx.translate(x, y + 1); ctx.scale(b.face, 1); wash(ctx, ellP(0, 0, 3, 1.6, .3, 10), [130, 120, 110], .85, { passes: 1, amp: .3, seed: 2, rim: .4 }); ctx.restore(); }
-  else if (G.carry === 'fish') { ctx.save(); ctx.translate(x, y + 1); ctx.scale(b.face, 1); fish(ctx, { x: 0, y: 0, dir: 1 }, { water: [150, 170, 190] }, 4); ctx.restore(); }
+  else if (G.carry === 'fish') { ctx.save(); ctx.translate(x, y + 1); ctx.scale(b.face, 1); fish(ctx, { x: 0, y: 0, dir: 1 }, { water: [150, 170, 190] }, 4, G.view.px); ctx.restore(); }
 }
 
 /* ---------- landmarks ---------- */
@@ -507,26 +530,31 @@ function gathering(ctx, G, P) {
   }
 }
 
+// the warm column is a sprite (one blended copy instead of nine); the rising curls share one path
 function thermal(ctx, t, G, P) {
   const top = W.CEILING, vis = clamp(.6 - G.storm * .5, 0, 1);
   if (vis <= 0) return;
-  ctx.save(); ctx.globalCompositeOperation = 'multiply';
-  const hg = ctx.createLinearGradient(t.c - t.w, 0, t.c + t.w, 0);
-  hg.addColorStop(0, C(P.thermal, 0)); hg.addColorStop(.5, C(P.thermal, .2 * vis)); hg.addColorStop(1, C(P.thermal, 0));
-  ctx.fillStyle = hg; ctx.fillRect(t.c - t.w, top, t.w * 2, t.y1 - top);
-  // the base of the column fades in from nothing, soft on every side
-  for (let k = 0; k < 8; k++) { ctx.globalAlpha = (k + .5) / 8; ctx.fillRect(t.c - t.w, t.y0 - (t.y0 - t.y1) * (k + 1) / 8, t.w * 2, (t.y0 - t.y1) / 8 + .2); }
-  ctx.globalAlpha = 1;
+  blit(ctx, sprite('th' + t.k, pk + Math.round(vis * 20) + (P.thermal[0] >> 2) + (P.thermal[1] >> 2), t.c - t.w, top, t.c + t.w, t.y0, G.view.px * .5, x => {
+    x.globalCompositeOperation = 'multiply';
+    const hg = x.createLinearGradient(t.c - t.w, 0, t.c + t.w, 0);
+    hg.addColorStop(0, C(P.thermal, 0)); hg.addColorStop(.5, C(P.thermal, .2 * vis)); hg.addColorStop(1, C(P.thermal, 0));
+    x.fillStyle = hg; x.fillRect(t.c - t.w, top, t.w * 2, t.y1 - top);
+    // the base of the column fades in from nothing, soft on every side
+    for (let k = 0; k < 8; k++) { x.globalAlpha = (k + .5) / 8; x.fillRect(t.c - t.w, t.y0 - (t.y0 - t.y1) * (k + 1) / 8, t.w * 2, (t.y0 - t.y1) / 8 + .2); }
+  }));
   // rising wind curls (Windlines style): short arcs drifting upward in the column
-  ctx.strokeStyle = C(shade(P.thermal, .7), .6 * vis); ctx.lineWidth = 1; ctx.lineCap = 'round';
-  const span = t.y0 - top, n = 22;
-  for (let j = 0; j < n; j++) {
-    const y = t.y0 - ((G.t * 30 + j * span / n + t.k * 37) % span);
-    const fade = Math.min(1, (t.y0 - y) / 50);
-    if (fade <= 0) continue;
-    const x = t.c + (hash(t.k * 3 + j) - .5) * t.w * 1.4 + Math.sin(G.t * .9 + j) * 3, r = 4 + 4 * hash(j + t.k);
-    ctx.globalAlpha = fade;
-    ctx.beginPath(); ctx.arc(x, y, r, Math.PI * (1.1 + .3 * hash(j)), Math.PI * (1.7 + .3 * hash(j * 2))); ctx.stroke();
+  ctx.save(); ctx.strokeStyle = C(shade(P.thermal, .7), .6 * vis); ctx.lineWidth = 1; ctx.lineCap = 'round';
+  const span = t.y0 - top, n = 22, y0 = G.cam.y - 10, y1 = G.cam.y + G.view.h + 10;
+  for (let lv = 1; lv <= 2; lv++) {
+    ctx.beginPath();
+    for (let j = 0; j < n; j++) {
+      const y = t.y0 - ((G.t * 30 + j * span / n + t.k * 37) % span);
+      const fade = Math.min(1, (t.y0 - y) / 50);
+      if (fade <= 0 || (fade < 1) !== (lv === 1) || y < y0 || y > y1) continue;
+      const x = t.c + (hash(t.k * 3 + j) - .5) * t.w * 1.4 + Math.sin(G.t * .9 + j) * 3, r = 4 + 4 * hash(j + t.k), a0 = Math.PI * (1.1 + .3 * hash(j));
+      ctx.moveTo(x + Math.cos(a0) * r, y + Math.sin(a0) * r); ctx.arc(x, y, r, a0, Math.PI * (1.7 + .3 * hash(j * 2)));
+    }
+    ctx.globalAlpha = lv === 1 ? .5 : 1; ctx.stroke();
   }
   ctx.restore();
 }
@@ -534,9 +562,9 @@ function thermal(ctx, t, G, P) {
 function ring(ctx, r, P, G, half) {
   if (r.gone) return;
   const a0 = half ? -Math.PI / 2 : Math.PI / 2, wob = Math.sin(G.t * 2 + r.x) * .6;
-  ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.lineCap = 'round';
+  ctx.save(); ctx.lineCap = 'round';
   for (let k = 0; k < 2; k++) {
-    ctx.strokeStyle = C(P.ring, k ? .45 : .75); ctx.lineWidth = k ? 1.2 : 2.6;
+    ctx.strokeStyle = C(shade(P.ring, k ? .85 : .9), k ? .45 : .75); ctx.lineWidth = k ? 1.2 : 2.6;
     ctx.beginPath(); ctx.ellipse(r.x + k * .5, r.y + wob, 5 + k * .4, r.r, 0, a0, a0 + Math.PI); ctx.stroke();
   }
   ctx.restore();
@@ -568,6 +596,19 @@ function wingGeo(b, side) {
   return { outline, fingers, bases, band: f => { const r = []; for (let i = 0; i < 4; i++) r.push([lerp(lead[i][0], trail[3 - i][0], f), lerp(lead[i][1], trail[3 - i][1], f)]); return r; } };
 }
 
+const layers = new Map();
+function hawkLayer(G, b, P, k, id) {
+  const R = 40 * (k || 1), px = G.view.px, n = Math.ceil(R * 2 * px);
+  let L = layers.get(id);
+  if (!L) { L = { c: document.createElement('canvas') }; layers.set(id, L); }
+  if (L.c.width !== n) L.c.width = L.c.height = n;
+  const x = L.c.getContext('2d');
+  x.setTransform(1, 0, 0, 1, 0, 0); x.globalCompositeOperation = 'source-over'; x.globalAlpha = 1; x.clearRect(0, 0, n, n);
+  x.setTransform(px, 0, 0, px, (R - b.x) * px, (R - b.y) * px);
+  drawHawk(x, b, P, G, k);
+  L.x = b.x - R; L.y = b.y - R; L.w = R * 2;
+  return L;
+}
 function drawHawk(ctx, b, P, G, k = 1) {
   const u = b.turnT > 0 ? 1 - b.turnT / .32 : 1;
   const xs = b.face * (b.turnT > 0 ? -Math.cos(u * Math.PI) : 1);
@@ -637,13 +678,18 @@ function sittingHawk(ctx, b, P, G) {
   }
 }
 
+// Phone GPUs pay for every blended draw, so the flecks go out as one path per strength level.
 function streaks(ctx, G, P) {
-  ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.lineCap = 'round'; ctx.lineWidth = .7;
-  for (const s of G.streaks) {
-    if (s.trail.length < 3) continue;
-    const k = Math.sin(Math.PI * s.life / s.max);
-    ctx.strokeStyle = C(P.birdFar, .16 * k);
-    pathPts(ctx, s.trail, false); ctx.stroke();
+  ctx.save(); ctx.lineCap = 'round'; ctx.lineWidth = .7;
+  for (let lv = 1; lv <= 3; lv++) {
+    ctx.beginPath(); let any = false;
+    for (const s of G.streaks) {
+      if (s.trail.length < 3) continue;
+      const k = Math.sin(Math.PI * s.life / s.max);
+      if (Math.min(3, Math.ceil(k * 3)) !== lv) continue;
+      const t = s.trail; ctx.moveTo(t[0][0], t[0][1]); for (let i = 1; i < t.length; i++) ctx.lineTo(t[i][0], t[i][1]); any = true;
+    }
+    if (any) { ctx.strokeStyle = C(P.birdFar, .16 * (lv - .5) / 3); ctx.stroke(); }
   }
   ctx.restore();
 }
@@ -651,8 +697,13 @@ function streaks(ctx, G, P) {
 // a faint dotted arc to where the current glide would land
 function glideLine(ctx, pts, P, G) {
   ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = C(P.birdFar, .5);
-  for (let i = 3; i < pts.length; i += 3) { const a = 1 - i / pts.length; ctx.globalAlpha = .2 + .5 * a; ctx.beginPath(); ctx.arc(pts[i][0], pts[i][1], .8, 0, TAU); ctx.fill(); }
-  if (pts.end) { const e = pts[pts.length - 1]; ctx.globalAlpha = .5; ctx.strokeStyle = C(P.birdFar, .6); ctx.lineWidth = .8; ctx.beginPath(); ctx.ellipse(e[0], e[1] + 5, 5, 1.6, 0, 0, TAU); ctx.stroke(); }
+  const n = pts.length;
+  for (let g = 0; g < 3; g++) {
+    ctx.beginPath();
+    for (let i = 3; i < n; i += 3) { if (Math.min(2, Math.floor(i / n * 3)) !== g) continue; ctx.moveTo(pts[i][0] + .8, pts[i][1]); ctx.arc(pts[i][0], pts[i][1], .8, 0, TAU); }
+    ctx.globalAlpha = .2 + .5 * (1 - (g + .5) / 3); ctx.fill();
+  }
+  if (pts.end) { const e = pts[n - 1]; ctx.globalAlpha = .5; ctx.strokeStyle = C(P.birdFar, .6); ctx.lineWidth = .8; ctx.beginPath(); ctx.ellipse(e[0], e[1] + 5, 5, 1.6, 0, 0, TAU); ctx.stroke(); }
   ctx.restore();
 }
 
@@ -688,13 +739,13 @@ function rain(ctx, G, P, w, h) {
   if (G.sea.winter > .5) {
     // snow: slow flakes drifting with the wind
     const n = Math.floor(140 * G.rain);
-    ctx.save(); ctx.fillStyle = C(P.paper, .85);
+    ctx.save(); ctx.fillStyle = C(P.paper, .85); ctx.beginPath();
     for (let i = 0; i < n; i++) {
       const sp = 22 + hash(i * 7.1) * 20, y = (hash(i * 2.3) * (h + 20) + G.t * sp) % (h + 20) - 10;
-      const x = ((hash(i * 5.9) * (w + 40) + G.t * G.wind * .8 + Math.sin(G.t + i) * 6 - G.cam.x * .3) % (w + 40) + w + 40) % (w + 40) - 20;
-      ctx.beginPath(); ctx.arc(x, y, .7 + hash(i) * .8, 0, TAU); ctx.fill();
+      const x = ((hash(i * 5.9) * (w + 40) + G.t * G.wind * .8 + Math.sin(G.t + i) * 6 - G.cam.x * .3) % (w + 40) + w + 40) % (w + 40) - 20, r = .7 + hash(i) * .8;
+      ctx.moveTo(x + r, y); ctx.arc(x, y, r, 0, TAU);
     }
-    ctx.restore(); return;
+    ctx.fill(); ctx.restore(); return;
   }
   const n = Math.floor(170 * G.rain), slant = G.wind * .02 + .15;
   ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.strokeStyle = C(shade(P.water, .75), .45); ctx.lineWidth = .7; ctx.beginPath();

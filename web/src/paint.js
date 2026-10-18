@@ -81,6 +81,16 @@ export function stroke(ctx, pts, col, a, w, seed) {
   }
   ctx.restore();
 }
+// several painted strokes in one go: each pass is a single path, so it costs two draws in all
+export function strokes(ctx, list, col, a, w, seed) {
+  ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  for (let k = 0; k < 2; k++) {
+    ctx.strokeStyle = C(col, a * (k ? .55 : .8)); ctx.lineWidth = w * (k ? .6 : 1); ctx.beginPath();
+    list.forEach((pts, i) => { const q = jit(pts, w * .25, seed + i, k); ctx.moveTo(q[0][0], q[0][1]); for (let j = 1; j < q.length; j++) ctx.lineTo(q[j][0], q[j][1]); });
+    ctx.stroke();
+  }
+  ctx.restore();
+}
 export function circP(x, y, r, n = 14, sq = 1) { const p = []; for (let i = 0; i < n; i++) { const a = i / n * TAU; p.push([x + Math.cos(a) * r, y + Math.sin(a) * r * sq]); } return p; }
 export function ellP(x, y, rx, ry, rot = 0, n = 16) {
   const p = [], c = Math.cos(rot), s = Math.sin(rot);
@@ -125,7 +135,7 @@ export function spriteFrame() {
   frameNo++; budget = 3;
   if (sprites.size > 140) for (const [id, s] of sprites) if (frameNo - s.used > 90) { sprites.delete(id); pool.push(s.c); }
 }
-export function sprite(id, key, x0, y0, x1, y1, px, draw) {
+export function sprite(id, key, x0, y0, x1, y1, px, draw, white = true) {
   let s = sprites.get(id);
   if (!s || (s.key !== key && budget-- > 0)) {
     const cw = Math.max(1, Math.ceil((x1 - x0) * px)), ch = Math.max(1, Math.ceil((y1 - y0) * px));
@@ -133,7 +143,7 @@ export function sprite(id, key, x0, y0, x1, y1, px, draw) {
     if (c.width !== cw || c.height !== ch) { c.width = cw; c.height = ch; }
     const x = c.getContext('2d');
     x.setTransform(1, 0, 0, 1, 0, 0); x.globalCompositeOperation = 'source-over'; x.globalAlpha = 1;
-    x.fillStyle = '#fff'; x.fillRect(0, 0, cw, ch);
+    if (white) { x.fillStyle = '#fff'; x.fillRect(0, 0, cw, ch); } else x.clearRect(0, 0, cw, ch);
     x.setTransform(px, 0, 0, px, -x0 * px, -y0 * px);
     draw(x);
     s = { c, key, x0, y0, w: x1 - x0, h: y1 - y0, used: frameNo };  // drawn at its exact size so neighbouring strips never overlap
@@ -143,6 +153,13 @@ export function sprite(id, key, x0, y0, x1, y1, px, draw) {
   return s;
 }
 export const spriteCount = () => sprites.size;
+// Stamps are small things that move (birds, mice, berries): painted once onto clear paper and
+// laid down with plain alpha, which phone GPUs draw far more cheaply than a multiply.
+export const stamp = (id, key, x0, y0, x1, y1, px, draw) => sprite(id, key, x0, y0, x1, y1, px, draw, false);
+export function put(ctx, s, alpha = 1) {
+  if (alpha < 1) { const a = ctx.globalAlpha; ctx.globalAlpha = a * alpha; ctx.drawImage(s.c, s.x0, s.y0, s.w, s.h); ctx.globalAlpha = a; }
+  else ctx.drawImage(s.c, s.x0, s.y0, s.w, s.h);
+}
 export function blit(ctx, s) {
   ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.drawImage(s.c, s.x0, s.y0, s.w, s.h); ctx.restore();
 }
