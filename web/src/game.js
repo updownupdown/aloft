@@ -542,31 +542,56 @@ export function start(canvas) {
   }
 
   /* ---------- sizing and loop ---------- */
+  // Resolution: device pixels per css pixel. Washes are fill-rate heavy, so it starts modest and
+  // steps down while frames run slow; the level that worked is remembered for next time.
+  const RES_MIN = .7;
+  let res = 0, resLock = false;
+  function resMax() { return Math.min(devicePixelRatio || 1, 1.6, 1500 / Math.max(innerWidth, innerHeight)); }
   function resize() {
-    const cw = innerWidth, ch = innerHeight, dpr = Math.min(devicePixelRatio || 1, 2);
+    const cw = innerWidth, ch = innerHeight;
     let s = ch / 300; if (cw / s < 420) s = cw / 420;   // css px per world unit
-    const pxCap = Math.min(dpr, 1600 / Math.max(cw, ch)); // cap the backing store: washes are fill-rate heavy
+    res = clamp(res || store.get('res', 9) * 1.08, Math.min(RES_MIN, resMax()), resMax());
     canvas.style.width = cw + 'px'; canvas.style.height = ch + 'px';
-    canvas.width = Math.round(cw * pxCap); canvas.height = Math.round(ch * pxCap);
-    G.view = { w: cw / s, h: ch / s, s, px: pxCap * s };
-    makePaper(G.view.w, G.view.h);
+    canvas.width = Math.round(cw * res); canvas.height = Math.round(ch * res);
+    G.view = { w: cw / s, h: ch / s, s, px: res * s };
+    if (!G.paper || G.paper[0] !== Math.ceil(G.view.w) || G.paper[1] !== Math.ceil(G.view.h)) { makePaper(G.view.w, G.view.h); G.paper = [Math.ceil(G.view.w), Math.ceil(G.view.h)]; }
+    redraw = true;
   }
-  addEventListener('resize', resize); resize();
+  // watch frame times in two-second windows; drop resolution when slow, and stop if that doesn't help
+  const perf = { n: 0, sum: 0, prev: 0 }, now = () => performance.now(), t0 = now();
+  function watchFrames(ms) {
+    if (resLock || ms > 250) { perf.n = perf.sum = 0; return; }
+    perf.n++; perf.sum += ms;
+    if (perf.sum < 2000) return;
+    const avg = perf.sum / perf.n; perf.n = perf.sum = 0;
+    if (now() - t0 < 4000) return;
+    if (perf.prev && avg > perf.prev * .95) { resLock = true; res = Math.min(resMax(), res / .85); resize(); store.set('res', res); return; } // no better: fill rate isn't the problem
+    perf.prev = 0;
+    if (avg > 1000 / 45 && res > RES_MIN + .01) { res = Math.max(RES_MIN, res * .85); perf.prev = avg; resize(); store.set('res', res); }
+  }
+  let redraw = true;
+  addEventListener('resize', () => { res = 0; resize(); }); resize();
   updateClock();
   G.P = palette(G.tod, 0, 0, G.sea);
   updateCamera(0, true);
 
   let last = performance.now();
+  let camKey = '';
   function frame(now) {
-    const dt = Math.min(.05, (now - last) / 1000); last = now;
-    if (!G.paused) step(dt);
-    G.P = palette(G.tod, G.overcast, G.storm, G.sea);
-    ctx.setTransform(G.view.px, 0, 0, G.view.px, 0, 0);
-    ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
-    render(ctx, G);
-    if (!G.photo) { drawHUD(); drawStaff(); }
-    const f = roostFade();
-    if (f > 0) { ctx.fillStyle = C([28, 30, 46], f * .92); ctx.fillRect(0, 0, G.view.w, G.view.h); }
+    const ms = now - last, dt = Math.min(.05, ms / 1000); last = now;
+    if (!G.paused) { step(dt); watchFrames(ms); }
+    // while paused the picture holds still, so only repaint when photo mode pans or the view changes
+    const ck = G.cam.x + ',' + G.cam.y + G.photo;
+    if (!G.paused || redraw || ck !== camKey) {
+      redraw = false; camKey = ck;
+      G.P = palette(G.tod, G.overcast, G.storm, G.sea);
+      ctx.setTransform(G.view.px, 0, 0, G.view.px, 0, 0);
+      ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+      render(ctx, G);
+      if (!G.photo) { drawHUD(); drawStaff(); }
+      const f = roostFade();
+      if (f > 0) { ctx.fillStyle = C([28, 30, 46], f * .92); ctx.fillRect(0, 0, G.view.w, G.view.h); }
+    }
     music.update(dt, { night: nightness(G.tod), storm: G.storm, learned: G.learned, species: SPECIES });
     requestAnimationFrame(frame);
   }
