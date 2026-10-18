@@ -39,7 +39,10 @@ export function render(ctx, G) {
   if (G.wet > .25) for (const wm of W.wormsIn(x0, x1)) if (!G.eaten.has(wm.id + G.rainId)) worm(ctx, wm, P, G);
   for (const t of trees) if (t.song) songbird(ctx, t, P, G);
   if (G.hint) hintMark(ctx, G.hint, P, G);
+  streaks(ctx, G, P);
+  if (G.glide) glideLine(ctx, G.glide, P, G);
   drawHawk(ctx, G.bird, P, G);
+  stamina(ctx, G.bird, P);
   for (const r of rings) ring(ctx, r, P, G, 1);
   particles(ctx, G, P);
   ctx.restore();
@@ -373,6 +376,36 @@ function sittingHawk(ctx, b, P, G) {
     const r = 1 + (G.t * 6) % 6;
     ctx.beginPath(); ctx.ellipse(0, 4.5, 11 + r, 1.4 + r * .15, 0, 0, TAU); ctx.stroke(); ctx.restore();
   }
+}
+
+function streaks(ctx, G, P) {
+  ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.lineCap = 'round'; ctx.lineWidth = .7;
+  for (const s of G.streaks) {
+    if (s.trail.length < 3) continue;
+    const k = Math.sin(Math.PI * s.life / s.max);
+    ctx.strokeStyle = C(P.birdFar, .16 * k);
+    pathPts(ctx, s.trail, false); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// a faint dotted arc to where the current glide would land
+function glideLine(ctx, pts, P, G) {
+  ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = C(P.birdFar, .5);
+  for (let i = 3; i < pts.length; i += 3) { const a = 1 - i / pts.length; ctx.globalAlpha = .2 + .5 * a; ctx.beginPath(); ctx.arc(pts[i][0], pts[i][1], .8, 0, TAU); ctx.fill(); }
+  if (pts.end) { const e = pts[pts.length - 1]; ctx.globalAlpha = .5; ctx.strokeStyle = C(P.birdFar, .6); ctx.lineWidth = .8; ctx.beginPath(); ctx.ellipse(e[0], e[1] + 5, 5, 1.6, 0, 0, TAU); ctx.stroke(); }
+  ctx.restore();
+}
+
+// stamina shows as a thin ring that only appears once the wings are tiring
+function stamina(ctx, b, P) {
+  if (b.stamina > .97 || b.state !== 'fly') return;
+  const a = Math.min(1, (1 - b.stamina) * 3);
+  ctx.save(); ctx.lineCap = 'round';
+  ctx.strokeStyle = C(P.paper, .5 * a); ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(b.x, b.y, 22, -Math.PI * .75, Math.PI * .75 - .001, true); ctx.stroke();
+  ctx.strokeStyle = C(b.stamina < .15 ? [190, 80, 50] : P.birdFar, .55 * a); ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.arc(b.x, b.y, 22, -Math.PI * .75, -Math.PI * .75 - Math.PI * 1.5 * b.stamina, true); ctx.stroke();
+  ctx.restore();
 }
 
 /* ---------- particles and weather ---------- */

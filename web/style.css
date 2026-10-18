@@ -47,3 +47,18 @@ summary { cursor: pointer; font-size: 17px; padding: 4px 0; }
 .songbook i { width: 14px; height: 14px; border-radius: 50%; border: 3px solid; flex: none; }
 .songbook .unknown { opacity: .45; font-style: italic; }
 .songbook .play { margin-left: auto; font: inherit; font-size: 13px; padding: 3px 10px; border-radius: 10px; border: 1px solid rgba(58, 36, 24, .3); background: transparent; color: var(--ink); cursor: pointer; }
+.card .row { display: flex; gap: 8px; }
+.card .row > button, .card .half { flex: 1; display: block; margin: 8px 0; padding: 11px 14px; font: inherit; font-size: 17px; text-align: left; color: var(--ink); background: rgba(255, 255, 255, .45); border: 1px solid rgba(58, 36, 24, .25); border-radius: 12px; cursor: pointer; }
+.card > button.quiet { background: transparent; font-size: 14px; opacity: .7; margin-top: 14px; }
+.card h1 { cursor: default; }
+.card h3 { font-size: 15px; font-weight: normal; margin: 10px 0 2px; opacity: .7; }
+.journey, .nest { font-size: 14.5px; line-height: 1.4; margin: 6px 0; }
+.map { width: 100%; height: auto; border-radius: 10px; background: rgba(255, 255, 255, .4); border: 1px solid rgba(58, 36, 24, .15); }
+.landmarks { list-style: none; padding: 0; margin: 4px 0; font-size: 14.5px; }
+.landmarks li { padding: 3px 0; }
+.songbook li > div { display: flex; flex-direction: column; }
+small { display: block; font-size: 12.5px; opacity: .65; }
+.slider { display: grid; grid-template-columns: 70px 1fr 44px; align-items: center; gap: 8px; font-size: 13px; margin: 4px 0; }
+.slider input { width: 100%; }
+.slider output { text-align: right; font-variant-numeric: tabular-nums; }
+.menu-btn.hidden { display: none; }

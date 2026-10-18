@@ -7,20 +7,18 @@
 // stall speed the nose drops on its own. One tap = one flap = a fixed burst of energy.
 import { TAU, clamp, lerp, smooth } from './util.js';
 import * as W from './world.js';
+import { TUNE as T } from './tune.js';
 
+// Each flap spends stamina that refills while gliding, so spamming taps stops working
+// and thermals and ridge lift matter. Nose-high near a landing spot is a flare: it
+// brakes hard, which is how you set down softly.
 export const FEET = 6;            // body centre to feet
-const GRAV = 140;                 // world units / s^2
-const DRAG_A = 0.00155;           // parasitic drag, grows with speed^2
-const DRAG_B = 49000;             // induced drag, grows as speed drops
-const RELAX = -0.17;              // path angle the bird settles into hands-off (a decent, not perfect, glide)
-const STALL = 38;
-const FLAP = 18;
 const MAX_SPEED = 260;
 const WALK = 26, PADDLE = 16;
 
 export function createBird(x, y) {
   return {
-    x, y, s: 80, g: RELAX, face: 1, state: 'fly',
+    x, y, s: 80, g: T.relax, face: 1, state: 'fly', stamina: 1, restT: 0,
     vx: 80, vy: 0, kick: 0, turnT: 0, flapCD: 0, autoFlapT: 0,
     target: null, walkTo: null, perch: null, circling: false, stall: false, air: 0,
     // pose (shared with the demo's rig)
@@ -38,10 +36,14 @@ export function turn(b) {
 export function flap(b, power, G) {
   if (b.flapCD > 0) return false;
   if (b.state !== 'fly') takeOff(b);
+  // a tired hawk still flaps, just weakly
+  const tired = b.stamina >= T.stamina ? 1 : .3 + .7 * b.stamina / Math.max(T.stamina, .001);
+  b.stamina = Math.max(0, b.stamina - T.stamina); b.restT = .7;
+  power *= tired;
   // a flap is part thrust (speed) and part lift (a direct upward kick that fades)
-  b.s = Math.min(MAX_SPEED, b.s + FLAP * power);
+  b.s = Math.min(MAX_SPEED, b.s + T.flap * power);
   b.g = Math.min(1.05, b.g + .08);
-  b.kick = Math.max(-60, b.kick - 28 * power);
+  b.kick = Math.max(-60, b.kick - T.kick * power);
   b.flapLeft = 1; b.flapCD = .14;
   if (b.phase > Math.PI) b.phase = 0;
   G.emit('flap');
@@ -53,18 +55,41 @@ function takeOff(b) {
   b.state = 'fly'; b.s = 48; b.g = .6; b.kick = -24; b.walkTo = null; b.y -= 2; b.stall = false;
 }
 
-function land(b, kind, G, y) {
+function land(b, kind, G, y, soft = false) {
   b.state = kind; b.s = 0; b.g = 0; b.y = y; b.target = null; b.landT = .35; b.flapLeft = 0;
-  G.emit('land', { kind });
+  G.emit('land', { kind, soft });
 }
 
-export function perchOn(b, p, G) {
-  b.perch = p; b.x = p.x; land(b, 'perch', G, p.y - FEET);
+export function perchOn(b, p, G, soft = false) {
+  b.perch = p; b.x = p.x; land(b, 'perch', G, p.y - FEET, soft);
+}
+
+const dragOf = s => T.dragA * 1e-3 * s * s + T.dragB * 1e3 / Math.max(s, 40) ** 2;
+
+// Where the current glide ends if the player lets go: a short hands-off simulation.
+export function predictGlide(b, G, maxT = 3.5) {
+  const pts = []; let x = b.x, y = b.y, s = b.s, g = b.g;
+  const dt = .06;
+  for (let t = 0; t < maxT; t += dt) {
+    let gT = T.relax + clamp((s - 88) * .007, -.5, .45);
+    if (s < T.stall) gT = -.85;
+    const rate = 2.4 * clamp(s / 70, .25, 1.3);
+    g += clamp(gT - g, -rate * dt, rate * dt);
+    s = clamp(s + (-T.gravity * Math.sin(g) - dragOf(s)) * dt, 8, MAX_SPEED);
+    x += (Math.cos(g) * s * b.face + W.windAt(y) * .5) * dt;
+    y += (-Math.sin(g) * s - W.updraft(x, y, G.t)) * dt;
+    pts.push([x, y]);
+    const wy = W.waterAt(x), gy = wy ?? W.groundY(x);
+    if (y + FEET >= gy) { pts.end = 'ground'; break; }
+  }
+  return pts;
 }
 
 export function updateBird(b, dt, inp, G) {
   b.turnT = Math.max(0, b.turnT - dt); b.flapCD = Math.max(0, b.flapCD - dt); b.autoFlapT = Math.max(0, b.autoFlapT - dt);
   b.peckT = Math.max(0, b.peckT - dt); b.landT = Math.max(0, b.landT - dt);
+  b.restT = Math.max(0, b.restT - dt);
+  if (b.restT <= 0) b.stamina = Math.min(1, b.stamina + dt * T.regen * (b.state === 'fly' ? 1 : 2.5));
   if (b.state === 'fly') fly(b, dt, inp, G);
   else if (b.state === 'perch') perched(b, dt, inp, G);
   else if (b.state === 'ground') ground(b, dt, inp, G);
@@ -73,10 +98,10 @@ export function updateBird(b, dt, inp, G) {
 }
 
 function fly(b, dt, inp, G) {
-  const air = W.lift(b.x, b.y, G.t);
+  const thermal = W.lift(b.x, b.y, G.t), air = thermal + W.ridgeLift(b.x, b.y);
   b.air = air;
   // hands off, the hawk holds its attitude: extra speed lifts the nose, too little drops it
-  let gT = RELAX + clamp((b.s - 88) * .007, -.5, .45), manual = false;
+  let gT = T.relax + clamp((b.s - 88) * .007, -.5, .45), manual = false;
   if (inp.steer) {
     manual = true;
     const dx = inp.steer.wx - b.x, dy = b.y - inp.steer.wy;
@@ -87,7 +112,7 @@ function fly(b, dt, inp, G) {
   if (manual) b.target = null;
 
   // thermal circling: hands off inside a column, the hawk turns back and forth to stay in it
-  const th = air > 6 ? W.thermalAt(b.x) : null;
+  const th = thermal > 6 ? W.thermalAt(b.x) : null;
   b.circling = !!(th && !manual && !b.target);
   if (b.circling) {
     if ((b.x - th.c) * b.face > th.w * .4) turn(b);
@@ -108,21 +133,23 @@ function fly(b, dt, inp, G) {
     }
   }
   // a stall drops the nose until the bird has flying speed again
-  if (b.s < STALL) b.stall = true; else if (b.s > STALL + 14) b.stall = false;
+  if (b.s < T.stall) b.stall = true; else if (b.s > T.stall + 14) b.stall = false;
   if (b.stall) gT = Math.min(gT, -.85);
   gT = clamp(gT, -1.45, 1.0);
 
   // control authority grows with airspeed
   const rate = 2.4 * clamp(b.s / 70, .25, 1.3);
   b.g += clamp(gT - b.g, -rate * dt, rate * dt);
-  if (b.stall) b.g -= (1 - b.s / (STALL + 14)) * 2 * dt;
+  if (b.stall) b.g -= (1 - b.s / (T.stall + 14)) * 2 * dt;
   if (b.y < W.CEILING) b.g = Math.min(b.g, -.2); // thin air
   b.g = clamp(b.g, -1.5, 1.1);
 
-  const drag = DRAG_A * b.s * b.s + DRAG_B / Math.max(b.s, 40) ** 2;
-  b.s = clamp(b.s + (-GRAV * Math.sin(b.g) - drag) * dt, 8, MAX_SPEED);
+  // flare: nose up and the spread wings act as an airbrake
+  b.flaring = b.g > .3 && b.s > 25;
+  const brake = b.flaring ? (b.g - .3) * b.s * T.flare : 0;
+  b.s = clamp(b.s + (-T.gravity * Math.sin(b.g) - dragOf(b.s) - brake) * dt, 8, MAX_SPEED);
 
-  b.vx = Math.cos(b.g) * b.s * b.face + G.wind * .5;
+  b.vx = Math.cos(b.g) * b.s * b.face + W.windAt(b.y) * .5;
   b.kick *= Math.exp(-dt * 2.6);
   b.vy = -Math.sin(b.g) * b.s - air + b.kick;
   const px = b.x, py = b.y;
@@ -138,14 +165,14 @@ function fly(b, dt, inp, G) {
     return;
   }
   if (b.y + FEET >= gy) {
-    if (b.s < 80 && b.g > -.75) land(b, 'ground', G, gy - FEET);
+    if (b.s < 80 && b.g > -.75) land(b, 'ground', G, gy - FEET, b.s < 50);
     else { b.y = gy - FEET - 1; b.g = .35; b.s *= .45; G.emit('crash', { x: b.x, y: gy }); }
     return;
   }
   for (const t of W.treesIn(b.x - 50, b.x + 50)) for (const q of t.perches) {
     if (q.occupied) continue;
     const dx = q.x - b.x, dy = q.y - (b.y + FEET), d = Math.hypot(dx, dy), aimed = q === b.target;
-    if (d < (aimed ? 13 : 8) && b.s < (aimed ? 105 : 80) && dy > -6) { perchOn(b, q, G); return; }
+    if (d < (aimed ? 13 : 8) && b.s < (aimed ? 105 : 80) && dy > -6) { perchOn(b, q, G, b.s < 55); return; }
   }
 }
 
@@ -209,7 +236,7 @@ function pose(b, dt, G) {
     b.flapAmt += ((b.flapLeft > 0 ? 1 : 0) - b.flapAmt) * k;
     const soar = b.circling ? 1 : clamp(b.air / 30, 0, 1);
     b.tuck += (smooth(-.45, -1.1, b.g) - b.tuck) * k;
-    b.flare += (((b.target && b.s < 80) || (b.g > .45 && b.s < 60) ? 1 : 0) - b.flare) * k;
+    b.flare += (((b.target && b.s < 80) || b.flaring ? 1 : 0) - b.flare) * k;
     b.Lg = 1 - .38 * b.tuck;
     b.gTheta += (.06 + .14 * soar - .12 * b.tuck + .2 * b.flare + .02 * Math.sin(G.t * 1.7) - b.gTheta) * Math.min(1, dt * 3);
     const c = Math.cos(b.phase);
