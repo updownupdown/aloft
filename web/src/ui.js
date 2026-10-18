@@ -50,7 +50,7 @@ export function createUI({ audio, G, store, species, onPause, playSong, hooks = 
           <li><b>Tap a branch</b> to fly to it and perch. At dusk, stay perched and the hawk roosts until dawn.</li>
           <li>Land on a pond to swim, then <b>tap the water</b> to drink. Three sips fill your thirst.</li>
           <li>On the ground, hold left or right to walk. <b>Tap berries</b> (six fill you) or, after rain, <b>worms</b> (three fill you). Dive at <b>mice</b> in the grass or <b>fish</b> in ponds.</li>
-          <li>Perch near a <b>songbird</b> and a staff appears. Listen, then tap its lines to sing the song back. Sing a song you know from any perch and that species answers.</li>
+          <li>Perch near a <b>songbird</b> and tap <b>Sing</b>: a string appears down the right. Listen, then slide to each note and hold it in tune; the marks glow as the bird sings them. Sing a song you know from any perch and that species answers. Keyboard: keys 1 to 5.</li>
           <li>The seasons turn every two days. Follow the flocks <b>south</b> (to the right) to the wintering marsh, and home again in spring. The <b>Journal</b> keeps your map and the landmarks you find.</li>
           <li>Pick up a <b>twig</b> under a tree and perch on a branch to start a <b>nest</b>. Five twigs and an egg appears; when it hatches, carry mice and fish home to feed the chick.</li>
           <li>Keyboard: Space flap, arrow keys or WASD to steer and walk, E to drink or eat, Esc for this menu.</li>

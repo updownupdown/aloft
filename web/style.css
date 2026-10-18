@@ -81,3 +81,32 @@ small { display: block; font-size: 12.5px; opacity: .65; }
 .gfx-list { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 6px 0; }
 .gfx-list button { font: inherit; font-size: 14px; padding: 8px 10px; text-align: left; border-radius: 10px; border: 1px solid rgba(58, 36, 24, .25); background: rgba(255, 255, 255, .45); color: var(--ink); cursor: pointer; }
 .gfx-list button.off { opacity: .55; }
+
+/* singing: a button at the top centre, the progress dots under it, the string down the right */
+.sing-btn {
+  position: absolute; left: 50%; top: calc(10px + env(safe-area-inset-top)); transform: translateX(-50%);
+  padding: 8px 20px; border-radius: 20px; border: 1.5px solid rgba(58, 36, 24, .45); background: rgba(246, 241, 230, .82);
+  font: inherit; font-size: 16px; letter-spacing: .03em; color: var(--ink); cursor: pointer; white-space: nowrap;
+}
+.sing-btn.on { background: rgba(58, 36, 24, .78); color: var(--paper); border-color: transparent; }
+.sing-dots { position: absolute; left: 50%; top: calc(54px + env(safe-area-inset-top)); transform: translateX(-50%); display: flex; gap: 7px; pointer-events: none !important; }
+.sing-dots i { width: 8px; height: 8px; border-radius: 50%; border: 1.2px solid rgba(58, 36, 24, .55); transition: background .15s; }
+.sing-dots i.on { background: rgba(58, 36, 24, .7); }
+.sing-dots i.done { background: #5b8a54; border-color: #5b8a54; }
+.sing-dots i.wrong { background: #b8532f; border-color: #b8532f; }
+.sing-strip {
+  position: absolute; right: 0; top: 0; bottom: 0; width: calc(96px + env(safe-area-inset-right)); padding-right: env(safe-area-inset-right);
+  background: linear-gradient(to right, rgba(246, 241, 230, 0), rgba(246, 241, 230, .72) 38%); touch-action: none;
+}
+.sing-strip canvas { display: block; width: 96px; height: 100%; }
+
+/* the time of day dial, top right */
+.dial { position: absolute; right: calc(10px + env(safe-area-inset-right)); top: calc(10px + env(safe-area-inset-top)); width: 44px; height: 44px; pointer-events: none !important; }
+.dial svg { width: 100%; height: 100%; display: block; }
+.dial .night { fill: rgba(58, 64, 92, .5); }
+.dial .day { fill: rgba(246, 241, 230, .9); }
+.dial .rim { fill: none; stroke: rgba(58, 36, 24, .45); stroke-width: 1.5; }
+.dial .tick { stroke: rgba(58, 36, 24, .5); stroke-width: 1.2; }
+.dial .num { font: 12px Georgia, serif; fill: var(--ink); text-anchor: middle; opacity: .75; }
+.dial .sun { fill: #d9a441; stroke: rgba(58, 36, 24, .4); stroke-width: .8; }
+.dial .sun.moon { fill: #eef0f4; }
