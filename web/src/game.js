@@ -3,7 +3,8 @@ import { TAU, clamp, lerp, hash, fbm, C, shade } from './util.js';
 import { wash, circP, lift, makePaper } from './paint.js';
 import { palette } from './palette.js';
 import * as W from './world.js';
-import { createBird, updateBird, flap, perchOn } from './bird.js';
+import { createBird, updateBird, flap, perchOn, predictGlide } from './bird.js';
+import { TUNE, applyTune } from './tune.js';
 import { createInput, readInput } from './input.js';
 import { createAudio } from './audio.js';
 import { SPECIES } from './songs.js';
@@ -26,6 +27,7 @@ export function start(canvas) {
   const input = createInput(canvas);
   const audio = createAudio();
   audio.on = store.get('sound', true);
+  applyTune(store.get('tune', {}));
 
   const G = {
     t: 0, dt: 0, view: { w: 480, h: 270, s: 1 }, cam: { x: 0, y: 0 }, camGround: 0,
@@ -39,6 +41,8 @@ export function start(canvas) {
     staff: { species: null, tree: null, tries: [], lastTry: 0, wrongT: 0, singIdx: -1, doneT: 0 },
     learned: new Set(store.get('learned', [])),
     seen: new Set(), hint: null, paused: false, pendingEat: null,
+    thermalK: 1, streaks: [], glide: null,
+    settings: { glide: store.get('glide', true), music: store.get('music', true) },
   };
   G.bird.s = 85;
   G.emit = (type, d = {}) => events[type]?.(d);
@@ -238,6 +242,19 @@ export function start(canvas) {
     ctx.fillStyle = C(P.birdFar, .75); ctx.font = '7px Georgia, serif'; ctx.textBaseline = 'middle'; ctx.fillText(String(G.score), x + 13, y + 26.5);
   }
 
+  /* ---------- wind streaks: paint flecks carried by the real air field ---------- */
+  function updateStreaks(dt) {
+    const { w, h } = G.view, want = 26 + Math.min(60, Math.abs(G.wind) * 2.2);
+    while (G.streaks.length < want) G.streaks.push({ x: G.cam.x + Math.random() * w, y: G.cam.y + Math.random() * h, life: 0, max: 2 + Math.random() * 3, trail: [] });
+    for (const s of G.streaks) {
+      s.life += dt;
+      s.x += W.windAt(s.y) * dt * 1.6; s.y -= W.updraft(s.x, s.y, G.t) * dt * 1.2;
+      s.trail.push([s.x, s.y]); if (s.trail.length > 7) s.trail.shift();
+    }
+    G.streaks = G.streaks.filter(s => s.life < s.max && s.x > G.cam.x - 80 && s.x < G.cam.x + w + 80 && s.y > G.cam.y - 80 && s.y < G.cam.y + h + 80);
+    if (G.streaks.length > want + 10) G.streaks.length = Math.floor(want);
+  }
+
   /* ---------- world systems ---------- */
   function updateWeather(dt) {
     G.weatherT -= dt;
@@ -252,7 +269,14 @@ export function start(canvas) {
     G.storm += clamp(tgt[1] - G.storm, -dt / 15, dt / 15);
     G.rain = clamp((G.storm - .35) / .5, 0, 1);
     G.wet = clamp(G.wet + (G.rain > .1 ? dt / 20 * G.rain : -dt / 100), 0, 1);
-    G.wind = 6 * Math.sin(G.t * .05) + G.storm * 34 * fbm(G.t * .15, 30);
+    // a slowly turning breeze, gusty in storms; it drives ridge lift and the wind streaks
+    G.wind = 16 * fbm(G.t * .012, 31) + G.storm * 30 * fbm(G.t * .15, 30);
+    W.env.wind = G.wind;
+    // thermals: none at night, weak at dawn, strongest early afternoon; rain grounds them
+    const a = (G.tod - .25) / .5;
+    const sun = a > 0 && a < 1 ? Math.pow(Math.sin(a * Math.PI), .8) * (.75 + .45 * a) : 0;
+    G.thermalK = sun * (1 - .45 * G.overcast) * (1 - G.rain);
+    W.env.thermal = G.thermalK;
     G.cloudDrift += dt * (2.5 + G.wind * .2);
     G.flash = Math.max(0, G.flash - dt * 3);
     if (G.storm > .75) { G.nextBolt -= dt; if (G.nextBolt <= 0) { G.flash = 1; G.nextBolt = 6 + Math.random() * 12; audio.thunder(.4 + Math.random() * 1.4); } }
@@ -305,6 +329,12 @@ export function start(canvas) {
     if (G.pendingEat && b.state === 'ground' && b.walkTo === null) { if (Math.abs(G.pendingEat.x - b.x) < 14) eat(G.pendingEat); G.pendingEat = null; }
     if (b.state !== 'ground') G.pendingEat = null;
     if (b.circling) once('thermal', 'A thermal. Let go and the hawk circles upward on the warm air.');
+    if (W.ridgeLift(b.x, b.y) > 8 && b.state === 'fly') once('ridge', 'Ridge lift: wind hitting the hillside pushes up along its face.');
+    if (b.stamina < .15 && b.state === 'fly') once('tired', 'Tired wings. Glide a while, or find rising air, and your strength comes back.');
+    // storms are bumpy in open air; shelter in a tree
+    if (G.storm > .3 && b.state === 'fly') b.kick += fbm(G.t * 1.7, 41) * G.storm * 120 * dt;
+    updateStreaks(dt);
+    G.glide = G.settings.glide && b.state === 'fly' ? predictGlide(b, G) : null;
 
     G.thirst = Math.max(0, G.thirst - dt * 100 / THIRST_S);
     G.hunger = Math.max(0, G.hunger - dt * 100 / HUNGER_S);
@@ -320,6 +350,7 @@ export function start(canvas) {
     }
     G.visibleRings = vr;
     audio.ambience(b.state === 'fly' ? clamp(b.s / 200, 0, 1) * .8 + G.storm * .3 : G.storm * .4, G.rain);
+    audio.vario(b.state === 'fly' ? b.air : 0);
   }
 
   /* ---------- sizing and loop ---------- */

@@ -21,6 +21,15 @@ export function createAudio() {
     const g = ctx.createGain(); g.gain.value = 0; src.connect(fl).connect(g).connect(A.master); src.start();
     return { g, fl };
   }
+  // variometer: soft beeps when the air is rising, faster and higher for stronger lift
+  let nextBeep = 0;
+  A.vario = lift => {
+    if (!A.ctx || lift < 5) return; const t = A.ctx.currentTime;
+    if (t < nextBeep) return;
+    const k = Math.min(1, lift / 50);
+    tone({ f: 520 + k * 420, f2: 560 + k * 480, dur: .09, vol: .045 + .04 * k, type: 'sine' });
+    nextBeep = t + .55 - .35 * k;
+  };
   A.setOn = on => { A.on = on; if (A.master) A.master.gain.setTargetAtTime(on ? .8 : 0, A.ctx.currentTime, .05); };
   // continuous beds, called every frame
   A.ambience = (windAmt, rainAmt) => {

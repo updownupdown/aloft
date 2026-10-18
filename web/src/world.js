@@ -1,7 +1,11 @@
 // The procedural world. Everything is a pure function of world x and a hash, so the
 // world is endless in both directions and identical on every visit.
 // Coordinates: x right, y DOWN, ground sits around y = 0.
-import { hash, vnoise, fbm, lerp, smooth } from './util.js';
+import { hash, vnoise, fbm, lerp, smooth, clamp } from './util.js';
+import { TUNE } from './tune.js';
+
+// set by the game every frame: thermal strength from time of day and weather, and the wind
+export const env = { thermal: 1, wind: 0 };
 
 const groundRaw = x => 22 * fbm(x / 240, 1) + 40 * fbm(x / 1100, 3) + 5 * fbm(x / 60, 4);
 
@@ -166,5 +170,18 @@ export function lift(x, y, time) {
   const d = Math.abs(x - t.c) / t.w;
   const horiz = .5 + .5 * Math.cos(d * Math.PI);
   const vert = smooth(-t.y0, -t.y1, -y) * (1 - smooth(-CEILING - 140, -CEILING, -y));
-  return 48 * t.str * horiz * vert * (.85 + .15 * Math.sin(time * .7 + t.k));
+  return TUNE.thermal * env.thermal * t.str * horiz * vert * (.85 + .15 * Math.sin(time * .7 + t.k));
 }
+// horizontal wind, a little stronger with height
+export const windAt = y => env.wind * (1 + clamp(-y / 600, 0, 1) * .6);
+// ridge lift: wind meeting a rising hillside is pushed up along its windward face
+export function ridgeLift(x, y) {
+  const gy = groundY(x), h = gy - y;
+  if (h < 0 || h > 170) return 0;
+  const slope = (groundY(x + 30) - groundY(x - 30)) / 60;   // negative when the ground rises to the right
+  const up = -env.wind * slope;
+  if (up <= 0) return 0;
+  return up * TUNE.ridge * smooth(0, 12, h) * (1 - smooth(50, 170, h));
+}
+// total upward air speed at a point
+export const updraft = (x, y, time) => lift(x, y, time) + ridgeLift(x, y);
