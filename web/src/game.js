@@ -588,7 +588,7 @@ export function start(canvas) {
     if (perf.settle) { perf.settle--; return; }   // the window after a change repaints every sprite; don't judge it
     if (perf.prev && avg > perf.prev * .93) { resLock = ++perf.fails >= 2; perf.prev = 0; setRes(Math.min(resMax(), res / perf.step)); return; } // no better: fill rate isn't the problem
     perf.prev = 0;
-    if (avg > 1000 / 45 && res > RES_MIN + .01) { perf.step = avg > 1000 / 25 ? .75 : .87; perf.prev = avg; setRes(Math.max(RES_MIN, res * perf.step)); }
+    if (avg > 1000 / 55 && res > RES_MIN + .01) { perf.step = avg > 1000 / 25 ? .75 : .87; perf.prev = avg; setRes(Math.max(RES_MIN, res * perf.step)); }
   }
   let redraw = true;
   addEventListener('resize', () => { res = 0; resize(); }); resize();
