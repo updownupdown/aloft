@@ -23,9 +23,28 @@ function blendTod(tod) {
   }
   return PALS[2];
 }
+// seasons: autumn turns the leaves ochre, winter greys the hills and whitens the ground,
+// spring brings blossom. `sea` holds 0..1 amounts { autumn, winter, spring }.
+const AUT = { leaf: hx('#c08a3a'), leafHi: hx('#d8a848'), leafDk: hx('#a0582e'), near: hx('#7a7a48'), mid: hx('#9a8a62') };
+const WIN = { near: hx('#c4c8cc'), mid: hx('#9aa6b0'), far: hx('#aab4c0'), ground: hx('#8a8a90'), leaf: hx('#7a7468'), leafHi: hx('#9a9488'), leafDk: hx('#5e584e'), pine: hx('#4a6458'), sky: hx('#8aa4bc') };
+const SPR = { leafHi: hx('#e8a8b8'), leaf: hx('#7aaa62'), near: hx('#5a8c58') };
+function seasonal(P, sea, tod) {
+  const day = 1 - nightness(tod) * .7;
+  const apply = (T, k) => { if (k > 0) for (const key in T) P[key] = mix(P[key], shade(T[key], lerpN(1, day, .8)), k); };
+  apply(AUT, sea.autumn * .75); apply(WIN, sea.winter * .7); apply(SPR, sea.spring * .55);
+  P.blossom = mix(hx('#f0b8c8'), P.leafHi, .3);
+}
+const lerpN = (a, b, t) => a + (b - a) * t;
+export const SEASONS = ['summer', 'autumn', 'winter', 'spring'];
+// s runs 0..4 (summer, autumn, winter, spring); each season holds steady, then blends into the next
+export function seasonAmounts(s) {
+  const k = c => { let d = ((s - c) % 4 + 4) % 4; d = Math.min(d, 4 - d); return clamp(1.5 - 2 * d, 0, 1); };
+  return { summer: k(0), autumn: k(1), winter: k(2), spring: k(3) };
+}
 // overcast: grey toward the cloud colour; dark: storm dimming
-export function palette(tod, overcast, dark) {
+export function palette(tod, overcast, dark, sea = null) {
   const P = blendTod(tod);
+  if (sea) seasonal(P, sea, tod);
   if (overcast > 0 || dark > 0) {
     for (const k of keys) {
       if (k === 'paper') { P[k] = shade(grey(P[k], overcast * .5), 1 - dark * .12); continue; }

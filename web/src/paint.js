@@ -98,7 +98,7 @@ export function softWash(ctx, x, y, rx, ry, col, a) {
 export function lift(ctx, pts, paper, a) { ctx.save(); ctx.globalCompositeOperation = 'source-over'; ctx.fillStyle = C(paper, a); pathPts(ctx, pts); ctx.fill(); ctx.restore(); }
 export function mist(ctx, y0, y1, w, paper, a) {
   ctx.save(); const g = ctx.createLinearGradient(0, y0, 0, y1);
-  g.addColorStop(0, C(paper, 0)); g.addColorStop(1, C(paper, a)); ctx.fillStyle = g; ctx.fillRect(0, y0, w, y1 - y0); ctx.restore();
+  g.addColorStop(0, C(paper, 0)); g.addColorStop(1, C(paper, a)); ctx.fillStyle = g; ctx.fillRect(0, y0, w, Math.max(y1 - y0, 0) + 2000); ctx.restore();  // holds its strength below y1, so no edge shows
 }
 export function paperBase(ctx, P, w, h) {
   ctx.fillStyle = C(P.paper); ctx.fillRect(0, 0, w, h);

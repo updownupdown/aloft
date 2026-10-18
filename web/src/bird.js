@@ -156,6 +156,8 @@ function fly(b, dt, inp, G) {
   b.x += b.vx * dt; b.y += b.vy * dt;
   G.passRings(px, py, b.x, b.y);
 
+  // a dive that reaches a mouse or a fish snatches it and swoops back up
+  if (G.catchPrey?.(b)) return;
   // contact with water, ground and perches
   const wy = W.waterAt(b.x), gy = W.groundY(b.x);
   if (wy !== null && b.y + 3 >= wy) {
@@ -169,7 +171,7 @@ function fly(b, dt, inp, G) {
     else { b.y = gy - FEET - 1; b.g = .35; b.s *= .45; G.emit('crash', { x: b.x, y: gy }); }
     return;
   }
-  for (const t of W.treesIn(b.x - 50, b.x + 50)) for (const q of t.perches) {
+  for (const q of W.perchesIn(b.x - 50, b.x + 50)) {
     if (q.occupied) continue;
     const dx = q.x - b.x, dy = q.y - (b.y + FEET), d = Math.hypot(dx, dy), aimed = q === b.target;
     if (d < (aimed ? 13 : 8) && b.s < (aimed ? 105 : 80) && dy > -6) { perchOn(b, q, G, b.s < 55); return; }
@@ -228,8 +230,8 @@ function swim(b, dt, inp, G) {
   b.moving = !!dir;
 }
 
-// animation pose for the rig and the perched drawing
-function pose(b, dt, G) {
+// animation pose for the rig and the perched drawing (also drives the other hawks)
+export function pose(b, dt, G) {
   const k = Math.min(1, dt * 7);
   if (b.state === 'fly') {
     if (b.flapLeft > 0 || b.flapAmt > .02) { b.phase += dt * TAU / .4; if (b.phase >= TAU) { b.phase -= TAU; if (b.flapLeft > 0) b.flapLeft--; } }
