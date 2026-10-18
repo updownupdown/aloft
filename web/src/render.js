@@ -10,24 +10,28 @@ import { mousePos, fishPos } from './life.js';
 const BS = 1.25; // hawk drawing scale
 
 export function render(ctx, G) {
-  const { w, h } = G.view, P = G.P, cam = G.cam;
+  const { w, h } = G.view, P = G.P, cam = G.cam, S = G.view.scr;
   spriteFrame(); pk = palKey(P, G);
-  // everything behind the land is soft, so it is painted at half resolution and copied up in one go
-  const px = G.view.px * BACK, bw = Math.round(w * px), bh = Math.round(h * px);
+  // everything behind the land is soft, so it is painted at half resolution and copied up in one go.
+  // The sky and clouds are far away and don't zoom; the hills zoom out a little, less than the land.
+  const bw = Math.round(S.w * S.px * BACK), bh = Math.round(S.h * S.px * BACK);
   if (!back) back = document.createElement('canvas');
   if (back.width !== bw || back.height !== bh) { back.width = bw; back.height = bh; }
-  const bx = back.getContext('2d');
-  bx.setTransform(px, 0, 0, px, 0, 0); bx.globalCompositeOperation = 'source-over'; bx.globalAlpha = 1;
-  background(bx, G, P, w, h, px);
-  celestial(bx, G, P, w, h);
-  if (GFX.clouds) for (const c of clouds(G, w, h)) cloud(bx, c, P, G);
+  const bx = back.getContext('2d'), spx = bw / S.w;
+  bx.setTransform(spx, 0, 0, spx, 0, 0); bx.globalCompositeOperation = 'source-over'; bx.globalAlpha = 1;
+  const cx = G.camC.x, cy = G.camC.y, lift0 = G.camGround - cy;
+  background(bx, G, P, S.w, S.h, spx);
+  celestial(bx, G, P, S.w, S.h);
+  if (GFX.clouds) for (const c of clouds(G, S.w, S.h, cx, lift0)) cloud(bx, c, P, G);
   // far and mid hills: parallax in both axes so climbing high drops them away
-  const lift0 = (G.camGround - cam.y);
-  if (GFX.hills) hillLayer(bx, G, 'far', cam.x * .12, h * .6 + lift0 * .1, w, h, px);
-  if (GFX.mist) mist(bx, h * .3 + lift0 * .1, h * .8 + lift0 * .1, w, P.paper, .6);
-  farBirds(bx, G, P, w, h);
-  hillLayer(bx, G, 'mid', cam.x * .4, h * .7 + lift0 * .28, w, h, px);
-  if (GFX.mist) mist(bx, h * .55 + lift0 * .28, h * .95 + lift0 * .28, w, P.paper, .4);
+  const hz = 1 + (G.view.z - 1) * .45, hw = S.w * hz, hh = S.h * hz, hpx = bw / hw;
+  bx.setTransform(hpx, 0, 0, hpx, 0, 0);
+  const l0 = lift0 - hh * .32;
+  if (GFX.hills) hillLayer(bx, G, 'far', cx * .12 - hw / 2, hh * .6 + l0 * .1, hw, hpx);
+  if (GFX.mist) mist(bx, hh * .3 + l0 * .1, hh * .8 + l0 * .1, hw, P.paper, .6);
+  bx.setTransform(spx, 0, 0, spx, 0, 0); farBirds(bx, G, P, S.w, S.h); bx.setTransform(hpx, 0, 0, hpx, 0, 0);
+  hillLayer(bx, G, 'mid', cx * .4 - hw / 2, hh * .7 + l0 * .28, hw, hpx);
+  if (GFX.mist) mist(bx, hh * .55 + l0 * .28, hh * .95 + l0 * .28, hw, P.paper, .4);
   ctx.drawImage(back, 0, 0, w, h);
   // each hawk is painted on its own small layer first, so its many passes never blend on the big canvas
   const hawks = [...G.hawks.map(hk => hawkLayer(G, hk, P, hk.scale, 'h' + G.hawks.indexOf(hk))), hawkLayer(G, G.bird, P, 1, 'me')];
@@ -46,7 +50,7 @@ export function render(ctx, G) {
   if (G.nest) nest(ctx, G.nest, P, G);
   for (const b of W.bushesIn(x0, x1)) bush(ctx, b, P, G);
   if (G.wormsOk()) for (const wm of W.wormsIn(x0, x1)) if (!G.eaten.has(wm.id + G.rainId)) worm(ctx, wm, P, G);
-  for (const tw of W.twigsIn(x0, x1)) if (!G.twigGone(tw.id)) twig(ctx, tw.x, tw.y, tw.a, P, G.view.px);
+  for (const tw of W.twigsIn(x0, x1)) if (!G.twigGone(tw.id)) twig(ctx, tw.x, tw.y, tw.a, P, G.view.spx);
   for (const m of W.miceIn(x0, x1)) if (!G.eaten.has(m.id + ':' + G.day)) mouse(ctx, m, P, G);
   for (const t of trees) if (t.song?.active) { const p = t.song.perch; songbird(ctx, p.x, p.y - 3.4, t.song.sp, t.song.singingT > 0, p.x < t.x ? -1 : 1, P, G); }
   if (G.visitor) visitor(ctx, G.visitor, P, G);
@@ -61,8 +65,11 @@ export function render(ctx, G) {
   particles(ctx, G, P);
   ctx.restore();
 
-  if (GFX.weather) rain(ctx, G, P, w, h);
-  nearBirds(ctx, G, P, w, h);
+  // weather and the birds that dash past are screen space
+  ctx.save(); ctx.scale(w / S.w, h / S.h);
+  if (GFX.weather) rain(ctx, G, P, S.w, S.h);
+  nearBirds(ctx, G, P, S.w, S.h);
+  ctx.restore();
   const night = nightness(G.tod) * (G.brightT > 0 ? .35 : 1);
   if (night > 0) { ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = C([150, 160, 200], night * .35); ctx.fillRect(0, 0, w, h); ctx.restore(); }
   if (G.flash > 0) { ctx.save(); ctx.fillStyle = C([255, 255, 250], G.flash * .55); ctx.fillRect(0, 0, w, h); ctx.restore(); }
@@ -93,7 +100,7 @@ let pk = '';
 function palKey(P, G) {
   let k = '';
   for (const n of ['far', 'mid', 'near', 'ground', 'pine', 'pineDk', 'leaf', 'leafHi', 'leafDk', 'trunk', 'birdFar']) { const c = P[n]; k += (c[0] >> 2) + ',' + (c[1] >> 2) + ',' + (c[2] >> 2) + ';'; }
-  return k + Math.round(G.sea.winter * 25) + ',' + Math.round(G.view.px * 100);
+  return k + Math.round(G.sea.winter * 25) + ',' + Math.round(G.view.spx * 100);
 }
 
 // Far and mid hills scroll with parallax. Their shape in layer space never changes, so they are
@@ -102,12 +109,12 @@ const HILL = {
   far: { cw: 256, step: 8, y: x => -58 * Math.pow(vnoise(x / 170, 9), 1.4) - 14 * vnoise(x / 48, 10) + 5 * vnoise(x / 13, 11), lo: -80, hi: 8, col: 'far', a: .42, o: { passes: 3, amp: 3.5, seed: 1, rim: .25 } },
   mid: { cw: 192, step: 6, y: x => 24 * fbm(x / 300, 5), lo: -60, hi: 28, col: 'mid', a: .5, o: { passes: 3, amp: 3, seed: 2, rim: .35 }, trees: true },
 };
-function hillLayer(ctx, G, which, base, oy, w, h, px) {
-  const L = HILL[which], P = G.P;
+function hillLayer(ctx, G, which, base, oy, w, px) {
+  const L = HILL[which], P = G.P, h = Math.round(G.view.scr.h * 1.7);   // deep enough for any zoom
   ctx.save(); ctx.translate(-base, oy);
   for (let c = Math.floor(base / L.cw); c * L.cw < base + w; c++) {
     const xa = c * L.cw, xb = xa + L.cw, yb = L.hi + h + 10;
-    const s = sprite(which + c, pk + h, xa, L.lo, xb, yb, px, x => {
+    const s = sprite(which + c, pk + h, xa, L.lo, xb, yb, G.view.scr.px * BACK, x => {
       const i0 = Math.floor(xa / L.step) - 2, i1 = Math.ceil(xb / L.step) + 2, pts = [[i0 * L.step, yb + 30]];
       for (let i = i0; i <= i1; i++) pts.push([i * L.step, L.y(i * L.step)]);
       pts.push([i1 * L.step, yb + 30]);
@@ -151,12 +158,12 @@ function celestial(ctx, G, P, w, h) {
   arc(((G.tod + .25) % 1) / .5, 10, [230, 232, 236], vis * night);
 }
 
-function clouds(G, w, h) {
-  const out = [], base = G.cam.x * .06 + G.cloudDrift, cell = 120, i0 = Math.floor((base - 160) / cell);
+function clouds(G, w, h, cx, lift0) {
+  const out = [], base = cx * .06 + G.cloudDrift, cell = 120, i0 = Math.floor((base - 160) / cell);
   const cover = .3 + G.overcast * .65;
   for (let i = i0; i < i0 + Math.ceil(w / cell) + 4; i++) {
     if (hash(i * 3.3) > cover) continue;
-    out.push({ x: i * cell + hash(i * 1.9) * 60 - base, y: 18 + hash(i * 4.1) * h * .22 + (G.camGround - G.cam.y) * .05, w: 40 + hash(i * 8.2) * 60 + G.overcast * 40, seed: i });
+    out.push({ x: i * cell + hash(i * 1.9) * 60 - base, y: 18 + hash(i * 4.1) * h * .22 + (lift0 - h * .32) * .05, w: 40 + hash(i * 8.2) * 60 + G.overcast * 40, seed: i });
   }
   return out;
 }
@@ -213,14 +220,14 @@ function nearBirds(ctx, G, P, w, h) {
 const GC = 160;
 function groundLayer(ctx, G, P, x0, x1) {
   const step = 4, i0 = Math.floor(x0 / step), i1 = Math.ceil(x1 / step);
-  const day = 1 - nightness(G.tod) * .8, tk = .2 * day * (1 - G.sea.winter * .7), vh = Math.round(G.view.h);
+  const day = 1 - nightness(G.tod) * .8, tk = .2 * day * (1 - G.sea.winter * .7), vh = Math.round(G.view.hMax);
   const key = pk + vh + ',' + Math.round(tk * 200);
   for (let c = Math.floor(x0 / GC); c * GC < x1; c++) {
     const xa = c * GC, xb = xa + GC, j0 = xa / step - 4, j1 = xb / step + 4;
     let lo = Infinity, hi = -Infinity;
     for (let j = j0; j <= j1; j++) { const y = W.groundY(j * step); lo = Math.min(lo, y); hi = Math.max(hi, y); }
     const bottom = hi + vh + 10;
-    const s = sprite('g' + c, key, xa, lo - 8, xb, bottom, G.view.px, x => {
+    const s = sprite('g' + c, key, xa, lo - 8, xb, bottom, G.view.spx, x => {
       const top = [];
       for (let j = j0; j <= j1; j++) top.push([j * step, W.groundY(j * step)]);
       const poly = [[j0 * step, bottom + 30], ...top, [j1 * step, bottom + 30]];
@@ -266,7 +273,7 @@ function pond(ctx, p, P, G) {
     return;
   }
   wash(ctx, poly, P.water, .45, { passes: 2, amp: 1, seed: p.k + 40, rim: .25 });
-  for (const f of p.fish) if (!G.eaten.has(f.id + ':' + G.day)) fish(ctx, fishPos(f, p, G.t), P, f.seed, G.view.px);
+  for (const f of p.fish) if (!G.eaten.has(f.id + ':' + G.day)) fish(ctx, fishPos(f, p, G.t), P, f.seed, G.view.spx);
   softWash(ctx, p.c, p.waterY + 6, (p.x1 - p.x0) * .6, 10, P.water, .25);
   ctx.save(); ctx.globalCompositeOperation = 'source-over'; ctx.strokeStyle = C(P.paper, .7); ctx.lineWidth = 1; ctx.beginPath();
   for (let k = 0; k < 3; k++) {
@@ -292,7 +299,7 @@ function pond(ctx, p, P, G) {
 // Snow and blossom are paper and petals rather than multiply paint, so they are drawn live.
 function tree(ctx, t, P, G) {
   const h = t.h, sd = t.seed, sw = Math.sin(G.t * 1.3 + sd * 1.7) * (1.2 + Math.abs(G.wind) * .05);
-  const leaves = t.type ? 1 - G.sea.winter * .92 : 1, px = G.view.px, R = 7 + h * (t.type ? .36 : .31);
+  const leaves = t.type ? 1 - G.sea.winter * .92 : 1, px = G.view.spx, R = 7 + h * (t.type ? .36 : .31);
   ctx.save(); ctx.translate(t.x, t.y); ctx.rotate(t.lean);
   const body = sprite('t' + t.i, pk, -R, -h * 1.12 - 6, R, 5, px, x => treeBody(x, t, P, leaves));
   ctx.save(); ctx.transform(1, 0, -sw / h, 1, 0, 0); blit(ctx, body); ctx.restore();
@@ -349,14 +356,14 @@ function treeBody(ctx, t, P, leaves) {
 
 function bush(ctx, b, P, G) {
   const { x, y, r } = b, bare = b.hardy ? 0 : G.sea.winter * .6;
-  blit(ctx, sprite('b' + b.i, pk + b.hardy, x - r * 1.25 - 4, y - r * 1.3 - 4, x + r * 1.25 + 4, y + 3, G.view.px, c => {
+  blit(ctx, sprite('b' + b.i, pk + b.hardy, x - r * 1.25 - 4, y - r * 1.3 - 4, x + r * 1.25 + 4, y + 3, G.view.spx, c => {
     wash(c, ellP(x, y - r * .55, r * 1.25, r * .75), P.leafDk, .55 * (1 - bare), { passes: 2, amp: 1.5, seed: b.seed, rim: .4 });
     wash(c, ellP(x - r * .3, y - r * .75, r * .7, r * .45), P.leaf, .4 * (1 - bare), { passes: 1, amp: 1, seed: b.seed + 1, rim: 0 });
   }));
   if (G.sea.winter > .05) lift(ctx, ellP(x - r * .1, y - r * 1.15, r * .95, r * .25), P.paper, .6 * G.sea.winter);
   for (const be of b.berries) {
     if (!G.berryOk(b, be)) continue;
-    const st = stamp('berry', P.berry.map(v => v >> 2).join(), -2.6, -2.6, 2.6, 2.6, G.view.px * 1.5, c => {
+    const st = stamp('berry', P.berry.map(v => v >> 2).join(), -2.6, -2.6, 2.6, 2.6, G.view.spx * 1.5, c => {
       wash(c, circP(0, 0, 1.7, 7), P.berry, .85, { passes: 2, amp: .3, seed: 5, rim: .4 });
       c.fillStyle = C(P.paper, .7); c.fillRect(-.8, -.9, .7, .7);
     });
@@ -376,7 +383,7 @@ function songbird(ctx, x, y, sp, singing, face, P, G) {
   const c = sp.cols, bob = singing ? Math.sin(G.t * 18) * .4 : 0;
   const lv = singing ? Math.round((Math.sin(G.t * 30) + 1) * 1.5) : -1, open = lv < 0 ? 0 : .9 + (lv / 1.5 - 1) * .5;
   ctx.save(); ctx.translate(x, y + bob); ctx.scale(face, 1);
-  put(ctx, stamp('song' + sp.id + ':' + lv, pk, -8, -6, 8, 5, G.view.px * 1.5, x => {
+  put(ctx, stamp('song' + sp.id + ':' + lv, pk, -8, -6, 8, 5, G.view.spx * 1.5, x => {
     wash(x, [[-3, 0], [-7, 3.5], [-6, 4.2], [-2, 1.2]], c.cap, .7, { passes: 1, amp: .3, seed: 7, rim: .3 });
     wash(x, ellP(0, 0, 4.2, 3, -.35), c.body, .8, { passes: 2, amp: .4, seed: 8, rim: .4 });
     wash(x, ellP(.8, 1, 2.6, 1.8, -.35), c.breast, .8, { passes: 1, amp: .3, seed: 9, rim: 0 });
@@ -396,7 +403,7 @@ function visitor(ctx, v, P, G) {
 function smallBird(ctx, o, P, G) {
   const lv = Math.round((Math.sin(o.ph) + 1) * 3.5), fl = (lv / 3.5 - 1) * 3.2, dir = o.vx < 0 ? -1 : 1, sd = o.seed % 4;
   ctx.save(); ctx.translate(o.x, o.y); ctx.scale(dir * 1.3, 1.3);
-  put(ctx, stamp('sb' + o.col + o.wing + o.breast + sd + ':' + lv, '', -7, -5, 6, 3, G.view.px * 1.3, x => {
+  put(ctx, stamp('sb' + o.col + o.wing + o.breast + sd + ':' + lv, '', -7, -5, 6, 3, G.view.spx * 1.3, x => {
     wash(x, ellP(0, 0, 3.4, 1.8, -.1, 10), o.col, .7, { passes: 1, amp: .4, seed: sd, rim: .4 });
     wash(x, circP(3, -1, 1.6, 8), o.col, .7, { passes: 1, amp: .3, seed: sd + 1, rim: .4 });
     if (o.breast) wash(x, ellP(.8, .7, 2, 1, -.1, 8), o.breast, .7, { passes: 1, amp: .2, seed: sd + 4, rim: 0 });
@@ -411,7 +418,7 @@ function mouse(ctx, m, P, G) {
   const y = q.y + 1 - 2.2 * q.show, hop = Math.abs(Math.sin(G.t * 14 + m.seed)) * .6 * q.run, sd = m.seed % 4;
   ctx.save(); ctx.translate(q.x, y - hop); ctx.scale(q.dir, 1);
   const col = mix(P.ground, [120, 110, 100], .5), a = .85;
-  put(ctx, stamp('mouse' + sd, pk, -8, -3, 5, 3, G.view.px, x => {
+  put(ctx, stamp('mouse' + sd, pk, -8, -3, 5, 3, G.view.spx, x => {
     stroke(x, [[-2.5, .5], [-5, 1.2], [-7, .2]], col, a * .8, .5, sd);
     wash(x, ellP(0, 0, 3, 1.8, 0, 10), col, a, { passes: 2, amp: .3, seed: sd, rim: .4 });
     wash(x, circP(2.6, -.3, 1.4, 8), col, a, { passes: 1, amp: .2, seed: sd + 1, rim: .4 });
@@ -454,16 +461,16 @@ function nest(ctx, n, P, G) {
 // what the hawk is carrying, held in its talons
 function carried(ctx, G, P) {
   const b = G.bird, x = b.x - b.face * 1, y = b.y + (b.state === 'fly' ? 4.5 : 3);
-  if (G.carry === 'twig') twig(ctx, x, y, b.face * .2, P, G.view.px);
+  if (G.carry === 'twig') twig(ctx, x, y, b.face * .2, P, G.view.spx);
   else if (G.carry === 'mouse') { ctx.save(); ctx.translate(x, y + 1); ctx.scale(b.face, 1); wash(ctx, ellP(0, 0, 3, 1.6, .3, 10), [130, 120, 110], .85, { passes: 1, amp: .3, seed: 2, rim: .4 }); ctx.restore(); }
-  else if (G.carry === 'fish') { ctx.save(); ctx.translate(x, y + 1); ctx.scale(b.face, 1); fish(ctx, { x: 0, y: 0, dir: 1 }, { water: [150, 170, 190] }, 4, G.view.px); ctx.restore(); }
+  else if (G.carry === 'fish') { ctx.save(); ctx.translate(x, y + 1); ctx.scale(b.face, 1); fish(ctx, { x: 0, y: 0, dir: 1 }, { water: [150, 170, 190] }, 4, G.view.spx); ctx.restore(); }
 }
 
 /* ---------- landmarks ---------- */
 // landmarks are big, still paintings: their multiply passes are sprites, the moving water,
 // snow and blossom are drawn live on top
 function landmark(ctx, l, P, G) {
-  const { x, y, h } = l, s = l.k * 7, px = G.view.px;
+  const { x, y, h } = l, s = l.k * 7, px = G.view.spx;
   const box = (id, draw, x0 = x - 110, y0 = y - h - 30, x1 = x + 110, y1 = y + 8) => blit(ctx, sprite(l.id + id, pk, x0, y0, x1, y1, px, draw));
   if (l.type === 'oak') {
     const R = 60, leaves = 1 - G.sea.winter * .9, cy = y - h * .7;
@@ -534,7 +541,7 @@ function gathering(ctx, G, P) {
 function thermal(ctx, t, G, P) {
   const top = W.CEILING, vis = clamp(.6 - G.storm * .5, 0, 1);
   if (vis <= 0) return;
-  blit(ctx, sprite('th' + t.k, pk + Math.round(vis * 20) + (P.thermal[0] >> 2) + (P.thermal[1] >> 2), t.c - t.w, top, t.c + t.w, t.y0, G.view.px * .5, x => {
+  blit(ctx, sprite('th' + t.k, pk + Math.round(vis * 20) + (P.thermal[0] >> 2) + (P.thermal[1] >> 2), t.c - t.w, top, t.c + t.w, t.y0, G.view.spx * .4, x => {
     x.globalCompositeOperation = 'multiply';
     const hg = x.createLinearGradient(t.c - t.w, 0, t.c + t.w, 0);
     hg.addColorStop(0, C(P.thermal, 0)); hg.addColorStop(.5, C(P.thermal, .2 * vis)); hg.addColorStop(1, C(P.thermal, 0));
