@@ -1,0 +1,73 @@
+# Exports the Web build with Godot and publishes it to GitHub Pages.
+# Requires Settings > Pages > Source set to "GitHub Actions".
+name: Deploy web build
+
+on:
+  push:
+    branches: [main]
+    # Only rebuild when something that ships in the game changes.
+    paths-ignore:
+      - '**.md'
+      - 'tools/**'
+      - 'assets/palette/**'
+      - '.gitignore'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+env:
+  GODOT_VERSION: 4.7.2
+
+jobs:
+  # Single job: Actions bills each job rounded up to the minute.
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Godot and web export templates
+        id: cache-godot
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/godot
+            ~/.local/share/godot/export_templates
+          key: godot-${{ env.GODOT_VERSION }}-web
+
+      - name: Download Godot and web export templates
+        if: steps.cache-godot.outputs.cache-hit != 'true'
+        run: |
+          base="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable"
+          mkdir -p ~/godot
+          curl -sSL -o /tmp/godot.zip "$base/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          unzip -q /tmp/godot.zip -d ~/godot
+          mv ~/godot/Godot_v${GODOT_VERSION}-stable_linux.x86_64 ~/godot/godot
+          curl -sSL -o /tmp/templates.tpz "$base/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
+          dest=~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
+          mkdir -p "$dest"
+          unzip -oj /tmp/templates.tpz 'templates/web*' 'templates/version.txt' -d "$dest"
+
+      - name: Export web build
+        run: |
+          mkdir -p export/web
+          ~/godot/godot --headless --import
+          ~/godot/godot --headless --export-release "Web" export/web/index.html
+          test -f export/web/index.wasm
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: export/web
+
+      - id: deployment
+        uses: actions/deploy-pages@v4
