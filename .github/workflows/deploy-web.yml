@@ -5,6 +5,12 @@ name: Deploy web build
 on:
   push:
     branches: [main]
+    # Only rebuild when something that ships in the game changes.
+    paths-ignore:
+      - '**.md'
+      - 'tools/**'
+      - 'assets/palette/**'
+      - '.gitignore'
   workflow_dispatch:
 
 permissions:
@@ -20,8 +26,13 @@ env:
   GODOT_VERSION: 4.7.2
 
 jobs:
-  build:
+  # Single job: Actions bills each job rounded up to the minute.
+  deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
 
@@ -58,12 +69,5 @@ jobs:
         with:
           path: export/web
 
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
       - id: deployment
         uses: actions/deploy-pages@v4
