@@ -113,4 +113,35 @@ export function paperBase(ctx, P, w, h) {
 export function paperFinish(ctx, w, h) {
   ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.drawImage(finish, 0, 0, w, h); ctx.restore();
 }
+
+// Sprites. A drawing made only of multiply passes can be painted once onto white and then
+// multiplied into the frame in one copy: scene x (1 - a + a x colour) is the same either way.
+// Each sprite is kept by id and repainted when its key (palette, season, scale) changes;
+// stale ones are repainted a few per frame so a palette shift never stalls a frame.
+const sprites = new Map(), pool = [];
+let frameNo = 0, budget = 0;
+export function spriteFrame() {
+  frameNo++; budget = 3;
+  if (sprites.size > 140) for (const [id, s] of sprites) if (frameNo - s.used > 90) { sprites.delete(id); pool.push(s.c); }
+}
+export function sprite(id, key, x0, y0, x1, y1, px, draw) {
+  let s = sprites.get(id);
+  if (!s || (s.key !== key && budget-- > 0)) {
+    const cw = Math.max(1, Math.ceil((x1 - x0) * px)), ch = Math.max(1, Math.ceil((y1 - y0) * px));
+    const c = s?.c || pool.pop() || makeCanvas(cw, ch);
+    if (c.width !== cw || c.height !== ch) { c.width = cw; c.height = ch; }
+    const x = c.getContext('2d');
+    x.setTransform(1, 0, 0, 1, 0, 0); x.globalCompositeOperation = 'source-over'; x.globalAlpha = 1;
+    x.fillStyle = '#fff'; x.fillRect(0, 0, cw, ch);
+    x.setTransform(px, 0, 0, px, -x0 * px, -y0 * px);
+    draw(x);
+    s = { c, key, x0, y0, w: x1 - x0, h: y1 - y0, used: frameNo };  // drawn at its exact size so neighbouring strips never overlap
+    sprites.set(id, s);
+  }
+  s.used = frameNo;
+  return s;
+}
+export function blit(ctx, s) {
+  ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.drawImage(s.c, s.x0, s.y0, s.w, s.h); ctx.restore();
+}
 export { hash };
