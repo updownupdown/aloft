@@ -202,14 +202,12 @@ function farBirds(ctx, G, P, w, h) {
   }
 }
 
+// birds dashing past close to the eye: the small flying bird stamp, scaled up
 function nearBirds(ctx, G, P, w, h) {
   for (const n of G.nearBirds) {
-    const fl = Math.sin(n.ph) * 5;
-    ctx.save(); ctx.translate(n.x, n.y); ctx.scale(n.dir * 1.6, 1.6);
-    wash(ctx, ellP(0, 0, 5, 2.6, -.1), n.col, .65, { passes: 2, amp: .6, seed: n.seed, rim: .4 });
-    wash(ctx, circP(4.5, -1.5, 2.3, 9), n.col, .65, { passes: 2, amp: .5, seed: n.seed + 1, rim: .4 });
-    wash(ctx, [[-1, -1], [-4, -1 - fl], [2, -.5]], shade(n.col, .7), .7, { passes: 2, amp: .5, seed: n.seed + 2, rim: .3 });
-    wash(ctx, [[-4, 0], [-8, -1], [-8, 1.5]], n.col, .6, { passes: 1, amp: .4, seed: n.seed + 3, rim: .3 });
+    ctx.save(); ctx.translate(n.x, n.y); ctx.scale(2.2, 2.2);
+    n.wing ??= shade(n.col, .7);
+    smallBird(ctx, { x: 0, y: 0, vx: n.dir, ph: n.ph, col: n.col, wing: n.wing, seed: n.seed }, P, G);
     ctx.restore();
   }
 }
@@ -383,14 +381,19 @@ function songbird(ctx, x, y, sp, singing, face, P, G) {
   const c = sp.cols, bob = singing ? Math.sin(G.t * 18) * .4 : 0;
   const lv = singing ? Math.round((Math.sin(G.t * 30) + 1) * 1.5) : -1, open = lv < 0 ? 0 : .9 + (lv / 1.5 - 1) * .5;
   ctx.save(); ctx.translate(x, y + bob); ctx.scale(face, 1);
-  put(ctx, stamp('song' + sp.id + ':' + lv, pk, -8, -6, 8, 5, G.view.spx * 1.5, x => {
-    wash(x, [[-3, 0], [-7, 3.5], [-6, 4.2], [-2, 1.2]], c.cap, .7, { passes: 1, amp: .3, seed: 7, rim: .3 });
-    wash(x, ellP(0, 0, 4.2, 3, -.35), c.body, .8, { passes: 2, amp: .4, seed: 8, rim: .4 });
-    wash(x, ellP(.8, 1, 2.6, 1.8, -.35), c.breast, .8, { passes: 1, amp: .3, seed: 9, rim: 0 });
-    wash(x, circP(3, -2.6, 2.3, 9), c.body, .85, { passes: 2, amp: .3, seed: 10, rim: .4 });
-    wash(x, ellP(2.8, -3.6, 2, 1, 0, 8), c.cap, .8, { passes: 1, amp: .2, seed: 11, rim: 0 });
+  put(ctx, stamp('song' + sp.id + ':' + lv, pk, -9, -7, 8, 5, G.view.spx * 2, x => {
+    // a plump little bird with its tail cocked, standing on thin legs
+    stroke(x, [[-.4, 2.2], [-.8, 3.6]], P.birdFar, .7, .45, 6); stroke(x, [[.8, 2.2], [.9, 3.6]], P.birdFar, .7, .45, 5);
+    wash(x, [[-2.6, -.4], [-7.6, -3.4], [-7.4, -2], [-6.4, -1.6], [-2.2, 1.2]], c.cap, .75, { passes: 1, amp: .2, seed: 7, rim: .35 });
+    wash(x, ellP(0, 0, 4.2, 2.9, -.28), c.body, .8, { passes: 2, amp: .35, seed: 8, rim: .4 });
+    wash(x, ellP(1.3, 1, 2.6, 1.8, -.2), c.breast, .85, { passes: 1, amp: .25, seed: 9, rim: 0 });
+    wash(x, ellP(-1.2, -.7, 3.1, 1.5, -.32), shade(c.body, .72), .7, { passes: 1, amp: .25, seed: 12, rim: .35 });
+    lift(x, [[-2.6, -.6], [.6, -1.4], [.4, -.9], [-2.4, -.1]], P.paper, .45);
+    wash(x, circP(3.1, -2.7, 2.3, 10), c.body, .85, { passes: 2, amp: .25, seed: 10, rim: .4 });
+    wash(x, ellP(2.7, -3.8, 2.1, 1.1, -.1, 9), c.cap, .85, { passes: 1, amp: .15, seed: 11, rim: 0 });
     x.fillStyle = C(P.birdFar, .9); x.beginPath(); x.moveTo(5, -3); x.lineTo(7, -2.6 - open * .5); x.lineTo(5, -2.1); x.moveTo(5, -2.2); x.lineTo(6.6, -1.8 + open * .5); x.lineTo(5, -1.6); x.fill();
-    x.fillStyle = C(P.birdFar); x.beginPath(); x.arc(3.8, -3, .45, 0, TAU); x.fill();
+    x.fillStyle = C(P.paper, .85); x.beginPath(); x.arc(3.8, -3, .75, 0, TAU); x.fill();
+    x.fillStyle = C(P.birdFar); x.beginPath(); x.arc(3.85, -3, .45, 0, TAU); x.fill();
   }));
   ctx.restore();
 }
@@ -403,12 +406,16 @@ function visitor(ctx, v, P, G) {
 function smallBird(ctx, o, P, G) {
   const lv = Math.round((Math.sin(o.ph) + 1) * 3.5), fl = (lv / 3.5 - 1) * 3.2, dir = o.vx < 0 ? -1 : 1, sd = o.seed % 4;
   ctx.save(); ctx.translate(o.x, o.y); ctx.scale(dir * 1.3, 1.3);
-  put(ctx, stamp('sb' + o.col + o.wing + o.breast + sd + ':' + lv, '', -7, -5, 6, 3, G.view.spx * 1.3, x => {
-    wash(x, ellP(0, 0, 3.4, 1.8, -.1, 10), o.col, .7, { passes: 1, amp: .4, seed: sd, rim: .4 });
-    wash(x, circP(3, -1, 1.6, 8), o.col, .7, { passes: 1, amp: .3, seed: sd + 1, rim: .4 });
-    if (o.breast) wash(x, ellP(.8, .7, 2, 1, -.1, 8), o.breast, .7, { passes: 1, amp: .2, seed: sd + 4, rim: 0 });
-    wash(x, [[-1, -.6], [-3, -.6 - fl], [1.4, -.3]], o.wing, .75, { passes: 1, amp: .3, seed: sd + 2, rim: .3 });
-    wash(x, [[-3, 0], [-6, -.8], [-6, 1]], o.col, .6, { passes: 1, amp: .3, seed: sd + 3, rim: .2 });
+  put(ctx, stamp('sb' + o.col + o.wing + o.breast + sd + ':' + lv, '', -8, -6, 7, 6, G.view.spx * 1.6, x => {
+    // a swept, pointed wing that beats above and below a teardrop body; notched tail
+    const far = fl * .7;
+    wash(x, [[.2, -.6], [-2.2, -1 - far], [-3.6, -1.2 - far * 1.1], [-.8, -.3]], shade(o.wing, .85), .5, { passes: 1, amp: .2, seed: sd + 5, rim: .2 });
+    wash(x, [[-2.6, -.2], [-6.4, -1.4], [-5.6, 0], [-6.4, 1.2], [-2.6, .8]], o.col, .65, { passes: 1, amp: .2, seed: sd + 3, rim: .25 });
+    wash(x, [[4.4, -.9], [2, -1.9], [-1.5, -1.4], [-3.4, 0], [-1.4, 1.5], [2, 1.5]], o.col, .75, { passes: 1, amp: .25, seed: sd, rim: .4 });
+    if (o.breast) wash(x, ellP(1.2, .7, 2.2, .9, -.05, 8), o.breast, .75, { passes: 1, amp: .15, seed: sd + 4, rim: 0 });
+    wash(x, circP(3.6, -.9, 1.5, 9), o.col, .8, { passes: 1, amp: .2, seed: sd + 1, rim: .4 });
+    x.fillStyle = C(P.birdFar, .85); x.beginPath(); x.moveTo(4.9, -1.2); x.lineTo(6.2, -.8); x.lineTo(4.9, -.5); x.fill();
+    wash(x, [[1.2, -.6], [-1.4, -.8 - fl], [-3.8, -1.2 - fl * 1.15], [-.6, .2]], o.wing, .8, { passes: 1, amp: .2, seed: sd + 2, rim: .35 });
   }));
   ctx.restore();
 }
@@ -585,7 +592,7 @@ function hintMark(ctx, p, P, G) {
 
 /* ---------- the hawk ---------- */
 function wingGeo(b, side) {
-  const SPAN = 27 * b.L, cp = .906, sp = .423, sh = [2, -2.6], th0 = b.theta, th1 = b.theta + b.bend;
+  const SPAN = 31 * b.L, cp = .87, sp = .5, sh = [2, -2.2], th0 = b.theta, th1 = b.theta + b.bend;
   function at(s, xo) {
     const a = Math.min(s, .45) * SPAN; let y = -a * Math.sin(th0), z = a * Math.cos(th0);
     if (s > .45) { const hh = (s - .45) * SPAN; y -= hh * Math.sin(th1); z += hh * Math.cos(th1); }
@@ -626,43 +633,71 @@ function drawHawk(ctx, b, P, G, k = 1) {
   ctx.restore();
 }
 
+// A soaring red-tail seen from a little below: dark brown back and head, cream underparts
+// with a streaky belly band, pale underwings with the dark leading-edge bar and dark
+// fingertips, and the brick-red tail with its dark band. Light is paper left bare.
 function flyingHawk(ctx, b, P) {
-  const fan = b.tailFan, a = .8, amp = 1.1;
-  const tail = [[-8, -1.8], [-20, -3.2 - 3.5 * fan], [-22.5, .6], [-20, 3.6 + 3 * fan], [-8, 2.4]];
-  const body = ellP(0, 0, 11, 4.8), head = circP(11, -2.6, 4.3, 12);
-  const beak = [[14.4, -4.4], [18.6, -2.4], [17.8, -.6], [16.6, -1.5], [14.6, -.9]];
+  const fan = b.tailFan, a = .8, amp = 1.1, ink = P.birdFar;
+  const tail = [[-8, -1.6], [-21, -3.2 - 3.6 * fan], [-23.6, .6], [-21, 3.8 + 3.2 * fan], [-8, 2.2]];
+  const body = ellP(0, .3, 11.8, 4.3), head = circP(11.2, -2.2, 4, 12);
   const far = wingGeo(b, -1), near = wingGeo(b, 1);
-  wash(ctx, far.outline, P.birdFar, a * .45, { passes: 1, amp, seed: 71, rim: .35 });
+  wash(ctx, far.outline, ink, a * .42, { passes: 1, amp, seed: 71, rim: .35 });
+  wash(ctx, [...far.band(0), ...far.band(.22).reverse()], P.bird, a * .4, { passes: 1, amp: .6, seed: 70, rim: 0 });
   // paper under the body so the far wing never shows through it
   lift(ctx, body, P.paper, .95); lift(ctx, head, P.paper, .95); lift(ctx, tail, P.paper, .9);
   wash(ctx, tail, P.tail, a * .75, { passes: 2, amp, seed: 72, rim: .5 });
+  const tb = u => [lerp(-8, -21, u), lerp(-1.6, -3.2 - 3.6 * fan, u), lerp(2.2, 3.8 + 3.2 * fan, u)];
+  const [bx0, ya0, yb0] = tb(.78), [bx1, ya1, yb1] = tb(.88);
+  wash(ctx, [[bx0, ya0], [bx1, ya1], [bx1, yb1], [bx0, yb0]], ink, a * .35, { passes: 1, amp: .3, seed: 79, rim: 0 });
   wash(ctx, body, P.bird, a, { passes: 2, amp, seed: 73, rim: .45 });
+  // cream belly and the band of streaks across it
+  lift(ctx, ellP(1.2, 2.4, 9.6, 2.5), P.paper, .7);
+  wash(ctx, ellP(1.2, 2.4, 9.6, 2.5), P.birdPale, a * .35, { passes: 1, amp: .4, seed: 80, rim: 0 });
+  ctx.fillStyle = C(ink, a * .45); ctx.beginPath();
+  for (let k = 0; k < 6; k++) { const x = -3.5 + k * 1.5, y = 2.6 + (k % 2) * .6; ctx.moveTo(x + .9, y); ctx.ellipse(x, y, .9, .45, .5, 0, TAU); }
+  ctx.fill();
   wash(ctx, head, P.bird, a, { passes: 2, amp: amp * .8, seed: 74, rim: .45 });
-  lift(ctx, ellP(1.5, 3.4, 8.5, 2.6), P.paper, .5);
-  wash(ctx, beak, P.beak, a, { passes: 1, amp: .4, seed: 75, rim: .4 });
-  lift(ctx, near.outline, P.paper, .45);
-  wash(ctx, near.outline, P.birdWing, a * .85, { passes: 2, amp, seed: 76, rim: .6 });
-  wash(ctx, [...near.band(.62), ...near.band(.84).reverse()], P.birdFar, a * .45, { passes: 1, amp, seed: 77, rim: 0 });
-  ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.strokeStyle = C(P.birdFar, a * .6); ctx.lineWidth = .5;
-  for (let k = 0; k < 5; k++) { ctx.beginPath(); ctx.moveTo(...near.bases[k]); ctx.lineTo(...near.fingers[k]); ctx.stroke(); }
+  wash(ctx, ellP(10.4, -4.1, 3.7, 1.9, -.1), ink, a * .35, { passes: 1, amp: .3, seed: 81, rim: 0 });
+  lift(ctx, ellP(12.6, -.2, 1.8, 1.1, .2), P.paper, .45);
+  beakAt(ctx, 14.3, -2.6, P, a);
+  // the near wing, underside: pale with the dark bar on its leading edge and dark tips
+  lift(ctx, near.outline, P.paper, .6);
+  wash(ctx, near.outline, mix(P.birdPale, P.bird, .35), a * .6, { passes: 2, amp, seed: 76, rim: .6 });
+  wash(ctx, [...near.band(0), ...near.band(.2).reverse()], ink, a * .5, { passes: 1, amp: .5, seed: 77, rim: .2 });
+  wash(ctx, [...near.band(.78), ...near.band(1).reverse()], ink, a * .3, { passes: 1, amp, seed: 78, rim: 0 });
+  ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.strokeStyle = C(ink, a * .7); ctx.lineWidth = .7;
+  ctx.beginPath(); for (let k = 0; k < 5; k++) { ctx.moveTo(...near.bases[k]); ctx.lineTo(...near.fingers[k]); } ctx.stroke();
   ctx.restore();
-  eye(ctx, 12.7, -3.6, P);
+  eye(ctx, 12.6, -3.3, P);
 }
 
-function eye(ctx, x, y, P) { ctx.fillStyle = C(P.paper); ctx.beginPath(); ctx.arc(x, y, .8, 0, TAU); ctx.fill(); ctx.fillStyle = C(P.birdFar); ctx.beginPath(); ctx.arc(x + .2, y, .5, 0, TAU); ctx.fill(); }
+// hooked dark beak over a yellow cere
+function beakAt(ctx, x, y, P, a) {
+  const k = .78, q = pts => pts.map(([u, v]) => [x + u * k, y + v * k]);
+  wash(ctx, q([[0, -1.5], [3.2, -.8], [4.2, .7], [3.7, 2], [3, 1], [.4, 1.5]]), P.birdFar, a * .85, { passes: 1, amp: .15, seed: 75, rim: .4 });
+  wash(ctx, q([[-.3, -1.6], [1.3, -1.2], [1.3, 1.1], [-.3, 1.5]]), P.beak, a, { passes: 1, amp: .1, seed: 82, rim: .3 });
+}
 
-// perched, walking or swimming: wings folded along an upright body
+function eye(ctx, x, y, P) {
+  ctx.fillStyle = C(P.birdFar); ctx.beginPath(); ctx.arc(x, y, .75, 0, TAU); ctx.fill();
+  ctx.fillStyle = C(P.paper, .9); ctx.beginPath(); ctx.arc(x + .25, y - .25, .25, 0, TAU); ctx.fill();
+  // the stern brow
+  ctx.strokeStyle = C(P.birdFar, .6); ctx.lineWidth = .5; ctx.beginPath(); ctx.moveTo(x - 1.4, y - .8); ctx.lineTo(x + 1.2, y - 1.1); ctx.stroke();
+}
+
+// perched, walking or swimming: wings folded along an upright body, cream breast to the front
 function sittingHawk(ctx, b, P, G) {
-  const mode = b.state, a = .82;
+  const mode = b.state, a = .82, ink = P.birdFar;
   const rot = mode === 'perch' ? -.75 : mode === 'ground' ? -.35 : -.12;
   const peck = b.peckT > 0 ? Math.sin((1 - b.peckT / .35) * Math.PI) : 0;
   const by = mode === 'swim' ? 1.2 : -1;
-  const hx0 = mode === 'perch' ? 5 : 8, hy0 = mode === 'perch' ? -8.5 : -6;
+  const hx0 = mode === 'perch' ? 5.4 : 8, hy0 = mode === 'perch' ? -8.8 : -6;
   const hx = hx0 + peck * 3, hy = hy0 + peck * (mode === 'perch' ? 6 : 8);
-  const tail = mode === 'perch' ? [[-3, 3], [-9, 14], [-6, 15.5], [-.5, 5]] : [[-6, 0], [-18, 1 + (mode === 'swim' ? -2 : 2)], [-17.5, 4], [-5, 3]];
+  const tail = mode === 'perch' ? [[-3, 3], [-9, 14], [-6.2, 15.6], [-.5, 5]] : [[-6, 0], [-18, 1 + (mode === 'swim' ? -2 : 2)], [-17.5, 4], [-5, 3]];
   const body = ellP(0, by, 9.5, 5.4, rot);
-  const wing = ellP(-1.5, by - .3, 8.8, 3.6, rot + .12);
-  const head = circP(hx, hy, 4.1, 12);
+  const wing = ellP(-1.8, by - .5, 9, 3.5, rot + .14);
+  const head = circP(hx, hy, 4, 12);
+  const R = (x, y) => [x * Math.cos(rot) - y * Math.sin(rot), by + x * Math.sin(rot) + y * Math.cos(rot)];
   // legs first so the body sits on them
   if (mode !== 'swim') {
     const step = b.moving ? Math.sin(b.walkPh) * 2.2 : 0;
@@ -671,12 +706,25 @@ function sittingHawk(ctx, b, P, G) {
   }
   lift(ctx, body, P.paper, .95); lift(ctx, head, P.paper, .95);
   wash(ctx, tail, P.tail, a, { passes: 2, amp: .8, seed: 72, rim: .5 });
+  if (mode === 'perch') wash(ctx, [[-7.6, 11.2], [-8.4, 12.8], [-5.6, 14.2], [-4.6, 12.6]], ink, a * .35, { passes: 1, amp: .2, seed: 79, rim: 0 });
   wash(ctx, body, P.bird, a, { passes: 2, amp: 1, seed: 73, rim: .45 });
-  lift(ctx, ellP(2.5, by + 2, 5.5, 3, rot), P.paper, .55);
+  // cream breast with a belly band of streaks
+  const breast = ellP(...R(2.4, 2), 6, 3.1, rot);
+  lift(ctx, breast, P.paper, .7);
+  wash(ctx, breast, P.birdPale, a * .35, { passes: 1, amp: .3, seed: 80, rim: 0 });
+  ctx.fillStyle = C(ink, a * .45); ctx.beginPath();
+  for (let k = 0; k < 5; k++) { const [x, y] = R(-1 + k * 1.3, 3.6 + (k % 2) * .5); ctx.moveTo(x + .8, y); ctx.ellipse(x, y, .8, .4, rot + .6, 0, TAU); }
+  ctx.fill();
   wash(ctx, wing, P.birdWing, a, { passes: 2, amp: .9, seed: 76, rim: .55 });
-  wash(ctx, [[-6 + Math.cos(rot) * -2, by + 2], [-14, by + (mode === 'perch' ? 9 : 1.5)], [-5, by + 4]], P.birdFar, a * .6, { passes: 1, amp: .5, seed: 78, rim: .3 });
+  // pale-edged feathers on the folded wing
+  ctx.fillStyle = C(P.paper, .28); ctx.beginPath();
+  for (let k = 0; k < 4; k++) { const [x, y] = R(-4 + k * 2.4, -1.4 + (k % 2) * 1.1); ctx.moveTo(x + .9, y); ctx.ellipse(x, y, .9, .25, rot + .1, 0, TAU); }
+  ctx.fill();
+  wash(ctx, [[-6 + Math.cos(rot) * -2, by + 2], [-14, by + (mode === 'perch' ? 9 : 1.5)], [-5, by + 4]], ink, a * .6, { passes: 1, amp: .5, seed: 78, rim: .3 });
   wash(ctx, head, P.bird, a, { passes: 2, amp: .8, seed: 74, rim: .45 });
-  wash(ctx, [[hx + 3.2, hy - 1.6], [hx + 7, hy + .2], [hx + 6.2, hy + 1.8], [hx + 5, hy + .9], [hx + 3.2, hy + 1.4]], P.beak, a, { passes: 1, amp: .3, seed: 75, rim: .4 });
+  wash(ctx, ellP(hx - .6, hy - 1.9, 3.6, 1.9, -.1), ink, a * .35, { passes: 1, amp: .3, seed: 83, rim: 0 });
+  lift(ctx, ellP(hx + 1.2, hy + 2.3, 1.6, 1, .3), P.paper, .4);
+  beakAt(ctx, hx + 3.1, hy - .2, P, a);
   eye(ctx, hx + 1.6, hy - 1, P);
   if (mode === 'swim') {
     ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.strokeStyle = C(shade(P.water, .7), .5); ctx.lineWidth = .7;

@@ -493,7 +493,7 @@ export function start(canvas) {
   function updateZoom(dt, snap) {
     const up = W.groundY(b.x) - b.y;
     const out = b.state === 'fly' ? clamp(.7 * smooth(140, 650, up) + .5 * smooth(100, 190, b.s), 0, 1) : 0;
-    const zt = ZOOM + (ZOOM_OUT - ZOOM) * out;
+    const zt = G.zoomLock || ZOOM + (ZOOM_OUT - ZOOM) * out;   // zoomLock: set from the console for close-ups
     G.zoom = snap ? zt : G.zoom + (zt - G.zoom) * Math.min(1, dt * .5);
     setView();
   }
