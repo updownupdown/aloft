@@ -6,7 +6,8 @@ import { TAU, clamp, vnoise, hash, C, shade } from './util.js';
 function makeCanvas(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
 
 // Paper textures are generated at the view's size (on resize) so the grain never tiles or stretches.
-export let coldPress = null, granule = null;
+export let coldPress = null, granule = null, finish = null;
+const GRAN = .12;
 export function makePaper(w, h) {
   w = Math.ceil(w); h = Math.ceil(h);
   const c = makeCanvas(w, h), x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, w, h);
@@ -34,6 +35,11 @@ export function makePaper(w, h) {
   const gw = Math.ceil(w / 2), gh = Math.ceil(h / 2), c2 = makeCanvas(gw, gh), x2 = c2.getContext('2d'), d2 = x2.createImageData(gw, gh), a2 = d2.data;
   for (let i = 0; i < a2.length; i += 4) { const v = Math.random(); const k = v < .18 ? 205 + Math.random() * 30 : 255; a2[i] = a2[i + 1] = a2[i + 2] = k; a2[i + 3] = 255; }
   x2.putImageData(d2, 0, 0); granule = c2;
+  // the finishing glaze: granulation and paper tooth merged into one texture, so the frame
+  // takes a single multiply pass (multiplying by A then by B is the same as by A x B)
+  const c3 = makeCanvas(w, h), x3 = c3.getContext('2d'); x3.fillStyle = '#fff'; x3.fillRect(0, 0, w, h);
+  x3.globalCompositeOperation = 'multiply'; x3.globalAlpha = GRAN; x3.drawImage(granule, 0, 0, w, h);
+  x3.globalAlpha = .5; x3.drawImage(coldPress, 0, 0, w, h); finish = c3;
 }
 
 // A jittered copy of a point list. Pass picks a different deformation so overlapping passes pool at the edges.
@@ -104,8 +110,7 @@ export function paperBase(ctx, P, w, h) {
   ctx.fillStyle = C(P.paper); ctx.fillRect(0, 0, w, h);
   ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.globalAlpha = .85; ctx.drawImage(coldPress, 0, 0, w, h); ctx.restore();
 }
-export function paperFinish(ctx, w, h, gran = .12) {
-  ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.globalAlpha = gran; ctx.drawImage(granule, 0, 0, w, h);
-  ctx.globalAlpha = .5; ctx.drawImage(coldPress, 0, 0, w, h); ctx.restore();
+export function paperFinish(ctx, w, h) {
+  ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.drawImage(finish, 0, 0, w, h); ctx.restore();
 }
 export { hash };

@@ -10,8 +10,7 @@ const BS = 1.25; // hawk drawing scale
 
 export function render(ctx, G) {
   const { w, h } = G.view, P = G.P, cam = G.cam;
-  paperBase(ctx, P, w, h);
-  sky(ctx, G, P, w, h);
+  background(ctx, G, P, w, h);
   celestial(ctx, G, P, w, h);
   for (const c of clouds(G, w, h)) cloud(ctx, c, P, G);
 
@@ -61,7 +60,25 @@ export function render(ctx, G) {
   const night = nightness(G.tod) * (G.brightT > 0 ? .35 : 1);
   if (night > 0) { ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = C([150, 160, 200], night * .35); ctx.fillRect(0, 0, w, h); ctx.restore(); }
   if (G.flash > 0) { ctx.save(); ctx.fillStyle = C([255, 255, 250], G.flash * .55); ctx.fillRect(0, 0, w, h); ctx.restore(); }
-  paperFinish(ctx, w, h, .12);
+  paperFinish(ctx, w, h);
+}
+
+// The paper and the sky wash only change with the palette and the weather, so they are painted
+// into an offscreen canvas and copied each frame; repainted when their colours move.
+let bg = null, bgKey = '';
+function background(ctx, G, P, w, h) {
+  const px = G.view.px, cw = Math.round(w * px), ch = Math.round(h * px);
+  const q = c => (c[0] >> 1) + ',' + (c[1] >> 1) + ',' + (c[2] >> 1);
+  const key = [cw, ch, q(P.paper), q(P.sky), q(P.sky2), q(P.horizon), q(P.cloudShade), Math.round(G.overcast * 50)].join('|');
+  if (key !== bgKey) {
+    if (!bg) bg = document.createElement('canvas');
+    if (bg.width !== cw || bg.height !== ch) { bg.width = cw; bg.height = ch; }
+    const b = bg.getContext('2d');
+    b.setTransform(px, 0, 0, px, 0, 0); b.globalCompositeOperation = 'source-over'; b.globalAlpha = 1;
+    paperBase(b, P, w, h); sky(b, G, P, w, h);
+    bgKey = key;
+  }
+  ctx.drawImage(bg, 0, 0, w, h);
 }
 
 function layerPts(base, fy, w, h, step) {
