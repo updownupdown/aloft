@@ -366,14 +366,27 @@ export function start(canvas) {
   }
 
   /* ---------- HUD meters (painted on the canvas) ---------- */
+  // The meters live on their own small canvas over the game, repainted only when they change,
+  // so they cost the game's canvas nothing.
+  const hud = document.createElement('canvas'); hud.className = 'hud'; document.body.append(hud);
+  let hudKey = '';
   function drawHUD() {
-    const P = G.P, x = 50 / G.view.s + 4, y = 9;
+    const P = G.P, x = 50 / G.view.s + 4, y = 9, low = Math.sin(G.t * 6) > 0;
+    const key = [Math.ceil(G.thirst), Math.ceil(G.hunger), G.thirst < 20 && low, G.hunger < 20 && low, G.score, G.view.s, G.photo, P.paper[0] >> 3, P.birdFar[0] >> 3, P.water[2] >> 3].join();
+    if (key === hudKey) return;
+    hudKey = key;
+    const dpr = Math.min(devicePixelRatio || 1, 2), sc = G.view.s * dpr, W0 = x + 66, H0 = y + 34;
+    if (hud.width !== Math.ceil(W0 * sc)) { hud.width = Math.ceil(W0 * sc); hud.height = Math.ceil(H0 * sc); hud.style.width = W0 * G.view.s + 'px'; hud.style.height = H0 * G.view.s + 'px'; }
+    const ctx = hud.getContext('2d');
+    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, hud.width, hud.height);
+    if (G.photo) return;
+    ctx.setTransform(sc, 0, 0, sc, 0, 0);
     const meter = (yy, v, col, icon) => {
       icon(x + 5, yy + 4);
       lift(ctx, [[x + 13, yy + 1], [x + 63, yy + 1], [x + 63, yy + 7], [x + 13, yy + 7]], P.paper, .6);
       ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.strokeStyle = C(P.birdFar, .35); ctx.lineWidth = .6; ctx.strokeRect(x + 13, yy + 1, 50, 6); ctx.restore();
-      const low = v < 20 && Math.sin(G.t * 6) > 0;
-      if (v > 0) wash(ctx, [[x + 13.5, yy + 1.5], [x + 13.5 + 49 * v / 100, yy + 1.5], [x + 13.5 + 49 * v / 100, yy + 6.5], [x + 13.5, yy + 6.5]], low ? [190, 70, 50] : col, .8, { passes: 2, amp: .5, seed: 3, rim: .3 });
+      const blink = v < 20 && low;
+      if (v > 0) wash(ctx, [[x + 13.5, yy + 1.5], [x + 13.5 + 49 * v / 100, yy + 1.5], [x + 13.5 + 49 * v / 100, yy + 6.5], [x + 13.5, yy + 6.5]], blink ? [190, 70, 50] : col, .8, { passes: 2, amp: .5, seed: 3, rim: .3 });
     };
     meter(y, G.thirst, P.water, (cx, cy) => wash(ctx, [[cx, cy - 4.5], [cx + 3, cy + .5], [cx + 2, cy + 3], [cx - 2, cy + 3], [cx - 3, cy + .5]], P.water, .9, { passes: 2, amp: .3, seed: 1, rim: .4 }));
     meter(y + 11, G.hunger, P.berry, (cx, cy) => { wash(ctx, circP(cx - 1.5, cy + 1, 2.2, 8), P.berry, .9, { passes: 2, amp: .3, seed: 2, rim: .4 }); wash(ctx, circP(cx + 1.8, cy, 2.2, 8), P.berry, .9, { passes: 2, amp: .3, seed: 4, rim: .4 }); });
@@ -598,7 +611,7 @@ export function start(canvas) {
       ctx.setTransform(G.view.px, 0, 0, G.view.px, 0, 0);
       ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
       render(ctx, G);
-      if (!G.photo) { drawHUD(); drawStaff(); }
+      drawHUD(); if (!G.photo) drawStaff();
       const f = roostFade();
       if (f > 0) { ctx.fillStyle = C([28, 30, 46], f * .92); ctx.fillRect(0, 0, G.view.w, G.view.h); }
     }

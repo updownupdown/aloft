@@ -3,7 +3,8 @@
 html, body { margin: 0; height: 100%; overflow: hidden; background: var(--paper); overscroll-behavior: none; }
 body { font-family: Georgia, 'Times New Roman', serif; color: var(--ink); -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
 #game { position: fixed; inset: 0; display: block; touch-action: none; }
-#ui { position: fixed; inset: 0; pointer-events: none; }
+#ui { position: fixed; inset: 0; pointer-events: none; z-index: 2; }
+.hud { position: fixed; left: 0; top: 0; pointer-events: none; z-index: 1; }
 #ui > * { pointer-events: auto; }
 #ui > .toast { pointer-events: none; }
 
