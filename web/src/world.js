@@ -81,8 +81,16 @@ export function pondNear(x, reach = 2.4) {
   for (let j = k - 1; j <= k + 1; j++) { const p = pondK(j); if (p && Math.abs(x - p.c) < p.w * reach) return p; }
   return null;
 }
+// the drawing asks for the ground on whole-number x over and over, so those are remembered
+const rawCache = new Map();
+function groundAt(x) {
+  if (!Number.isInteger(x)) return groundRaw(x);
+  let v = rawCache.get(x);
+  if (v === undefined) { v = groundRaw(x); rawCache.set(x, v); if (rawCache.size > 20000) rawCache.clear(); }
+  return v;
+}
 function bedY(x, p) {
-  let h = groundRaw(x);
+  let h = groundAt(x);
   if (p) {
     const d = Math.abs(x - p.c) / p.w;
     h = lerp(h, p.rim, smooth(2.4, 1.2, d));

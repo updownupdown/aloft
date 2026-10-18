@@ -558,16 +558,18 @@ export function start(canvas) {
     redraw = true;
   }
   // watch frame times in two-second windows; drop resolution when slow, and stop if that doesn't help
-  const perf = { n: 0, sum: 0, prev: 0 }, now = () => performance.now(), t0 = now();
+  const perf = { n: 0, sum: 0, prev: 0, settle: 0, fails: 0, step: 1 }, now = () => performance.now(), t0 = now();
+  function setRes(r) { res = r; perf.settle = 1; resize(); store.set('res', res); }
   function watchFrames(ms) {
     if (resLock || ms > 250) { perf.n = perf.sum = 0; return; }
     perf.n++; perf.sum += ms;
     if (perf.sum < 2000) return;
     const avg = perf.sum / perf.n; perf.n = perf.sum = 0;
     if (now() - t0 < 4000) return;
-    if (perf.prev && avg > perf.prev * .95) { resLock = true; res = Math.min(resMax(), res / .85); resize(); store.set('res', res); return; } // no better: fill rate isn't the problem
+    if (perf.settle) { perf.settle--; return; }   // the window after a change repaints every sprite; don't judge it
+    if (perf.prev && avg > perf.prev * .93) { resLock = ++perf.fails >= 2; perf.prev = 0; setRes(Math.min(resMax(), res / perf.step)); return; } // no better: fill rate isn't the problem
     perf.prev = 0;
-    if (avg > 1000 / 45 && res > RES_MIN + .01) { res = Math.max(RES_MIN, res * .85); perf.prev = avg; resize(); store.set('res', res); }
+    if (avg > 1000 / 45 && res > RES_MIN + .01) { perf.step = avg > 1000 / 25 ? .75 : .87; perf.prev = avg; setRes(Math.max(RES_MIN, res * perf.step)); }
   }
   let redraw = true;
   addEventListener('resize', () => { res = 0; resize(); }); resize();
