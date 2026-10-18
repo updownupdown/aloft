@@ -15,7 +15,7 @@ import { loadJourney, saveJourney, updateJourney, journal, drawMap, placeNote, a
 import { createMusic } from './music.js';
 import { createPhoto } from './photo.js';
 import { createSinging } from './singing.js';
-import { createDial } from './dial.js';
+import { createDial, hourName } from './dial.js';
 import { GFX, loadGfx, overlay, record, stats } from './gfx.js';
 import { spriteCount } from './paint.js';
 
@@ -101,7 +101,7 @@ export function start(canvas) {
       drawMap: cv => drawMap(G, cv),
       newGame: () => { store.set('save', null); G.noSave = true; location.reload(); },
       gfx: k => { if (k === 'res') { res = 0; resLock = false; perf.prev = 0; perf.fails = 0; resize(); } redraw = true; },
-      subtitle: () => `Paused. Day ${G.day}, ${seasonName(G)}.`,
+      subtitle: () => { const h = hourName(G.tod); return `${h[0].toUpperCase()}${h.slice(1)} on day ${G.day}, ${seasonName(G)}.`; },
     },
   });
   const photo = createPhoto({ canvas, G, ui, onEnd: () => { readInput(input); G.paused = false; } });
@@ -350,7 +350,7 @@ export function start(canvas) {
   function updateSinging(dt) {
     const S = G.staff, sp = S.mode === 'learn' ? SPECIES[S.species] : null;
     const available = !G.photo && !G.roost && (b.state === 'perch' || S.mode === 'learn');
-    singer.update(dt, { available, label: sp ? `Sing with the ${sp.name}` : 'Sing', color: sp ? C(sp.cols.breast) : null });
+    singer.update(dt, { available, label: sp ? `Sing with the ${sp.name}` : 'Sing', color: sp ? sp.cols.breast : null, next: sp ? sp.notes[S.tries.length] ?? -1 : -1 });
     if (!singer.open) return;
     const state = S.wrongT > 0 ? 'wrong' : S.doneT > 0 ? 'done' : '';
     if (sp) singer.progress(sp.notes.length, S.tries.length, state);
@@ -358,33 +358,42 @@ export function start(canvas) {
   }
 
   /* ---------- HUD meters (painted on the canvas) ---------- */
-  // The meters live on their own small canvas over the game, repainted only when they change,
-  // so they cost the game's canvas nothing.
+  // Thirst, hunger and wings, each a pencil line with a tick for every sip or berry that would
+  // fill it, and a pool of pigment washed along it as far as the meter is full. The meters live
+  // on their own small canvas over the game, repainted only when they change.
   const hud = document.createElement('canvas'); hud.className = 'hud'; document.body.append(hud);
   let hudKey = '';
+  document.fonts?.ready.then(() => { hudKey = ''; });   // repaint once the bundled fonts are in
+  // a rounded bar as a polygon, so wash() can give it a wobbly edge
+  const pillP = (x0, y0, w, h) => {
+    const r = h / 2, p = []; w = Math.max(w, h);
+    for (let i = 0; i <= 6; i++) { const a = -Math.PI / 2 + Math.PI * i / 6; p.push([x0 + w - r + Math.cos(a) * r, y0 + r + Math.sin(a) * r]); }
+    for (let i = 0; i <= 6; i++) { const a = Math.PI / 2 + Math.PI * i / 6; p.push([x0 + r + Math.cos(a) * r, y0 + r + Math.sin(a) * r]); }
+    return p;
+  };
   function drawHUD() {
     const P = G.P, S = G.view.scr.s, x = 50 / S + 4, y = 9, low = Math.sin(G.t * 6) > 0;
-    const key = [Math.ceil(G.thirst), Math.ceil(G.hunger), G.thirst < 20 && low, G.hunger < 20 && low, G.score, S, G.photo, P.paper[0] >> 3, P.birdFar[0] >> 3, P.water[2] >> 3].join();
+    const key = [Math.ceil(G.thirst), Math.ceil(G.hunger), Math.ceil(b.stamina * 50), G.thirst < 20 && low, G.hunger < 20 && low, S, G.photo, P.paper[0] >> 3, P.birdFar[0] >> 3, P.water[2] >> 3].join();
     if (key === hudKey) return;
     hudKey = key;
-    const dpr = Math.min(devicePixelRatio || 1, 2), sc = S * dpr, W0 = x + 66, H0 = y + 34;
+    const dpr = Math.min(devicePixelRatio || 1, 2), sc = S * dpr, W0 = x + 70, H0 = y + 34;
     if (hud.width !== Math.ceil(W0 * sc)) { hud.width = Math.ceil(W0 * sc); hud.height = Math.ceil(H0 * sc); hud.style.width = W0 * S + 'px'; hud.style.height = H0 * S + 'px'; }
     const ctx = hud.getContext('2d');
     ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, hud.width, hud.height);
     if (G.photo) return;
     ctx.setTransform(sc, 0, 0, sc, 0, 0);
-    const meter = (yy, v, col, icon) => {
+    const meter = (yy, v, col, ticks, seed, icon) => {
       icon(x + 5, yy + 4);
-      lift(ctx, [[x + 13, yy + 1], [x + 63, yy + 1], [x + 63, yy + 7], [x + 13, yy + 7]], P.paper, .6);
-      ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.strokeStyle = C(P.birdFar, .35); ctx.lineWidth = .6; ctx.strokeRect(x + 13, yy + 1, 50, 6); ctx.restore();
+      ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.strokeStyle = C(P.birdFar, .4); ctx.lineWidth = .6; ctx.beginPath();
+      ctx.moveTo(x + 13, yy + 4); ctx.lineTo(x + 63, yy + 4);
+      for (let i = 1; i < ticks; i++) { const tx = x + 13 + 50 * i / ticks; ctx.moveTo(tx, yy + 1.5); ctx.lineTo(tx, yy + 6.5); }
+      ctx.stroke(); ctx.restore();
       const blink = v < 20 && low;
-      if (v > 0) wash(ctx, [[x + 13.5, yy + 1.5], [x + 13.5 + 49 * v / 100, yy + 1.5], [x + 13.5 + 49 * v / 100, yy + 6.5], [x + 13.5, yy + 6.5]], blink ? [190, 70, 50] : col, .8, { passes: 2, amp: .5, seed: 3, rim: .3 });
+      if (v > 1) wash(ctx, pillP(x + 13, yy + 1, 50 * v / 100, 6), blink ? [190, 70, 50] : col, .72, { passes: 2, amp: .6, seed, rim: .35, rimW: .8 });
     };
-    meter(y, G.thirst, P.water, (cx, cy) => wash(ctx, [[cx, cy - 4.5], [cx + 3, cy + .5], [cx + 2, cy + 3], [cx - 2, cy + 3], [cx - 3, cy + .5]], P.water, .9, { passes: 2, amp: .3, seed: 1, rim: .4 }));
-    meter(y + 11, G.hunger, P.berry, (cx, cy) => { wash(ctx, circP(cx - 1.5, cy + 1, 2.2, 8), P.berry, .9, { passes: 2, amp: .3, seed: 2, rim: .4 }); wash(ctx, circP(cx + 1.8, cy, 2.2, 8), P.berry, .9, { passes: 2, amp: .3, seed: 4, rim: .4 }); });
-    ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.strokeStyle = C(P.ring, .8); ctx.lineWidth = 1.3;
-    ctx.beginPath(); ctx.ellipse(x + 5, y + 26, 1.8, 3.6, 0, 0, TAU); ctx.stroke(); ctx.restore();
-    ctx.fillStyle = C(P.birdFar, .75); ctx.font = '7px Georgia, serif'; ctx.textBaseline = 'middle'; ctx.fillText(String(G.score), x + 13, y + 26.5);
+    meter(y, G.thirst, P.water, 3, 3, (cx, cy) => wash(ctx, [[cx, cy - 4.5], [cx + 3, cy + .5], [cx + 2, cy + 3], [cx - 2, cy + 3], [cx - 3, cy + .5]], P.water, .9, { passes: 2, amp: .3, seed: 1, rim: .4 }));
+    meter(y + 11, G.hunger, P.berry, 6, 5, (cx, cy) => { wash(ctx, circP(cx - 1.5, cy + 1, 2.2, 8), P.berry, .9, { passes: 2, amp: .3, seed: 2, rim: .4 }); wash(ctx, circP(cx + 1.8, cy, 2.2, 8), P.berry, .9, { passes: 2, amp: .3, seed: 4, rim: .4 }); });
+    meter(y + 22, b.stamina * 100, shade(P.thermal, .8), 0, 7, (cx, cy) => wash(ctx, [[cx - 3.2, cy + 4], [cx - 1.2, cy - .5], [cx + 1.6, cy - 4], [cx + 3.4, cy - 3.2], [cx + 2.2, cy + 1], [cx - 1, cy + 4]], shade(P.thermal, .8), .9, { passes: 2, amp: .3, seed: 6, rim: .4 }));
   }
 
   /* ---------- wind streaks: paint flecks carried by the real air field ---------- */
@@ -556,7 +565,7 @@ export function start(canvas) {
     for (const k of ['wormsT', 'followT', 'calmT', 'tailwindT', 'brightT']) G[k] = Math.max(0, G[k] - dt);
 
     updateWeather(dt); updateCritters(dt); updateSongs(dt); updateRoost(dt, still); updateZoom(dt); updateCamera(dt);
-    updateSinging(dt); dial.update(G.tod, G.day, singer.open || G.photo);
+    updateSinging(dt); dial.update(G.tod, G.day, singer.open || G.photo, G.score);
     updateJourney(G, dt, { toast: ui.toast, once, audio });
     updateNest(G, DAY, ui.toast);
     const vr = [];

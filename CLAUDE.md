@@ -21,8 +21,8 @@ Live: https://updownupdown.github.io/aloft/ (every push to `main` touching `web/
 
 ```
 web/index.html          entry; loads src/game.js as a module, registers sw.js
-web/style.css           DOM overlay (menu button, pause menu, toasts)
-web/src/game.js         state, systems (meters, weather, clock, critters, songs), taps, loop, HUD + staff drawing
+web/style.css           DOM overlay in the Pigment style (menu button, pause menu, toasts, Sing, dial)
+web/src/game.js         state, systems (meters, weather, clock, critters, songs), taps, loop, HUD meters
 web/src/bird.js         hawk flight model, perch/ground/swim states, animation pose
 web/src/world.js        procedural world: biomes, ground, ponds + fish, landmarks, trees + perches, bushes, twigs, worms, mice, thermals, rings
 web/src/render.js       draws a frame (sky, parallax hills, world layer, hawk, weather)
@@ -38,6 +38,7 @@ web/src/ui.js           pause menu, settings, how to play, songbook, toasts
 web/src/singing.js      perched singing: the Sing button and the fretless string down the right edge
 web/src/dial.js         time-of-day dial (top right)
 web/icons/              app icons (generated, see tools/make-icons.mjs)
+web/fonts/              bundled Cormorant Garamond italic and Spectral (SIL OFL, licences alongside)
 tools/serve.sh          serve web/ on localhost:8000
 tools/make-icons.mjs    regenerate icons from tools/icon.html (needs Playwright)
 ```
@@ -51,6 +52,9 @@ tools/make-icons.mjs    regenerate icons from tools/icon.html (needs Playwright)
   lives in `G` keyed by the object's id.
 - World coordinates: x right, **y down**, ground around y = 0, sky up to `CEILING`
   (-820). The view is ~300 world units tall (wider/taller on other aspect ratios).
+- UI typography is Cormorant Garamond italic for titles and Spectral for text, both bundled in
+  `web/fonts/` (offline PWA), so no web-font links. UI style is "Pigment" (Field Journal D): sepia
+  ink, ruled lines, world pigments as accents; notes in the shared folder under `ui-style/`.
 - Persisted settings use `localStorage` keys prefixed `aloft.`, always via the
   try/catch `store` helper in `game.js`.
 - Keep it light on tests (project is early and experimental). Check changes in a
