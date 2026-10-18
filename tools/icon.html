@@ -1,0 +1,43 @@
+<!doctype html>
+<!-- Renders the app icon with the game's own watercolour code. Used by tools/make-icons.mjs. -->
+<html><body style="margin:0;background:#fff">
+<canvas id="c" width="512" height="512"></canvas>
+<script type="module">
+import { makePaper, paperBase, paperFinish, softWash, bloom, wash, circP, lift } from '../web/src/paint.js';
+import { palette } from '../web/src/palette.js';
+import { fbm } from '../web/src/util.js';
+const ctx = document.getElementById('c').getContext('2d'), S = 512 / 160, P = palette(.42, 0, 0);
+ctx.scale(S, S); makePaper(160, 160);
+paperBase(ctx, P, 160, 160);
+softWash(ctx, 80, -20, 150, 110, P.sky, .6); softWash(ctx, 30, 20, 80, 70, P.sky2, .3);
+softWash(ctx, 80, 118, 140, 30, P.horizon, .4);
+lift(ctx, circP(116, 42, 17, 18), P.paper, .6);
+wash(ctx, circP(116, 42, 14, 18), P.sun, .55, { passes: 2, amp: 1.2, seed: 33, rim: .35 }); bloom(ctx, 116, 42, 34, P.sun, .2);
+const ridge = (base, amp, sc, seed) => { const p = [[-8, 170]]; for (let x = -8; x <= 168; x += 4) p.push([x, base + amp * fbm(x / sc, seed)]); p.push([168, 170]); return p; };
+wash(ctx, ridge(116, 12, 60, 9), P.far, .42, { passes: 3, amp: 2.5, seed: 1, rim: .25 });
+wash(ctx, ridge(134, 8, 50, 5), P.mid, .5, { passes: 3, amp: 2.5, seed: 2, rim: .35 });
+wash(ctx, ridge(148, 5, 40, 1), P.near, .62, { passes: 3, amp: 2, seed: 3, rim: .5 });
+// a soaring red-tail seen from below: broad fingered wings, fanned rufous tail
+ctx.save(); ctx.translate(78, 70); ctx.rotate(-.18);
+const wing = [[4, -6], [20, -12], [40, -14], [52, -12], [63, -13], [58, -9], [65, -7], [58, -4], [64, -1], [56, 0], [60, 4], [51, 3], [44, 8], [30, 10], [16, 9], [5, 8]];
+const tip = [[50, -12], [63, -13], [58, -9], [65, -7], [58, -4], [64, -1], [56, 0], [60, 4], [51, 3], [47, -4]];
+const bar = [[8, -5], [22, -10], [36, -11], [36, -8], [22, -7], [8, -2]];
+const tail = [[-4, 9]]; for (let a = 58; a <= 122; a += 8) tail.push([Math.cos(a * Math.PI / 180) * 22, 9 + Math.sin(a * Math.PI / 180) * 22]); tail.push([4, 9]);
+for (const m of [1, -1]) {
+  const f = p => p.map(([x, y]) => [x * m, y]);
+  lift(ctx, f(wing), P.paper, .7);
+  wash(ctx, f(wing), P.bird, .42, { passes: 2, amp: 1.2, seed: 70 + m, rim: .55 });
+  wash(ctx, f(tip), P.birdFar, .6, { passes: 2, amp: .8, seed: 72 + m, rim: .3 });
+  wash(ctx, f(bar), P.birdFar, .45, { passes: 1, amp: .8, seed: 74 + m, rim: 0 });
+}
+lift(ctx, tail, P.paper, .7);
+wash(ctx, tail, P.tail, .7, { passes: 2, amp: 1, seed: 76, rim: .5 });
+lift(ctx, circP(0, 0, 7, 16, 2.1), P.paper, .9);
+wash(ctx, circP(0, 0, 7, 16, 2.1), P.bird, .45, { passes: 2, amp: .7, seed: 77, rim: .5 });
+wash(ctx, circP(0, 3, 6, 12, .5), P.birdFar, .35, { passes: 1, amp: .6, seed: 78, rim: 0 });
+wash(ctx, circP(0, -15, 5, 14), P.bird, .7, { passes: 2, amp: .5, seed: 79, rim: .5 });
+wash(ctx, [[-1.5, -19.5], [1.5, -19.5], [0, -23]], P.beak, .9, { passes: 1, amp: .2, seed: 80, rim: .4 });
+ctx.restore();
+paperFinish(ctx, 160, 160, .1);
+window.done = true;
+</script></body></html>

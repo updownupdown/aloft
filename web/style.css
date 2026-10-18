@@ -1,0 +1,49 @@
+:root { --paper: #f6f1e6; --ink: #3a2418; --ink2: #6a4530; --wash: #6f9fc4; }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: var(--paper); overscroll-behavior: none; }
+body { font-family: Georgia, 'Times New Roman', serif; color: var(--ink); -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+#game { position: fixed; inset: 0; display: block; touch-action: none; }
+#ui { position: fixed; inset: 0; pointer-events: none; }
+#ui > * { pointer-events: auto; }
+#ui > .toast { pointer-events: none; }
+
+.menu-btn {
+  position: absolute; left: calc(10px + env(safe-area-inset-left)); top: calc(10px + env(safe-area-inset-top));
+  width: 40px; height: 40px; border-radius: 50%; border: 1.5px solid rgba(58, 36, 24, .45);
+  background: rgba(246, 241, 230, .82); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: pointer; padding: 0;
+}
+.menu-btn span { display: block; width: 16px; height: 2px; border-radius: 2px; background: var(--ink2); opacity: .8; }
+.menu-btn span:nth-child(2) { width: 13px; }
+
+.toast {
+  position: absolute; left: 50%; bottom: calc(14px + env(safe-area-inset-bottom)); transform: translate(-50%, 10px);
+  max-width: min(520px, 86vw); padding: 8px 16px; border-radius: 14px; pointer-events: none;
+  background: rgba(246, 241, 230, .9); border: 1px solid rgba(58, 36, 24, .25); font-size: 15px; line-height: 1.35; text-align: center;
+  opacity: 0; transition: opacity .4s, transform .4s;
+}
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+.menu { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(58, 36, 24, .25); }
+.menu.hidden, .hidden { display: none !important; }
+.card {
+  width: min(420px, 92vw); max-height: 90vh; overflow: auto; padding: 18px 22px 20px; border-radius: 18px;
+  background: var(--paper); box-shadow: 0 8px 40px rgba(58, 36, 24, .3);
+  background-image: radial-gradient(circle at 20% 0%, rgba(111, 159, 196, .22), transparent 55%), radial-gradient(circle at 100% 100%, rgba(184, 83, 47, .12), transparent 50%);
+}
+.card h1 { margin: 0; font-size: 30px; font-weight: normal; letter-spacing: .04em; }
+.card .sub { margin: 0 0 12px; opacity: .6; font-style: italic; }
+.card > button {
+  display: block; width: 100%; margin: 8px 0; padding: 11px 14px; font: inherit; font-size: 17px; text-align: left; color: var(--ink);
+  background: rgba(255, 255, 255, .45); border: 1px solid rgba(58, 36, 24, .25); border-radius: 12px; cursor: pointer;
+}
+.card > button.primary { background: rgba(111, 159, 196, .3); }
+details { margin-top: 10px; border-top: 1px solid rgba(58, 36, 24, .15); padding-top: 8px; }
+summary { cursor: pointer; font-size: 17px; padding: 4px 0; }
+.howto { padding-left: 18px; margin: 6px 0; font-size: 14.5px; line-height: 1.45; }
+.howto li { margin: 4px 0; }
+.songbook { list-style: none; padding: 0; margin: 6px 0; font-size: 15px; }
+.songbook li { display: flex; align-items: center; gap: 10px; padding: 5px 0; }
+.songbook li.count { opacity: .6; font-style: italic; }
+.songbook i { width: 14px; height: 14px; border-radius: 50%; border: 3px solid; flex: none; }
+.songbook .unknown { opacity: .45; font-style: italic; }
+.songbook .play { margin-left: auto; font: inherit; font-size: 13px; padding: 3px 10px; border-radius: 10px; border: 1px solid rgba(58, 36, 24, .3); background: transparent; color: var(--ink); cursor: pointer; }
