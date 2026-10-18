@@ -2,6 +2,7 @@
 // Every object is a polygon washed two or three times with slightly different wobbly
 // edges in multiply blend, so paint pools where the passes overlap.
 import { TAU, clamp, vnoise, hash, C, shade } from './util.js';
+import { stats } from './gfx.js';
 
 function makeCanvas(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
 
@@ -136,11 +137,12 @@ export function sprite(id, key, x0, y0, x1, y1, px, draw) {
     x.setTransform(px, 0, 0, px, -x0 * px, -y0 * px);
     draw(x);
     s = { c, key, x0, y0, w: x1 - x0, h: y1 - y0, used: frameNo };  // drawn at its exact size so neighbouring strips never overlap
-    sprites.set(id, s);
+    sprites.set(id, s); stats.repaints++;
   }
   s.used = frameNo;
   return s;
 }
+export const spriteCount = () => sprites.size;
 export function blit(ctx, s) {
   ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.drawImage(s.c, s.x0, s.y0, s.w, s.h); ctx.restore();
 }

@@ -14,6 +14,8 @@ import { mousePos, fishPos, updateFlock, callVisitor, updateVisitor, makeHawk, u
 import { loadJourney, saveJourney, updateJourney, journal, drawMap, placeNote, atPerch, updateNest, seasonName, NEST_TWIGS } from './journey.js';
 import { createMusic } from './music.js';
 import { createPhoto } from './photo.js';
+import { GFX, loadGfx, overlay, record, stats } from './gfx.js';
+import { spriteCount } from './paint.js';
 
 const DAY = 480;               // one day = 8 minutes
 const THIRST_S = 180;          // full to empty in 3 minutes
@@ -34,6 +36,7 @@ export function start(canvas) {
   const audio = createAudio();
   audio.on = store.get('sound', true);
   applyTune(store.get('tune', {}));
+  loadGfx(store); overlay(GFX.fps);
 
   const G = {
     t: 0, dt: 0, view: { w: 480, h: 270, s: 1 }, cam: { x: 0, y: 0 }, camGround: 0,
@@ -91,6 +94,7 @@ export function start(canvas) {
       journal: () => journal(G, DAY),
       drawMap: cv => drawMap(G, cv),
       newGame: () => { store.set('save', null); G.noSave = true; location.reload(); },
+      gfx: k => { if (k === 'res') { res = 0; resLock = false; perf.prev = 0; perf.fails = 0; resize(); } redraw = true; },
       subtitle: () => `Paused. Day ${G.day}, ${seasonName(G)}.`,
     },
   });
@@ -550,10 +554,12 @@ export function start(canvas) {
   function resize() {
     const cw = innerWidth, ch = innerHeight;
     let s = ch / 300; if (cw / s < 420) s = cw / 420;   // css px per world unit
-    res = clamp(res || store.get('res', 9) * 1.08, Math.min(RES_MIN, resMax()), resMax());
+    if (GFX.res !== 'auto') res = Math.min(GFX.res, devicePixelRatio || 1);
+    else res = clamp(res || store.get('res', 9) * 1.08, Math.min(RES_MIN, resMax()), resMax());
     canvas.style.width = cw + 'px'; canvas.style.height = ch + 'px';
     canvas.width = Math.round(cw * res); canvas.height = Math.round(ch * res);
     G.view = { w: cw / s, h: ch / s, s, px: res * s };
+    stats.res = res; stats.canvas = canvas.width + '×' + canvas.height;
     if (!G.paper || G.paper[0] !== Math.ceil(G.view.w) || G.paper[1] !== Math.ceil(G.view.h)) { makePaper(G.view.w, G.view.h); G.paper = [Math.ceil(G.view.w), Math.ceil(G.view.h)]; }
     redraw = true;
   }
@@ -561,7 +567,7 @@ export function start(canvas) {
   const perf = { n: 0, sum: 0, prev: 0, settle: 0, fails: 0, step: 1 }, now = () => performance.now(), t0 = now();
   function setRes(r) { res = r; perf.settle = 1; resize(); store.set('res', res); }
   function watchFrames(ms) {
-    if (resLock || ms > 250) { perf.n = perf.sum = 0; return; }
+    if (resLock || GFX.res !== 'auto' || ms > 250) { perf.n = perf.sum = 0; return; }
     perf.n++; perf.sum += ms;
     if (perf.sum < 2000) return;
     const avg = perf.sum / perf.n; perf.n = perf.sum = 0;
@@ -581,7 +587,9 @@ export function start(canvas) {
   let camKey = '';
   function frame(now) {
     const ms = now - last, dt = Math.min(.05, ms / 1000); last = now;
+    const ta = performance.now();
     if (!G.paused) { step(dt); watchFrames(ms); }
+    const t1 = performance.now();
     // while paused the picture holds still, so only repaint when photo mode pans or the view changes
     const ck = G.cam.x + ',' + G.cam.y + G.photo;
     if (!G.paused || redraw || ck !== camKey) {
@@ -594,6 +602,7 @@ export function start(canvas) {
       const f = roostFade();
       if (f > 0) { ctx.fillStyle = C([28, 30, 46], f * .92); ctx.fillRect(0, 0, G.view.w, G.view.h); }
     }
+    if (!G.paused) { record(ms, t1 - ta, performance.now() - t1); stats.sprites = spriteCount(); }
     music.update(dt, { night: nightness(G.tod), storm: G.storm, learned: G.learned, species: SPECIES });
     requestAnimationFrame(frame);
   }
