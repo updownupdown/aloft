@@ -41,11 +41,12 @@ export function createUI({ audio, G, store, species, onPause, playSong, hooks = 
       <details>
         <summary>How to play</summary>
         <ul class="howto">
-          <li><b>Tap</b> to flap. One tap, one wingbeat. Each flap tires the wings a little; gliding rests them.</li>
-          <li><b>Press and hold</b> anywhere to point the hawk toward your finger. Point down to dive, up to climb, behind to turn around.</li>
+          <li><b>Tap</b> to flap. One tap, one wingbeat. Each flap tires the wings; when they are spent they won't beat until gliding rests them.</li>
+          <li><b>Press and hold</b> anywhere to point the hawk toward your finger. Point down to dive, up to climb, behind to swing round in a wingover.</li>
+          <li>On a branch, the ground or the water, <b>one tap</b> turns or steps toward it; <b>two quick taps</b> take off.</li>
           <li>Let go and the hawk glides on its own. Diving builds speed; pulling up trades it for height. Too slow and it stalls.</li>
           <li>To land softly, <b>flare</b>: point up just before the branch or the ground.</li>
-          <li><b>Thermals</b> rise above the treeline on sunny afternoons. Let go inside one and the hawk circles up. High thermals hold <b>rings</b>. Wind against a hillside gives <b>ridge lift</b>. Rising air beeps.</li>
+          <li><b>Thermals</b> rise above the treeline on sunny afternoons. Let go inside one and the hawk floats up as it glides across; turn back to stay in it. <b>Rings</b> hang all over the sky. Wind against a hillside gives <b>ridge lift</b>. Rising air beeps.</li>
           <li><b>Tap a branch</b> to fly to it and perch. At dusk, stay perched and the hawk roosts until dawn.</li>
           <li>Land on a pond to swim, then <b>tap the water</b> to drink. Three sips fill your thirst.</li>
           <li>On the ground, hold left or right to walk. <b>Tap berries</b> (six fill you) or, after rain, <b>worms</b> (three fill you). Dive at <b>mice</b> in the grass or <b>fish</b> in ponds.</li>

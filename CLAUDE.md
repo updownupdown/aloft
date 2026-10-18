@@ -68,6 +68,9 @@ add colours there rather than inline.
 
 - Flight: `bird.js` constants (gravity, drag, relax angle, stall, flap) and `world.js`
   `lift()` for thermal strength. One tap = one flap.
+- Camera zoom (`ZOOM` default, `ZOOM_OUT` high and fast) and the two-tap take-off window: top of
+  `game.js`. `G.view` is the zoomed world view; `G.view.scr` is screen space (sky, far hills,
+  weather, HUD), sized as the art was first drawn; world sprites paint at the fixed `G.view.spx`.
 - Day length, thirst/hunger rates, berry and ring respawn: top of `game.js`. Seasons last two days
   (`updateClock`). Journey length and start: `JOURNEY` / `START_X` in `world.js`.
 - Progress is saved under `aloft.save` (position, clock, meters, journey, nest); learned songs

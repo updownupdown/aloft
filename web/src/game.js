@@ -1,9 +1,9 @@
 // Game state, systems and the main loop.
-import { TAU, clamp, lerp, hash, fbm, C, shade } from './util.js';
+import { TAU, clamp, lerp, smooth, hash, fbm, C, shade } from './util.js';
 import { wash, circP, lift, makePaper } from './paint.js';
 import { palette, seasonAmounts, nightness } from './palette.js';
 import * as W from './world.js';
-import { createBird, updateBird, flap, perchOn, predictGlide, FEET } from './bird.js';
+import { createBird, updateBird, flap, nudge, perchOn, predictGlide, FEET } from './bird.js';
 import { applyTune } from './tune.js';
 import { createInput, readInput } from './input.js';
 import { createAudio } from './audio.js';
@@ -24,6 +24,10 @@ const BERRY_REGROW = 120;
 const RING_RESPAWN = 90;
 const TWIG_REGROW = 300;
 const POWER_CD = 40;           // seconds before a song's gift works again
+// Zoom, as how many times more world fits on screen than the art was first drawn at (300 units
+// tall). Perched or low and slow it sits at ZOOM; high and fast it eases out to ZOOM_OUT.
+const ZOOM = 1.5, ZOOM_OUT = 2.5;
+const TAKEOFF_TAPS = .55;      // a second tap within this many seconds takes off
 
 const store = {
   get(k, d) { try { const v = localStorage.getItem('aloft.' + k); return v === null ? d : JSON.parse(v); } catch { return d; } },
@@ -39,7 +43,7 @@ export function start(canvas) {
   loadGfx(store); overlay(GFX.fps);
 
   const G = {
-    t: 0, dt: 0, view: { w: 480, h: 270, s: 1 }, cam: { x: 0, y: 0 }, camGround: 0,
+    t: 0, dt: 0, view: { w: 480, h: 270, s: 1, px: 1, spx: 1, z: ZOOM, scr: { w: 480, h: 270, s: 1 } }, cam: { x: 0, y: 0 }, camC: { x: 0, y: 0 }, camLead: 0, camGround: 0, zoom: ZOOM,
     clockT: 0, tod: .36, day: 1, seasonS: 0, sea: seasonAmounts(0), P: null,
     bird: createBird(W.START_X, -150),
     wind: 0, flapPower: 1,
@@ -76,7 +80,7 @@ export function start(canvas) {
       if (Math.abs(yy - r.y) < r.r * .8) {
         G.ringsTaken.set(r.id, G.t); r.gone = true; G.score++; store.set('score', G.score);
         audio.ring(); for (let i = 0; i < 10; i++) spark(r.x, r.y + (Math.random() - .5) * r.r * 2);
-        once('ring', 'Ring! Fly through more high in the thermals.');
+        once('ring', 'Ring! There are more all over the sky, low over ponds and high in the thermals.');
       }
     }
   };
@@ -114,6 +118,7 @@ export function start(canvas) {
   const puff = (x, y, n = 6) => { for (let i = 0; i < n; i++) part('puff', x + (Math.random() - .5) * 8, y - 2, (Math.random() - .5) * 20, -10, .8); };
   const events = {
     flap: () => audio.flap(),
+    tired: () => { audio.tired?.(); once('noflap', 'Your wings are spent. Glide, or find rising air, until they recover.'); },
     splash: ({ x, y, big }) => {
       audio.splash(big);
       for (let i = 0; i < (big ? 16 : 8); i++) part('drop', x, y, (Math.random() - .5) * 60, -30 - Math.random() * 50, .7);
@@ -122,15 +127,15 @@ export function start(canvas) {
     crash: ({ x, y }) => {
       audio.thump(); puff(x, y);
       for (let i = 0; i < 3; i++) part('feather', x, y - 6, (Math.random() - .5) * 30, -20, 1.6, { a: Math.random() * TAU });
-      once('crash', 'Too fast! Pull up and slow down before you touch the ground.');
+      once('crash', 'Hard landing! Pull up to slow down before you touch the ground.');
     },
     land: ({ kind }) => {
       if (kind === 'perch') {
-        audio.rustle(); once('perch', 'Perched. Tap to take off, or point down to glide off the branch.');
+        audio.rustle(); once('perch', 'Perched. Tap once to turn, tap twice quickly to take off.');
         atPerch(G, b.perch, { toast: ui.toast, once, audio, spark });
       }
-      if (kind === 'ground') { audio.thump(); once('ground', 'On the ground. Hold left or right to walk. Tap to take off.'); }
-      if (kind === 'swim') once('swim', 'Swimming. Tap the water to drink. Three sips fill you up.');
+      if (kind === 'ground') { audio.thump(); once('ground', 'On the ground. Tap to step, hold to walk, tap twice quickly to take off.'); }
+      if (kind === 'swim') once('swim', 'Swimming. Tap the water to drink: three sips fill you up. Tap twice quickly to take off.');
     },
   };
   const hintsSeen = new Set(store.get('hints', []));
@@ -170,7 +175,7 @@ export function start(canvas) {
   };
 
   /* ---------- taps ---------- */
-  function toWorld(p) { return { x: G.cam.x + p.x / G.view.s, y: G.cam.y + p.y / G.view.s, lx: p.x / G.view.s, ly: p.y / G.view.s }; }
+  function toWorld(p) { return { x: G.cam.x + p.x / G.view.s, y: G.cam.y + p.y / G.view.s, lx: p.x / G.view.scr.s, ly: p.y / G.view.scr.s }; }
   function nearestPerch(wx, wy, r) {
     let best = null, bd = r;
     for (const p of W.perchesIn(wx - 60, wx + 60)) {
@@ -207,8 +212,15 @@ export function start(canvas) {
     if (b.state === 'swim' || (b.state === 'ground' && nearWater())) { drink(); return; }
     if (b.state === 'ground') { const f = foodAt(b.x + b.face * 8, b.y, 40); if (f) { if (Math.abs(f.x - b.x) < 12) eat(f); else { b.walkTo = f.x - b.face * 6; G.pendingEat = f; } } }
   }
+  // on a perch, the ground or the water one tap turns or steps toward it; a quick second tap takes off
+  let lastTapT = -9;
+  function tapFlap(dir) {
+    if (b.state === 'fly') { b.target = null; flap(b, G.flapPower, G); return; }
+    if (G.t - lastTapT < TAKEOFF_TAPS) { lastTapT = -9; b.target = null; flap(b, G.flapPower, G); return; }
+    lastTapT = G.t; nudge(b, dir || b.face);
+  }
   function onTap(p) {
-    const w = toWorld(p);
+    const w = toWorld(p), z = G.view.z;
     if (staffHit(w.lx, w.ly)) return;
     // water: drink while swimming or standing at the edge
     if ((b.state === 'swim' || (b.state === 'ground' && nearWater())) && Math.abs(w.x - b.x) < 90) {
@@ -216,26 +228,26 @@ export function start(canvas) {
       if (wy !== null && w.y > wy - 25 && w.y < wy + 30) { drink(); return; }
     }
     if (b.state === 'ground') {
-      const f = foodAt(w.x, w.y, 13);
+      const f = foodAt(w.x, w.y, 9 * z);
       if (f && Math.abs(f.x - b.x) < 180) {
         if (Math.abs(f.x - b.x) < 12) eat(f); else { b.walkTo = f.x - Math.sign(f.x - b.x) * 6; G.pendingEat = f; }
         return;
       }
     }
-    const pr = nearestPerch(w.x, w.y, 16);
+    const pr = nearestPerch(w.x, w.y, 11 * z);
     if (pr && pr !== b.perch) {
       b.target = pr; once('tapperch', 'Heading for that branch. The hawk slows and lands if it can reach it.');
       if (b.state !== 'fly') { flap(b, G.flapPower, G); b.target = pr; }
       return;
     }
-    b.target = null; flap(b, G.flapPower, G);
+    tapFlap(Math.abs(w.x - b.x) > 4 ? Math.sign(w.x - b.x) : b.face);
   }
 
   /* ---------- songs on the staff ---------- */
   // learn mode: a songbird is near, listen and copy it. sing mode: perched with nobody
   // near, sing any song you know and that species answers, bringing its gift.
   const STAFF = { w: 200, h: 54 };
-  function staffRect() { return { x: (G.view.w - STAFF.w) / 2, y: 8, w: STAFF.w, h: STAFF.h }; }
+  function staffRect() { return { x: (G.view.scr.w - STAFF.w) / 2, y: 8, w: STAFF.w, h: STAFF.h }; }
   const laneY = (r, lane) => r.y + 11 + (4 - lane) * 8;
   const PHRASE = { dawn: 'at dawn', day: 'in the daytime', dusk: 'at dusk', night: 'at night' };
   function sing(sp, perch, owner, vol = .16) {
@@ -338,7 +350,8 @@ export function start(canvas) {
   function drawStaff() {
     const S = G.staff; if (!S.mode) return;
     const sp = S.mode === 'learn' ? SPECIES[S.species] : S.sang, r = staffRect(), P = G.P;
-    const fade = S.mode === 'sing' ? .75 : 1;
+    const fade = S.mode === 'sing' ? .75 : 1, k = G.view.scr.s / G.view.s;
+    ctx.save(); ctx.scale(k, k);
     lift(ctx, [[r.x, r.y], [r.x + r.w, r.y], [r.x + r.w, r.y + r.h], [r.x, r.y + r.h]], P.paper, .82 * fade);
     wash(ctx, [[r.x, r.y], [r.x + r.w, r.y], [r.x + r.w, r.y + r.h], [r.x, r.y + r.h]], P.cloudShade, .18 * fade, { passes: 2, amp: 1.5, seed: 5, rim: .4 });
     ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.strokeStyle = C(P.birdFar, .55 * fade); ctx.lineWidth = .6;
@@ -363,6 +376,7 @@ export function start(canvas) {
       ctx.fillStyle = C(ok ? (S.doneT > 0 ? [60, 130, 70] : P.birdFar) : [180, 60, 50], .85);
       ctx.beginPath(); ctx.ellipse(x, y, 3, 2.3, -.35, 0, TAU); ctx.fill();
     });
+    ctx.restore();
   }
 
   /* ---------- HUD meters (painted on the canvas) ---------- */
@@ -371,12 +385,12 @@ export function start(canvas) {
   const hud = document.createElement('canvas'); hud.className = 'hud'; document.body.append(hud);
   let hudKey = '';
   function drawHUD() {
-    const P = G.P, x = 50 / G.view.s + 4, y = 9, low = Math.sin(G.t * 6) > 0;
-    const key = [Math.ceil(G.thirst), Math.ceil(G.hunger), G.thirst < 20 && low, G.hunger < 20 && low, G.score, G.view.s, G.photo, P.paper[0] >> 3, P.birdFar[0] >> 3, P.water[2] >> 3].join();
+    const P = G.P, S = G.view.scr.s, x = 50 / S + 4, y = 9, low = Math.sin(G.t * 6) > 0;
+    const key = [Math.ceil(G.thirst), Math.ceil(G.hunger), G.thirst < 20 && low, G.hunger < 20 && low, G.score, S, G.photo, P.paper[0] >> 3, P.birdFar[0] >> 3, P.water[2] >> 3].join();
     if (key === hudKey) return;
     hudKey = key;
-    const dpr = Math.min(devicePixelRatio || 1, 2), sc = G.view.s * dpr, W0 = x + 66, H0 = y + 34;
-    if (hud.width !== Math.ceil(W0 * sc)) { hud.width = Math.ceil(W0 * sc); hud.height = Math.ceil(H0 * sc); hud.style.width = W0 * G.view.s + 'px'; hud.style.height = H0 * G.view.s + 'px'; }
+    const dpr = Math.min(devicePixelRatio || 1, 2), sc = S * dpr, W0 = x + 66, H0 = y + 34;
+    if (hud.width !== Math.ceil(W0 * sc)) { hud.width = Math.ceil(W0 * sc); hud.height = Math.ceil(H0 * sc); hud.style.width = W0 * S + 'px'; hud.style.height = H0 * S + 'px'; }
     const ctx = hud.getContext('2d');
     ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, hud.width, hud.height);
     if (G.photo) return;
@@ -449,7 +463,7 @@ export function start(canvas) {
     if (G.sea.spring > .6) once('spring', 'Spring. Blossom, and the songbirds are back.');
   }
   function updateCritters(dt) {
-    const { w, h } = G.view, camDx = G.cam.x - (G.lastCamX ?? G.cam.x); G.lastCamX = G.cam.x;
+    const { w, h } = G.view.scr, camDx = (G.camC.x - (G.lastCamX ?? G.camC.x)) / G.view.z; G.lastCamX = G.camC.x;
     if ((G.nextFlock -= dt) <= 0) {
       // distant flocks mostly travel the way the migration goes
       G.nextFlock = 18 + Math.random() * 25; const dir = (Math.random() < .75 ? 1 : -1) * (G.goalDir || 1);
@@ -497,17 +511,35 @@ export function start(canvas) {
     if (R.t > 4) { G.roost = null; G.roostT = 0; }
   }
   const roostFade = () => { const R = G.roost; if (!R) return 0; return R.t < 1.5 ? R.t / 1.5 : R.t < 2.4 ? 1 : Math.max(0, 1 - (R.t - 2.4) / 1.6); };
+  // Zoom eases out with height and speed, and back in to land. The view resizes about its centre.
+  function updateZoom(dt, snap) {
+    const up = W.groundY(b.x) - b.y;
+    const out = b.state === 'fly' ? clamp(.7 * smooth(140, 650, up) + .5 * smooth(100, 190, b.s), 0, 1) : 0;
+    const zt = ZOOM + (ZOOM_OUT - ZOOM) * out;
+    G.zoom = snap ? zt : G.zoom + (zt - G.zoom) * Math.min(1, dt * .5);
+    setView();
+  }
+  // The camera follows the centre of a soft box around the hawk, with a small lead that eases
+  // slowly toward its heading, so flapping, bobbing and turning barely move the picture.
   function updateCamera(dt, snap) {
-    const { w, h } = G.view;
-    const lead = b.state === 'fly' ? b.face * w * .14 : 0;
-    const tx = b.x + lead - w / 2;
-    const gAhead = Math.max(W.groundY(b.x), W.groundY(b.x + lead));
-    let ty = b.y - h * .52;
-    ty = Math.min(ty, gAhead - h * .82);           // keep the ground near the bottom
-    ty = Math.max(ty, W.CEILING - 100);
-    const k = snap ? 1 : Math.min(1, dt * 2.6);
-    G.cam.x += (tx - G.cam.x) * k; G.cam.y += (ty - G.cam.y) * Math.min(1, k * 1.4);
-    const cg = W.groundY(G.cam.x + w / 2) - h * .82;
+    const { w, h } = G.view, C0 = G.camC;
+    const leadT = b.state === 'fly' ? clamp(b.vx / 100, -1, 1) * w * .07 : 0;
+    G.camLead = snap ? leadT : G.camLead + (leadT - G.camLead) * Math.min(1, dt * .6);
+    const tx = b.x + G.camLead;
+    const gAhead = Math.max(W.groundY(b.x), W.groundY(b.x + G.camLead));
+    let ty = b.y + h * .02;
+    ty = Math.min(ty, gAhead - h * .32);            // keep the ground near the bottom
+    ty = Math.max(ty, W.SKY - 100 + h / 2);
+    if (snap) { C0.x = tx; C0.y = ty; }
+    else {
+      const soft = (e, dz) => Math.sign(e) * Math.max(0, Math.abs(e) - dz) + e * .2;
+      C0.x += soft(tx - C0.x, w * .05) * Math.min(1, dt * 2);
+      C0.y += soft(ty - C0.y, h * .07) * Math.min(1, dt * 2.4);
+      // never let the ground climb past the bottom edge
+      C0.y = Math.min(C0.y, W.groundY(b.x) - h * .32 + 20);
+    }
+    G.cam.x = C0.x - w / 2; G.cam.y = C0.y - h / 2;
+    const cg = W.groundY(C0.x);
     G.camGround = snap ? cg : G.camGround + (cg - G.camGround) * Math.min(1, dt * 1.5);
   }
 
@@ -519,7 +551,7 @@ export function start(canvas) {
     const still = !raw.taps.length && !raw.steer && !raw.face && !raw.pitch && !raw.flaps;
     if (!G.roost) {
       for (const tp of raw.taps) onTap(tp);
-      for (let i = 0; i < raw.flaps; i++) { b.target = null; flap(b, G.flapPower, G); }
+      for (let i = 0; i < raw.flaps; i++) tapFlap(raw.face || b.face);
     }
     let steer = null;
     if (raw.steer && !G.roost) { const w = toWorld(raw.steer); steer = { wx: w.x, wy: w.y }; }
@@ -527,7 +559,7 @@ export function start(canvas) {
     G.perchT = b.state === 'perch' ? G.perchT + dt : 0;
     if (G.pendingEat && b.state === 'ground' && b.walkTo === null) { if (Math.abs(G.pendingEat.x - b.x) < 14) eat(G.pendingEat); G.pendingEat = null; }
     if (b.state !== 'ground') G.pendingEat = null;
-    if (b.circling) once('thermal', 'A thermal. Let go and the hawk circles upward on the warm air.');
+    if (b.circling) once('thermal', 'A thermal: warm rising air. Let go and the hawk floats up as it glides across. Turn back to stay in it.');
     if (W.ridgeLift(b.x, b.y) > 8 && b.state === 'fly') once('ridge', 'Ridge lift: wind hitting the hillside pushes up along its face.');
     if (b.stamina < .15 && b.state === 'fly') once('tired', 'Tired wings. Glide a while, or find rising air, and your strength comes back.');
     // storms are bumpy in open air; shelter in a tree
@@ -545,11 +577,11 @@ export function start(canvas) {
     G.hint = b.target;
     for (const k of ['wormsT', 'followT', 'calmT', 'tailwindT', 'brightT']) G[k] = Math.max(0, G[k] - dt);
 
-    updateWeather(dt); updateCritters(dt); updateSongs(dt); updateRoost(dt, still); updateCamera(dt);
+    updateWeather(dt); updateCritters(dt); updateSongs(dt); updateRoost(dt, still); updateZoom(dt); updateCamera(dt);
     updateJourney(G, dt, { toast: ui.toast, once, audio });
     updateNest(G, DAY, ui.toast);
     const vr = [];
-    for (const t of W.thermalsIn(G.cam.x - 60, G.cam.x + G.view.w + 60)) for (const r of t.rings) {
+    for (const r of W.ringsIn(G.cam.x - 60, G.cam.x + G.view.w + 60)) {
       const tk = G.ringsTaken.get(r.id); r.gone = tk !== undefined && G.t - tk < RING_RESPAWN; vr.push(r);
     }
     G.visibleRings = vr;
@@ -564,17 +596,28 @@ export function start(canvas) {
   const RES_MIN = .7;
   let res = 0, resLock = false;
   function resMax() { return Math.min(devicePixelRatio || 1, 1.6, 1500 / Math.max(innerWidth, innerHeight)); }
+  // G.view.scr is screen space, sized as the art was first drawn (300 units tall): the sky, far
+  // hills, weather and HUD live there. G.view itself is the zoomed world view, and spx is the
+  // fixed resolution world sprites are painted at, so zooming never repaints them.
+  let scrS = 1;
   function resize() {
     const cw = innerWidth, ch = innerHeight;
-    let s = ch / 300; if (cw / s < 420) s = cw / 420;   // css px per world unit
+    scrS = ch / 300; if (cw / scrS < 420) scrS = cw / 420;   // css px per screen unit
     if (GFX.res !== 'auto') res = Math.min(GFX.res, devicePixelRatio || 1);
     else res = clamp(res || store.get('res', 9) * 1.08, Math.min(RES_MIN, resMax()), resMax());
     canvas.style.width = cw + 'px'; canvas.style.height = ch + 'px';
     canvas.width = Math.round(cw * res); canvas.height = Math.round(ch * res);
-    G.view = { w: cw / s, h: ch / s, s, px: res * s };
+    G.view.scr = { w: cw / scrS, h: ch / scrS, s: scrS, px: res * scrS };
+    setView();
     stats.res = res; stats.canvas = canvas.width + '×' + canvas.height;
-    if (!G.paper || G.paper[0] !== Math.ceil(G.view.w) || G.paper[1] !== Math.ceil(G.view.h)) { makePaper(G.view.w, G.view.h); G.paper = [Math.ceil(G.view.w), Math.ceil(G.view.h)]; }
+    const sw = G.view.scr.w, sh = G.view.scr.h;
+    if (!G.paper || G.paper[0] !== Math.ceil(sw) || G.paper[1] !== Math.ceil(sh)) { makePaper(sw, sh); G.paper = [Math.ceil(sw), Math.ceil(sh)]; }
     redraw = true;
+  }
+  function setView() {
+    const V = G.view, s = scrS / G.zoom;
+    V.s = s; V.w = innerWidth / s; V.h = innerHeight / s; V.px = res * s; V.z = G.zoom;
+    V.spx = res * scrS / ZOOM; V.hMax = innerHeight / (scrS / ZOOM_OUT);
   }
   // watch frame times in two-second windows; drop resolution when slow, and stop if that doesn't help
   const perf = { n: 0, sum: 0, prev: 0, settle: 0, fails: 0, step: 1 }, now = () => performance.now(), t0 = now();
@@ -594,7 +637,7 @@ export function start(canvas) {
   addEventListener('resize', () => { res = 0; resize(); }); resize();
   updateClock();
   G.P = palette(G.tod, 0, 0, G.sea);
-  updateCamera(0, true);
+  updateZoom(0, true); updateCamera(0, true);
 
   let last = performance.now();
   let camKey = '';
@@ -624,7 +667,7 @@ export function start(canvas) {
   if (innerHeight > innerWidth) ui.toast('Turn your phone sideways for a wider view.', 4);
 
   // handy for poking at state from the console, and for screenshot scripts
-  const snap = () => updateCamera(0, true);
+  const snap = () => { updateZoom(0, true); updateCamera(0, true); };
   const fresh = () => { b.perch = null; b.target = null; b.walkTo = null; b.s = 0; b.g = 0; };
   G.dbg = {
     treeWithSong() { for (let x = b.x; x < b.x + 20000; x += 200) for (const t of W.treesIn(x, x + 200)) if (t.song && active(speciesFor(t.bio, t.song.seed), G.tod, G.storm, G.sea.winter)) return t; },
@@ -638,7 +681,7 @@ export function start(canvas) {
     swim(p) { fresh(); b.x = p.c; b.y = p.waterY - 3; b.state = 'swim'; snap(); },
     ground() { fresh(); const bu = W.bushesIn(b.x, b.x + 5000)[0]; b.x = bu.x + 16; b.y = W.groundY(b.x) - 6; b.state = 'ground'; b.face = -1; snap(); },
     fly(y) { fresh(); b.state = 'fly'; b.y = y; b.s = 85; b.g = -.17; snap(); },
-    thermal() { const t = W.thermalsIn(b.x + 200, b.x + 3000).find(t => t.rings.length); fresh(); b.state = 'fly'; b.x = t.c - 60; b.y = t.rings[0].y + 10; b.s = 85; snap(); },
+    thermal() { const t = W.thermalsIn(b.x + 200, b.x + 8000).find(t => t.rings.length); fresh(); b.state = 'fly'; b.x = t.c - t.w * .8; b.y = t.rings[0].y + 60; b.s = 85; b.face = 1; snap(); },
     time(tod) { G.clockT += (((tod - G.tod) % 1 + 1) % 1) * DAY; updateClock(); },
     season(s) { G.seasonShift = ((s - G.clockT / DAY / 2 - 3.75) % 4 + 4) % 4; updateClock(); },
     weather(w) { G.weather = w; G.weatherT = 999; const t = { sunny: [0, 0], cloudy: [.65, 0], stormy: [1, 1] }[w]; G.overcast = t[0]; G.storm = t[1]; },

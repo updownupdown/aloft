@@ -21,25 +21,30 @@ export function createBird(x, y) {
     x, y, s: 80, g: T.relax, face: 1, state: 'fly', stamina: 1, restT: 0,
     vx: 80, vy: 0, kick: 0, turnT: 0, flapCD: 0, autoFlapT: 0,
     target: null, walkTo: null, perch: null, circling: false, stall: false, air: 0,
+    wing: null, left: null, leftT: 0, hopT: 0,
     // pose (shared with the demo's rig)
     phase: 0, flapLeft: 0, flapAmt: 0, gTheta: .06, theta: .06, bend: 0, L: 1, Lg: 1, tailFan: .3, splay: .3, pitch: 0, bob: 0,
     walkPh: 0, peckT: 0, landT: 0, tuck: 0, flare: 0,
   };
 }
 
+// Turning in the air is a wingover: the hawk pulls up steeply, rolls over the top and comes
+// down the other way, trading speed for height and back. Too slow for that, it just swaps.
+const WINGOVER = .7;
 export function turn(b) {
-  if (b.turnT > 0) return;
+  if (b.turnT > 0 || b.wing) return;
+  if (b.state === 'fly' && b.s > 50 && !b.stall) { b.wing = { t: 0, g0: b.g, flipped: false }; return; }
   b.face = -b.face; b.turnT = .32;
-  if (b.state === 'fly' && !b.circling) b.s *= .84;
+  if (b.state === 'fly') b.s *= .9;
+  if (b.state === 'perch') b.hopT = .25;
 }
 
+// Out of stamina the wings won't beat at all: glide, or find rising air.
 export function flap(b, power, G) {
   if (b.flapCD > 0) return false;
+  if (b.stamina < T.stamina * .99) { if (!b.tiredT) G.emit('tired'); b.tiredT = .6; return false; }
   if (b.state !== 'fly') takeOff(b);
-  // a tired hawk still flaps, just weakly
-  const tired = b.stamina >= T.stamina ? 1 : .3 + .7 * b.stamina / Math.max(T.stamina, .001);
   b.stamina = Math.max(0, b.stamina - T.stamina); b.restT = .7;
-  power *= tired;
   // a flap is part thrust (speed) and part lift (a direct upward kick that fades)
   b.s = Math.min(MAX_SPEED, b.s + T.flap * power);
   b.g = Math.min(1.05, b.g + .08);
@@ -50,9 +55,17 @@ export function flap(b, power, G) {
   return true;
 }
 
+// leaving a branch: it can't catch the hawk again until it has flown clear of it
 function takeOff(b) {
-  if (b.perch) b.perch = null;
-  b.state = 'fly'; b.s = 48; b.g = .6; b.kick = -24; b.walkTo = null; b.y -= 2; b.stall = false;
+  if (b.perch) { b.left = b.perch; b.leftT = .8; b.perch = null; }
+  b.state = 'fly'; b.s = 48; b.g = .6; b.kick = -24; b.walkTo = null; b.y -= 2; b.stall = false; b.wing = null;
+}
+
+// a single tap on a perch, the ground or the water: turn toward it, take a step or a paddle
+export function nudge(b, dir) {
+  if (dir !== b.face) turn(b);
+  if (b.state === 'perch') { b.hopT = .25; return; }
+  b.walkTo = b.x + dir * (b.state === 'swim' ? 8 : 12);
 }
 
 function land(b, kind, G, y, soft = false) {
@@ -86,6 +99,7 @@ export function predictGlide(b, G, maxT = 3.5) {
 }
 
 export function updateBird(b, dt, inp, G) {
+  b.tiredT = Math.max(0, (b.tiredT || 0) - dt); b.hopT = Math.max(0, b.hopT - dt); b.leftT = Math.max(0, b.leftT - dt);
   b.turnT = Math.max(0, b.turnT - dt); b.flapCD = Math.max(0, b.flapCD - dt); b.autoFlapT = Math.max(0, b.autoFlapT - dt);
   b.peckT = Math.max(0, b.peckT - dt); b.landT = Math.max(0, b.landT - dt);
   b.restT = Math.max(0, b.restT - dt);
@@ -111,13 +125,11 @@ function fly(b, dt, inp, G) {
   if (inp.face && inp.face !== b.face) { manual = true; turn(b); }
   if (manual) b.target = null;
 
-  // thermal circling: hands off inside a column, the hawk turns back and forth to stay in it
-  const th = thermal > 6 ? W.thermalAt(b.x) : null;
-  b.circling = !!(th && !manual && !b.target);
+  // soaring: hands off in a thermal the hawk spreads its wings, slows and floats up, holding its line
+  b.circling = thermal > 6 && !manual && !b.target;
   if (b.circling) {
-    if ((b.x - th.c) * b.face > th.w * .4) turn(b);
-    if (b.s > 60) b.s += (60 - b.s) * .9 * dt;
-    gT = -.12;
+    if (b.s > 64) b.s += (64 - b.s) * .8 * dt;
+    gT = -.1;
   }
 
   // tap-a-branch assist: steer and slow toward the chosen perch, flapping if it is above
@@ -137,17 +149,22 @@ function fly(b, dt, inp, G) {
   if (b.stall) gT = Math.min(gT, -.85);
   gT = clamp(gT, -1.45, 1.0);
 
-  // control authority grows with airspeed
-  const rate = 2.4 * clamp(b.s / 70, .25, 1.3);
-  b.g += clamp(gT - b.g, -rate * dt, rate * dt);
-  if (b.stall) b.g -= (1 - b.s / (T.stall + 14)) * 2 * dt;
-  if (b.y < W.CEILING) b.g = Math.min(b.g, -.2); // thin air
-  b.g = clamp(b.g, -1.5, 1.1);
+  if (b.wing) wingover(b, dt);
+  else {
+    // control authority grows with airspeed
+    const rate = 2.4 * clamp(b.s / 70, .25, 1.3);
+    b.g += clamp(gT - b.g, -rate * dt, rate * dt);
+    if (b.stall) b.g -= (1 - b.s / (T.stall + 14)) * 2 * dt;
+    b.g = clamp(b.g, -1.5, 1.1);
+  }
+  // thermals end at the cloudbase, but flapping can still climb, up to where the air runs out
+  if (b.y < W.SKY) b.g = Math.min(b.g, -.2);
 
   // flare: nose up and the spread wings act as an airbrake
-  b.flaring = b.g > .3 && b.s > 25;
+  b.flaring = b.g > .3 && b.s > 25 && !b.wing;
   const brake = b.flaring ? (b.g - .3) * b.s * T.flare : 0;
-  b.s = clamp(b.s + (-T.gravity * Math.sin(b.g) - dragOf(b.s) - brake) * dt, 8, MAX_SPEED);
+  // (in a wingover the rolling wings carry much of the turn, so less speed is lost to the climb)
+  b.s = clamp(b.s + (-T.gravity * Math.sin(b.g) * (b.wing ? .5 : 1) - dragOf(b.s) - brake) * dt, 8, MAX_SPEED);
 
   b.vx = Math.cos(b.g) * b.s * b.face + W.windAt(b.y) * .5;
   b.kick *= Math.exp(-dt * 2.6);
@@ -167,19 +184,34 @@ function fly(b, dt, inp, G) {
     return;
   }
   if (b.y + FEET >= gy) {
-    if (b.s < 80 && b.g > -.75) land(b, 'ground', G, gy - FEET, b.s < 50);
-    else { b.y = gy - FEET - 1; b.g = .35; b.s *= .45; G.emit('crash', { x: b.x, y: gy }); }
+    // too fast or too steep is a hard landing, but the hawk stops where it hits
+    const hard = b.s >= 80 || b.g <= -.75;
+    land(b, 'ground', G, gy - FEET, b.s < 50);
+    if (hard) { b.landT = .6; G.emit('crash', { x: b.x, y: gy }); }
     return;
   }
+  if (b.left && (b.leftT <= 0 && Math.hypot(b.left.x - b.x, b.left.y - b.y) > 24)) b.left = null;
   for (const q of W.perchesIn(b.x - 50, b.x + 50)) {
-    if (q.occupied) continue;
+    if (q.occupied || q === b.left) continue;
     const dx = q.x - b.x, dy = q.y - (b.y + FEET), d = Math.hypot(dx, dy), aimed = q === b.target;
     if (d < (aimed ? 13 : 8) && b.s < (aimed ? 105 : 80) && dy > -6) { perchOn(b, q, G, b.s < 55); return; }
   }
 }
 
+// a wingover in three parts: pull up nearly vertical, roll over the top to face the other
+// way (the path angle is mirrored, so the motion stays smooth), then dive out of it
+function wingover(b, dt) {
+  const W0 = b.wing; W0.t += dt;
+  const u = W0.t / WINGOVER;
+  if (!W0.flipped) {
+    b.g = lerp(W0.g0, 1.3, smooth(0, .5, u));
+    if (u >= .5) { W0.flipped = true; b.face = -b.face; b.g = Math.PI - b.g; W0.g1 = b.g; }
+  } else b.g = lerp(W0.g1, -.35, smooth(.5, 1, u));
+  if (u >= 1) { b.wing = null; b.g = -.35; }
+}
+
 function perched(b, dt, inp, G) {
-  const p = b.perch; b.x = p.x; b.y = p.y - FEET;
+  const p = b.perch; b.x = p.x; b.y = p.y - FEET - Math.sin(b.hopT / .25 * Math.PI) * 2.5;
   let dir = inp.face;
   if (inp.steer) {
     const dx = inp.steer.wx - b.x, dy = b.y - inp.steer.wy;
@@ -191,7 +223,7 @@ function perched(b, dt, inp, G) {
 }
 function dropOff(b, dir) {
   if (dir !== b.face) b.face = dir;
-  b.perch = null; b.state = 'fly'; b.s = 46; b.g = -.45;
+  b.left = b.perch; b.leftT = .8; b.perch = null; b.state = 'fly'; b.s = 46; b.g = -.45;
 }
 
 function walkDir(b, inp) {
@@ -245,10 +277,13 @@ export function pose(b, dt, G) {
     b.theta = lerp(b.gTheta, .2 + .85 * Math.sin(b.phase), b.flapAmt);
     b.bend = -.5 * c * b.flapAmt;
     b.L = b.Lg * (1 - b.flapAmt * .24 * Math.max(0, c));
+    // rolling over the top of a wingover the wings turn edge-on for a moment
+    if (b.wing) b.L *= 1 - .5 * Math.max(0, 1 - Math.abs(b.wing.t / WINGOVER - .5) / .2);
     b.bob = -1.6 * Math.sin(b.phase) * b.flapAmt;
     b.tailFan = .25 + .6 * Math.max(soar, b.flare) - .2 * b.tuck;
     b.splay = .3 + .7 * Math.max(soar, b.flare) - .3 * b.tuck;
-    b.pitch += (clamp(-b.g, -1.2, 1.2) - b.pitch) * Math.min(1, dt * 8);
+    if (b.wing) b.pitch = -b.g;
+    else b.pitch += (clamp(-b.g, -1.2, 1.2) - b.pitch) * Math.min(1, dt * 8);
   } else {
     b.flapAmt = 0; b.phase = 0; b.pitch = 0; b.bob = 0;
   }

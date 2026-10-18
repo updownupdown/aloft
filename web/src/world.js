@@ -259,26 +259,47 @@ export function miceIn(x0, x1) {
 }
 
 /* ---------- thermals and rings ---------- */
-const TS = 700;
+// Wide, gentle columns: wide enough to glide across for a good climb without circling.
+const TS = 1150;
 const thCache = new Map();
 function thermalK(k) {
   if (thCache.has(k)) return thCache.get(k);
   let t = null;
   if (hash(k * 6.6 + 1) < .85) {
-    const c = k * TS + 100 + hash(k * 2.2) * 240;
-    t = { k, c, w: 38 + 16 * hash(k * 4.2), str: .8 + .35 * hash(k * 5.5), base: groundY(c), rings: [] };
+    const c = k * TS + 300 + hash(k * 2.2) * (TS - 600);
+    t = { k, c, w: 130 + 110 * hash(k * 4.2), str: .8 + .35 * hash(k * 5.5), base: groundY(c), rings: [] };
     // a treeline-relative column: lift starts just above the tallest trees
     t.y0 = t.base - 110; t.y1 = t.base - 165;
     if (hash(k * 8.8) < .75) {
       const n = 1 + Math.floor(hash(k * 9.9) * 3);
-      for (let j = 0; j < n; j++) t.rings.push({ id: `r${k}_${j}`, x: t.c + (hash(k * 3 + j) - .5) * t.w * 2.2, y: t.base - 280 - j * 100 - hash(k * 7 + j) * 30, r: 15 });
+      for (let j = 0; j < n; j++) t.rings.push({ id: `r${k}_${j}`, x: t.c + (hash(k * 3 + j) - .5) * t.w * 1.6, y: t.base - 280 - j * 110 - hash(k * 7 + j) * 30, r: 15 });
     }
   }
   thCache.set(k, t); if (thCache.size > 2000) thCache.clear(); return t;
 }
-export function thermalsIn(x0, x1) { const out = []; for (let k = Math.floor((x0 - 100) / TS) - 1; k <= Math.ceil(x1 / TS); k++) { const t = thermalK(k); if (t) out.push(t); } return out; }
-export function thermalAt(x) { const k = Math.round((x - 220) / TS); for (let j = k - 1; j <= k + 1; j++) { const t = thermalK(j); if (t && Math.abs(x - t.c) < t.w) return t; } return null; }
-export const CEILING = -820;
+export function thermalsIn(x0, x1) { const out = []; for (let k = Math.floor(x0 / TS) - 1; k <= Math.ceil(x1 / TS); k++) { const t = thermalK(k); if (t && t.c + t.w > x0 && t.c - t.w < x1) out.push(t); } return out; }
+export function thermalAt(x) { const k = Math.floor(x / TS); for (let j = k - 1; j <= k + 1; j++) { const t = thermalK(j); if (t && Math.abs(x - t.c) < t.w) return t; } return null; }
+// rings out in the open air too: low over ponds, along the hillsides, high over the trees
+const RC = 420;
+const ringCache = new Map();
+function ringK(i) {
+  if (ringCache.has(i)) return ringCache.get(i);
+  let r = null;
+  if (hash(i * 4.9 + 3) < .5) {
+    const x = i * RC + 60 + hash(i * 1.3) * (RC - 120), wet = waterAt(x) !== null;
+    const up = wet ? 45 + 30 * hash(i * 2.1) : 165 + 380 * Math.pow(hash(i * 2.1), 1.4);
+    r = { id: `o${i}`, x, y: groundY(x) - up, r: 15 };
+  }
+  ringCache.set(i, r); if (ringCache.size > 2000) ringCache.clear(); return r;
+}
+export function ringsIn(x0, x1) {
+  const out = [];
+  for (const t of thermalsIn(x0, x1)) for (const r of t.rings) if (r.x > x0 && r.x < x1) out.push(r);
+  for (let i = Math.floor(x0 / RC); i <= Math.ceil(x1 / RC); i++) { const r = ringK(i); if (r && r.x > x0 && r.x < x1) out.push(r); }
+  return out;
+}
+export const CEILING = -820;   // cloudbase: thermals fade out below it
+export const SKY = -2400;      // above this the air is too thin even to flap higher
 // upward air speed (world units/s) at a point
 export function lift(x, y, time) {
   const t = thermalAt(x); if (!t) return 0;
