@@ -6,6 +6,10 @@ import { SEASONS } from './palette.js';
 
 const MAP_A = W.START_X - 1500, MAP_B = W.JOURNEY + 800;
 
+// The world seed comes from the save, else from a shared link (?world=1234), else it is the
+// original world. A link that names a different world than the save is kept for "Start a new
+// journey" to use, so a shared link never wipes a journey in progress.
+const urlSeed = () => { const v = parseInt(new URLSearchParams(location.search).get('world'), 10); return Number.isFinite(v) ? Math.abs(v) % 100000 : null; };
 export function loadJourney(G, store) {
   const s = store.get('save', null);
   G.goal = s?.goal ?? 'south';
@@ -13,7 +17,12 @@ export function loadJourney(G, store) {
   G.explored = s?.explored ?? [W.START_X, W.START_X];
   G.found = s?.found ?? {};
   G.nest = s?.nest ?? null;
+  G.intent = s?.intent ?? null;
   G.songLog = store.get('songlog', {});
+  const link = urlSeed();
+  W.setSeed(s ? s.seed ?? 0 : link ?? store.get('seed', 0));
+  G.seed = W.seed.v;
+  G.sharedSeed = link !== null && link !== G.seed ? link : null;
   return s;
 }
 export function saveJourney(G, store) {
@@ -21,8 +30,11 @@ export function saveJourney(G, store) {
   store.set('save', {
     x: Math.round(b.x), y: Math.round(b.y), clockT: G.clockT, thirst: G.thirst, hunger: G.hunger,
     goal: G.goal, journeys: G.journeys, explored: G.explored.map(Math.round), found: G.found, nest: G.nest,
+    seed: G.seed, intent: G.intentions?.save(),
   });
 }
+// a link to this world, for a friend to fly the same hills
+export const worldLink = G => { const u = new URL(location.href); u.search = G.seed ? `?world=${G.seed}` : ''; return u.href; };
 
 export const seasonName = G => SEASONS[Math.floor(G.seasonS + .5) % 4];
 const where = x => {
@@ -50,7 +62,10 @@ export function updateJourney(G, dt, { toast, once, audio }) {
     audio.ring();
     toast('The wintering marsh. Other hawks have gathered here, circling over the reeds.', 6);
     toast('Rest as long as you like. When you are ready, home lies back north, to the left.', 6);
+    if (!b.adult) toast('Your first migration done, your tail has moulted red. A grown hawk now.', 6);
   }
+  // a hawk's tail turns red after its first full journey south
+  b.adult = G.journeys > 0;
   if (G.goal === 'north' && b.x < W.START_X + 250 && G.journeys > 0) {
     G.goal = 'south'; G.journeys++;
     audio.ring(); toast('Home again at the edge of the forest. The journey is complete.', 6);
@@ -112,7 +127,9 @@ export function journal(G, DAY) {
     : `Heading home north to the forest edge: ${100 - pct}% of the way back.`;
   const done = G.journeys ? ` Journeys completed: ${G.journeys}.` : '';
   const landmarks = Object.values(G.found).sort((a, c) => a.x - c.x).map(l => ({ name: l.name, note: l.note }));
-  return { journey: `${head} ${trip}${done}`, nest: nestStatus(G, DAY), landmarks };
+  const intent = `${G.intentions?.status() || ''}${G.feathers ? ` Feathers earned: ${G.feathers}.` : ''}`.trim();
+  const world = G.seed ? `World ${G.seed}.` : 'The original world.';
+  return { journey: `${head} ${trip}${done}`, nest: nestStatus(G, DAY), landmarks, intent, world, link: worldLink(G) };
 }
 export function drawMap(G, cv) {
   const ctx = cv.getContext('2d'), w = cv.width, h = cv.height;

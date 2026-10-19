@@ -94,6 +94,7 @@ small { display: block; font-size: 12.5px; opacity: .65; }
 .sing-dots i.on { background: rgba(58, 36, 24, .7); }
 .sing-dots i.done { background: #5b8a54; border-color: #5b8a54; }
 .sing-dots i.wrong { background: #b8532f; border-color: #b8532f; }
+.sing-dots i.bird { border-style: dotted; opacity: .6; }
 .sing-strip {
   position: absolute; right: 0; top: 0; bottom: 0; width: calc(96px + env(safe-area-inset-right)); padding-right: env(safe-area-inset-right);
   background: linear-gradient(to right, rgba(246, 241, 230, 0), rgba(246, 241, 230, .72) 38%); touch-action: none;
@@ -110,3 +111,24 @@ small { display: block; font-size: 12.5px; opacity: .65; }
 .dial .num { font: 12px Georgia, serif; fill: var(--ink); text-anchor: middle; opacity: .75; }
 .dial .sun { fill: #d9a441; stroke: rgba(58, 36, 24, .4); stroke-width: .8; }
 .dial .sun.moon { fill: #eef0f4; }
+
+/* the hawk's call: a round button in the bottom corner, away from the thumb that steers */
+.call-btn {
+  position: absolute; right: calc(14px + env(safe-area-inset-right)); bottom: calc(14px + env(safe-area-inset-bottom));
+  width: 44px; height: 44px; border-radius: 50%; border: 1.5px solid rgba(58, 36, 24, .45); background: rgba(246, 241, 230, .82);
+  font: inherit; font-size: 12px; letter-spacing: .04em; color: var(--ink); cursor: pointer; padding: 0;
+}
+.call-btn:active { background: rgba(58, 36, 24, .78); color: var(--paper); }
+/* left-handed: the string and the call button swap sides */
+#ui.lefty .sing-strip { right: auto; left: 0; padding-right: 0; padding-left: env(safe-area-inset-left); background: linear-gradient(to left, rgba(246, 241, 230, 0), rgba(246, 241, 230, .72) 38%); }
+#ui.lefty .call-btn { right: auto; left: calc(14px + env(safe-area-inset-left)); }
+
+/* the journal's album: small pictures, tap one to see it larger */
+.album { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin: 4px 0; }
+.album figure { margin: 0; cursor: pointer; }
+.album img { display: block; width: 100%; border-radius: 6px; border: 1px solid rgba(58, 36, 24, .2); }
+.album figcaption { font-size: 11px; opacity: .65; line-height: 1.25; margin-top: 2px; }
+.album figure.big { grid-column: 1 / -1; }
+.intent { font-size: 14.5px; line-height: 1.4; margin: 6px 0; font-style: italic; }
+.world { font-size: 13px; opacity: .8; display: flex; align-items: center; gap: 10px; margin: 8px 0 0; }
+.world .play { margin-left: auto; font: inherit; font-size: 13px; padding: 3px 10px; border-radius: 10px; border: 1px solid rgba(58, 36, 24, .3); background: transparent; color: var(--ink); cursor: pointer; }

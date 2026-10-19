@@ -2,7 +2,7 @@
 // slide a finger up and down it and the hawk's voice follows, continuously, like a violin with
 // no frets. A note counts once it is held in tune (within a third of a semitone) for a moment.
 // The five song pitches are faint ticks on the string; they glow as a songbird sings them.
-import { NOTE_HZ } from './audio.js';
+// Pitches come from the shared key (audio.hz), so the string follows the music through the day.
 
 const LANES = [0, 2, 4, 7, 9];          // semitones above the lowest song note
 const LO = -3, HI = 13;                  // the string's range in semitones
@@ -19,7 +19,7 @@ export function createSinging({ audio, onNote, onToggle }) {
   const S = { open: false, finger: null, stable: null, glow: [0, 0, 0, 0, 0], hit: [0, 0, 0, 0, 0], col: '#b8532f', label: '' };
   const semiAt = y => { const r = strip.getBoundingClientRect(), pad = 26; return HI - (y - r.top - pad) / (r.height - pad * 2) * (HI - LO); };
   const yAt = (st, h, pad = 26) => pad + (HI - st) / (HI - LO) * (h - pad * 2);
-  const hz = st => NOTE_HZ[0] * Math.pow(2, st / 12);
+  const hz = st => audio.hz(st);
 
   btn.addEventListener('click', () => setOpen(!S.open));
   strip.addEventListener('pointerdown', e => { e.preventDefault(); strip.setPointerCapture?.(e.pointerId); audio.unlock?.(); S.finger = { id: e.pointerId, st: semiAt(e.clientY) }; });
@@ -50,7 +50,7 @@ export function createSinging({ audio, onNote, onToggle }) {
       for (let i = 0; i < 5; i++) if (Math.abs(f.st - LANES[i]) < TOL) lane = i;
       if (lane < 0) S.stable = null;
       else if (S.stable?.lane !== lane) S.stable = { lane, t: 0, done: false };
-      else if (!S.stable.done && (S.stable.t += dt) >= HOLD) { S.stable.done = true; S.hit[lane] = 1; onNote(lane); }
+      else if (!S.stable.done && (S.stable.t += dt) >= HOLD) { S.stable.done = true; S.hit[lane] = 1; onNote(lane, Math.abs(f.st - LANES[lane]) / TOL); }
     }
     draw();
   }
@@ -78,10 +78,11 @@ export function createSinging({ audio, onNote, onToggle }) {
     }
   }
 
-  // progress under the button: one dot per note of the song being copied, or per note sung
-  function progress(total, done, state) {
+  // progress under the button: one dot per note of the song being copied, or per note sung.
+  // In a duet the first `bird` notes were the songbird's, shown hollow; yours follow.
+  function progress(total, done, state, bird = 0) {
     let html = '';
-    for (let i = 0; i < total; i++) html += `<i class="${i < done ? (state === 'wrong' ? 'wrong' : state === 'done' ? 'done' : 'on') : ''}"></i>`;
+    for (let i = 0; i < total; i++) html += `<i class="${i < bird ? 'bird' : i < done ? (state === 'wrong' ? 'wrong' : state === 'done' ? 'done' : 'on') : ''}"></i>`;
     if (dots.innerHTML !== html) dots.innerHTML = html;
   }
 

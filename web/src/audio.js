@@ -1,9 +1,16 @@
 // All sound is synthesised with Web Audio: no files to download.
-const PITCH = [880, 988, 1109, 1319, 1480]; // A major pentatonic, one per staff line (low to high)
+// Everything that has a pitch (songbirds, the hawk's singing voice, the music) shares one
+// key, which drifts with the hour: A by day, G at dusk, E at night, D at dawn. Singing in
+// tune then sits inside the music instead of beside it.
+const BASE = [880, 988, 1109, 1319, 1480]; // A major pentatonic, one per staff line (low to high)
+const KEYS = { day: 0, dusk: -2, night: -5, dawn: 5 };   // semitones from A
 
 export function createAudio() {
-  const A = { ctx: null, on: true, wind: null, rain: null };
+  const A = { ctx: null, on: true, wind: null, rain: null, key: 0 };
   let noiseBuf = null;
+  const keyMul = () => Math.pow(2, A.key / 12);
+  A.hz = st => BASE[0] * Math.pow(2, (st + A.key) / 12);   // a pitch on the singing string, in semitones above the lowest song note
+  A.setKey = period => { A.key = KEYS[period] ?? 0; };
 
   A.unlock = () => {
     if (A.ctx) { if (A.ctx.state === 'suspended') A.ctx.resume(); return; }
@@ -14,6 +21,10 @@ export function createAudio() {
     const d = noiseBuf.getChannelData(0); let last = 0;
     for (let i = 0; i < d.length; i++) { const w = Math.random() * 2 - 1; last = last * .97 + w * .03; d[i] = w * .5 + last * 4; }
     A.wind = loop('lowpass', 420, .7); A.rain = loop('highpass', 2500, .3);
+    // the stoop whistle: air over the wings near top speed
+    A.whistle = loop('bandpass', 2600, 9);
+    // water tumbling near a waterfall
+    A.babble = loop('bandpass', 1500, .8);
   };
   function loop(type, f, q) {
     const ctx = A.ctx, src = ctx.createBufferSource(); src.buffer = noiseBuf; src.loop = true;
@@ -31,11 +42,27 @@ export function createAudio() {
     nextBeep = t + .55 - .35 * k;
   };
   A.setOn = on => { A.on = on; if (A.master) A.master.gain.setTargetAtTime(on ? .8 : 0, A.ctx.currentTime, .05); };
-  // continuous beds, called every frame
-  A.ambience = (windAmt, rainAmt) => {
+  // continuous beds, called every frame. `scene` says where the hawk is: the biome, whether a
+  // waterfall or a night pond is near, so the wind sighs in pines, surges over the cliffs,
+  // water babbles and frogs call.
+  let nextFrog = 0;
+  A.ambience = (windAmt, rainAmt, scene = {}) => {
     if (!A.ctx) return; const t = A.ctx.currentTime;
-    A.wind.g.gain.setTargetAtTime(.04 + windAmt * .22, t, .3); A.wind.fl.frequency.setTargetAtTime(300 + windAmt * 900, t, .3);
+    const pines = scene.bio === 'forest' ? 1 : 0, surf = scene.bio === 'cliffs' ? 1 : 0;
+    const sigh = .5 + .5 * Math.sin(t * (surf ? .45 : .25) + Math.sin(t * .11));   // a slow swell
+    const wg = .04 + windAmt * .22 + pines * .05 * sigh + surf * .09 * sigh;
+    A.wind.g.gain.setTargetAtTime(wg, t, .3);
+    A.wind.fl.frequency.setTargetAtTime(300 + windAmt * 900 - pines * 120 + surf * 200 * sigh, t, .3);
     A.rain.g.gain.setTargetAtTime(rainAmt * .12, t, .5);
+    A.whistle.g.gain.setTargetAtTime((scene.stoop || 0) * .07, t, .15);
+    A.whistle.fl.frequency.setTargetAtTime(2200 + (scene.stoop || 0) * 900, t, .15);
+    A.babble.g.gain.setTargetAtTime((scene.falls || 0) * .09 * (.8 + .2 * Math.sin(t * 6.3)), t, .25);
+    if (scene.frogs > 0 && t > nextFrog) {
+      // a chorus of frogs: short low croaks, a few at a time, from the reeds
+      const n = 1 + (Math.random() * 3 | 0);
+      for (let i = 0; i < n; i++) croak(scene.frogs * (.5 + Math.random() * .5), i * (.1 + Math.random() * .2));
+      nextFrog = t + .6 + Math.random() * 2.2;
+    }
   };
   function burst({ f = 800, type = 'bandpass', q = 1, dur = .2, vol = .3, f2 = null, delay = 0 }) {
     if (!A.ctx) return; const ctx = A.ctx, t = ctx.currentTime + delay;
@@ -45,26 +72,47 @@ export function createAudio() {
     const g = ctx.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + dur * .2); g.gain.exponentialRampToValueAtTime(.001, t + dur);
     src.connect(fl).connect(g).connect(A.master); src.start(t, Math.random()); src.stop(t + dur + .05);
   }
-  function tone({ f, f2 = null, dur = .15, vol = .2, type = 'sine', delay = 0, vib = 0 }) {
+  function tone({ f, f2 = null, dur = .15, vol = .2, type = 'sine', delay = 0, vib = 0, vibF = 28, lp = 0 }) {
     if (!A.ctx) return; const ctx = A.ctx, t = ctx.currentTime + delay;
     const o = ctx.createOscillator(); o.type = type; o.frequency.setValueAtTime(f, t);
     if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + dur);
-    if (vib) { const l = ctx.createOscillator(), lg = ctx.createGain(); l.frequency.value = 28; lg.gain.value = vib; l.connect(lg).connect(o.frequency); l.start(t); l.stop(t + dur + .05); }
+    if (vib) { const l = ctx.createOscillator(), lg = ctx.createGain(); l.frequency.value = vibF; lg.gain.value = vib; l.connect(lg).connect(o.frequency); l.start(t); l.stop(t + dur + .05); }
     const g = ctx.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + .012); g.gain.exponentialRampToValueAtTime(.001, t + dur);
-    o.connect(g).connect(A.master); o.start(t); o.stop(t + dur + .05);
+    if (lp) { const fl = ctx.createBiquadFilter(); fl.type = 'lowpass'; fl.frequency.value = lp; o.connect(fl).connect(g); } else o.connect(g);
+    g.connect(A.master); o.start(t); o.stop(t + dur + .05);
+  }
+  // a frog: a pulsed low croak
+  function croak(vol, delay) {
+    for (let k = 0; k < 4; k++) tone({ f: 170 + Math.random() * 60, f2: 140, dur: .06, vol: .05 * vol, type: 'sawtooth', delay: delay + k * .07, lp: 700 });
   }
   A.flap = () => burst({ f: 420, f2: 260, q: .8, dur: .22, vol: .35 });
   A.splash = big => { burst({ f: 1800, f2: 500, q: .7, dur: big ? .6 : .35, vol: big ? .45 : .25 }); };
-  A.thump = () => { burst({ f: 180, type: 'lowpass', dur: .25, vol: .5 }); };
-  A.rustle = () => { burst({ f: 3200, q: .6, dur: .3, vol: .15 }); burst({ f: 2400, q: .6, dur: .2, vol: .1, delay: .08 }); };
+  A.thump = (vol = .5) => { burst({ f: 180, type: 'lowpass', dur: .25, vol }); };
+  A.rustle = (vol = 1) => { burst({ f: 3200, q: .6, dur: .3, vol: .15 * vol }); burst({ f: 2400, q: .6, dur: .2, vol: .1 * vol, delay: .08 }); };
   A.drink = () => { tone({ f: 620, f2: 380, dur: .12, vol: .18 }); tone({ f: 760, f2: 500, dur: .1, vol: .12, delay: .1 }); };
   A.eat = () => { tone({ f: 300, f2: 180, dur: .08, vol: .25, type: 'triangle' }); burst({ f: 1500, q: 2, dur: .06, vol: .15, delay: .02 }); };
-  A.ring = () => { [0, 2, 4].forEach((n, i) => tone({ f: PITCH[n] / 2, dur: .9, vol: .12, delay: i * .07, type: 'triangle' })); };
+  A.ring = () => { [0, 2, 4].forEach((n, i) => tone({ f: BASE[n] * keyMul() / 2, dur: .9, vol: .12, delay: i * .07, type: 'triangle' })); };
   A.thunder = d => { burst({ f: 120, type: 'lowpass', dur: 2.6, vol: .7, delay: d }); burst({ f: 60, type: 'lowpass', dur: 3.2, vol: .5, delay: d + .2 }); };
-  A.learned = () => { [0, 1, 2, 3, 4].forEach((n, i) => tone({ f: PITCH[n], f2: PITCH[n] * 1.06, dur: .3, vol: .1, delay: i * .09 })); };
+  A.learned = () => { [0, 1, 2, 3, 4].forEach((n, i) => tone({ f: BASE[n] * keyMul(), f2: BASE[n] * keyMul() * 1.06, dur: .3, vol: .1, delay: i * .09 })); };
+  // a feather earned: a soft rising pair of notes
+  A.feather = () => { tone({ f: BASE[2] * keyMul() / 2, dur: .5, vol: .1, type: 'triangle' }); tone({ f: BASE[4] * keyMul() / 2, dur: .9, vol: .1, type: 'triangle', delay: .18 }); };
+  // the red-tail's scream: a hoarse descending cry. `far` is another hawk answering from a distance.
+  A.scream = (far = false) => {
+    const vol = far ? .07 : .24, delay = far ? 1.1 + Math.random() * .6 : 0, lp = far ? 1400 : 0;
+    tone({ f: 2900, f2: 1500, dur: 1.1, vol, type: 'sawtooth', vib: 70, vibF: 34, delay, lp: lp || 3200 });
+    tone({ f: 2900 * 1.5, f2: 1500 * 1.5, dur: .9, vol: vol * .25, type: 'sawtooth', vib: 60, vibF: 34, delay, lp: lp || 5000 });
+    burst({ f: 2400, f2: 1300, q: 1.2, dur: 1, vol: vol * .9, delay });
+  };
+  // the fledgling's thin answering peep
+  A.peep = () => { tone({ f: 3100, f2: 2600, dur: .22, vol: .07, vib: 40, vibF: 30, delay: .8 }); tone({ f: 3300, f2: 2700, dur: .2, vol: .06, vib: 40, vibF: 30, delay: 1.1 }); };
+  // crows: a harsh caw or two
+  A.caw = (vol = 1) => { for (let k = 0; k < 1 + (Math.random() < .5 ? 1 : 0); k++) { tone({ f: 620, f2: 480, dur: .17, vol: .09 * vol, type: 'sawtooth', delay: k * .32, lp: 1600, vib: 30, vibF: 24 }); burst({ f: 1100, f2: 700, q: 1.5, dur: .2, vol: .12 * vol, delay: k * .32 }); } };
+  // the heron's croak as it lifts off, and a deer's snort
+  A.heron = () => { tone({ f: 330, f2: 240, dur: .35, vol: .08, type: 'sawtooth', lp: 1100, vib: 24, vibF: 18 }); burst({ f: 900, q: 1, dur: .35, vol: .1 }); };
+  A.snort = () => burst({ f: 700, f2: 300, type: 'lowpass', dur: .18, vol: .25 });
   // a songbird note: a quick upward chirp with a little trill; `voice` shapes it per species
   A.note = (lane, voice = 0, vol = .16) => {
-    const f = PITCH[lane];
+    const f = BASE[lane] * keyMul();
     if (voice % 3 === 0) tone({ f: f * .92, f2: f * 1.08, dur: .22, vol, vib: 0 });
     else if (voice % 3 === 1) tone({ f, f2: f * .9, dur: .26, vol, vib: f * .03 });
     else { tone({ f: f * .96, f2: f * 1.04, dur: .1, vol }); tone({ f: f * .98, f2: f * 1.05, dur: .1, vol: vol * .8, delay: .11 }); }
@@ -90,4 +138,3 @@ export function createAudio() {
   };
   return A;
 }
-export const NOTE_HZ = PITCH;

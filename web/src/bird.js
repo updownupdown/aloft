@@ -25,6 +25,7 @@ export function createBird(x, y) {
     // pose (shared with the demo's rig)
     phase: 0, flapLeft: 0, flapAmt: 0, gTheta: .06, theta: .06, bend: 0, L: 1, Lg: 1, tailFan: .3, splay: .3, pitch: 0, bob: 0,
     walkPh: 0, peckT: 0, landT: 0, tuck: 0, flare: 0,
+    kiteT: 0, kiteLeft: -9, adult: false,
   };
 }
 
@@ -69,8 +70,9 @@ export function nudge(b, dir) {
 }
 
 function land(b, kind, G, y, soft = false) {
-  b.state = kind; b.s = 0; b.g = 0; b.y = y; b.target = null; b.landT = .35; b.flapLeft = 0;
-  G.emit('land', { kind, soft });
+  const speed = b.s;
+  b.state = kind; b.s = 0; b.g = 0; b.y = y; b.target = null; b.landT = .35; b.flapLeft = 0; b.kiteT = 0;
+  G.emit('land', { kind, soft, speed });
 }
 
 export function perchOn(b, p, G, soft = false) {
@@ -131,6 +133,14 @@ function fly(b, dt, inp, G) {
     if (b.s > 64) b.s += (64 - b.s) * .8 * dt;
     gT = -.1;
   }
+  // kiting: held nose-up into a headwind, low and slow over open ground, the hawk hangs on
+  // the air with small wing trims, scanning the grass below. Strong wind pushes it back a
+  // little, weak wind lets it sink; pointing down drops it into a stoop.
+  const head = -W.windAt(b.y, b.x) * b.face, up = W.groundY(b.x) - b.y;
+  const canKite = !!inp.steer && head > 5 && b.s < 80 && gT > .12 && gT < .8 && up > 24 && up < 240 && thermal < 15 && !b.wing && !b.target;
+  b.kiteT = clamp(b.kiteT + (canKite ? 2 : -3) * dt, 0, 1);
+  if (b.kiteT > .5) { b.kiteLeft = G.t; b.stall = false; }
+  if (b.kiteT > 0) gT = lerp(gT, .3, b.kiteT);
 
   // tap-a-branch assist: steer and slow toward the chosen perch, flapping if it is above
   const p = b.target;
@@ -144,8 +154,9 @@ function fly(b, dt, inp, G) {
       if (dy > 2 && b.s < 90 && b.autoFlapT <= 0) { flap(b, G.flapPower, G); b.autoFlapT = .42; }
     }
   }
-  // a stall drops the nose until the bird has flying speed again
-  if (b.s < T.stall) b.stall = true; else if (b.s > T.stall + 14) b.stall = false;
+  // a stall drops the nose until the bird has flying speed again (a kiting hawk hangs below
+  // flying speed on purpose)
+  if (b.s < T.stall && b.kiteT < .5) b.stall = true; else if (b.s > T.stall + 14) b.stall = false;
   if (b.stall) gT = Math.min(gT, -.85);
   gT = clamp(gT, -1.45, 1.0);
 
@@ -165,10 +176,16 @@ function fly(b, dt, inp, G) {
   const brake = b.flaring ? (b.g - .3) * b.s * T.flare : 0;
   // (in a wingover the rolling wings carry much of the turn, so less speed is lost to the climb)
   b.s = clamp(b.s + (-T.gravity * Math.sin(b.g) * (b.wing ? .5 : 1) - dragOf(b.s) - brake) * dt, 8, MAX_SPEED);
+  if (b.kiteT > 0) b.s = lerp(b.s, T.stall + 10, b.kiteT * Math.min(1, dt * 6));   // the wind holds a kiting hawk just above stall speed
 
   b.vx = Math.cos(b.g) * b.s * b.face + W.windAt(b.y) * .5;
   b.kick *= Math.exp(-dt * 2.6);
   b.vy = -Math.sin(b.g) * b.s - air + b.kick;
+  if (b.kiteT > 0) {
+    const k = b.kiteT, hover = (head - 14) * .25;
+    b.vx = lerp(b.vx, -b.face * hover + Math.sin(G.t * 1.7) * 2, k);
+    b.vy = lerp(b.vy, Math.max(-6, 7 - head * .5) + Math.sin(G.t * 2.3) * 3 + b.kick, k);
+  }
   const px = b.x, py = b.y;
   b.x += b.vx * dt; b.y += b.vy * dt;
   G.passRings(px, py, b.x, b.y);
@@ -268,19 +285,21 @@ export function pose(b, dt, G) {
   if (b.state === 'fly') {
     if (b.flapLeft > 0 || b.flapAmt > .02) { b.phase += dt * TAU / .4; if (b.phase >= TAU) { b.phase -= TAU; if (b.flapLeft > 0) b.flapLeft--; } }
     b.flapAmt += ((b.flapLeft > 0 ? 1 : 0) - b.flapAmt) * k;
-    const soar = b.circling ? 1 : clamp(b.air / 30, 0, 1);
-    b.tuck += (smooth(-.45, -1.1, b.g) - b.tuck) * k;
+    const kite = b.kiteT, soar = Math.max(kite, b.circling ? 1 : clamp(b.air / 30, 0, 1)), turning = b.wing || b.turnT > 0 ? 1 : 0;
+    // sinking air sweeps the wings back a little; a dive tucks them
+    b.tuck += (Math.max(smooth(-.45, -1.1, b.g), .2 * smooth(20, 70, b.vy) * (1 - soar)) - b.tuck) * k;
     b.flare += (((b.target && b.s < 80) || b.flaring ? 1 : 0) - b.flare) * k;
     b.Lg = 1 - .38 * b.tuck;
     b.gTheta += (.06 + .14 * soar - .12 * b.tuck + .2 * b.flare + .02 * Math.sin(G.t * 1.7) - b.gTheta) * Math.min(1, dt * 3);
     const c = Math.cos(b.phase);
-    b.theta = lerp(b.gTheta, .2 + .85 * Math.sin(b.phase), b.flapAmt);
+    // kiting: quick small trims of the wings hold the hawk still on the wind
+    b.theta = lerp(b.gTheta, .2 + .85 * Math.sin(b.phase), b.flapAmt) + Math.sin(G.t * 22) * .09 * kite;
     b.bend = -.5 * c * b.flapAmt;
     b.L = b.Lg * (1 - b.flapAmt * .24 * Math.max(0, c));
     // rolling over the top of a wingover the wings turn edge-on for a moment
     if (b.wing) b.L *= 1 - .5 * Math.max(0, 1 - Math.abs(b.wing.t / WINGOVER - .5) / .2);
     b.bob = -1.6 * Math.sin(b.phase) * b.flapAmt;
-    b.tailFan = .25 + .6 * Math.max(soar, b.flare) - .2 * b.tuck;
+    b.tailFan = .25 + .6 * Math.max(soar, b.flare) + .35 * turning - .2 * b.tuck;
     b.splay = .3 + .7 * Math.max(soar, b.flare) - .3 * b.tuck;
     if (b.wing) b.pitch = -b.g;
     else b.pitch += (clamp(-b.g, -1.2, 1.2) - b.pitch) * Math.min(1, dt * 8);

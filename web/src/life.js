@@ -7,11 +7,14 @@ import { createBird, pose } from './bird.js';
 import { SPECIES } from './songs.js';
 
 /* ---------- prey: positions are a function of time, so nothing needs storing ---------- */
+// the hawk's scream makes every mouse freeze where it stands, out in the open, for a moment
+export const freeze = { until: -1, at: 0 };
 export function mousePos(m, t) {
+  const frozen = t < freeze.until; if (frozen) t = freeze.at;
   const ph = t * .45 + m.seed * 2.3, x = m.x + Math.sin(ph) * 16;
   // mice pop up out of the grass now and then
-  const up = Math.sin(t * .21 + m.seed * 1.7);
-  return { x, y: W.groundY(x), dir: Math.cos(ph) > 0 ? 1 : -1, show: clamp((up + .2) * 3, 0, 1), run: Math.abs(Math.cos(ph)) };
+  const up = Math.sin(t * .21 + m.seed * 1.7), show = clamp((up + .2) * 3, 0, 1);
+  return { x, y: W.groundY(x), dir: Math.cos(ph) > 0 ? 1 : -1, show: frozen ? Math.max(show, .85) : show, run: frozen ? 0 : Math.abs(Math.cos(ph)) };
 }
 export function fishPos(f, p, t) {
   const sp = .18 + .12 * hash(f.seed), ph = t * sp + f.seed * 1.9;
@@ -102,12 +105,14 @@ export function updateVisitor(G, dt, sing) {
 
 /* ---------- other hawks ---------- */
 export function makeHawk(x, y, kind) {
-  const h = createBird(x, y); h.kind = kind; h.life = 0; h.flapT = 0; h.vxs = 0; h.vys = 0; h.scale = kind === 'young' ? .72 : .92;
+  const h = createBird(x, y); h.kind = kind; h.life = 0; h.flapT = 0; h.vxs = 0; h.vys = 0; h.scale = kind === 'young' ? .72 : .92; h.adult = kind !== 'young';
   return h;
 }
-// where a companion wants to be: the next thermal ahead if the air is rising, else food or water
+// where a companion wants to be: the next thermal ahead if the air is rising, else food or water;
+// called by the hawk's scream it comes to you first, then leads on
 function companionGoal(G, h) {
   const b = G.bird, dir = G.goalDir || 1;
+  if (h.called && G.t - h.called < 14 && Math.hypot(h.x - b.x, h.y - b.y) > 110) return { x: b.x - b.face * 50, y: b.y - 30 };
   if (W.env.thermal > .3) {
     const th = W.thermalsIn(b.x - 200, b.x + 1600 * dir).filter(t => (t.c - b.x) * dir > -150).sort((a, c) => Math.abs(a.c - b.x) - Math.abs(c.c - b.x))[0];
     if (th) return { x: th.c + Math.sin(G.t * .9) * th.w * .5, y: Math.min(b.y - 30, th.y1 - 60 + Math.sin(G.t * .5) * 40), circle: true };
@@ -137,4 +142,47 @@ export function updateHawk(G, h, dt) {
   h.turnT = Math.max(0, h.turnT - dt);
   pose(h, dt, G);
   return !(h.kind === 'companion' && h.life > 150 && Math.abs(h.x - b.x) > 900);
+}
+
+/* ---------- crows: two or three that mob a hawk flying low near their trees ---------- */
+// They tail the hawk and dive at it in turns, each pass a small jolt. Climb well above them
+// (a thermal does it) or outrun them in a stoop and they give up and go home.
+export function updateCrows(G, dt, { audio, haptics, once }) {
+  const b = G.bird, C = G.crows, up = W.groundY(b.x) - b.y;
+  G.crowT = (G.crowT || 0) - dt;
+  if (!C.length) {
+    if (G.crowT > 0 || b.state !== 'fly') return;
+    G.crowT = 60 + Math.random() * 60;
+    const bio = W.biomeAt(b.x).name;
+    if ((bio !== 'meadow' && bio !== 'forest') || up > 170 || G.storm > .4 || G.tod < .22 || G.tod > .78 || G.sea.winter > .5) return;
+    if (!W.treesIn(b.x - 140, b.x + 140).length || Math.random() > .4) return;
+    const n = 2 + (Math.random() < .4 ? 1 : 0);
+    for (let i = 0; i < n; i++) C.push({ x: b.x - b.face * (170 + i * 35), y: b.y - 50 - i * 18, vxs: b.face * 60, vys: 0, ph: Math.random() * 6, seed: i, diveT: 2.5 + i * 1.4, diving: 0, cawT: 1 + i, home: b.x });
+    G.crowLife = 0; G.crowEsc = 0; audio.caw();
+    once('crows', 'Crows! They mob hawks that fly low near their trees. Climb away in a thermal, or dive and leave them behind.');
+    return;
+  }
+  G.crowLife += dt;
+  const escaping = up > 260 || b.s > 170 || b.state !== 'fly' || G.crowLife > 45;
+  G.crowEsc = escaping ? G.crowEsc + dt : Math.max(0, G.crowEsc - dt * .5);
+  const leaving = G.crowEsc > 2.5;
+  C.forEach((c, i) => {
+    let T;
+    if (leaving) T = { x: c.home - b.face * 200, y: W.groundY(c.home) - 120 };
+    else {
+      c.diveT -= dt;
+      if (c.diveT <= 0 && !c.diving) { c.diving = .9; c.diveT = 4 + Math.random() * 3; }
+      if (c.diving > 0) {
+        c.diving -= dt; T = { x: b.x + b.face * 12, y: b.y + 2 };
+        if (Math.hypot(c.x - b.x, c.y - b.y) < 11) { c.diving = 0; b.kick += 22; b.s *= .97; haptics.jolt(); audio.caw(.6); }
+      } else T = { x: b.x - b.face * (30 + 24 * i), y: b.y - 24 - 12 * i + Math.sin(G.t * 1.5 + i) * 8 };
+    }
+    const dx = T.x - c.x, dy = T.y - c.y, d = Math.hypot(dx, dy) || 1, want = Math.min(c.diving > 0 ? 190 : 150, 40 + d * 1.6);
+    c.vxs += (dx / d * want - c.vxs) * Math.min(1, dt * 2.2); c.vys += (dy / d * want - c.vys) * Math.min(1, dt * 2.2);
+    c.x += c.vxs * dt; c.y += c.vys * dt;
+    const gy = W.groundY(c.x); if (c.y > gy - 20) c.y = gy - 20;
+    c.ph += dt * (c.vys < -10 ? 20 : 13);
+    if ((c.cawT -= dt) <= 0 && !leaving) { c.cawT = 3 + Math.random() * 5; audio.caw(.5); }
+  });
+  if (leaving && C.every(c => Math.abs(c.x - b.x) > 420)) { G.crows = []; G.crowT = 150; }
 }

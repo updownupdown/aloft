@@ -1,14 +1,15 @@
 // Generative music: a slow pad that drifts through a few chords, with sparse pentatonic
 // notes on top. Day is bright and a little busier, night is low and sparse, storms go
 // minor and quiet, and phrases from songs you have learned drift through now and then.
+// It plays in the shared key (audio.key), so the songbirds and the hawk's voice sit inside it.
 const ROOT = 220; // A3
 const CHORDS = { day: [[0, 4, 7], [5, 9, 12], [-3, 0, 4], [7, 11, 14]], dark: [[-3, 0, 4], [-7, -3, 0], [5, 8, 12], [-5, -2, 2]] };
 const SCALE = { day: [0, 2, 4, 7, 9, 12, 14, 16], dark: [0, 3, 5, 7, 10, 12, 15] };
 const LANE = [12, 14, 16, 19, 21]; // a learned song's staff lines, an octave above the root
-const hz = st => ROOT * Math.pow(2, st / 12);
 
 export function createMusic(audio) {
   const M = { on: false, out: null, next: 0, chordT: 0, chord: 0, pads: [], motifT: 20 };
+  const hz = st => ROOT * Math.pow(2, (st + audio.key) / 12);
   function ensure() {
     if (M.out || !audio.ctx) return !!M.out;
     const ctx = audio.ctx;
@@ -37,6 +38,9 @@ export function createMusic(audio) {
     g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + .02); g.gain.exponentialRampToValueAtTime(.0008, t + 2.2);
     o.connect(g).connect(M.out); o.start(t); o.stop(t + 2.3);
   }
+  // a note the hawk held in tune on the string joins the music: the same note, an octave
+  // down, plucked through the valley echo
+  M.echo = lane => { if (M.on && ensure()) pluck(hz(LANE[lane]) / 2, audio.ctx.currentTime + .05, .04); };
   // called every frame with the state of the world
   M.update = (dt, { night, storm, learned, species }) => {
     if (!M.on || !ensure()) return;
