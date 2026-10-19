@@ -197,8 +197,10 @@ details > .map { margin: 6px 0; }
 .dial svg { width: 104px; height: 56px; display: block; overflow: visible; }
 .dial .arc { fill: none; stroke: rgba(58, 36, 24, .55); stroke-width: 1.1; }
 .dial .tick { fill: none; stroke: rgba(58, 36, 24, .55); stroke-width: 1; }
-.dial .flown { fill: none; stroke: rgba(156, 192, 219, .55); stroke-width: 8; stroke-linecap: round; }
-.dial .flown.night { stroke: rgba(74, 80, 110, .4); }
+.dial .sky { opacity: .72; }
+.dial .sky.night { opacity: .8; }
+.dial .flown { fill: none; stroke: rgba(79, 111, 158, .45); stroke-width: 8; stroke-linecap: round; }
+.dial .flown.night { stroke: rgba(236, 230, 212, .4); }
 .dial .sun { fill: #e9b94a; stroke: rgba(184, 134, 47, .8); stroke-width: 1; }
 .dial .sun.moon { fill: #ece6d4; stroke: rgba(58, 36, 24, .45); }
 .dial .label { margin-top: -4px; font-size: 11px; font-style: italic; line-height: 1.2; white-space: nowrap; text-shadow: 0 0 6px rgba(244, 238, 225, .9); }
