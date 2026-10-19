@@ -275,3 +275,47 @@ details > small { margin: 4px 0; }
 .album .unknown { grid-column: 1 / -1; font-style: italic; color: var(--ink2); }
 .world { font-size: 13.5px; display: flex; align-items: center; gap: 10px; margin: 8px 0 0; padding-top: 8px; border-top: 1px solid var(--rule); }
 .world .quiet { margin: 0 0 0 auto; min-height: 36px; padding: 5px 14px; border: 1px solid rgba(58, 36, 24, .35); border-radius: 18px; }
+
+/* the pause menu as a letter (letter.js paints the sheet, folds, margin rule and wax seal behind it):
+   sections down the left margin beside the page, so the page gets the whole height of a phone held
+   sideways, and larger, darker text than the rest of the UI */
+.card.letter {
+  --ink: #2b1a10; --ink2: #5a3a26;
+  position: relative; isolation: isolate; display: grid; grid-template-columns: 180px minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-areas: "title date" "tabs panes" "foot panes"; column-gap: 40px;
+  width: min(840px, calc(100vw - 32px)); height: min(440px, calc(100vh - 26px)); max-height: none; padding: 18px 34px 20px 40px;
+  background: none; box-shadow: none; border-radius: 0; color: var(--ink);
+}
+.card-bg { position: absolute; left: -24px; top: -24px; width: calc(100% + 48px); height: calc(100% + 48px); z-index: -1; pointer-events: none; }
+.letter .card-head { display: contents; }
+.letter h1 { grid-area: title; align-self: end; margin-bottom: 8px; font-size: 46px; font-weight: 600; }
+.letter .sub { grid-area: date; justify-self: end; align-self: center; font-size: 16px; font-style: italic; text-align: right; }
+.letter .tabs { grid-area: tabs; flex-direction: column; gap: 0; margin: 0; padding-left: 4px; border: 0; overflow: visible; }
+.letter .tabs button { opacity: 1; text-align: left; font-size: 22px; min-height: 40px; padding: 4px 0; }
+.letter .tabs button.on::after { display: none; }
+.letter .panes { grid-area: panes; padding: 0 10px 8px 0; scrollbar-width: thin; scrollbar-color: rgba(58, 36, 24, .35) transparent; }
+.letter .card-foot { grid-area: foot; align-self: end; padding: 0; border: 0; background: none; }
+.letter .primary {
+  justify-content: flex-start; min-height: 56px; padding-left: 64px; border-radius: 28px; background: none; box-shadow: none;
+  color: var(--ink); font-family: var(--title); font-style: italic; font-weight: 600; font-size: 24px;
+}
+.letter .row-btn, .letter summary, .letter .sw { font-size: 18px; min-height: 48px; color: var(--ink); border-bottom-color: rgba(58, 36, 24, .22); }
+.letter .gfx-list .sw { font-size: 16px; min-height: 44px; }
+.letter .howto { font-size: 16.5px; line-height: 1.5; padding-left: 20px; }
+.letter .howto li { margin: 7px 0; }
+.letter small { font-size: 14px; color: var(--ink2); }
+.letter .songbook li > div { font-size: 18px; }
+.letter .songbook small { font-size: 14px; }
+.letter .songbook li.count { font-size: 16px; }
+.letter .quiet { font-size: 16px; }
+.letter h3 { font-size: 24px; font-weight: 600; }
+.letter .journey, .letter .nest, .letter .court, .letter .world { font-size: 16.5px; line-height: 1.45; }
+#ui.menu-open .menu-btn, #ui.menu-open .dial { display: none; }
+.menu:has(.letter) { background: rgba(40, 26, 16, .4); }
+/* a phone held upright: sections across the top, the page below */
+@media (max-width: 620px) {
+  .card.letter { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto auto minmax(0, 1fr) auto; grid-template-areas: "title" "date" "tabs" "panes" "foot"; height: min(640px, calc(100vh - 26px)); padding: 16px 22px 14px; }
+  .letter .sub { justify-self: start; }
+  .letter .tabs { flex-direction: row; flex-wrap: wrap; column-gap: 16px; margin-bottom: 6px; }
+  .letter .tabs button { font-size: 19px; min-height: 36px; }
+}
