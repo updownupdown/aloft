@@ -1,7 +1,10 @@
 // The controls map for How to play: each gesture drawn as a finger's ink line on a little square
 // of paper, with what it does beside it. Drawn as if the hawk flies to the right; flying left,
 // every gesture mirrors. A gesture whose mark in the game has a colour carries that colour here.
-const INK = '#3a2418', RED = '#b02c48', GREEN = '#3f7a3c', FAINT = 'rgba(58,36,24,.35)';
+import { MARK } from './palette.js';
+
+const col = k => `rgb(${MARK[k].join()})`;
+const INK = col('ink'), RED = col('mouse'), GREEN = col('perch'), OCHRE = col('thermal'), FAINT = 'rgba(58,36,24,.35)';
 
 // small drawing helpers, all in a 64 x 64 box
 const dot = (x, y, r = 4, c = INK) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${c}"/>`;
@@ -31,7 +34,7 @@ const DRAW = {
   turn: () => dot(52, 36) + line('M52 36 H12') + head(12, 36, 180) + head(20, 36, 180),
   hover: () => up(32),
   land: () => down(32, 14, 52),
-  thermal: () => dot(14, 40) + line('M14 40 H44 Q54 40 54 32 Q54 24 44 24 H18') + head(18, 24, 180),
+  thermal: () => dot(14, 40, 4, OCHRE) + line('M14 40 H44 Q54 40 54 32 Q54 24 44 24 H18', OCHRE) + head(18, 24, 180, OCHRE),
   flip: () => dot(32, 54) + line('M32 54 C10 54 10 18 32 18 C54 18 54 46 38 50') + head(38, 50, 165),
   hunt: () => dot(12, 14) + line('M12 14 L44 44', RED) + head(44, 44, 45, RED)
     + `<ellipse cx="50" cy="52" rx="6" ry="3.6" fill="${RED}" opacity=".75"/>`,
@@ -54,7 +57,7 @@ export const CONTROLS = [
   ['air', 'Swipe back', 'Turn round. Only a clean swipe turns; a small double arrow by the hawk shows it.', 'turn'],
   ['air', 'Swipe up', 'Hover in place to look around. It tires the wings.', 'hover'],
   ['air', 'Swipe down', 'Settle softly and land, right where you are.', 'land'],
-  ['air', 'Swipe forward, then back', 'Ride the thermal you are in, or head for the nearest one and ride it up.', 'thermal'],
+  ['air', 'Swipe forward, then back', 'Ride the thermal you are in, or head for the nearest one and ride it up. Its mark shows in ochre.', 'thermal'],
   ['air', 'Draw a circle', 'A flip, drawn the way the nose goes: over the top for a loop, under for a front flip.', 'flip'],
   ['air', 'Draw a line to a mouse or fish', 'Stoop on it. The line and its mark show in red.', 'hunt'],
   ['air', 'Double tap a branch', 'Fly to it and perch. The branch is marked in green.', 'perch'],
