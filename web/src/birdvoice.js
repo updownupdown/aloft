@@ -15,18 +15,39 @@ export function loadVoice() { try { return { ...DEFAULT_VOICE, ...JSON.parse(loc
 export function saveVoice(v) { try { localStorage.setItem(KEY, JSON.stringify({ engine: v.engine, octave: v.octave, space: v.space, far: v.far })); } catch { /* private mode */ } }
 
 // The elements of one song note per voice (0 chickadee, 1 robin, 2 warbler, 3 wren, 4 thrush,
-// 5 finch, 6 owl, 7 lark): when it starts, how long, and its pitch path as [0..1, multiple].
+// 5 finch, 6 owl, 7 lark, 8 cardinal, 9 meadowlark, 10 red-winged blackbird, 11 mourning dove,
+// 12 blue jay, 13 song sparrow, 14 white-throated sparrow, 15 veery): when it starts, how long,
+// and its pitch path as [0..1, multiple]. Flags: soft (a muffled low voice), harsh (a rasp of
+// overtones), pure (a clean whistle, no overtones), dual (a second voice that far above).
+// Most sing in the chosen register; the owl and the dove keep their own, low ones.
+const REG = { 6: .25, 11: .5 };
 function template(voice, rnd) {
   const rep = (n, gap, dur, c, o = {}) => Array.from({ length: n }, (_, i) => ({ at: i * gap, dur, c: typeof c === 'function' ? c(i) : c, v: 1 - i * (o.fade || 0), ...o }));
-  switch (voice % 8) {
+  switch (voice % 16) {
     case 0: return [{ at: 0, dur: .26, c: [[0, 1.02], [.15, 1], [1, .97]], atk: .02 }];
     case 1: return [{ at: 0, dur: .11, c: [[0, .82], [.45, 1.12], [1, .94]] }, { at: .13, dur: .05, c: [[0, 1.05], [1, .9]], v: .5 }];
     case 2: return rep(4, .04, .028, [[0, 1.18], [1, .88]], { fade: .08 });
     case 3: return rep(4, .04, .028, i => i % 2 ? [[0, 1.12], [1, .88]] : [[0, .9], [1, 1.12]]);
     case 4: return [{ at: 0, dur: .025, c: [[0, .85], [1, 1]], v: .5 }, { at: .022, dur: .3, c: [[0, 1], [1, 1.01]], vib: .012, vibF: 6, atk: .02 }];
     case 5: return rep(3, .06, .045, [[0, 1.22], [1, .86]], { am: .5, amF: 85 });
-    case 6: return [{ at: 0, dur: .38, c: [[0, 1.03], [.3, 1], [1, .95]], atk: .06, owl: true }];
-    default: return rep(4, .03, .024, () => [[0, 1 + (rnd() - .5) * .3], [1, 1 + (rnd() - .5) * .3]]);
+    case 6: return [{ at: 0, dur: .38, c: [[0, 1.03], [.3, 1], [1, .95]], atk: .06, soft: true }];
+    case 7: return rep(4, .03, .024, () => [[0, 1 + (rnd() - .5) * .3], [1, 1 + (rnd() - .5) * .3]]);
+    // a cardinal's loud slurred "cheer", sweeping down
+    case 8: return [{ at: 0, dur: .2, c: [[0, 1.28], [.6, .92], [1, .84]], atk: .01, pure: true }];
+    // a meadowlark's flute: a rounded note that lifts a little, then falls away
+    case 9: return [{ at: 0, dur: .2, c: [[0, .97], [.3, 1.03], [1, .9]], atk: .015, vib: .006, vibF: 11 }];
+    // a red-winged blackbird's "konk-la-ree": a hard chuck, then a buzzing trill
+    case 10: return [{ at: 0, dur: .05, c: [[0, .9], [1, 1.05]], harsh: true, v: .8 }, { at: .055, dur: .13, c: [[0, 1.02], [1, 1.04]], am: .85, amF: 48, harsh: true }];
+    // a mourning dove's soft coo, swelling and sinking
+    case 11: return [{ at: 0, dur: .42, c: [[0, .94], [.3, 1.03], [1, .9]], atk: .09, soft: true }];
+    // a blue jay's harsh "jay": a falling rasp
+    case 12: return [{ at: 0, dur: .19, c: [[0, 1.12], [.4, 1.02], [1, .8]], atk: .01, harsh: true, am: .5, amF: 92 }];
+    // a song sparrow's crisp chips with a little buzz behind
+    case 13: return [...rep(2, .045, .03, [[0, 1.16], [1, .94]]), { at: .09, dur: .06, c: [[0, 1], [1, .97]], am: .7, amF: 70, v: .6 }];
+    // a white-throated sparrow's pure, held whistle ("old Sam Peabody")
+    case 14: return [{ at: 0, dur: .34, c: [[0, 1], [1, .995]], atk: .04, pure: true }];
+    // a veery's breezy downward spiral, two voices at once
+    default: return rep(3, .055, .07, i => [[0, 1.06 - i * .03], [1, .96 - i * .03]], { dual: 1.19, fade: .2 });
   }
 }
 
@@ -61,7 +82,7 @@ export function createBirdVoice(ctx, dest, noiseBuf) {
       am.gain.value = 1 - e.am / 2; l.frequency.value = e.amF; lg.gain.value = e.am / 2;
       l.connect(lg).connect(am.gain); am.connect(env); l.start(t); l.stop(end + .02); out = am;
     }
-    if (e.owl) { const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1100; env.connect(lp).connect(input); } else env.connect(input);
+    if (e.soft) { const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1100; env.connect(lp).connect(input); } else env.connect(input);
     const glide = (param, m) => { param.setValueAtTime(f * e.c[0][1] * m, t); for (let i = 1; i < e.c.length; i++) param.exponentialRampToValueAtTime(f * e.c[i][1] * m, t + e.dur * e.c[i][0]); };
     const tone = (m, g, type = 'sine') => {
       const o = ctx.createOscillator(), og = ctx.createGain(); o.type = type; og.gain.value = g; glide(o.frequency, m);
@@ -75,7 +96,10 @@ export function createBirdVoice(ctx, dest, noiseBuf) {
       tone(1, .3);
       return;
     }
-    tone(1, 1); tone(2, e.owl ? .22 : .1); tone(3, .025);
+    if (e.pure) tone(1, 1.1);
+    else if (e.harsh) { tone(1, .8); tone(2, .45); tone(3, .3); tone(4, .15); }
+    else { tone(1, 1); tone(2, e.soft ? .22 : .1); tone(3, .025); }
+    if (e.dual) tone(e.dual, .45);
     // the other side of the syrinx: a quieter line a fifth (thrush) or a third above, drifting a little
     if (V.engine === 'syrinx') tone(e.vib ? 1.5 : 1.26 + (Math.random() - .5) * .02, .32);
   }
@@ -96,10 +120,12 @@ export function createBirdVoice(ctx, dest, noiseBuf) {
   // one song note at pitch f (the game's pitch for that note), in a species' voice
   V.sing = (f, voice = 0, vol = .16) => {
     const t = ctx.currentTime + .005, prev = V.engine;
-    if (V.engine === 'whistle') { V.engine = 'natural'; whistle(t, f, voice, vol * .85); V.engine = prev; return; }
+    if (V.engine === 'whistle' && voice % 16 < 8) { V.engine = 'natural'; whistle(t, f, voice, vol * .85); V.engine = prev; return; }
     // a little variation every time: no bird sings a note exactly the same twice
-    const j = 1 + (Math.random() - .5) * .03, owl = voice % 8 === 6, pitch = owl ? f / 4 * j : f * V.octave * j, rnd = Math.random;
-    for (const e of template(voice, rnd)) element(t + e.at * (1 + (rnd() - .5) * .1), e, pitch, vol * (e.v ?? 1) * (owl ? 1.3 : 1.1));
+    const j = 1 + (Math.random() - .5) * .03, reg = REG[voice % 16], pitch = reg ? f * reg * j : f * V.octave * j, rnd = Math.random;
+    if (V.engine === 'whistle') V.engine = 'natural';
+    for (const e of template(voice, rnd)) element(t + e.at * (1 + (rnd() - .5) * .1), e, pitch, vol * (e.v ?? 1) * (reg ? 1.3 : 1.1));
+    V.engine = prev;
   };
   return V;
 }

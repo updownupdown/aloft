@@ -9,17 +9,19 @@ import { SPECIES } from './songs.js';
 /* ---------- prey: positions are a function of time, so nothing needs storing ---------- */
 // the hawk's scream makes every mouse freeze where it stands, out in the open, for a moment
 export const freeze = { until: -1, at: 0 };
+// song gifts: a meadowlark's brings the mice out into the open, a blackbird's brings fish up
+export const reveal = { until: -1 }, rise = { until: -1 };
 export function mousePos(m, t) {
   const frozen = t < freeze.until; if (frozen) t = freeze.at;
   const ph = t * .45 + m.seed * 2.3, x = m.x + Math.sin(ph) * 16;
   // mice pop up out of the grass now and then
   const up = Math.sin(t * .21 + m.seed * 1.7), show = clamp((up + .2) * 3, 0, 1);
-  return { x, y: W.groundY(x), dir: Math.cos(ph) > 0 ? 1 : -1, show: frozen ? Math.max(show, .85) : show, run: frozen ? 0 : Math.abs(Math.cos(ph)) };
+  return { x, y: W.groundY(x), dir: Math.cos(ph) > 0 ? 1 : -1, show: frozen ? Math.max(show, .85) : t < reveal.until ? Math.max(show, .9) : show, run: frozen ? 0 : Math.abs(Math.cos(ph)) };
 }
 export function fishPos(f, p, t) {
   const sp = .18 + .12 * hash(f.seed), ph = t * sp + f.seed * 1.9;
   const x = lerp(p.x0 + 6, p.x1 - 6, .5 + .45 * Math.sin(ph));
-  const y = Math.min(p.waterY + 4 + 2.5 * Math.sin(t * .6 + f.seed), W.pondBed(x, p) - 2);
+  const y = Math.min(p.waterY + (t < rise.until ? 1.2 : 4 + 2.5 * Math.sin(t * .6 + f.seed)), W.pondBed(x, p) - 2);
   return { x, y, dir: Math.cos(ph) > 0 ? 1 : -1 };
 }
 
@@ -105,7 +107,7 @@ export function updateVisitor(G, dt, sing) {
 
 /* ---------- other hawks ---------- */
 export function makeHawk(x, y, kind) {
-  const h = createBird(x, y); h.kind = kind; h.life = 0; h.flapT = 0; h.vxs = 0; h.vys = 0; h.scale = kind === 'young' ? .72 : kind === 'mate' || kind === 'suitor' ? 1.04 : .92; h.adult = kind !== 'young';
+  const h = createBird(x, y); h.kind = kind; h.life = 0; h.flapT = 0; h.vxs = 0; h.vys = 0; h.scale = kind === 'young' ? .72 : kind === 'mate' || kind === 'suitor' ? 1.04 : .8; h.adult = kind !== 'young';
   return h;
 }
 // where a companion wants to be: the next thermal ahead if the air is rising, else food or water;

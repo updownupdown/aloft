@@ -6,36 +6,11 @@
 <meta name="theme-color" content="#f6f1e6">
 <title>Aloft · Bird song lab</title>
 <link rel="icon" href="icons/favicon-32.png">
-<style>
-@font-face { font-family: 'Cormorant Garamond'; font-style: italic; font-weight: 300 700; font-display: swap; src: url(fonts/cormorant-garamond-italic.woff2) format('woff2'); }
-@font-face { font-family: 'Spectral'; font-style: normal; font-weight: 400; font-display: swap; src: url(fonts/spectral-regular.woff2) format('woff2'); }
-@font-face { font-family: 'Spectral'; font-style: italic; font-weight: 400; font-display: swap; src: url(fonts/spectral-italic.woff2) format('woff2'); }
-:root { --paper: #f6f1e6; --ink: #3a2418; --ink2: #6a4530; --rule: rgba(58, 36, 24, .18); --indigo: #4f6f9e; --berry: #a8483a; }
-* { box-sizing: border-box; }
-body { margin: 0; background: var(--paper); color: var(--ink); font: 17px/1.45 'Spectral', Georgia, serif; -webkit-tap-highlight-color: transparent; }
-main { max-width: 760px; margin: 0 auto; padding: 18px 16px 48px; }
-h1 { font: italic 600 34px/1.1 'Cormorant Garamond', Georgia, serif; margin: 4px 0 4px; }
-h2 { font: italic 600 23px/1.2 'Cormorant Garamond', Georgia, serif; margin: 22px 0 6px; padding-bottom: 4px; border-bottom: 1px solid var(--rule); }
-p, small { color: var(--ink2); }
-p { margin: 6px 0 10px; }
-small { display: block; font-style: italic; font-size: 14px; margin-top: 2px; }
-a { color: var(--indigo); }
-.top { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
-.opts { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0; }
-button { font: inherit; font-size: 16px; color: var(--ink); background: transparent; border: 1px solid var(--rule); border-radius: 18px; min-height: 40px; padding: 6px 14px; cursor: pointer; }
-button.on { background: var(--indigo); border-color: var(--indigo); color: #fbf7ee; }
-button:active { transform: translateY(1px); }
-.species { list-style: none; margin: 0; padding: 0; }
-.species li { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 0; border-bottom: 1px solid var(--rule); }
-.species b { min-width: 92px; font-weight: 400; }
-.species em { color: var(--ink2); font-size: 14px; flex: 1 1 140px; }
-.now { min-height: 1.5em; font-style: italic; color: var(--berry); }
-.save { background: var(--berry); border-color: var(--berry); color: #fbf7ee; font-size: 18px; padding: 8px 20px; }
-</style>
+<link rel="stylesheet" href="lab.css">
 </head>
 <body>
 <main>
-  <div class="top"><h1>Bird song lab</h1><a href="./">Back to the game</a></div>
+  <div class="top"><h1>Bird song lab</h1><span class="links"><a href="musiclab.html">Music lab</a><a href="./">Back to the game</a></span></div>
   <p>Try the songbirds in different voices. Pick a voice, a pitch and a space, play a few songs, and keep the one that sounds most like a real bird. The game uses whatever you keep.</p>
 
   <h2>Voice</h2>

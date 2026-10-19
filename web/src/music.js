@@ -18,8 +18,20 @@ const LOOPS = [[17.8, 5], [20.1, 7], [23.3, 8], [25.9, 10], [29.7, 12], [31.9, 9
 // kalimba rhythms over 16 steps: busier by day
 const PATTERN = { day: [1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0], dark: [1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0] };
 
+// Valley's tuning: every number the music lab (musiclab.html) can change, saved under
+// aloft.musicTune so the game plays what was picked there
+export const VALLEY_TUNE = {
+  chordLen: 16, chordVar: 10, overlap: .72, rest: .2, strings: .02, cello: .6, bright: 950, vibrato: 5,
+  voicing: 'close', piano: .04, pianoOct: 0, phraseMin: 2, phraseMax: 4, noteGap: 3.5, noteVar: 4, quiet: 18, quietVar: 28,
+  echo: .32, echoTime: .42,
+};
+// how a chord's three notes are spread: as written, opened out (root, fifth, the third an
+// octave up), or suspended (the third swapped for the second)
+const VOICE = { close: c => c, open: c => [c[0] - 12, c[2] - 12, c[1]], sus: c => [c[0], c[0] + 2, c[2], c[0] + 12] };
+export function loadTune() { try { return { ...VALLEY_TUNE, ...JSON.parse(localStorage.getItem('aloft.musicTune') || '{}') }; } catch { return { ...VALLEY_TUNE }; } }
+
 export function createMusic(audio) {
-  const M = { on: false, mode: 'valley', out: null, next: 0, chordT: 0, chord: 0, motifT: 6, phrase: 2, loops: [], harpT: 0, step: 0, stepT: 0, walk: 6 };
+  const M = { tune: loadTune(), on: false, mode: 'valley', out: null, next: 0, chordT: 0, chord: 0, motifT: 6, phrase: 2, loops: [], harpT: 0, step: 0, stepT: 0, walk: 6 };
   const hz = st => ROOT * Math.pow(2, (st + audio.key) / 12);
   function ensure() {
     if (M.out || !audio.ctx) return !!M.out;
@@ -27,12 +39,17 @@ export function createMusic(audio) {
     M.out = ctx.createGain(); M.out.gain.value = 0;
     const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1400;
     // a soft echo makes the sparse notes feel like they are in a valley
-    const dl = ctx.createDelay(1); dl.delayTime.value = .42; const fb = ctx.createGain(); fb.gain.value = .32;
+    const dl = ctx.createDelay(1.5); dl.delayTime.value = M.tune.echoTime; const fb = ctx.createGain(); fb.gain.value = M.tune.echo;
     M.out.connect(lp); lp.connect(audio.master); lp.connect(dl); dl.connect(fb); fb.connect(dl); dl.connect(audio.master);
     M.out.gain.setTargetAtTime(M.on ? 1 : 0, ctx.currentTime, 1.5);
-    M.lp = lp; M.next = ctx.currentTime + 1;
+    M.lp = lp; M.dl = dl; M.fb = fb; M.next = ctx.currentTime + 1;
     return true;
   }
+  M.setTune = o => {
+    Object.assign(M.tune, o);
+    if (M.dl) { M.dl.delayTime.setTargetAtTime(M.tune.echoTime, audio.ctx.currentTime, .1); M.fb.gain.setTargetAtTime(M.tune.echo, audio.ctx.currentTime, .1); }
+  };
+  M.log = () => {};   // the lab listens here: what Valley just played
   M.setOn = on => { M.on = on; if (M.out) M.out.gain.setTargetAtTime(on ? 1 : 0, audio.ctx.currentTime, .8); };
   // a new style starts from silence: the old one's scheduled notes ring out and nothing more is queued
   M.setMode = mode => {
@@ -44,9 +61,9 @@ export function createMusic(audio) {
   // with a gentle vibrato, and fading as slowly
   function strings(freqs, t, dur, vol) {
     const ctx = audio.ctx, lp = ctx.createBiquadFilter(), g = ctx.createGain(), l = ctx.createOscillator(), lg = ctx.createGain();
-    lp.type = 'lowpass'; lp.frequency.setValueAtTime(380, t); lp.frequency.linearRampToValueAtTime(950, t + dur * .45); lp.frequency.linearRampToValueAtTime(420, t + dur); lp.Q.value = .3;
+    lp.type = 'lowpass'; lp.frequency.setValueAtTime(380, t); lp.frequency.linearRampToValueAtTime(M.tune.bright, t + dur * .45); lp.frequency.linearRampToValueAtTime(420, t + dur); lp.Q.value = .3;
     g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + dur * .4); g.gain.setValueAtTime(vol, t + dur * .55); g.gain.linearRampToValueAtTime(0, t + dur);
-    l.frequency.value = 4.6; lg.gain.value = 5; l.connect(lg);
+    l.frequency.value = 4.6; lg.gain.value = M.tune.vibrato; l.connect(lg);
     for (const f of freqs) for (const det of [-6, 5]) {
       const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f; o.detune.value = det + (Math.random() - .5) * 3;
       lg.connect(o.detune); o.connect(lp); o.start(t); o.stop(t + dur + .1);
@@ -95,37 +112,42 @@ export function createMusic(audio) {
   // each other, now and then a held rest, and a felt piano that plays a few slow notes, then
   // falls silent for a long while
   function valley(now, { night, storm, learned, species }, mode) {
-    const vol = .02 * (1 - storm * .4), dark = night > .7;
+    const T = M.tune, vol = T.strings * (1 - storm * .4), dark = night > .7;
     if (now > M.chordT - .5) {
       const t = Math.max(now, M.chordT), chords = CHORDS[mode];
-      if (Math.random() < .2) M.chordT = t + 6 + Math.random() * 8;   // the strings rest
+      if (Math.random() < T.rest) { const r = 6 + Math.random() * 8; M.chordT = t + r; M.log(`the strings rest for ${Math.round(r)} s`); }   // the strings rest
       else {
         M.chord = (M.chord + 1 + (Math.random() < .3 ? 1 : 0)) % chords.length;
-        const dur = 16 + Math.random() * 10, ch = chords[M.chord].map(hz);
+        const dur = T.chordLen + Math.random() * T.chordVar, ch = (VOICE[T.voicing] || VOICE.close)(chords[M.chord]).map(hz);
         strings(ch, t, dur, vol);
-        if (Math.random() < .6) strings([ch[0] / 2], t + dur * .15, dur * .85, vol * .9);   // a low cello under it
-        M.chordT = t + dur * .72;   // the next chord swells in as this one fades
+        const cello = Math.random() < T.cello;
+        if (cello) strings([hz(chords[M.chord][0]) / 2], t + dur * .15, dur * .85, vol * .9);   // a low cello under it
+        M.chordT = t + dur * T.overlap;   // the next chord swells in as this one fades
+        M.log(`a chord for ${Math.round(dur)} s${cello ? ', with a cello' : ''}`);
       }
     }
     if (now > M.next - .2) {
       const t = Math.max(now, M.next);
       if (M.phrase <= 0) {
         // a long quiet stretch, then a new phrase of a few notes
-        M.phrase = 2 + Math.floor(Math.random() * 3);
-        M.next = t + (dark ? 30 : 18) + Math.random() * 28; return;
+        M.phrase = T.phraseMin + Math.floor(Math.random() * (T.phraseMax - T.phraseMin + 1));
+        const q = (dark ? T.quiet * 1.6 : T.quiet) + Math.random() * T.quietVar;
+        M.next = t + q; M.log(`the piano is quiet for ${Math.round(q)} s`); return;
       }
       M.phrase--; M.motifT--;
       if (M.motifT <= 0 && learned.size) {
         // a phrase from a learned song, played slow and low
         const ids = [...learned], sp = species[ids[(Math.random() * ids.length) | 0]];
-        sp.notes.forEach((n, i) => piano(hz(LANE[n]) / 2, t + i * 1.1, .035));
-        M.motifT = 8 + Math.random() * 6; M.phrase = 0; M.next = t + sp.notes.length * 1.1 + 4; return;
+        sp.notes.forEach((n, i) => piano(hz(LANE[n] + T.pianoOct * 12) / 2, t + i * 1.1, T.piano * .9));
+        M.motifT = 8 + Math.random() * 6; M.phrase = 0; M.next = t + sp.notes.length * 1.1 + 4; M.log(`the piano plays the ${sp.name}'s song`); return;
       }
-      const sc = SCALE[mode], base = dark ? -12 : 0;
-      if (Math.random() < .8 - storm * .4) piano(hz(base + sc[(Math.random() * sc.length) | 0]), t, .04 * (1 - storm * .5));
-      M.next = t + 3.5 + Math.random() * 4;
+      const sc = SCALE[mode], base = (dark ? -12 : 0) + T.pianoOct * 12;
+      if (Math.random() < .8 - storm * .4) { piano(hz(base + sc[(Math.random() * sc.length) | 0]), t, T.piano * (1 - storm * .5)); M.log('a piano note'); }
+      M.next = t + T.noteGap + Math.random() * T.noteVar;
     }
   }
+  // the lab's buttons: start the next chord, or the next piano phrase, now
+  M.skip = what => { const now = audio.ctx?.currentTime ?? 0; if (what === 'chord') M.chordT = now; else { M.next = now; if (M.phrase <= 0) M.phrase = 3; } };
   function loops(now, { night, storm }, mode) {
     if (!M.loops.length) M.loops = LOOPS.map(([len, step], i) => ({ len, step, next: now + 1 + i * 2.3 + Math.random() * 3 }));
     const lad = ladder(mode), vol = .05 * (1 - storm * .4), down = night > .7 ? 5 : 0;
