@@ -585,7 +585,7 @@ export function start(canvas) {
   };
   function drawHUD() {
     const P = G.P, S = G.view.scr.s * HUD_K, x = (menuRight() + 6) / S, y = 8, low = Math.sin(G.t * 6) > 0;
-    const key = [Math.ceil(G.thirst), Math.ceil(G.hunger), Math.ceil(b.stamina * 50), G.thirst < 20 && low, G.hunger < 20 && low, S, G.photo, G.singing && G.settings.lefty, G.saverOn, P.paper[0] >> 3, P.birdFar[0] >> 3, P.water[2] >> 3].join();
+    const key = [Math.ceil(G.thirst), Math.ceil(G.hunger), Math.ceil(b.stamina * 50), G.thirst < 20 && low, G.hunger < 20 && low, S, G.photo, G.singing && G.settings.lefty, P.paper[0] >> 3, P.birdFar[0] >> 3, P.water[2] >> 3].join();
     if (key === hudKey) return;
     hudKey = key;
     const dpr = Math.min(devicePixelRatio || 1, 2), sc = S * dpr, W0 = x + 84, H0 = y + 36;
@@ -605,8 +605,6 @@ export function start(canvas) {
     };
     meter(y, G.thirst, P.water, 3, 3, (cx, cy) => wash(ctx, [[cx, cy - 4.5], [cx + 3, cy + .5], [cx + 2, cy + 3], [cx - 2, cy + 3], [cx - 3, cy + .5]], P.water, .9, { passes: 2, amp: .3, seed: 1, rim: .4 }));
     meter(y + 11.5, G.hunger, P.berry, 6, 5, (cx, cy) => { wash(ctx, circP(cx - 1.5, cy + 1, 2.2, 8), P.berry, .9, { passes: 2, amp: .3, seed: 2, rim: .4 }); wash(ctx, circP(cx + 1.8, cy, 2.2, 8), P.berry, .9, { passes: 2, amp: .3, seed: 4, rim: .4 }); });
-    // battery saver on: a small leaf after the meters
-    if (G.saverOn) { const lx = x + 13 + BAR + 6, ly = y + 12; wash(ctx, [[lx - 3, ly + 3.5], [lx - 2.6, ly - .5], [lx, ly - 3.5], [lx + 3, ly - 4], [lx + 2.6, ly], [lx, ly + 3]], P.leaf, .85, { passes: 2, amp: .3, seed: 8, rim: .4 }); ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.strokeStyle = C(shade(P.leaf, .6), .7); ctx.lineWidth = .5; ctx.beginPath(); ctx.moveTo(lx - 3.4, ly + 4); ctx.lineTo(lx + 2.2, ly - 3); ctx.stroke(); ctx.restore(); }
     meter(y + 23, b.stamina * 100, shade(P.thermal, .8), 0, 7, (cx, cy) => wash(ctx, [[cx - 3.2, cy + 4], [cx - 1.2, cy - .5], [cx + 1.6, cy - 4], [cx + 3.4, cy - 3.2], [cx + 2.2, cy + 1], [cx - 1, cy + 4]], shade(P.thermal, .8), .9, { passes: 2, amp: .3, seed: 6, rim: .4 }));
   }
 
@@ -842,6 +840,10 @@ export function start(canvas) {
   // Battery saver: on a low battery that isn't charging (or always, by the setting) the game
   // draws 30 frames a second at a lower resolution, and a small leaf shows by the meters.
   let saverOn = false, batteryLow = false;
+  // a small leaf under the menu button while it is on (outside the meters, which fade when full)
+  const saverLeaf = document.createElement('div'); saverLeaf.className = 'saver-leaf hidden'; saverLeaf.title = 'Battery saver';
+  saverLeaf.innerHTML = '<svg viewBox="0 0 16 16" width="16" height="16"><path d="M3 13.5C2.6 8 6 3.4 13.2 2.6 13.4 9 9.6 13 3 13.5Z" fill="#6f8a4a" fill-opacity=".85" stroke="#3a2418" stroke-opacity=".55" stroke-width=".7"/><path d="M2.6 14.2 10.8 5.4" stroke="#3a2418" stroke-opacity=".7" stroke-width=".8" fill="none" stroke-linecap="round"/></svg>';
+  document.getElementById('ui').append(saverLeaf);
   navigator.getBattery?.().then(bt => {
     const f = () => { batteryLow = !bt.charging && bt.level <= .2; };
     f(); bt.addEventListener('levelchange', f); bt.addEventListener('chargingchange', f);
@@ -849,7 +851,7 @@ export function start(canvas) {
   function updateSaver() {
     const on = !!G.settings.saver || batteryLow;
     if (on === saverOn) return;
-    saverOn = G.saverOn = on; res = 0; resLock = false; perf.prev = 0; resize(); hudKey = '';
+    saverOn = G.saverOn = on; res = 0; resLock = false; perf.prev = 0; resize(); saverLeaf.classList.toggle('hidden', !on);
     if (on && !G.settings.saver) ui.toast('Battery low: Aloft drops to 30 frames a second to save it.', 4);
   }
   // G.view.scr is screen space, sized as the art was first drawn (300 units tall): the sky, far
