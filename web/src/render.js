@@ -9,6 +9,7 @@ import { GFX } from './gfx.js';
 import { mousePos, fishPos } from './life.js';
 import { drawFauna } from './fauna.js';
 import { sight } from './guide.js';
+import { drawEncountersGround, drawEncountersAir, morphPal } from './encounters.js';
 import { keepsakesIn } from './story.js';
 
 const BS = 1.25; // hawk drawing scale
@@ -58,6 +59,7 @@ export function render(ctx, G) {
   for (const tw of W.twigsIn(x0, x1)) if (!G.twigGone(tw.id)) twig(ctx, tw.x, tw.y, tw.a, P, G.view.spx);
   for (const k of keepsakesIn(x0, x1)) if (!G.kept.has(k.id)) keepsake(ctx, k, P, G);
   drawFauna(ctx, G, P);
+  drawEncountersGround(ctx, G, P);
   for (const m of W.miceIn(x0, x1)) if (!G.eaten.has(m.id + ':' + G.day)) mouse(ctx, m, P, G);
   for (const t of trees) if (t.song?.active) { const p = t.song.perch; songbird(ctx, p.x, p.y - 3.4, t.song.sp, t.song.singingT > 0, p.x < t.x ? -1 : 1, P, G); }
   if (G.visitor) visitor(ctx, G.visitor, P, G);
@@ -66,6 +68,7 @@ export function render(ctx, G) {
   if (G.glide) glideLine(ctx, G.glide, P, G);
   for (const o of G.boids) smallBird(ctx, o, P, G);
   for (const c of G.crows) crow(ctx, c, P, G);
+  drawEncountersAir(ctx, G, P, smallBird);
   for (const hl of hawks) ctx.drawImage(hl.c, hl.x, hl.y, hl.w, hl.w);
   if (G.carry) carried(ctx, G, P);
   stamina(ctx, G.bird, P);
@@ -859,6 +862,7 @@ function hawkLayer(G, b, P, k, id) {
 }
 function drawHawk(ctx, b, P, G, k = 1) {
   if (b.kind === 'companion') P = shoulderPal(P);
+  else if (b.morph) P = morphPal(P, b.morph);
   if (b.state === 'fly') {
     // turning, the hawk swings square to the viewer and on round: yaw 0 is side-on, ±π/2 head-on
     let yaw = 0;

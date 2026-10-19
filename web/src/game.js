@@ -23,6 +23,7 @@ import { createHaptics } from './haptics.js';
 import { createIntentions } from './intentions.js';
 import { createFauna, updateFauna, squirrelTree } from './fauna.js';
 import { GFX, loadGfx, overlay, record, stats } from './gfx.js';
+import { createEnc, updateEncounters, caughtFish, scrapsIn, eatScrap, morphOf, encDebug } from './encounters.js';
 import { spriteCount } from './paint.js';
 import { captureSightings, guidePages, pageName } from './guide.js';
 import { postcard } from './postcard.js';
@@ -68,7 +69,7 @@ export function start(canvas) {
     thirst: 100, hunger: 100, score: store.get('score', 0),
     eaten: new Set(), berries: new Map(), ringsTaken: new Map(), twigsTaken: new Map(), visibleRings: [],
     parts: [], flocks: [], nearBirds: [], nextFlock: 4, nextNear: 40,
-    boids: [], flockGoal: null, nextBoids: 10, scatterT: 0, hawks: [], visitor: null, crows: [], fauna: createFauna(),
+    boids: [], flockGoal: null, nextBoids: 10, scatterT: 0, hawks: [], visitor: null, crows: [], fauna: createFauna(), enc: createEnc(store),
     chorus: null, chorusDay: 0, callT: 0, glideFrom: null,
     staff: { mode: null, species: null, tree: null, tries: [], lastTry: 0, wrongT: 0, doneT: 0, sang: null },
     learned: new Set(store.get('learned', [])), heard: new Set(store.get('heard', [0, 1])),
@@ -84,7 +85,7 @@ export function start(canvas) {
   if (saved) { b.x = saved.x; G.clockT = saved.clockT; G.thirst = saved.thirst; G.hunger = saved.hunger; }
   b.y = Math.min(saved?.y ?? -1e9, W.groundY(b.x) - 120) ; if (b.y < W.CEILING + 100) b.y = W.groundY(b.x) - 150;
   b.s = 85; b.adult = G.journeys > 0;
-  if (G.nest?.fledged) G.hawks.push(makeHawk(b.x - 60, b.y - 20, 'young'));
+  if (G.nest?.fledged) G.hawks.push(Object.assign(makeHawk(b.x - 60, b.y - 20, 'young'), { morph: morphOf(G.nest) }));
   b.health = G.health;
 
   G.emit = (type, d = {}) => events[type]?.(d);
@@ -236,7 +237,9 @@ export function start(canvas) {
     G.eaten.add(got.id + ':' + G.day); haptics.catch(); intentions.note(got.kind);
     h.y = Math.min(h.y, (wy ?? gy) - FEET - 4); h.g = .5; h.s = Math.max(62, h.s * .7); h.kick = -18;
     if (got.kind === 'fish') events.splash({ x: h.x, y: wy, big: true }); else { audio.thump(); puff(h.x, gy, 4); }
-    if (G.nest?.chick && !G.carry && G.hunger >= 30) {
+    if (got.kind === 'fish' && !G.nest?.chick && caughtFish(G, W.pondNear(h.x, 1))) {
+      audio.rustle(); ui.toast('Caught a fish!', 1.8);   // held in the talons: an eagle may come for it
+    } else if (G.nest?.chick && !G.carry && G.hunger >= 30) {
       G.carry = got.kind; audio.rustle();
       ui.toast(`Caught a ${got.kind}! Carry it to your nest for the chick.`, 3);
     } else {
@@ -262,6 +265,7 @@ export function start(canvas) {
     for (const bu of W.bushesIn(wx - 30, wx + 30)) for (const be of bu.berries) if (G.berryOk(bu, be)) consider(be.x, be.y, { kind: 'berry', id: be.id, x: be.x });
     if (!G.carry && !(G.nest && G.nest.twigs >= NEST_TWIGS)) for (const tw of W.twigsIn(wx - 30, wx + 30)) if (!G.twigGone(tw.id)) consider(tw.x, tw.y - 2, { kind: 'twig', id: tw.id, x: tw.x });
     for (const k of keepsakesIn(wx - 30, wx + 30)) if (!G.kept.has(k.id)) consider(k.x, k.y - 2, { kind: 'keepsake', id: k.id, x: k.x, k });
+    for (const sc of scrapsIn(G, wx - 30, wx + 30)) consider(sc.x, sc.y - 2, { kind: 'scrap', id: sc.id, x: sc.x });
     return best;
   }
   function drink() {
@@ -273,6 +277,7 @@ export function start(canvas) {
   function eat(f) {
     b.peckT = .35;
     if (f.kind === 'keepsake') { audio.rustle(.6); takeKeepsake(G, f.k, ui.toast); return; }
+    if (f.kind === 'scrap') { audio.eat(); eatScrap(G, f, ui.toast); return; }
     if (f.kind === 'twig') {
       G.twigsTaken.set(f.id, G.t); G.carry = 'twig'; audio.rustle();
       once('twig', G.nest ? 'A twig. Carry it to your nest.' : 'You picked up a twig. Perch on a tree branch to start a nest there.');
@@ -668,7 +673,8 @@ export function start(canvas) {
     G.nearBirds = G.nearBirds.filter(n => n.x > -100 && n.x < w + 100);
     updateFlock(G, dt, audio, once);
     updateCrows(G, dt, { audio, haptics, once }); updateFauna(G, dt, { audio, once });
-    if (G.spawnYoung) { G.spawnYoung = false; G.hawks.push(makeHawk(G.nest.x, G.nest.y - 10, 'young')); }
+    updateEncounters(G, dt, { audio, haptics, once, toast: ui.toast, store, makeHawk });
+    if (G.spawnYoung) { G.spawnYoung = false; G.hawks.push(Object.assign(makeHawk(G.nest.x, G.nest.y - 10, 'young'), { morph: morphOf(G.nest) })); }
     G.hawks = G.hawks.filter(h => updateHawk(G, h, dt));
     if (G.hawks.some(h => h.kind === 'companion' && h.life < 1)) once('companion', 'A red-shouldered hawk, smaller than you, its tail barred black and white. Follow it: it knows where the thermals and food are.');
     for (const p of G.parts) {
@@ -920,6 +926,7 @@ export function start(canvas) {
     trick: k => events.trick({ kind: k || 'loop' }),
     heron() { const p = W.pondsIn(b.x, b.x + 20000).find(p => p.w >= 40 && hash(p.k * 4.4 + 2) <= .32); fresh(); b.state = 'fly'; b.x = p.c - 150; b.y = p.waterY - 60; b.s = 70; b.face = 1; snap(); return p; },
   };
+  Object.assign(G.dbg, encDebug(G, { fresh, snap }));
   window.__aloft = G;
   return G;
 }

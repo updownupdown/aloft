@@ -87,6 +87,8 @@ export function createAudio() {
     if (lp) { const fl = ctx.createBiquadFilter(); fl.type = 'lowpass'; fl.frequency.value = lp; o.connect(fl).connect(g); } else o.connect(g);
     g.connect(A.master); o.start(t); o.stop(t + dur + .05);
   }
+  A.tone = tone; A.burst = burst;   // for creatures whose calls live with them (encounters.js)
+
   // a frog: a pulsed low croak
   function croak(vol, delay) {
     for (let k = 0; k < 4; k++) tone({ f: 170 + Math.random() * 60, f2: 140, dur: .06, vol: .05 * vol, type: 'sawtooth', delay: delay + k * .07, lp: 700 });

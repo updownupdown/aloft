@@ -12,6 +12,11 @@ const NOTES = {
   fish: ['Pumpkinseed sunfish', 'Rises to snap insects off the surface on calm evenings.'],
   crow: ['American crow', 'Crows gang up to chase hawks away from their trees, calling the whole neighbourhood in.'],
   monarch: ['Monarch butterfly', 'Flies thousands of miles south each autumn to the same few mountain forests.'],
+  kingbird: ['Eastern kingbird', 'Its Latin name means tyrant of tyrants: it chases hawks, crows and herons away from its nest.'],
+  eagle: ['Bald eagle', 'Would rather steal a fish than catch one; ospreys and hawks are its usual victims.'],
+  bison: ['American bison', 'The largest animal on the prairie. Its hooves flush grasshoppers for hawks that follow the herd.'],
+  bear: ['American black bear', 'Wades into the run in late summer to catch fish leaping upstream.'],
+  grizzly: ['Grizzly bear', 'Stands at the top of a falls and lets the leaping salmon come to its jaws.'],
 };
 const SONG = { Chickadee: 'Says its own name, chick-a-dee-dee-dee, and stays all winter.', Robin: 'One of the first to sing at dawn, a cheery up-and-down carol.',
   Warbler: 'A bright scrap of yellow that sings a rising run of notes.', Wren: 'Tiny, loud, and always with its tail cocked high.',
