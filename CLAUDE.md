@@ -34,7 +34,9 @@ web/src/controls.js     what the strip gestures do in each state (flying, perche
 web/src/songs.js        songbird species: songs, where and when they sing, the gift each song brings
 web/src/life.js         mice, fish, flocks (boids), visiting songbirds, companion hawk and fledgling
 web/src/journey.js      migration, landmarks found, nest and chick, journal + map, save/resume
-web/src/music.js        generative music (Web Audio)
+web/src/story.js        long-term health (tail colour), keepsakes, acrobatics, courtship and a mate down south
+web/src/fauna.js        herons, deer and squirrels: larger life that is only there to be seen
+web/src/music.js        generative music in four styles (valley, tape loops, wind harp, kalimba)
 web/src/photo.js        photo mode (pan, save or share a PNG)
 web/src/ui.js           pause menu, settings, how to play, songbook, toasts
 web/src/singing.js      perched singing: the Sing button and the five-note string over the right strip

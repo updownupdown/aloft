@@ -30,9 +30,9 @@ export function updateFlock(G, dt, audio, once) {
   if (!G.boids.length) {
     G.nextBoids -= dt;
     if (G.nextBoids <= 0 || follow) {
-      G.nextBoids = 25 + Math.random() * 30;
+      G.nextBoids = 60 + Math.random() * 60;
       const dir = follow ? b.face : (Math.random() < .5 ? 1 : -1), x = follow ? b.x - b.face * 140 : (dir > 0 ? G.cam.x - 60 : G.cam.x + w + 60);
-      const sp = SPECIES[(Math.random() * 6) | 0], n = 7 + (Math.random() * 6 | 0), y = W.groundY(x) - 150 - Math.random() * 60;
+      const sp = SPECIES[(Math.random() * 6) | 0], n = 5 + (Math.random() * 4 | 0), y = W.groundY(x) - 150 - Math.random() * 60;
       G.flockGoal = { x: x + dir * 40, y, vx: dir * 55 };
       for (let i = 0; i < n; i++) G.boids.push({ x: x + (Math.random() - .5) * 30, y: y + (Math.random() - .5) * 20, vx: dir * 50, vy: 0, ph: Math.random() * 6, col: sp.cols.body, wing: sp.cols.cap, seed: i });
     }
@@ -105,7 +105,7 @@ export function updateVisitor(G, dt, sing) {
 
 /* ---------- other hawks ---------- */
 export function makeHawk(x, y, kind) {
-  const h = createBird(x, y); h.kind = kind; h.life = 0; h.flapT = 0; h.vxs = 0; h.vys = 0; h.scale = kind === 'young' ? .72 : .92; h.adult = kind !== 'young';
+  const h = createBird(x, y); h.kind = kind; h.life = 0; h.flapT = 0; h.vxs = 0; h.vys = 0; h.scale = kind === 'young' ? .72 : kind === 'mate' || kind === 'suitor' ? 1.04 : .92; h.adult = kind !== 'young';
   return h;
 }
 // where a companion wants to be: the next thermal ahead if the air is rising, else food or water;
@@ -128,6 +128,9 @@ export function updateHawk(G, h, dt) {
   h.life += dt;
   let T;
   if (h.kind === 'young') T = b.state === 'fly' ? { x: b.x - b.face * 40, y: b.y - 18 + Math.sin(G.t * 1.3) * 8 } : { x: b.x + Math.sin(G.t * .6) * 50, y: b.y - 55 + Math.sin(G.t * .9) * 12, circle: true };
+  // a mate flies a little behind and above you; a suitor circles wide, watching
+  else if (h.kind === 'mate') T = b.state === 'fly' ? { x: b.x - b.face * 65, y: b.y - 32 + Math.sin(G.t * .9) * 10 } : { x: b.x + Math.sin(G.t * .4) * 80, y: b.y - 75 + Math.sin(G.t * .7) * 14, circle: true };
+  else if (h.kind === 'suitor') T = h.leaving ? { x: h.x + h.face * 400, y: h.y - 300 } : { x: b.x + Math.sin(G.t * .45) * 110, y: b.y - 90 + Math.sin(G.t * .8) * 25, circle: true };
   else if (h.life > 150) T = { x: h.x + h.face * 400, y: h.y - 300 };
   else T = companionGoal(G, h);
   const dx = T.x - h.x, dy = T.y - h.y, d = Math.hypot(dx, dy) || 1;
@@ -141,7 +144,7 @@ export function updateHawk(G, h, dt) {
   h.flapT -= dt; if (h.vys < -25 && h.flapT <= 0 && !T.circle) { h.flapLeft = 2; h.flapT = 1.2; }
   h.turnT = Math.max(0, h.turnT - dt);
   pose(h, dt, G);
-  return !(h.kind === 'companion' && h.life > 150 && Math.abs(h.x - b.x) > 900);
+  return !((h.kind === 'companion' && h.life > 150 || h.kind === 'suitor' && h.leaving) && Math.abs(h.x - b.x) > 900);
 }
 
 /* ---------- crows: two or three that mob a hawk flying low near their trees ---------- */

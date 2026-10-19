@@ -163,4 +163,12 @@ export function put(ctx, s, alpha = 1) {
 export function blit(ctx, s) {
   ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.drawImage(s.c, s.x0, s.y0, s.w, s.h); ctx.restore();
 }
+// Strips laid edge to edge (ground, hills) are snapped to whole device pixels. Two multiplies
+// that each half-cover the pixel on their shared edge leave it lighter than either strip, which
+// showed as a hairline of white paper between terrain sections. Translate and scale only.
+export function blitStrip(ctx, s) {
+  const m = ctx.getTransform(), x0 = Math.round(m.a * s.x0 + m.e), x1 = Math.round(m.a * (s.x0 + s.w) + m.e);
+  const y0 = Math.round(m.d * s.y0 + m.f), y1 = Math.round(m.d * (s.y0 + s.h) + m.f);
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalCompositeOperation = 'multiply'; ctx.drawImage(s.c, x0, y0, x1 - x0, y1 - y0); ctx.restore();
+}
 export { hash };

@@ -14,18 +14,19 @@ import { render } from './render.js';
 import { createUI } from './ui.js';
 import { mousePos, fishPos, updateFlock, callVisitor, updateVisitor, makeHawk, updateHawk, updateCrows, freeze } from './life.js';
 import { loadJourney, saveJourney, updateJourney, journal, drawMap, placeNote, atPerch, updateNest, seasonName, NEST_TWIGS } from './journey.js';
-import { createMusic } from './music.js';
+import { createMusic, MUSIC_MODES } from './music.js';
+import { loadStory, updateHealth, noteFlap, noteTrick, keepsakesIn, takeKeepsake, updateCourtship, courtNote } from './story.js';
 import { createPhoto } from './photo.js';
 import { createSinging } from './singing.js';
 import { createDial, hourName } from './dial.js';
 import { createHaptics } from './haptics.js';
 import { createIntentions } from './intentions.js';
-import { createFauna, updateFauna } from './fauna.js';
+import { createFauna, updateFauna, squirrelTree } from './fauna.js';
 import { GFX, loadGfx, overlay, record, stats } from './gfx.js';
 import { spriteCount } from './paint.js';
 
 const DAY = 480;               // one day = 8 minutes
-const THIRST_S = 180;          // full to empty in 3 minutes
+const THIRST_S = 420;          // full to empty in 7 minutes
 const HUNGER_S = 300;          // full to empty in 5 minutes
 const BERRY_REGROW = 120;
 const RING_RESPAWN = 90;
@@ -62,7 +63,7 @@ export function start(canvas) {
     weather: 'sunny', weatherT: 90, overcast: 0, storm: 0, rain: 0, wet: 0, rainId: 0, flash: 0, cloudDrift: 0, nextBolt: 5,
     thirst: 100, hunger: 100, score: store.get('score', 0),
     eaten: new Set(), berries: new Map(), ringsTaken: new Map(), twigsTaken: new Map(), visibleRings: [],
-    parts: [], flocks: [], nearBirds: [], nextFlock: 4, nextNear: 12,
+    parts: [], flocks: [], nearBirds: [], nextFlock: 4, nextNear: 40,
     boids: [], flockGoal: null, nextBoids: 10, scatterT: 0, hawks: [], visitor: null, crows: [], fauna: createFauna(),
     chorus: null, chorusDay: 0, callT: 0, glideFrom: null,
     staff: { mode: null, species: null, tree: null, tries: [], lastTry: 0, wrongT: 0, doneT: 0, sang: null },
@@ -74,11 +75,13 @@ export function start(canvas) {
     settings: { glide: store.get('glide', true), music: store.get('music', true), lefty: store.get('lefty', false), full: store.get('full', true) },
   };
   const saved = loadJourney(G, store);
+  loadStory(G, saved);
   const b = G.bird;
   if (saved) { b.x = saved.x; G.clockT = saved.clockT; G.thirst = saved.thirst; G.hunger = saved.hunger; }
   b.y = Math.min(saved?.y ?? -1e9, W.groundY(b.x) - 120) ; if (b.y < W.CEILING + 100) b.y = W.groundY(b.x) - 150;
   b.s = 85; b.adult = G.journeys > 0;
   if (G.nest?.fledged) G.hawks.push(makeHawk(b.x - 60, b.y - 20, 'young'));
+  b.health = G.health;
 
   G.emit = (type, d = {}) => events[type]?.(d);
   G.berryGone = id => G.berries.has(id) && G.t - G.berries.get(id) < BERRY_REGROW;
@@ -105,6 +108,7 @@ export function start(canvas) {
 
   const music = createMusic(audio);
   music.on = G.settings.music;
+  music.setMode(store.get('musicMode', 'valley'));
   const playSong = sp => sp.notes.forEach((n, i) => setTimeout(() => audio.note(n, sp.voice), i * sp.gap * 1000));
   const ui = createUI({
     audio, G, store, species: SPECIES, haptics,
@@ -112,8 +116,10 @@ export function start(canvas) {
     playSong,
     hooks: {
       music: on => music.setOn(on),
+      musicModes: MUSIC_MODES,
+      musicMode: m => { if (m) { music.setMode(m); store.set('musicMode', m); } return music.mode; },
       photo: () => photo.begin(),
-      journal: () => journal(G, DAY),
+      journal: () => ({ ...journal(G, DAY), court: courtNote(G) }),
       drawMap: cv => drawMap(G, cv),
       album: () => store.get('album', []),
       // a new journey flies a shared world if a link named one, else a fresh one of its own
@@ -161,7 +167,9 @@ export function start(canvas) {
   const spark = (x, y) => part('spark', x, y, (Math.random() - .5) * 30, (Math.random() - .5) * 30, .7);
   const puff = (x, y, n = 6) => { for (let i = 0; i < n; i++) part('puff', x + (Math.random() - .5) * 8, y - 2, (Math.random() - .5) * 20, -10, .8); };
   const events = {
-    flap: () => { audio.flap(); haptics.flap(); G.glideFrom = null; },
+    flap: ({ quality } = {}) => { audio.flap(); haptics.flap(); G.glideFrom = null; noteFlap(G, quality); },
+    // a loop, a flip: acrobatics count toward a courtship down south
+    trick: ({ kind } = {}) => { noteTrick(G, kind); once('trick', 'Acrobatics! Loops, flips and stoops all count when a hawk down south is watching.'); },
     hop: () => { audio.rustle(.5); },
     tired: () => { audio.tired?.(); once('noflap', 'Your wings are spent. Glide, or find rising air, until they recover.'); },
     splash: ({ x, y, big }) => {
@@ -245,6 +253,7 @@ export function start(canvas) {
     if (G.wormsOk()) for (const wm of W.wormsIn(wx - 30, wx + 30)) if (!G.eaten.has(wm.id + G.rainId)) consider(wm.x, wm.y - 3, { kind: 'worm', id: wm.id + G.rainId, x: wm.x });
     for (const bu of W.bushesIn(wx - 30, wx + 30)) for (const be of bu.berries) if (G.berryOk(bu, be)) consider(be.x, be.y, { kind: 'berry', id: be.id, x: be.x });
     if (!G.carry && !(G.nest && G.nest.twigs >= NEST_TWIGS)) for (const tw of W.twigsIn(wx - 30, wx + 30)) if (!G.twigGone(tw.id)) consider(tw.x, tw.y - 2, { kind: 'twig', id: tw.id, x: tw.x });
+    for (const k of keepsakesIn(wx - 30, wx + 30)) if (!G.kept.has(k.id)) consider(k.x, k.y - 2, { kind: 'keepsake', id: k.id, x: k.x, k });
     return best;
   }
   function drink() {
@@ -255,6 +264,7 @@ export function start(canvas) {
   }
   function eat(f) {
     b.peckT = .35;
+    if (f.kind === 'keepsake') { audio.rustle(.6); takeKeepsake(G, f.k, ui.toast); return; }
     if (f.kind === 'twig') {
       G.twigsTaken.set(f.id, G.t); G.carry = 'twig'; audio.rustle();
       once('twig', G.nest ? 'A twig. Carry it to your nest.' : 'You picked up a twig. Perch on a tree branch to start a nest there.');
@@ -346,7 +356,7 @@ export function start(canvas) {
       const fits = [...G.learned].map(id => SPECIES[id]).filter(s => S.tries.every((n, k) => s.notes[k] === n));
       const done = fits.find(s => s.notes.length === S.tries.length);
       if (!fits.length) { S.wrongT = .5; S.tries.pop(); }
-      else if (done) { S.doneT = 2.5; S.sang = done; respond(done, null, quality()); intentions.note('song'); }
+      else if (done) { S.doneT = 2.5; S.sang = done; respond(done, null, quality()); intentions.note('song'); if (G.suitor) G.courtBonus += .06; }
     }
   }
   function learn(sp) {
@@ -569,7 +579,8 @@ export function start(canvas) {
     for (const f of G.flocks) f.x += f.dir * f.v * dt - camDx * .15;
     G.flocks = G.flocks.filter(f => f.x > -120 && f.x < w + 120);
     if ((G.nextNear -= dt) <= 0) {
-      G.nextNear = 15 + Math.random() * 25; const dir = Math.random() < .5 ? 1 : -1, n = 1 + (Math.random() * 3 | 0);
+      // birds dashing past the eye are a rare surprise, not traffic
+      G.nextNear = 50 + Math.random() * 70; const dir = Math.random() < .5 ? 1 : -1, n = 1 + (Math.random() < .3 ? 1 : 0);
       for (let i = 0; i < n; i++) G.nearBirds.push({ x: dir > 0 ? -30 - i * 22 : w + 30 + i * 22, y: h * (.3 + Math.random() * .4), y0: 0, dir, v: 120 + Math.random() * 40, ph: Math.random() * TAU, seed: i + (Math.random() * 99 | 0), col: SPECIES[(Math.random() * SPECIES.length) | 0].cols.body });
     }
     for (const n of G.nearBirds) { n.x += n.dir * n.v * dt - camDx * 1.3; n.ph += dt * 22; n.y += Math.sin(G.t * 4 + n.seed) * 20 * dt; }
@@ -589,6 +600,7 @@ export function start(canvas) {
     if (b.state === 'fly' && G.t > 20) {
       if (W.miceIn(G.cam.x + 40, G.cam.x + G.view.w - 40).some(m => !G.eaten.has(m.id + ':' + G.day) && mousePos(m, G.t).show > .8)) once('mice', 'Mice in the grass. Dive at one, fast and steep, to catch it.');
       if (W.pondsIn(G.cam.x + 40, G.cam.x + G.view.w - 40).some(p => !W.frozen(p) && p.fish.length)) once('fish', 'Fish in the pond. Dive into the water right above one to catch it.');
+      if (keepsakesIn(G.cam.x + 40, G.cam.x + G.view.w - 40).some(k => !G.kept.has(k.id))) once('keepsake', 'Something glints in the grass: a keepsake for a nest. Land beside it and tap it to pick it up.');
     }
   }
   // night roost: perched in the evening or at night, the Sleep button sleeps until dawn
@@ -684,7 +696,12 @@ export function start(canvas) {
       G.thirst = Math.max(0, G.thirst - dt * 100 / THIRST_S);
       G.hunger = Math.max(0, G.hunger - dt * 100 / HUNGER_S);
     }
-    G.flapPower = .5 + .25 * (G.thirst > 0) + .25 * (G.hunger > 0);
+    // nothing bad comes of an empty meter; a healthy hawk just flies a little stronger
+    if (!G.roost) updateHealth(G, dt);
+    G.flapPower = 1 + .12 * G.health;
+    // a full-speed stoop is acrobatics too (counted once per dive)
+    if (b.state === 'fly' && b.s > 235 && !G.stoopArmed) { G.stoopArmed = true; events.trick({ kind: 'stoop' }); }
+    if (b.s < 150 || b.state !== 'fly') G.stoopArmed = false;
     if (G.thirst < 25) once('thirsty', 'Thirsty. Find a pond and land on the water to drink.');
     if (G.hunger < 25) once('hungry', 'Hungry. Bushes have berries, worms come up after rain, and mice and fish can be caught with a dive.');
     G.hint = b.target;
@@ -697,6 +714,7 @@ export function start(canvas) {
     sleepBtn.classList.toggle('hidden', !canSleep());
     updateJourney(G, dt, { toast: ui.toast, once, audio });
     updateNest(G, DAY, ui.toast);
+    updateCourtship(G, dt, { toast: ui.toast, audio, makeHawk, place: placeNote(G, b.x) });
     const vr = [];
     for (const r of W.ringsIn(G.cam.x - 60, G.cam.x + G.view.w + 60)) {
       const tk = G.ringsTaken.get(r.id); r.gone = tk !== undefined && G.t - tk < RING_RESPAWN; vr.push(r);
@@ -781,7 +799,7 @@ export function start(canvas) {
       if (f > 0) { ctx.fillStyle = C([28, 30, 46], f * .92); ctx.fillRect(0, 0, G.view.w, G.view.h); }
     }
     if (!G.paused) { record(ms, t1 - ta, performance.now() - t1); stats.sprites = spriteCount(); }
-    music.update(dt, { night: nightness(G.tod), storm: G.storm, learned: G.learned, species: SPECIES });
+    music.update(dt, { night: nightness(G.tod), storm: G.storm, learned: G.learned, species: SPECIES, speed: b.state === 'fly' ? b.s : 0, wind: G.wind, height: W.groundY(b.x) - b.y });
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
@@ -813,6 +831,11 @@ export function start(canvas) {
     respond(name) { respond(SPECIES.find(s => s.name === name), null); },
     call, chorus() { G.chorus = { t: CHORUS_S }; G.chorusDay = G.day; }, intentions, haptics,
     crows() { G.crowT = 0; const t = W.treesIn(b.x, b.x + 3000)[0]; fresh(); b.state = 'fly'; b.x = t.x - 40; b.y = t.y - 80; b.s = 70; b.g = -.1; snap(); },
+    squirrel() { const t = W.treesIn(b.x, b.x + 20000).find(squirrelTree); fresh(); b.state = 'fly'; b.x = t.x + 140; b.y = t.y - 90; b.s = 30; b.face = -1; snap(); return t; },
+    keepsake() { const k = keepsakesIn(b.x + 100, b.x + 20000).find(k => !G.kept.has(k.id)); fresh(); b.x = k.x + 14; b.y = W.groundY(b.x) - 6; b.state = 'ground'; b.face = -1; snap(); return k; },
+    health(v) { G.health = v; b.health = v; },
+    marsh() { fresh(); b.state = 'fly'; b.x = W.JOURNEY - 1500; b.y = W.groundY(b.x) - 150; b.s = 85; b.face = 1; G.goal = 'north'; snap(); },
+    trick: k => events.trick({ kind: k || 'loop' }),
     heron() { const p = W.pondsIn(b.x, b.x + 20000).find(p => p.w >= 40 && hash(p.k * 4.4 + 2) <= .32); fresh(); b.state = 'fly'; b.x = p.c - 150; b.y = p.waterY - 60; b.s = 70; b.face = 1; snap(); return p; },
   };
   window.__aloft = G;

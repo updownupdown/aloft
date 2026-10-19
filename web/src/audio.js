@@ -96,12 +96,61 @@ export function createAudio() {
   A.learned = () => { [0, 1, 2, 3, 4].forEach((n, i) => tone({ f: BASE[n] * keyMul(), f2: BASE[n] * keyMul() * 1.06, dur: .3, vol: .1, delay: i * .09 })); };
   // a feather earned: a soft rising pair of notes
   A.feather = () => { tone({ f: BASE[2] * keyMul() / 2, dur: .5, vol: .1, type: 'triangle' }); tone({ f: BASE[4] * keyMul() / 2, dur: .9, vol: .1, type: 'triangle', delay: .18 }); };
-  // the red-tail's scream: a hoarse descending cry. `far` is another hawk answering from a distance.
+  // Songbirds (and the far hawk) sing through a short valley echo of their own, so a call
+  // hangs in the air a moment instead of stopping dead.
+  let birdBus = null;
+  function bus() {
+    if (birdBus) return birdBus;
+    const ctx = A.ctx, g = ctx.createGain(), dl = ctx.createDelay(1), fb = ctx.createGain(), lp = ctx.createBiquadFilter(), wet = ctx.createGain();
+    dl.delayTime.value = .19; fb.gain.value = .24; lp.type = 'lowpass'; lp.frequency.value = 3600; wet.gain.value = .32;
+    g.connect(A.master); g.connect(dl); dl.connect(lp); lp.connect(fb); fb.connect(dl); lp.connect(wet); wet.connect(A.master);
+    return (birdBus = g);
+  }
+  // One whistled syllable: a pitch path glided through over `dur`, a soft-edged swell, and
+  // optionally a trill (fast tremolo), a vibrato, and a quiet overtone that gives it body.
+  function syll({ t, path, dur, vol, trill = 0, trillF = 30, vib = 0, vibF = 6, over = .08, type = 'sine', attack = .015, lp = 0 }) {
+    const ctx = A.ctx, out = ctx.createGain(), env = ctx.createGain();
+    env.gain.setValueAtTime(0, t); env.gain.linearRampToValueAtTime(vol, t + Math.min(attack, dur * .3));
+    env.gain.linearRampToValueAtTime(vol * .75, t + dur * .7); env.gain.exponentialRampToValueAtTime(.0005, t + dur);
+    let dst = env;
+    if (trill) {
+      const am = ctx.createGain(), l = ctx.createOscillator(), lg = ctx.createGain();
+      am.gain.value = 1 - trill / 2; l.frequency.value = trillF; lg.gain.value = trill / 2;
+      l.connect(lg).connect(am.gain); am.connect(env); l.start(t); l.stop(t + dur + .05); dst = am;
+    }
+    if (lp) { const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = lp; env.connect(f).connect(out); } else env.connect(out);
+    out.connect(bus());
+    [[1, 1], [2, over]].forEach(([m, g]) => {
+      if (g <= 0) return;
+      const o = ctx.createOscillator(), og = ctx.createGain(); o.type = m === 1 ? type : 'sine'; og.gain.value = g;
+      o.frequency.setValueAtTime(path[0] * m, t);
+      path.forEach((f, i) => { if (i) o.frequency.exponentialRampToValueAtTime(f * m, t + dur * i / (path.length - 1)); });
+      if (vib) { const l = ctx.createOscillator(), lg = ctx.createGain(); l.frequency.value = vibF; lg.gain.value = vib * m; l.connect(lg).connect(o.frequency); l.start(t); l.stop(t + dur + .05); }
+      o.connect(og).connect(dst); o.start(t); o.stop(t + dur + .05);
+    });
+  }
+  // The red-tail's scream, "kee-eeeee-arr": a hoarse rising onset, a long rasping hold, then
+  // the drop. The rasp is a fast wobble in pitch; a band of breath noise rides on top.
+  // `far` is another hawk answering from across the valley, softer and echoing.
   A.scream = (far = false) => {
-    const vol = far ? .07 : .24, delay = far ? 1.1 + Math.random() * .6 : 0, lp = far ? 1400 : 0;
-    tone({ f: 2900, f2: 1500, dur: 1.1, vol, type: 'sawtooth', vib: 70, vibF: 34, delay, lp: lp || 3200 });
-    tone({ f: 2900 * 1.5, f2: 1500 * 1.5, dur: .9, vol: vol * .25, type: 'sawtooth', vib: 60, vibF: 34, delay, lp: lp || 5000 });
-    burst({ f: 2400, f2: 1300, q: 1.2, dur: 1, vol: vol * .9, delay });
+    if (!A.ctx) return;
+    const ctx = A.ctx, t = ctx.currentTime + (far ? 1.1 + Math.random() * .6 : 0), vol = far ? .06 : .17, k = far ? .97 : 1;
+    const env = ctx.createGain(), bp = ctx.createBiquadFilter(), lp = ctx.createBiquadFilter();
+    bp.type = 'bandpass'; bp.Q.value = 2.2; lp.type = 'lowpass'; lp.frequency.value = far ? 1900 : 5200;
+    env.gain.setValueAtTime(0, t); env.gain.linearRampToValueAtTime(vol, t + .07); env.gain.linearRampToValueAtTime(vol * .85, t + .7);
+    env.gain.linearRampToValueAtTime(vol * .7, t + 1.0); env.gain.exponentialRampToValueAtTime(.0008, t + 1.35);
+    const pitch = (o, m) => {
+      o.frequency.setValueAtTime(2300 * k * m, t); o.frequency.exponentialRampToValueAtTime(3050 * k * m, t + .12);
+      o.frequency.exponentialRampToValueAtTime(2750 * k * m, t + .75); o.frequency.exponentialRampToValueAtTime(1550 * k * m, t + 1.3);
+    };
+    const o = ctx.createOscillator(), o2 = ctx.createOscillator(), g2 = ctx.createGain(), rasp = ctx.createOscillator(), rg = ctx.createGain();
+    o.type = 'sawtooth'; o2.type = 'sine'; g2.gain.value = .9; pitch(o, 1); pitch(o2, 1);
+    bp.frequency.setValueAtTime(2900, t); bp.frequency.exponentialRampToValueAtTime(1800, t + 1.3);
+    rasp.frequency.value = 62; rg.gain.value = 110; rasp.connect(rg); rg.connect(o.frequency); rg.connect(o2.frequency);
+    o.connect(bp).connect(env); o2.connect(g2).connect(env); env.connect(lp).connect(far ? bus() : A.master);
+    if (!far) { const send = ctx.createGain(); send.gain.value = .3; lp.connect(send).connect(bus()); }
+    for (const x of [o, o2, rasp]) { x.start(t); x.stop(t + 1.4); }
+    burst({ f: 3200, f2: 1900, q: 1.6, dur: 1.2, vol: vol * .45, delay: t - ctx.currentTime });
   };
   // the fledgling's thin answering peep
   A.peep = () => { tone({ f: 3100, f2: 2600, dur: .22, vol: .07, vib: 40, vibF: 30, delay: .8 }); tone({ f: 3300, f2: 2700, dur: .2, vol: .06, vib: 40, vibF: 30, delay: 1.1 }); };
@@ -110,13 +159,26 @@ export function createAudio() {
   // the heron's croak as it lifts off, and a deer's snort
   A.heron = () => { tone({ f: 330, f2: 240, dur: .35, vol: .08, type: 'sawtooth', lp: 1100, vib: 24, vibF: 18 }); burst({ f: 900, q: 1, dur: .35, vol: .1 }); };
   A.snort = () => burst({ f: 700, f2: 300, type: 'lowpass', dur: .18, vol: .25 });
-  // a songbird note: a quick upward chirp with a little trill; `voice` shapes it per species
+  // A songbird note on one of the five song pitches, in that species' own voice:
+  // 0 chickadee, a clear falling whistle; 1 robin, a rounded carol; 2 warbler, a quick trill;
+  // 3 wren, a bubbly run of chips; 4 thrush, a fluting note with vibrato; 5 finch, a bright
+  // buzz; 6 owl, a soft low hoot; 7 lark, a liquid warble.
   A.note = (lane, voice = 0, vol = .16) => {
-    const f = BASE[lane] * keyMul();
-    if (voice % 3 === 0) tone({ f: f * .92, f2: f * 1.08, dur: .22, vol, vib: 0 });
-    else if (voice % 3 === 1) tone({ f, f2: f * .9, dur: .26, vol, vib: f * .03 });
-    else { tone({ f: f * .96, f2: f * 1.04, dur: .1, vol }); tone({ f: f * .98, f2: f * 1.05, dur: .1, vol: vol * .8, delay: .11 }); }
+    if (!A.ctx) return;
+    const f = BASE[lane] * keyMul(), t = A.ctx.currentTime, v = vol * .85;
+    switch (voice % 8) {
+      case 0: syll({ t, path: [f * 1.03, f, f * .985], dur: .34, vol: v, over: .04, attack: .03 }); break;
+      case 1: syll({ t, path: [f * .86, f * 1.07, f * .98], dur: .22, vol: v, over: .14, vib: f * .01, vibF: 9 }); break;
+      case 2: syll({ t, path: [f * .93, f * 1.05], dur: .25, vol: v, trill: .9, trillF: 36, over: .06 }); break;
+      case 3: for (let k = 0; k < 3; k++) syll({ t: t + k * .055, path: [f * 1.1, f * .93], dur: .05, vol: v * (1 - k * .15), over: .1, attack: .005 }); break;
+      case 4: syll({ t, path: [f * .97, f, f * 1.005], dur: .4, vol: v, vib: f * .012, vibF: 5.5, over: .26, attack: .04 }); break;
+      case 5: syll({ t, path: [f * 1.12, f * .92], dur: .16, vol: v * .8, type: 'triangle', trill: .55, trillF: 72, over: .1, lp: 5200 }); break;
+      case 6: syll({ t, path: [f / 4 * 1.03, f / 4, f / 4 * .96], dur: .5, vol: v * 1.3, over: .03, attack: .09, lp: 900 }); break;
+      default: syll({ t, path: [f * .9, f * 1.1, f * .95, f * 1.06], dur: .21, vol: v, vib: f * .035, vibF: 21, over: .1 });
+    }
   };
+  // a red squirrel's scolding chatter: a quick string of dry ticks
+  A.chatter = () => { for (let k = 0; k < 7; k++) burst({ f: 3400 + Math.random() * 600, q: 6, dur: .045, vol: .09, delay: k * .07 + (k > 3 ? .12 : 0) }); };
   // the hawk's own voice for the singing string: one sustained whistle that follows the finger,
   // with a little vibrato that grows the longer a note is held
   let V = null;

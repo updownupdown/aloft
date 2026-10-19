@@ -1,12 +1,13 @@
 // Draws one frame in the Wet Wash style. World layers are washed polygons; the sky,
 // far hills and weather are screen-space layers with parallax.
 import { TAU, clamp, lerp, hash, vnoise, fbm, C, shade, mix } from './util.js';
-import { wash, stroke, strokes, jit, pathPts, circP, ellP, bloom, softWash, lift, mist, paperBase, paperFinish, sprite, blit, spriteFrame, stamp, put } from './paint.js';
+import { wash, stroke, strokes, jit, pathPts, circP, ellP, bloom, softWash, lift, mist, paperBase, paperFinish, sprite, blit, blitStrip, spriteFrame, stamp, put } from './paint.js';
 import * as W from './world.js';
 import { nightness } from './palette.js';
 import { GFX } from './gfx.js';
 import { mousePos, fishPos } from './life.js';
 import { drawFauna } from './fauna.js';
+import { keepsakesIn } from './story.js';
 
 const BS = 1.25; // hawk drawing scale
 
@@ -53,6 +54,7 @@ export function render(ctx, G) {
   for (const b of W.bushesIn(x0, x1)) bush(ctx, b, P, G);
   if (G.wormsOk()) for (const wm of W.wormsIn(x0, x1)) if (!G.eaten.has(wm.id + G.rainId)) worm(ctx, wm, P, G);
   for (const tw of W.twigsIn(x0, x1)) if (!G.twigGone(tw.id)) twig(ctx, tw.x, tw.y, tw.a, P, G.view.spx);
+  for (const k of keepsakesIn(x0, x1)) if (!G.kept.has(k.id)) keepsake(ctx, k, P, G);
   drawFauna(ctx, G, P);
   for (const m of W.miceIn(x0, x1)) if (!G.eaten.has(m.id + ':' + G.day)) mouse(ctx, m, P, G);
   for (const t of trees) if (t.song?.active) { const p = t.song.perch; songbird(ctx, p.x, p.y - 3.4, t.song.sp, t.song.singingT > 0, p.x < t.x ? -1 : 1, P, G); }
@@ -127,7 +129,7 @@ function hillLayer(ctx, G, which, base, oy, w, px) {
       wash(x, pts, P[L.col], L.a, { ...L.o, base: i0 });
       if (L.trees) midTrees(x, P, xa - 12, xb + 12, L.y);
     });
-    blit(ctx, s);
+    blitStrip(ctx, s);
   }
   ctx.restore();
 }
@@ -244,7 +246,7 @@ function groundLayer(ctx, G, P, x0, x1) {
       for (let wx = ga; wx <= gb; wx += 40) gx.addColorStop((wx - ga) / (gb - ga), C(W.biomeAt(wx).tint, tk));
       x.save(); x.globalCompositeOperation = 'multiply'; x.fillStyle = gx; pathPts(x, poly); x.fill(); x.restore();
     });
-    blit(ctx, s);
+    blitStrip(ctx, s);
   }
   const top = [];
   for (let i = i0; i <= i1; i++) top.push([i * step, W.groundY(i * step)]);
@@ -287,6 +289,15 @@ function pond(ctx, p, P, G) {
   }
   ctx.stroke(); ctx.restore();
   stroke(ctx, [[p.x0, p.waterY], [p.x1, p.waterY]], shade(P.water, .7), .35, 1, p.k);
+  // a lake has lily pads out in the shallows from spring to autumn, all in one fill
+  if (p.lake && G.sea.winter < .5) {
+    ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = C(P.leaf, .6 * (1 - G.sea.winter * 2)); ctx.beginPath();
+    for (let j = 0; j < 9; j++) {
+      const x = lerp(p.x0 + 10, p.x1 - 10, (j < 5 ? .04 + j * .045 : .62 + (j - 5) * .06) + hash(p.k * 3 + j) * .03), r = 2.2 + 1.4 * hash(p.k + j * 7);
+      ctx.moveTo(x, p.waterY + .4); ctx.ellipse(x, p.waterY + .4, r, r * .32, 0, .35, TAU - .1);
+    }
+    ctx.fill(); ctx.restore();
+  }
   // reeds on the banks
   const stems = [], heads = [];
   for (const [x, s] of [[p.x0 + 2, -1], [p.x1 - 2, 1]]) for (let j = 0; j < 4; j++) {
@@ -303,17 +314,19 @@ function pond(ctx, p, P, G) {
 // Snow and blossom are paper and petals rather than multiply paint, so they are drawn live.
 function tree(ctx, t, P, G) {
   const h = t.h, sd = t.seed, sw = Math.sin(G.t * 1.3 + sd * 1.7) * (1.2 + Math.abs(G.wind) * .05);
-  const leaves = t.type ? 1 - G.sea.winter * .92 : 1, px = G.view.spx, R = 7 + h * (t.type ? .36 : .31);
+  const leaves = t.ever ? 1 : 1 - G.sea.winter * .92, px = G.view.spx, R = 7 + h * TREE_R[t.type];
   ctx.save(); ctx.translate(t.x, t.y); ctx.rotate(t.lean);
   const body = sprite('t' + t.i, pk, -R, -h * 1.12 - 6, R, 5, px, x => treeBody(x, t, P, leaves));
   ctx.save(); ctx.transform(1, 0, -sw / h, 1, 0, 0); blit(ctx, body); ctx.restore();
-  if (t.type === 0) {
+  if (t.type === 5) {
+    if (G.sea.winter > .05) for (const [cx, cy, rx] of pineClouds(t)) lift(ctx, ellP(cx + sw * .8, cy - rx * .2, rx * .85, rx * .14), P.paper, .6 * G.sea.winter);
+  } else if (t.type === 0) {
     // snow settles on the tiers in winter
     if (G.sea.winter > .05) for (let k = 0; k < 5; k++) {
       const yb = -h * (.16 + k * .16), yt = yb - h * .3, hw = h * .3 * (1 - k / 5.6), s2 = sw * (k + 1) / 5;
       lift(ctx, [[-hw * .9, yb - 1], [s2, yt + 1], [hw * .9, yb - 1], [hw * .5, yb - h * .04], [s2 * .5, yt + h * .1], [-hw * .5, yb - h * .04]], P.paper, .6 * G.sea.winter);
     }
-  } else if (G.sea.spring > .05) {
+  } else if (t.type === 1 && G.sea.spring > .05) {
     // spring blossom, one path for all the petals
     const Rb = h * .2, cy = -h * .78, blobs = treeBlobs(Rb, cy);
     ctx.fillStyle = C(P.blossom, .8 * G.sea.spring); ctx.beginPath();
@@ -329,20 +342,36 @@ function tree(ctx, t, P, G) {
     // the perchable branches, drawn over the canopy so they read as places to land
     for (const b of t.branches) {
       stroke(x, [[0, b.y0 + 2], [b.x1 * .5, b.y0 + (b.y1 - b.y0) * .45], [b.x1, b.y1]], P.trunk, .9, 2.4, sd);
-      if (leaves > .02) wash(x, circP(b.x1 + b.side * 1.5, b.y1 - 2.5, 4, 9), t.type ? P.leaf : P.pine, .5 * leaves, { passes: 2, amp: 1, seed: sd + 30, rim: .3 });
+      if (leaves > .02) wash(x, circP(b.x1 + b.side * 1.5, b.y1 - 2.5, 4, 9), t.ever ? P.pine : P.leaf, .5 * leaves, { passes: 2, amp: 1, seed: sd + 30, rim: .3 });
     }
   }));
   ctx.restore();
 }
 const treeBlobs = (R, cy) => [[0, cy, R], [-R * .8, cy + R * .35, R * .72], [R * .85, cy + R * .3, R * .75], [-R * .3, cy - R * .7, R * .66], [R * .45, cy - R * .55, R * .6]];
+const TREE_R = [.31, .36, .3, .56, .17, .42];   // half the width of each kind of tree, as a share of its height
+// the umbrella pine's flat layered crown: [x, y, half-width]
+const pineClouds = t => { const h = t.h; return [[-h * .1, -h * .78, h * .3], [h * .14, -h * .9, h * .26], [-h * .02, -h * .99, h * .17]]; };
 function treeBody(ctx, t, P, leaves) {
   const h = t.h, sd = t.seed, tw = Math.max(2, h * .035);
+  if (t.type === 2) return birch(ctx, t, P, leaves);
+  if (t.type === 5) return umbrellaPine(ctx, t, P);
   wash(ctx, [[-tw * 1.3, 1], [-tw * .45, -h * .82], [tw * .45, -h * .82], [tw * 1.3, 1]], P.trunk, .7, { passes: 2, amp: .7, seed: sd, rim: .4 });
   if (t.type === 0) {
     const tiers = 5;
     for (let k = 0; k < tiers; k++) {
       const yb = -h * (.16 + k * .16), yt = yb - h * .3, hw = h * .3 * (1 - k / (tiers + .6));
       wash(ctx, [[-hw, yb], [-hw * .55, yb - h * .06], [0, yt], [hw * .55, yb - h * .06], [hw, yb], [0, yb + h * .03]], k % 2 ? P.pine : P.pineDk, .55, { passes: 2, amp: 1.6, seed: sd + k, rim: .4 });
+    }
+    return;
+  }
+  if (t.type === 3) return willow(ctx, t, P, leaves);
+  if (t.type === 4) {
+    // a poplar: one tall narrow flame of leaves
+    if (leaves < .8) strokes(ctx, [-.5, -.2, .15, .45].map((u, i) => [[0, -h * .3], [u * h * .06, -h * (.6 + .1 * i)], [u * h * .09, -h * (.85 + .07 * i)]]), P.trunk, .7 * (1 - leaves), 1.2, sd);
+    if (leaves > .02) {
+      wash(ctx, ellP(0, -h * .62, h * .15, h * .38, 0, 16), P.leafDk, .5 * leaves, { passes: 2, amp: 1.6, seed: sd, rim: .4 });
+      wash(ctx, ellP(-h * .03, -h * .7, h * .1, h * .27, 0, 14), P.leaf, .45 * leaves, { passes: 2, amp: 1.4, seed: sd + 3, rim: .3 });
+      wash(ctx, ellP(-h * .05, -h * .82, h * .055, h * .14, 0, 12), P.leafHi, .4 * leaves, { passes: 1, amp: 1, seed: sd + 5, rim: 0 });
     }
     return;
   }
@@ -356,6 +385,45 @@ function treeBody(ctx, t, P, leaves) {
     blobs.forEach((b, i) => wash(ctx, circP(b[0], b[1], b[2], 13), i > 2 ? P.leafHi : P.leaf, .55 * leaves * (.8 + .2 * hash(sd + i)), { passes: 2, amp: 1.8, seed: sd + i * 2, rim: .4 }));
     wash(ctx, circP(R * .3, cy + R * .25, R * .55, 10), P.leafDk, .35 * leaves, { passes: 1, amp: 1, seed: sd + 8, rim: 0 });
   }
+}
+// a birch: a slim pale trunk with dark marks, and a loose airy crown of small leaves
+function birch(ctx, t, P, leaves) {
+  const h = t.h, sd = t.seed, tw = Math.max(1.5, h * .022);
+  wash(ctx, [[-tw * 1.2, 1], [-tw * .4, -h * .9], [tw * .4, -h * .9], [tw * 1.2, 1]], mix(P.paper, P.trunk, .28), .8, { passes: 2, amp: .4, seed: sd, rim: .5 });
+  ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = C(P.birdFar, .55); ctx.beginPath();
+  for (let i = 0; i < 9; i++) { const y = -h * (.05 + .09 * i) - hash(sd + i) * 4, w = tw * (.5 + hash(sd * 2 + i)); ctx.rect(-tw * (hash(sd + i * 3) - .2), y, w, .8 + hash(i + sd) * .6); }
+  ctx.fill(); ctx.restore();
+  strokes(ctx, [[[0, -h * .55], [-h * .1, -h * .7], [-h * .17, -h * .78]], [[0, -h * .62], [h * .1, -h * .76], [h * .16, -h * .84]]], mix(P.paper, P.trunk, .45), .8, 1.1, sd);
+  if (leaves > .02) for (let i = 0; i < 8; i++) {
+    const x = (hash(sd * 5 + i) - .5) * h * .4, y = -h * (.62 + .32 * hash(sd * 7 + i)), r = h * (.07 + .04 * hash(sd + i * 11));
+    wash(ctx, circP(x, y, r, 11), i % 3 ? P.leafHi : P.leaf, .42 * leaves, { passes: 2, amp: 1.2, seed: sd + i * 3, rim: .3 });
+  }
+}
+// a weeping willow by the water: a broad dome with long strands hanging almost to the ground
+function willow(ctx, t, P, leaves) {
+  const h = t.h, sd = t.seed, R = h * .46, cy = -h * .8, tw = Math.max(2.2, h * .045);
+  wash(ctx, [[-tw * 1.5, 1], [-tw * .6, -h * .55], [tw * .5, -h * .58], [tw * 1.4, 1]], P.trunk, .7, { passes: 2, amp: .8, seed: sd, rim: .45 });
+  strokes(ctx, [[[0, -h * .55], [-R * .35, -h * .8], [-R * .75, -h * .82]], [[0, -h * .55], [R * .4, -h * .84], [R * .8, -h * .8]]], P.trunk, .75, 1.8, sd);
+  if (leaves <= .02) return;
+  // long arching strands: up and out from the crown, then falling in a soft curtain
+  const strands = [];
+  for (let i = 0; i < 30; i++) {
+    const u = (i + hash(sd + i) * .6) / 30 - .5, x0 = u * R * 1.1, top = cy - h * .1 * (1 - 4 * u * u);
+    const x1 = u * R * 2.1, len = h * (.42 + .22 * hash(sd + i * 5)) * (1 - Math.abs(u) * .6);
+    strands.push([[x0, top], [lerp(x0, x1, .6), top - h * .03], [x1, top + len * .25], [x1 + u * 4, top + len * .6], [x1 + u * 6, top + len]]);
+  }
+  wash(ctx, ellP(0, cy + h * .02, R * 1.05, h * .17), P.leaf, .32 * leaves, { passes: 2, amp: 2.2, seed: sd, rim: .25 });
+  strokes(ctx, strands, P.leaf, .34 * leaves, 1.3, sd + 7);
+  strokes(ctx, strands.filter((_, i) => i % 3 === 0), P.leafHi, .5 * leaves, 1.1, sd + 9);
+}
+// an umbrella pine on the cliffs: a tall bare trunk and a flat layered crown, green all year
+function umbrellaPine(ctx, t, P) {
+  const h = t.h, sd = t.seed, tw = Math.max(2, h * .03), bend = (hash(sd * 3) - .5) * h * .08;
+  wash(ctx, [[-tw * 1.3, 1], [bend - tw * .5, -h * .8], [bend + tw * .5, -h * .8], [tw * 1.3, 1]], P.trunk, .7, { passes: 2, amp: .7, seed: sd, rim: .45 });
+  strokes(ctx, [[[bend, -h * .72], [-h * .14, -h * .79]], [[bend, -h * .76], [h * .16, -h * .88]]], P.trunk, .85, 1.6, sd + 1);
+  pineClouds(t).forEach(([cx, cy, rx], i) => {
+    wash(ctx, ellP(cx, cy, rx, rx * .26, 0, 16), i % 2 ? P.pine : P.pineDk, .6, { passes: 2, amp: 1.6, seed: sd + i, rim: .4 });
+  });
 }
 
 function bush(ctx, b, P, G) {
@@ -499,6 +567,31 @@ function twig(ctx, x, y, a, P, px) {
   }));
   ctx.restore();
 }
+// a keepsake lying in the grass, with a slow glint so it can be spotted from the air
+function keepsake(ctx, k, P, G) {
+  ctx.save(); ctx.translate(k.x, k.y); ctx.scale(1.4, 1.4);
+  put(ctx, stamp('keep' + k.kind, pk, -5, -5, 5, 1.5, G.view.spx * 2.2, c => {
+    const ink = P.birdFar;
+    switch (k.kind) {
+      case 0: case 7: { // a feather: blue jay or heron grey, lying on its side
+        const col = k.kind ? P.heron : mix(P.water, P.sky, .5);
+        wash(c, [[-4.5, -.4], [-1, -2.2], [3.5, -1.4], [4.6, -.6], [1, -.1]], col, .85, { passes: 2, amp: .15, seed: 61, rim: .4 });
+        if (!k.kind) { c.fillStyle = C(ink, .6); c.beginPath(); for (let i = 0; i < 3; i++) c.rect(-2 + i * 1.6, -1.8 + i * .2, .4, 1.2); c.fill(); }
+        stroke(c, [[-4.8, -.2], [4.6, -.7]], ink, .6, .35, 62); break;
+      }
+      case 1: wash(c, circP(0, -1.8, 2, 10), mix(P.birdPale, P.trunk, .35), .85, { passes: 2, amp: .15, seed: 63, rim: .5 }); stroke(c, [[0, -1.8], [.9, -2.2], [.8, -3], [-.4, -3.1], [-1.2, -2]], P.trunk, .7, .35, 64); break;
+      case 2: wash(c, ellP(0, -1.2, 2.4, 1.4, 0, 10), mix(P.far, P.paper, .6), .7, { passes: 2, amp: .15, seed: 65, rim: .5 }); lift(c, ellP(-.6, -1.7, 1, .4), P.paper, .8); break;
+      case 3: stroke(c, [[-3, -.4], [0, -1], [2.6, -2.6], [1.8, -3.4], [1, -2.6]], mix(P.paper, P.trunk, .3), .9, 1.4, 66); stroke(c, [[-1.5, -.8], [-1, -.75]], ink, .7, .4, 67); break;
+      case 4: wash(c, [[-2.2, -.2], [-2.4, -2], [-1, -3.2], [.6, -2.6], [1, -1.2], [.2, -1.6], [0, -.2]], mix(P.water, P.paper, .45), .85, { passes: 2, amp: .15, seed: 68, rim: .5 }); break;
+      case 5: stroke(c, [[0, 0], [.2, -2]], P.leafDk, .8, .4, 69); c.fillStyle = C(P.paper, .9); c.beginPath(); c.arc(.2, -3, 1.6, 0, TAU); c.fill(); c.strokeStyle = C(P.far, .5); c.lineWidth = .25; c.beginPath(); for (let i = 0; i < 8; i++) { const a = i / 8 * TAU; c.moveTo(.2, -3); c.lineTo(.2 + Math.cos(a) * 1.6, -3 + Math.sin(a) * 1.6); } c.stroke(); break;
+      default: wash(c, ellP(0, -1.4, 1.9, 1.2, 0, 10), P.trunk, .85, { passes: 2, amp: .15, seed: 70, rim: .5 }); c.strokeStyle = C(ink, .5); c.lineWidth = .3; c.beginPath(); c.moveTo(-1.4, -1.2); c.lineTo(1.4, -1.2); c.moveTo(0, -2.6); c.lineTo(0, -3.3); c.stroke();
+    }
+  }));
+  // the glint: a little cross of bare paper that brightens and fades
+  const g = Math.max(0, Math.sin(G.t * 1.7 + k.x)) ** 6;
+  if (g > .05) { ctx.strokeStyle = C(P.paper, g * .95); ctx.lineWidth = .7; ctx.beginPath(); ctx.moveTo(-3, -4); ctx.lineTo(3, -4); ctx.moveTo(0, -7); ctx.lineTo(0, -1); ctx.stroke(); }
+  ctx.restore();
+}
 function nest(ctx, n, P, G) {
   const x = n.x, y = n.y, k = Math.min(1, n.twigs / 5);
   if (n.eggAt !== undefined && !n.chick && !n.fledged) wash(ctx, ellP(x + 1, y - 2.5, 2, 2.6, .2, 10), [236, 228, 210], .9, { passes: 1, amp: .2, seed: 9, rim: .5 });
@@ -525,61 +618,124 @@ function carried(ctx, G, P) {
 /* ---------- landmarks ---------- */
 // landmarks are big, still paintings: their multiply passes are sprites, the moving water,
 // snow and blossom are drawn live on top
+// Each one is set into the land: a mound of grass at its foot, a shaded side away from the
+// light, moss and ivy, so it reads as something that has stood there a long time.
 function landmark(ctx, l, P, G) {
   const { x, y, h } = l, s = l.k * 7, px = G.view.spx;
   const box = (id, draw, x0 = x - 110, y0 = y - h - 30, x1 = x + 110, y1 = y + 8) => blit(ctx, sprite(l.id + id, pk, x0, y0, x1, y1, px, draw));
+  const stone = mix(mix(P.far, P.paper, .25), P.ground, .4);
+  // a low grassy mound that the thing stands in, the same green as the land
+  const mound = (c, rx, ry) => wash(c, [[x - rx, y + 4], ...Array.from({ length: 9 }, (_, i) => { const u = i / 8; return [x - rx + u * rx * 2, y + 2 - Math.sin(u * Math.PI) * ry]; }), [x + rx, y + 4]], P.near, .45, { passes: 2, amp: 1.2, seed: s + 90, rim: .25 });
+  const tufts = (c, x0, x1, n, sd) => strokes(c, Array.from({ length: n }, (_, i) => { const tx = lerp(x0, x1, (i + hash(sd + i)) / n), l2 = 3 + 4 * hash(sd * 3 + i); return [[tx, y + 2], [tx + 1, y - l2 * .5], [tx + 2.2, y - l2]]; }), shade(P.near, .8), .6, .8, sd);
   if (l.type === 'oak') {
-    const R = 60, leaves = 1 - G.sea.winter * .9, cy = y - h * .7;
+    const leaves = 1 - G.sea.winter * .9, R = 62, cy = y - h + 72;
+    // leaf clumps fill the whole dome, with a ring of them along its rim
+    const clumps = [];
+    for (let i = 0; i < 15; i++) {
+      const a = Math.PI * (.96 + 1.08 * i / 14), rr = .82 + .18 * hash(s + i);
+      clumps.push([x + Math.cos(a) * R * 1.22 * rr, cy + Math.sin(a) * 62 * rr + 10, 16 + 8 * hash(s + i * 3), i]);
+    }
+    for (let i = 0; i < 12; i++) {
+      const a = hash(s + i * 5) * TAU, rr = Math.sqrt(hash(s + i * 7)) * .75;
+      clumps.push([x + Math.cos(a) * R * 1.1 * rr, cy + 6 + Math.sin(a) * 50 * rr, 17 + 7 * hash(s + i), 20 + i]);
+    }
     box('', c => {
-      wash(c, [[x - 9, y + 2], [x - 5, y - h * .55], [x + 5, y - h * .55], [x + 10, y + 2]], P.trunk, .8, { passes: 2, amp: 1, seed: s, rim: .5 });
-      for (const p of l.perches) stroke(c, [[x, y - h * .45], [lerp(x, p.x, .5), lerp(y - h * .5, p.y, .6)], [p.x, p.y + 1]], P.trunk, .9, 3, s + 1);
+      mound(c, 70, 7);
+      // a broad trunk flaring into roots, splitting into great limbs
+      wash(c, [[x - 18, y + 3], [x - 9, y - 6], [x - 7, y - h * .42], [x + 7, y - h * .42], [x + 9, y - 6], [x + 19, y + 3]], P.trunk, .78, { passes: 3, amp: 1.2, seed: s, rim: .5 });
+      wash(c, [[x + 2, y], [x + 4, y - h * .4], [x + 7, y - h * .42], [x + 9, y - 6], [x + 19, y + 3]], shade(P.trunk, .7), .4, { passes: 1, amp: .8, seed: s + 3, rim: 0 });
+      strokes(c, [[[x - 2, y - h * .38], [x - 30, y - h * .52], [x - 52, y - h * .6]], [[x + 2, y - h * .38], [x + 26, y - h * .55], [x + 50, y - h * .58]], [[x, y - h * .4], [x - 4, y - h * .62], [x + 2, y - h * .8]]], P.trunk, .85, 5, s + 1);
       if (leaves > .02) {
-        wash(c, ellP(x, cy, R * 1.25, R * .7), P.leafDk, .4 * leaves, { passes: 2, amp: 3, seed: s + 20, rim: .4 });
-        for (let i = 0; i < 10; i++) {
-          const a = i / 10 * TAU, r = R * (.6 + .4 * hash(s + i));
-          wash(c, circP(x + Math.cos(a) * R * .85, cy + Math.sin(a) * R * .5, r * .55, 13), i % 3 ? P.leaf : P.leafHi, .45 * leaves, { passes: 2, amp: 2, seed: s + i, rim: .4 });
-        }
-      }
-    });
+        // the shaded underside first, then the clumps, light catching the upper ones
+        wash(c, ellP(x, cy + 14, R * 1.3, 50), P.leafDk, .36 * leaves, { passes: 2, amp: 3, seed: s + 20, rim: .3 });
+        for (const [cx2, cy2, r, i] of clumps) wash(c, circP(cx2, cy2, r, 13), cy2 < cy - 20 ? P.leafHi : i % 3 ? P.leaf : P.leafDk, .36 * leaves, { passes: 2, amp: 2.2, seed: s + i, rim: .35 });
+      } else strokes(c, [[[x - 30, y - h * .52], [x - 48, y - h * .75], [x - 40, y - h * .9]], [[x + 26, y - h * .55], [x + 44, y - h * .78]], [[x + 2, y - h * .8], [x - 8, y - h * .95]], [[x + 2, y - h * .8], [x + 18, y - h * .97]]], P.trunk, .7, 2.2, s + 4);
+      tufts(c, x - 60, x + 60, 14, s);
+    }, x - 120, y - h - 20, x + 120, y + 8);
     if (leaves > .02 && G.sea.spring > .05) {
       ctx.fillStyle = C(P.blossom, .8 * G.sea.spring); ctx.beginPath();
       for (let i = 0; i < 30; i++) {
-        const a = hash(s + i * 3) * TAU, r = Math.sqrt(hash(s + i * 5)) * R, bx = x + Math.cos(a) * r * 1.2, by = cy + Math.sin(a) * r * .65;
+        const cl = clumps[i % clumps.length], a = hash(s + i * 3) * TAU, r = Math.sqrt(hash(s + i * 5)) * cl[2], bx = cl[0] + Math.cos(a) * r, by = cl[1] + Math.sin(a) * r;
         ctx.moveTo(bx + 1.5, by); ctx.arc(bx, by, 1.5, 0, TAU);
       }
       ctx.fill();
     }
-    box('p', c => { for (const p of l.perches) stroke(c, [[lerp(x, p.x, .6), lerp(y - h * .5, p.y, .8)], [p.x, p.y + 1]], P.trunk, .9, 2.2, s + 2); });
+    if (G.sea.winter > .05) lift(ctx, ellP(x, y - h + 6, R * .9, 5), P.paper, .5 * G.sea.winter);
+    // the side limbs the hawk can land on, drawn over the leaves; the top perch sits on the crown
+    box('p', c => { for (const p of l.perches.slice(1)) stroke(c, [[lerp(x, p.x, .45), lerp(y - h * .45, p.y, .7)], [p.x + Math.sign(p.x - x) * 3, p.y + 1]], P.trunk, .9, 2.4, s + 2); });
   } else if (l.type === 'tower') {
     box('', c => {
-      const w0 = 16, top = y - h;
-      const body = [[x - w0, y + 2], [x - w0 + 2, top + 10], [x - w0 + 4, top], [x - 4, top], [x - 4, top + 5], [x + 3, top + 5], [x + 4, top + 12], [x + w0 - 3, top + 22], [x + w0, y + 2]];
-      wash(c, body, mix(P.far, P.ground, .4), .75, { passes: 3, amp: 1, seed: s, rim: .55 });
-      c.save(); pathPts(c, body); c.clip(); c.globalCompositeOperation = 'multiply'; c.strokeStyle = C(shade(P.ground, .7), .35); c.lineWidth = .6; c.beginPath();
-      for (let r = 0; r < 14; r++) { const yy = y - r * 11; c.moveTo(x - w0 + 2, yy); c.lineTo(x + w0 - 2, yy); }
-      c.stroke(); c.restore();
-      wash(c, [[x - 4, y - h * .55], [x + 3, y - h * .55], [x + 3, y - h * .45], [x - 4, y - h * .45]], P.birdFar, .6, { passes: 1, amp: .3, seed: s + 3, rim: 0 });
-      for (let i = 0; i < 5; i++) wash(c, circP(x - w0 + 4 + i * 6, y - 18 - hash(s + i) * 40, 6, 9), P.leafDk, .35, { passes: 1, amp: 1, seed: s + i, rim: .3 });
-    }, x - 30, y - h - 6, x + 30);
+      const w0 = 15, top = y - h;
+      mound(c, 34, 6);
+      // tapered walls with a broken crown, stepping down to the right
+      const body = [[x - w0 - 1, y + 2], [x - w0 + 2, top + 18], [x - 13, top + 4], [x - 12, top], [x - 3, top + 1], [x - 2, top + 5], [x + 6, top + 5], [x + 9, top + 14], [x + 12, top + 20], [x + 13, top + 34], [x + w0 - 1, top + 40], [x + w0 + 1, y + 2]];
+      wash(c, body, stone, .62, { passes: 3, amp: .9, seed: s, rim: .5 });
+      // the shaded side and the base darkened by damp
+      wash(c, [[x + 3, y + 2], [x + 4, top + 6], [x + 9, top + 14], [x + 12, top + 20], [x + 13, top + 34], [x + w0 - 1, top + 40], [x + w0 + 1, y + 2]], shade(stone, .72), .4, { passes: 2, amp: .6, seed: s + 1, rim: 0 });
+      wash(c, [[x - w0 - 1, y + 2], [x - w0, y - 22], [x + w0, y - 18], [x + w0 + 1, y + 2]], P.ground, .22, { passes: 2, amp: 2, seed: s + 2, rim: 0 });
+      // stone courses as broken dabs rather than ruled lines
+      c.save(); c.globalCompositeOperation = 'multiply'; c.fillStyle = C(shade(stone, .55), .35); c.beginPath();
+      for (let r = 0; r < 26; r++) for (let k = 0; k < 3; k++) {
+        if (hash(s + r * 3 + k) < .35) continue;
+        const yy = y - 4 - r * 5.6, xx = x - w0 + 2 + k * 9 + (r % 2) * 4 + hash(r + k) * 2;
+        if (yy < top + 6 + (xx > x ? 20 : 0)) continue;
+        c.rect(xx, yy, 5 + hash(r * 7 + k) * 3, .7);
+      }
+      c.fill(); c.restore();
+      // an arched window, dark inside
+      wash(c, [[x - 5, top + 64], [x - 5, top + 54], [x - 3, top + 50], [x - 1, top + 50], [x + 1, top + 54], [x + 1, top + 64]], P.birdFar, .55, { passes: 1, amp: .2, seed: s + 3, rim: 0 });
+      // ivy climbing the lit side
+      for (let i = 0; i < 16; i++) {
+        const u = i / 15, iy = y - 4 - u * h * .72 * (.7 + .3 * hash(s + i)), ix = x - w0 + 3 + Math.sin(u * 7 + s) * 4 + hash(s * 2 + i) * 4;
+        wash(c, circP(ix, iy, 3.2 - u * 1.4, 8), i % 3 ? P.leafDk : P.leaf, .4, { passes: 1, amp: .8, seed: s + i, rim: .25 });
+      }
+      // fallen blocks at the foot, half in the grass
+      for (let i = 0; i < 4; i++) { const bx = x + 18 + i * 6 + hash(s + i) * 4, bw = 2.4 + hash(s * 3 + i) * 2; wash(c, [[bx - bw, y + 2], [bx - bw * .8, y - bw * 1.1], [bx + bw * .7, y - bw * 1.2], [bx + bw, y + 2]], stone, .55, { passes: 1, amp: .3, seed: s + i, rim: .4 }); }
+      tufts(c, x - 30, x + 40, 12, s);
+    }, x - 40, y - h - 6, x + 50);
+    if (G.sea.winter > .05) lift(ctx, [[x - 13, y - h + 4], [x - 12, y - h], [x - 3, y - h + 1], [x - 2, y - h + 3]], P.paper, .7 * G.sea.winter);
   } else if (l.type === 'falls') {
     const top = y - h;
     box('', c => {
-      const rock = [[x - 50, y + 4], [x - 44, top + 40], [x - 30, top + 6], [x - 10, top], [x + 6, top + 4], [x + 12, top + 30], [x + 34, top + 70], [x + 52, y + 4]];
-      wash(c, rock, mix(P.far, P.ground, .5), .7, { passes: 3, amp: 2.5, seed: s, rim: .55 });
-    }, x - 60, top - 8, x + 62, y + 10);
+      // a crag that rises out of the hillside: grassy shoulders, then the rock face
+      const base = []; for (let bx = x + 132; bx >= x - 128; bx -= 8) base.push([bx, W.groundY(bx) + 3]);
+      const hill = [[x - 128, W.groundY(x - 128) + 2], [x - 96, y - 20], [x - 70, y - 62], [x - 52, top + 62], [x - 42, top + 24], [x - 28, top + 8], [x - 10, top + 2], [x + 12, top], [x + 26, top + 9], [x + 38, top + 32], [x + 52, y - 100], [x + 76, y - 44], [x + 104, y - 14], [x + 132, W.groundY(x + 132) + 2], ...base];
+      wash(c, hill, mix(P.far, P.ground, .5), .42, { passes: 3, amp: 2.2, seed: s, rim: .3 });
+      wash(c, [[x + 14, top + 2], [x + 26, top + 9], [x + 38, top + 32], [x + 52, y - 100], [x + 76, y - 44], [x + 104, y - 14], [x + 132, W.groundY(x + 132) + 2], ...base.filter(p => p[0] > x + 6), [x + 6, y + 3]], shade(mix(P.far, P.ground, .5), .75), .35, { passes: 2, amp: 1.6, seed: s + 1, rim: 0 });
+      // the green comes up the lower slopes and over the lip, so the crag belongs to the land
+      wash(c, [[x - 128, W.groundY(x - 128) + 2], [x - 96, y - 20], [x - 70, y - 62], [x - 56, y - 52], [x - 42, y - 20], ...base.filter(p => p[0] < x - 20)], P.near, .42, { passes: 2, amp: 2, seed: s + 2, rim: .2 });
+      wash(c, [[x + 38, y - 8], [x + 62, y - 34], [x + 76, y - 44], [x + 104, y - 14], [x + 132, W.groundY(x + 132) + 2], ...base.filter(p => p[0] > x + 22)], P.near, .42, { passes: 2, amp: 2, seed: s + 3, rim: .2 });
+      wash(c, [[x - 42, top + 24], [x - 28, top + 8], [x - 10, top + 2], [x + 12, top], [x + 26, top + 9], [x + 30, top + 18], [x - 38, top + 32]], P.near, .4, { passes: 2, amp: 1.2, seed: s + 4, rim: .2 });
+      // ledges in the rock
+      strokes(c, Array.from({ length: 7 }, (_, i) => { const yy = top + 34 + i * 20, w = 12 + 10 * hash(s + i); const xx = x - 30 + hash(s * 5 + i) * 40; return [[xx - w, yy], [xx, yy + 1.5], [xx + w, yy - .5]]; }), shade(P.ground, .6), .35, 1, s + 5);
+      for (let i = 0; i < 9; i++) wash(c, circP(x - 44 + hash(s + i) * 80, top + 30 + hash(s * 2 + i) * (h - 70), 3 + 2 * hash(i + s), 8), P.leafDk, .32, { passes: 1, amp: .8, seed: s + i, rim: 0 });
+      // two pines on the shoulder above the falls
+      for (const [tx, sc] of [[x - 26, 1], [x - 40, .8]]) { const ty = top + 10 + (x - 26 - tx) * .6; for (let k = 0; k < 3; k++) wash(c, [[tx - 7 * sc * (1 - k * .25), ty - k * 7 * sc], [tx, ty - (k * 7 + 13) * sc], [tx + 7 * sc * (1 - k * .25), ty - k * 7 * sc]], k % 2 ? P.pine : P.pineDk, .55, { passes: 1, amp: .7, seed: s + k + tx, rim: .3 }); }
+    }, x - 136, top - 34, x + 140, Math.max(y, W.groundY(x - 128), W.groundY(x + 132)) + 40);
     const fall = [[x - 6, top + 2], [x + 4, top + 4], [x + 9, y], [x - 9, y]];
     lift(ctx, fall, P.paper, .85);
     wash(ctx, fall, P.water, .25 * (1 - G.sea.winter * .5), { passes: 2, amp: 1, seed: s + 1, rim: .2 });
     ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.strokeStyle = C(shade(P.water, .8), .35); ctx.lineWidth = .7; ctx.beginPath();
     for (let i = 0; i < 6; i++) { const xx = x - 5 + i * 2, o = (G.t * 60 + i * 23) % 40; for (let yy = top + 6 + o; yy < y; yy += 40) { ctx.moveTo(xx + (yy - top) * .02, yy); ctx.lineTo(xx + (yy - top) * .02, yy + 14); } }
     ctx.stroke(); ctx.restore();
+    // the plunge pool and the spray rising off it
+    wash(ctx, ellP(x, y + 1, 22, 3), P.water, .35, { passes: 1, amp: .8, seed: s + 6, rim: .3 });
     for (let i = 0; i < 4; i++) softWash(ctx, x + (i - 1.5) * 8, y - 4, 14, 6, P.paper, .3);
   } else if (l.type === 'stones') {
-    const S = [[-26, 30, 7], [0, 44, 9], [24, 34, 8], [-46, 18, 6], [44, 20, 6]];
+    // weathered stones, leaning a little, lichen on their tops, standing in a grassy ring
+    const S = [[-26, 30, 7, -.06], [0, 44, 9, .02], [24, 34, 8, .07], [-46, 18, 6, -.12], [44, 20, 6, .1]];
     box('', c => {
-      for (const [dx, hh, w0] of S) wash(c, [[x + dx - w0, y + 2], [x + dx - w0 * .8, y - hh + 2], [x + dx, y - hh], [x + dx + w0 * .8, y - hh + 3], [x + dx + w0, y + 2]], mix(P.far, P.ground, .3), .7, { passes: 2, amp: 1, seed: s + dx, rim: .55 });
-    }, x - 60, y - 52, x + 60, y + 8);
-    if (G.sea.winter > .05) for (const [dx, hh, w0] of S) lift(ctx, [[x + dx - w0 * .8, y - hh + 2], [x + dx, y - hh], [x + dx + w0 * .8, y - hh + 3], [x + dx, y - hh + 4]], P.paper, .7 * G.sea.winter);
+      mound(c, 58, 5);
+      for (const [dx, hh, w0, lean] of S) {
+        const bx = x + dx, L = v => [bx + v[0] + lean * -v[1], y + v[1]];
+        const shape = [[-w0, 2], [-w0 * .9, -hh * .55], [-w0 * .75, -hh + 4], [-w0 * .3, -hh + .5], [w0 * .2, -hh], [w0 * .7, -hh + 3], [w0 * .85, -hh * .6], [w0, 2]].map(L);
+        wash(c, shape, stone, .55, { passes: 3, amp: .8, seed: s + dx, rim: .45 });
+        wash(c, [[w0 * .1, 2], [w0 * .2, -hh], [w0 * .7, -hh + 3], [w0 * .85, -hh * .6], [w0, 2]].map(L), shade(stone, .72), .4, { passes: 1, amp: .5, seed: s + dx + 1, rim: 0 });
+        for (let i = 0; i < 3; i++) wash(c, circP(...L([(hash(s + dx + i) - .5) * w0, -hh * (.55 + .35 * hash(dx + i))]), 1.4 + hash(i + dx), 7), i % 2 ? P.thermal : P.leafHi, .4, { passes: 1, amp: .3, seed: s + i + dx, rim: 0 });
+      }
+      tufts(c, x - 55, x + 55, 18, s);
+    }, x - 66, y - 52, x + 66, y + 8);
+    if (G.sea.winter > .05) for (const [dx, hh, w0, lean] of S) lift(ctx, [[x + dx - w0 * .75 + lean * hh, y - hh + 4], [x + dx + lean * hh, y - hh], [x + dx + w0 * .7 + lean * hh, y - hh + 3], [x + dx + lean * hh, y - hh + 4.5]], P.paper, .7 * G.sea.winter);
   }
 }
 
@@ -730,6 +886,7 @@ function flyingHawk(ctx, b, P, yaw = 0) {
   // paper under the body so the far wing never shows through it
   lift(ctx, body, P.paper, .95); lift(ctx, head, P.paper, .95); lift(ctx, tail, P.paper, .9);
   wash(ctx, tail, tailColour(b, P), a * .75, { passes: 2, amp, seed: 72, rim: .5 });
+  tailSheen(ctx, b, P, [[-9, -.6], [-20, -1.8 - 2.6 * fan], [-20.5, -.6 - 1.2 * fan], [-9, .4]]);
   const tb = u => [lerp(-8, -21, u), lerp(-1.6, -3.2 - 3.6 * fan, u), lerp(2.2, 3.8 + 3.2 * fan, u)];
   // the adult's one dark band near the tip; a young hawk's tail is barred all along
   for (const [u0, u1] of b.adult ? [[.78, .88]] : [[.3, .36], [.5, .56], [.7, .76], [.88, .94]]) {
@@ -759,8 +916,15 @@ function flyingHawk(ctx, b, P, yaw = 0) {
   ctx.restore();
 }
 
-// a red-tail earns its red tail: until the first migration is flown the tail is barred brown
-const tailColour = (b, P) => b.adult ? P.tail : mix(P.bird, P.birdPale, .3);
+// A red-tail earns its red tail: until the first migration is flown the tail is barred brown.
+// Long-term health shows in it too: a thin hawk's tail is faded and pale, a healthy one's deep
+// brick red (a young hawk's barred tail just warms a little).
+const tailColour = (b, P) => {
+  const h = b.health ?? .85;
+  return b.adult ? mix(mix(P.tail, P.birdPale, .5), P.tail, h) : mix(mix(P.bird, P.birdPale, .3), P.tail, .25 * h);
+};
+// a healthy tail catches the light: a sheen of bare paper along it
+const tailSheen = (ctx, b, P, pts) => { const h = b.health ?? .85; if (h > .7) lift(ctx, pts, P.paper, .3 * (h - .7) / .3); };
 // hooked dark beak over a yellow cere
 function beakAt(ctx, x, y, P, a) {
   const k = .78, q = pts => pts.map(([u, v]) => [x + u * k, y + v * k]);
@@ -796,6 +960,7 @@ function sittingHawk(ctx, b, P, G) {
   }
   lift(ctx, body, P.paper, .95); lift(ctx, head, P.paper, .95);
   wash(ctx, tail, tailColour(b, P), a, { passes: 2, amp: .8, seed: 72, rim: .5 });
+  if (mode === 'perch') tailSheen(ctx, b, P, [[-2.6, 4], [-7.6, 13.4], [-6.8, 13.8], [-1.8, 4.6]]);
   if (mode === 'perch') {
     if (b.adult) wash(ctx, [[-7.6, 11.2], [-8.4, 12.8], [-5.6, 14.2], [-4.6, 12.6]], ink, a * .35, { passes: 1, amp: .2, seed: 79, rim: 0 });
     else for (let k = 0; k < 3; k++) { const u = .45 + k * .2; wash(ctx, [[lerp(-3, -9, u), lerp(3, 14, u)], [lerp(-3, -9, u + .06), lerp(3, 14, u + .06)], [lerp(-.5, -6.2, u + .06), lerp(5, 15.6, u + .06)], [lerp(-.5, -6.2, u), lerp(5, 15.6, u)]], ink, a * .28, { passes: 1, amp: .15, seed: 79 + k, rim: 0 }); }
