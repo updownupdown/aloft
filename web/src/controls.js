@@ -1,13 +1,16 @@
-// What taps, strokes and holds do, state by state (gestures.js reads them off the screen).
+// What taps, strokes and the joystick do, state by state (gestures.js reads them off the
+// screen, joystick.js is the one stick).
 //  flying:  tap anywhere = flap. Double tap a branch = fly to it and perch.
 //           a line drawn to a mouse or fish = stoop on it.
 //           swipe back (against the way you fly) = turn round; swipe forward = long glide;
 //           swipe down = settle and land; swipe up = hover; forward-then-back hook = ride a
 //           thermal (or head for the nearest and ride it); a circle = a loop or front flip,
-//           drawn the way the nose goes.
-//           tap, hold, then aim: up noses up toward a hover (kiting into the wind), forward
+//           drawn the way the nose goes; drawn through a ring close by, the loop carries the
+//           hawk through it.
+//           the joystick: up noses up toward a hover (kiting into the wind), forward
 //           flattens into a long glide, down dives (far down stoops), back slows with
-//           back-beats. Aiming back never turns; only a clean swipe does.
+//           back-beats. Pushing back never turns; only a clean swipe does.
+//           Only a ride (the hook) circles in a thermal; otherwise the hawk flies straight on.
 //  perched: tap either side = hop that way; swipe down = drop to the branch below; swipe up
 //           or three quick taps = take off; double tap another branch = fly to it.
 //  ground:  tap = hop toward it (tap food or water to walk there and eat or drink); swipe
@@ -24,6 +27,7 @@ const RANGE = { prey: 340, thermal: 2600 };
 const AXIS = Math.PI / 4;   // a swipe within 45 degrees of an axis counts as that way
 
 export function createControls({ G, b, gestures, toWorld, tapThing, interact, nearestPerch, once }) {
+  const RING_REACH = 260;   // world units: how far off a ring a drawn loop can carry the hawk
   // the latched mode: what the hawk keeps doing until something else replaces it
   const C = { mode: null, holdMode: null };
   const set = (kind, extra = {}) => { C.mode = kind ? { kind, t: G.t, ...extra } : null; gestures.setMode(kind && signOf(kind)); if (!kind) G.focus = null; };
@@ -63,6 +67,8 @@ export function createControls({ G, b, gestures, toWorld, tapThing, interact, ne
       const dir = (e.cw ? 1 : -1) === b.face ? -1 : 1;
       set(null); b.s = Math.max(b.s, 92); b.stall = false; b.hover = 0;
       b.loop = { dir, a: 0 }; G.emit('loop'); gestures.sign('flip');
+      const r = ringThrough(e);
+      if (r) { b.ringAim = { r, t: G.t }; e.trail.tint = 'thermal'; }
       return;
     }
     if (e.kind === 'hook') {
@@ -101,6 +107,22 @@ export function createControls({ G, b, gestures, toWorld, tapThing, interact, ne
     if (way === 'down') { set('land'); gestures.sign('land', 'land'); once('settle', 'Settling down: the hawk slows and lets itself down to land where it is.'); return; }
     set('hover'); gestures.sign('hover', 'hover');
     once('hang', 'Hovering: the hawk hangs on beating wings to look around. It tires the wings.', 5);
+  }
+  // a ring the drawn loop passes through (or close round), near enough and placed so the hawk
+  // could reach it from here at about this speed: ahead or just above or below, not far behind
+  function ringThrough(e) {
+    const s = G.view.s, pts = e.trail.pts;
+    let best = null, bd = Infinity;
+    for (const r of G.visibleRings) {
+      if (r.gone) continue;
+      const dx = r.x - b.x, dy = r.y - b.y;
+      if (Math.hypot(dx, dy) > RING_REACH || dx * b.face < -120 || Math.abs(dy) > 170) continue;
+      const sx = (r.x - G.cam.x) * s, sy = (r.y - G.cam.y) * s, near = r.r * s + 22;
+      let d = Infinity;
+      for (const p of pts) d = Math.min(d, Math.hypot(p[0] - sx, p[1] - sy));
+      if (d < near && d < bd) { bd = d; best = r; }
+    }
+    return best;
   }
   // the mouse or fish a line was drawn to: one close to where it ends, or one it points at
   function preyAlong(e) {
@@ -158,14 +180,14 @@ export function createControls({ G, b, gestures, toWorld, tapThing, interact, ne
     if (M.kind === 'ride') {
       if (!M.th || Math.abs(M.th.c - b.x) > M.th.w * 1.6) M.th = W.thermalAt(b.x) || nearestThermal();
       const t = M.th; if (!t) return { yoke: { p: 0, mode: 'glide' } };
-      if (Math.abs(b.x - t.c) < t.w * .45) { G.focus = null; return { yoke: { p: 0, mode: 'glide' } }; }
+      if (Math.abs(b.x - t.c) < t.w * .45) { G.focus = null; return { yoke: { p: 0, mode: 'ride' } }; }
       G.focus = { mode: 'thermal', kind: 'thermal', x: t.c, y: Math.min(b.y, t.y0 - 40), target: { ref: t } };
       return { steer: { wx: t.c, wy: b.y - 6 } };
     }
     return null;
   }
 
-  /* ---------- a hold that aims ---------- */
+  /* ---------- the joystick ---------- */
   function aimYoke(v) {
     const fwd = v.x * b.face, up = -v.y, m = Math.hypot(fwd, up);
     if (m < .22) { C.holdMode = null; gestures.setMode(null); return { p: 0, mode: null, loopOk: false }; }
@@ -181,15 +203,18 @@ export function createControls({ G, b, gestures, toWorld, tapThing, interact, ne
   }
 
   // per frame: handle the gestures; returns the yoke and any steering for the bird
-  function update(g) {
+  function update(g, stick = null) {
     if (G.roost || G.photo) { set(null); return { yoke: null, steer: null }; }
     for (const e of g.events) {
       if (e.type === 'tap') onTap(e);
       else if (e.type === 'stroke') onStroke(e);
-      else if (e.type === 'holdStart') { set(null); if (flying()) once('aim', 'Holding: drag up to nose up and hang, forward for a long glide, down to dive, back to slow down. Let go to fly on.', 6); }
-      else if (e.type === 'holdEnd') { C.holdMode = null; gestures.setMode(C.mode && signOf(C.mode.kind)); }
     }
-    if (g.aim && flying()) return { yoke: aimYoke(g.aim), steer: null };
+    // the joystick: a push replaces the latched mode; let go and the hawk flies on
+    if (stick && flying()) {
+      if (!C.stick) { C.stick = true; set(null); once('aim', 'The stick trims your line: up to nose up and hang, forward for a long glide, down to dive, back to slow down. Let go to fly on.', 6); }
+      return { yoke: aimYoke(stick), steer: null };
+    }
+    if (C.stick) { C.stick = false; C.holdMode = null; gestures.setMode(C.mode && signOf(C.mode.kind)); }
     const r = runMode();
     return { yoke: r?.yoke || null, steer: r?.steer || null };
   }

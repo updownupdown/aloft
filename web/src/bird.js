@@ -126,7 +126,7 @@ export function nudge(b, dir) {
 
 function land(b, kind, G, y, soft = false) {
   const speed = b.s;
-  b.state = kind; b.s = 0; b.g = 0; b.y = y; b.target = null; b.landT = .35; b.flapLeft = 0; b.kiteT = 0; b.hover = 0; b.yaw = null; b.hop = null; b.loop = null; b.pitch = 0;
+  b.state = kind; b.s = 0; b.g = 0; b.y = y; b.target = null; b.landT = .35; b.flapLeft = 0; b.kiteT = 0; b.hover = 0; b.yaw = null; b.hop = null; b.loop = null; b.ringAim = null; b.pitch = 0;
   G.emit('land', { kind, soft, speed });
 }
 
@@ -197,7 +197,8 @@ function fly(b, dt, inp, G) {
     if (Y.aimG !== undefined) { manual = true; gT = Y.aimG; }   // a held aim: the path angle to hold
     else if (Math.abs(Y.p) > .14) { manual = true; gT = b.g + Y.p * 1.8; }
     else if (Y.mode === 'land') { manual = true; aim = -1.2; if (b.s >= 88) gT = .3; }   // fast, it flares to slow first
-    else if (Y.mode === 'glide') {
+    else if (Y.mode === 'glide') { b.trim = 1; gT = -.1; }   // straight on, even through a thermal
+    else if (Y.mode === 'ride') {   // only a ride circles in a thermal
       const th = thermal > 2 && W.thermalAt(b.x);
       if (th) b.ride = th; else { b.trim = 1; gT = -.1; }
     } else if (Y.mode === 'stoop') { manual = true; b.stoop = true; gT = -1.3; }
@@ -298,6 +299,17 @@ function fly(b, dt, inp, G) {
   if (b.kiteT > 0) b.s = lerp(b.s, T.stall + 10, b.kiteT * Math.min(1, dt * 6));   // the wind holds a kiting hawk just above stall speed
   // braking: slow back-beats of the wings shed speed down to just above a stall
   if (b.brake) { b.s = Math.max(T.stall + 6, b.s - (b.s - 30) * 1.3 * dt); if (b.flapLeft < 1) b.flapLeft = 1; b.stall = false; }
+  // a loop drawn through a ring: closing on it (along the way the hawk is going, loop or not),
+  // the line eases onto the ring's height and the hawk keeps the speed to get there
+  const A = b.ringAim;
+  if (A) {
+    const r = A.r, dx = r.x - b.x, way = Math.sign(Math.cos(b.g)) * b.face;
+    if (r.gone || G.t - A.t > 4.5 || (!b.loop && dx * way < -12)) b.ringAim = null;
+    else if (dx * way > 0 && Math.abs(dx) < 110) {
+      b.y += (r.y - b.y) * Math.min(1, dt * (2.5 + 7 * (1 - Math.abs(dx) / 110)));
+      if (!b.loop) b.s = Math.max(b.s, 58);
+    }
+  }
 
   // through a turn the forward speed swings away from the picture and back
   const swing = b.yaw ? Math.abs(Math.cos(Math.PI * Math.min(1, b.yaw.t / b.yaw.dur))) : 1;
@@ -434,7 +446,7 @@ export function pose(b, dt, G) {
     const kite = b.kiteT, soar = Math.max(kite, b.circling ? 1 : clamp(b.air / 30, 0, 1)), turning = b.yaw || b.turnT > 0 ? 1 : 0;
     // sinking air sweeps the wings back a little; a dive tucks them
     b.tuck += (Math.max(smooth(-.45, -1.1, b.g), .2 * smooth(20, 70, b.vy) * (1 - soar)) - b.tuck) * k;
-    b.flare += (((b.target && b.s < 80) || b.flaring || b.hover > .3 || b.hop ? 1 : 0) - b.flare) * k;
+    b.flare += (((b.target && b.s < 80) || b.flaring || b.hover > .3 || b.hop || b.brake ? 1 : 0) - b.flare) * k;
     b.Lg = 1 - .38 * b.tuck;
     b.gTheta += (.06 + .14 * soar - .12 * b.tuck + .2 * b.flare + .02 * Math.sin(G.t * 1.7) - b.gTheta) * Math.min(1, dt * 3);
     const c = Math.cos(b.phase);
@@ -446,7 +458,8 @@ export function pose(b, dt, G) {
     b.tailFan = .25 + .6 * Math.max(soar, b.flare) + .35 * turning - .2 * b.tuck;
     b.splay = .3 + .7 * Math.max(soar, b.flare) - .3 * b.tuck;
     if (b.loop) b.pitch = -b.g;
-    else b.pitch += (clamp(-b.g, -1.2, 1.2) - b.pitch) * Math.min(1, dt * 8);
+    // (slowing on back-beats, the hawk sits back on its tail as in a hover)
+    else b.pitch += (clamp(-b.g - (b.brake ? .38 : 0), -1.2, 1.2) - b.pitch) * Math.min(1, dt * 8);
   } else {
     b.flapAmt = 0; b.phase = 0; b.pitch = 0; b.bob = 0;
   }

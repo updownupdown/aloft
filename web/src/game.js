@@ -8,6 +8,7 @@ import { applyTune } from './tune.js';
 import { createInput, readInput } from './input.js';
 import { createGestures } from './gestures.js';
 import { createControls } from './controls.js';
+import { createJoystick } from './joystick.js';
 import { createAudio } from './audio.js';
 import { SPECIES, speciesFor, active, timeOfDay } from './songs.js';
 import { render } from './render.js';
@@ -540,8 +541,9 @@ export function start(canvas) {
   document.getElementById('ui').append(callBtn, sleepBtn);
   const intentions = createIntentions(G, store, { toast: ui.toast, audio, spark }); G.intentions = intentions;
   // the singing button and string, and the dots that show how far into a song you are
-  const singer = createSinging({ audio, voice: () => G.voiceNow(), onNote: singNote, onMimic: mimic, onToggle: o => { G.singing = o; hudKey = ''; document.getElementById('ui').classList.toggle('singing', o); if (o) once('string', 'The pools in the right corner are song notes: touch them to sing. In the left corner are the birds you know: touch one to sing its song.', 6); } });
+  const singer = createSinging({ audio, voice: () => G.voiceNow(), onNote: singNote, onMimic: mimic, onToggle: o => { G.singing = o; hudKey = ''; document.getElementById('ui').classList.toggle('singing', o); if (o) once('string', 'The pools up the right edge are song notes, lowest at the bottom: touch them to sing. On the left are the birds you know: touch one to sing its song.', 6); } });
   const controls = createControls({ G, b, gestures, toWorld, tapThing, interact, nearestPerch, once });
+  const stick = createJoystick();   // flying only: in the bottom left corner (right, left-handed)
   // a pool in the left corner: the hawk sings that bird's song in its voice (and the notes take
   // on that voice); a bird whose song you have learned answers with its gift
   function mimic(id) {
@@ -798,7 +800,8 @@ export function start(canvas) {
     if (!G.roost) {
       for (let i = 0; i < raw.flaps; i++) keyFlap(raw.face || b.face);
     }
-    const ctl = controls.update(raw.gestures);
+    const aim = stick.update(b.state === 'fly' && !G.roost && !G.photo, G.settings.lefty ? 'R' : 'L', b.face);
+    const ctl = controls.update(raw.gestures, aim);
     updateBird(b, dt, G.roost ? { steer: null, pitch: 0, face: 0 } : { steer: ctl.steer, pitch: raw.pitch, face: raw.face, yoke: ctl.yoke }, G);
     G.perchT = b.state === 'perch' ? G.perchT + dt : 0;
     if (G.pendingEat && b.state === 'ground' && b.walkTo === null) { if (Math.abs(G.pendingEat.x - b.x) < 14) eat(G.pendingEat); G.pendingEat = null; }
@@ -965,7 +968,7 @@ export function start(canvas) {
   }
   requestAnimationFrame(frame);
   const seen = store.get('seen', null), away = seen ? (Date.now() - seen.t) / 1000 : 0;
-  ui.toast(saved && away > AWAY_S ? welcome(seen.doing) : saved ? `Welcome back. Day ${G.day}, ${seasonName(G)}.` : 'Tap anywhere to flap. Swipe back to turn, up to hover, down to land. Hold and drag to aim the glide. The menu shows every gesture.', saved ? 3 : 7);
+  ui.toast(saved && away > AWAY_S ? welcome(seen.doing) : saved ? `Welcome back. Day ${G.day}, ${seasonName(G)}.` : 'Tap anywhere to flap. Swipe back to turn, up to hover, down to land. The stick in the corner trims your line. The menu shows every gesture.', saved ? 3 : 7);
   if (G.sharedSeed !== null) ui.toast(`A friend shared world ${G.sharedSeed}. "Start a new journey" in the menu flies it (your songs are kept).`, 6);
   else if (!saved && G.seed) ui.toast(`World ${G.seed}: new hills, new ponds. The journal has a link to share it.`, 5);
   if (innerHeight > innerWidth) ui.toast('Turn your phone sideways for a wider view.', 4);
@@ -981,7 +984,7 @@ export function start(canvas) {
     landmark(type) { for (let x = b.x + 200; x < b.x + 60000; x += 2000) { const l = W.landmarksIn(x, x + 2000).find(l => !type || l.type === type); if (l) return l; } },
     goto(x, y) { fresh(); b.state = 'fly'; b.x = x; b.y = y ?? W.groundY(x) - 120; b.s = 85; b.g = -.17; snap(); },
     trees: W.treesIn, bushes: W.bushesIn, mice: W.miceIn, twigs: W.twigsIn, perches: W.perchesIn,
-    singer, sing: singNote, lanePt: lane => singer.lanePt(lane),
+    singer, stick, sing: singNote, lanePt: lane => singer.lanePt(lane),
     perch(q) { fresh(); perchOn(b, q, G); snap(); },
     swim(p) { fresh(); b.x = p.c; b.y = p.waterY - 3; b.state = 'swim'; snap(); },
     ground() { fresh(); const bu = W.bushesIn(b.x, b.x + 5000)[0]; b.x = bu.x + 16; b.y = W.groundY(b.x) - 6; b.state = 'ground'; b.face = -1; snap(); },
