@@ -147,8 +147,8 @@ export function drawMap(G, cv) {
     ctx.fillStyle = C(W.biomeAt(x).tint, .55);
     ctx.beginPath(); ctx.moveTo(X(x), h); ctx.lineTo(X(x), Y(y)); ctx.lineTo(X(x2), Y(y2)); ctx.lineTo(X(x2), h); ctx.fill();
   }
-  ctx.font = '22px Georgia, serif'; ctx.textAlign = 'center';
-  const label = (x, y, text, col = 'rgba(58,36,24,.7)') => { ctx.fillStyle = col; ctx.fillText(text, clamp(X(x), 60, w - 60), y); };
+  ctx.font = 'italic 22px Spectral, Georgia, serif'; ctx.textAlign = 'center';
+  const label = (x, y, text, col = 'rgba(58,36,24,.7)') => { const m = ctx.measureText(text).width / 2 + 8; ctx.fillStyle = col; ctx.fillText(text, clamp(X(x), m, w - m), y); };
   label(W.START_X, 26, 'Forest edge'); label(W.JOURNEY - 200, 26, 'Wintering marsh');
   ctx.strokeStyle = 'rgba(58,36,24,.25)'; ctx.setLineDash([4, 5]); ctx.beginPath();
   ctx.moveTo(X(W.START_X), 30); ctx.lineTo(X(W.START_X), h); ctx.moveTo(X(W.JOURNEY - 700), 30); ctx.lineTo(X(W.JOURNEY - 700), h); ctx.stroke(); ctx.setLineDash([]);

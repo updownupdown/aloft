@@ -50,33 +50,60 @@ button { font-family: inherit; }
 .menu { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(58, 36, 24, .26); }
 .menu.hidden, .hidden { display: none !important; }
 .card {
-  width: min(440px, 92vw); max-height: 90vh; overflow: auto; padding: 20px 26px 22px; border-radius: 6px;
+  display: flex; flex-direction: column; width: min(520px, 94vw); max-height: min(92vh, 640px); padding: 14px 24px 0; border-radius: 6px;
   background: var(--card); box-shadow: 0 10px 40px rgba(58, 36, 24, .35);
   background-image: radial-gradient(ellipse 60% 24% at 12% -2%, rgba(156, 192, 219, .42), transparent 100%),
                     radial-gradient(ellipse 44% 20% at 100% 104%, rgba(201, 151, 60, .3), transparent 100%);
 }
-.card h1 { margin: 0; font-family: var(--title); font-style: italic; font-weight: 500; font-size: 44px; line-height: .95; letter-spacing: 0; cursor: default; }
-.card .sub { margin: 4px 0 10px; font-size: 13px; font-style: italic; color: var(--ink2); }
+.card-head, .tabs { flex: none; }
+.card-head { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+.card h1 { margin: 0; font-family: var(--title); font-style: italic; font-weight: 500; font-size: 38px; line-height: 1; letter-spacing: 0; cursor: default; }
+.card .sub { margin: 0; font-size: 13px; font-style: italic; color: var(--ink2); }
 
-/* rows are ruled lines, not boxes; each carries a dot of its own pigment */
-.card > button, .card .half, summary {
-  display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; margin: 0; padding: 9px 0; font: inherit; font-size: 17px; text-align: left; color: var(--ink);
+/* tabs: italic titles along a pencil rule; the open one carries its pigment underneath */
+.tabs { display: flex; gap: 18px; margin: 6px 0 0; border-bottom: 1px solid var(--rule); overflow-x: auto; scrollbar-width: none; }
+.tabs::-webkit-scrollbar { display: none; }
+.tabs button {
+  flex: none; position: relative; min-height: 40px; padding: 6px 0 7px; font-family: var(--title); font-style: italic; font-weight: 600; font-size: 18.5px;
+  color: var(--ink2); background: none; border: 0; cursor: pointer; white-space: nowrap; opacity: .75;
+}
+.tabs button.on { color: var(--ink); opacity: 1; }
+.tabs button.on::after { content: ''; position: absolute; left: -3px; right: -3px; bottom: -1.5px; height: 3.5px; border-radius: 2px; background: var(--tab, var(--stone)); opacity: .85; }
+[data-tab=play] { --tab: var(--water); } [data-tab=journal] { --tab: var(--ochre); } [data-tab=songs] { --tab: var(--berry); } [data-tab=help] { --tab: var(--leaf); } [data-tab=gfx] { --tab: var(--stone); }
+.panes { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 2px 0 10px; overscroll-behavior: contain; }
+
+/* the footer stays put while the section scrolls: Resume is always one tap away */
+.card-foot { flex: none; padding: 10px 0 12px; border-top: 1px solid var(--rule); background: linear-gradient(rgba(244, 238, 225, 0), var(--card) 30%); }
+.card .primary {
+  display: flex; justify-content: center; align-items: center; width: 100%; min-height: 46px; margin: 0; border: 0; border-radius: 23px; cursor: pointer;
+  color: var(--card); font: inherit; font-size: 17px; background: var(--indigo-wash); box-shadow: inset 0 0 0 1.2px rgba(47, 74, 116, .55);
+}
+
+/* rows are ruled lines, not boxes; a plain row carries a dot of its own pigment */
+.row-btn, summary, .sw {
+  display: flex; align-items: center; gap: 10px; width: 100%; min-height: 46px; margin: 0; padding: 8px 0; font: inherit; font-size: 17px; text-align: left; color: var(--ink);
   background: none; border: 0; border-bottom: 1px solid var(--rule); border-radius: 0; cursor: pointer;
 }
-.card > button::before, summary::before { content: ''; flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--dot, var(--stone)); opacity: .8; }
-.card > button.primary {
-  justify-content: center; min-height: 46px; margin: 10px 0 12px; border: 0; border-radius: 23px; color: var(--card); font-size: 17px;
-  background: var(--indigo-wash); box-shadow: inset 0 0 0 1.2px rgba(47, 74, 116, .55);
-}
-.card > button.primary::before, .card > button.quiet::before { display: none; }
-.card > button.quiet { font-size: 14px; font-style: italic; color: var(--ink2); border-bottom: 0; min-height: 40px; margin-top: 6px; }
+.row-btn::before, summary::before { content: ''; flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--dot, var(--stone)); opacity: .8; }
+.row-btn em { margin-left: auto; font-size: 15px; color: var(--ink2); }
+.card .quiet { display: block; font: inherit; font-size: 14px; font-style: italic; color: var(--ink2); background: none; border: 0; min-height: 40px; padding: 8px 0; margin-top: 4px; cursor: pointer; }
 [data-act=photo] { --dot: var(--water); }
-[data-act=glide] { --dot: var(--leaf); }
 [data-act=install] { --dot: var(--ochre); }
-.card .row { display: flex; gap: 20px; }
-.card .half { font-size: 15px; }
-.card .half::before { content: ''; flex: none; width: 9px; height: 9px; border-radius: 50%; border: 1px solid var(--ink2); }
-.card .half.on::before { background: var(--water); border-color: var(--water); }
+
+/* switches: a pencilled track with a pigment bead; on, the track takes a wash and the bead slides over */
+.sw > span { flex: 1; }
+.sw > i {
+  flex: none; position: relative; width: 40px; height: 22px; border-radius: 11px; border: 1.2px solid rgba(58, 36, 24, .45); background: rgba(255, 255, 255, .25);
+  transition: background .2s, border-color .2s;
+}
+.sw > i::after {
+  content: ''; position: absolute; left: 3px; top: 50%; width: 14px; height: 14px; margin-top: -7px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, rgba(255, 255, 255, .5), transparent 60%), var(--stone); transition: transform .2s, background-color .2s;
+}
+.sw.on > i { background: rgba(var(--sw-rgb, 79, 127, 166), .28); border-color: rgba(var(--sw-rgb, 79, 127, 166), .75); }
+.sw.on > i::after { transform: translateX(18px); background-color: rgb(var(--sw-rgb, 79, 127, 166)); }
+[data-act=glide] { --sw-rgb: 111, 138, 74; } [data-act=haptics] { --sw-rgb: 184, 134, 47; } [data-act=lefty] { --sw-rgb: 168, 72, 58; }
+.gfx-list .sw { --sw-rgb: 138, 122, 106; font-size: 15px; min-height: 42px; }
 
 /* sections: the summary is a ruled row like the others, with a plus that turns into a dash */
 details { margin: 0; padding: 0; border: 0; }
@@ -85,10 +112,6 @@ summary::-webkit-details-marker { display: none; }
 summary::after { content: '+'; margin-left: auto; color: var(--ink2); font-size: 20px; line-height: 1; }
 details[open] > summary::after { content: '\2013'; }
 details > :not(summary) { margin-left: 20px; }
-.sec-journal > summary { --dot: var(--ochre); }
-.sec-songbook > summary { --dot: var(--berry); }
-.sec-howto > summary { --dot: var(--leaf); }
-.sec-gfx > summary { --dot: var(--stone); }
 .tuning > summary { --dot: var(--ink2); }
 .card h3 { font-family: var(--title); font-style: italic; font-weight: 500; font-size: 22px; margin: 12px 0 2px; }
 small { display: block; font-size: 12.5px; font-style: italic; color: var(--ink2); }
@@ -123,9 +146,8 @@ details > .map { margin: 6px 0; }
 .landmarks li { padding: 6px 0; border-bottom: 1px solid var(--rule); }
 
 /* graphics and tuning */
-.gfx-list { display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px; margin: 4px 0 8px; }
-.gfx-list button { font: inherit; font-size: 14px; min-height: 40px; padding: 8px 0; text-align: left; color: var(--ink); background: none; border: 0; border-bottom: 1px solid var(--rule); border-radius: 0; cursor: pointer; }
-.gfx-list button.off { color: var(--ink2); font-style: italic; }
+.gfx-list { display: grid; grid-template-columns: 1fr 1fr; gap: 0 22px; margin: 2px 0 8px; }
+.gfx-list .res { grid-column: 1 / -1; font-size: 15px; --dot: var(--stone); }
 .slider { display: grid; grid-template-columns: 70px 1fr 44px; align-items: center; gap: 8px; font-size: 13px; margin: 4px 0; }
 .slider input { width: 100%; accent-color: var(--indigo); }
 .slider output { text-align: right; font-variant-numeric: tabular-nums; }
@@ -181,7 +203,6 @@ details > .map { margin: 6px 0; }
 .dial .score { margin-top: 2px; font-size: 12px; display: flex; align-items: center; gap: 5px; text-shadow: 0 0 6px rgba(244, 238, 225, .9); }
 .dial .score::before { content: ''; width: 9px; height: 9px; border-radius: 50%; border: 2px solid var(--ochre); }
 /* small buttons inside open sections (Copy debug info): an ink-ring pill */
-details button.quiet { font: inherit; font-size: 14px; font-style: italic; color: var(--ink2); margin: 8px 0 4px; padding: 6px 14px; min-height: 36px; background: none; border: 1px solid rgba(58, 36, 24, .35); border-radius: 18px; cursor: pointer; }
 details > small { margin: 4px 0; }
 
 /* the hawk's call: a paper ring like the menu button, washed with the red of the hawk's tail */
@@ -193,7 +214,23 @@ details > small { margin: 4px 0; }
 }
 .call-btn:active { background: var(--berry-wash); color: var(--card); border-color: transparent; }
 /* the corner buttons step back while the menu is open */
-#ui.menu-open .call-btn, #ui.menu-open .sing-btn, #ui.menu-open .sing-dots { display: none; }
+#ui.menu-open .call-btn, #ui.menu-open .sing-btn, #ui.menu-open .sing-dots, #ui.menu-open .sleep-btn, #ui.menu-open .sing-cheer { display: none; }
+/* sleep: a paper pill beside the call button, offered on a branch once evening comes */
+.sleep-btn {
+  position: absolute; right: calc(70px + env(safe-area-inset-right)); bottom: calc(12px + env(safe-area-inset-bottom));
+  height: 46px; padding: 0 18px 2px 34px; border-radius: 23px; border: 1.25px solid rgba(58, 36, 24, .5); cursor: pointer;
+  background: radial-gradient(circle at 30% 40%, rgba(79, 111, 158, .3), rgba(244, 238, 225, .85) 70%);
+  font-family: var(--title); font-style: italic; font-weight: 600; font-size: 18px; color: var(--ink);
+}
+.sleep-btn::before { content: ''; position: absolute; left: 12px; top: 50%; width: 12px; height: 12px; margin-top: -7px; border-radius: 50%; box-shadow: 4px 1px 0 0 var(--ochre); }   /* a crescent moon */
+#ui.lefty .sleep-btn { right: auto; left: calc(70px + env(safe-area-inset-left)); }
+/* a finished song: one italic line under the progress dots, washed in indigo */
+.sing-cheer {
+  position: absolute; left: 50%; top: calc(80px + env(safe-area-inset-top)); transform: translate(-50%, 6px); opacity: 0; pointer-events: none !important;
+  padding: 5px 18px 6px; border-radius: 18px; background: var(--indigo-wash); color: var(--card); white-space: nowrap;
+  font-family: var(--title); font-style: italic; font-weight: 600; font-size: 19px; transition: opacity .35s, transform .35s;
+}
+.sing-cheer.show { opacity: 1; transform: translate(-50%, 0); }
 /* left-handed: the string and the call button swap sides */
 #ui.lefty .sing-strip { right: auto; left: 0; padding-right: 0; padding-left: env(safe-area-inset-left); border-left: none; border-right: 1px solid rgba(58, 36, 24, .25); }
 #ui.lefty .call-btn { right: auto; left: calc(14px + env(safe-area-inset-left)); }
@@ -210,4 +247,4 @@ details > small { margin: 4px 0; }
 .album figure.big { grid-column: 1 / -1; }
 .album .unknown { grid-column: 1 / -1; font-style: italic; color: var(--ink2); }
 .world { font-size: 13.5px; display: flex; align-items: center; gap: 10px; margin: 8px 0 0; padding-top: 8px; border-top: 1px solid var(--rule); }
-.world .quiet { margin: 0 0 0 auto; }
+.world .quiet { margin: 0 0 0 auto; min-height: 36px; padding: 5px 14px; border: 1px solid rgba(58, 36, 24, .35); border-radius: 18px; }

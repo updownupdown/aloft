@@ -15,12 +15,13 @@ export function createInput(canvas) {
   canvas.addEventListener('pointermove', e => {
     const q = I.pointers.get(e.pointerId); if (!q) return;
     const p = pos(e); q.x = p.x; q.y = p.y;
-    if (!q.held && Math.hypot(q.x - q.x0, q.y - q.y0) > TAP_MOVE) { q.held = true; I.steerPtr = e.pointerId; }
+    if (!q.moved && Math.hypot(q.x - q.x0, q.y - q.y0) > TAP_MOVE) { q.moved = q.held = true; I.steerPtr = e.pointerId; }
   });
   const up = e => {
     const q = I.pointers.get(e.pointerId); if (!q) return;
     I.pointers.delete(e.pointerId);
-    if (!q.held && performance.now() - q.t0 < TAP_MS + 120) I.taps.push({ x: q.x0, y: q.y0 });
+    // a slightly slow tap still counts (it steered for a moment first, which does no harm)
+    if (!q.moved && performance.now() - q.t0 < TAP_MS + 120) I.taps.push({ x: q.x0, y: q.y0 });
     if (I.steerPtr === e.pointerId) I.steerPtr = null;
   };
   canvas.addEventListener('pointerup', up);

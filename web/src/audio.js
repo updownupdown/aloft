@@ -1,7 +1,7 @@
 // All sound is synthesised with Web Audio: no files to download.
 // Everything that has a pitch (songbirds, the hawk's singing voice, the music) shares one
-// key, which drifts with the hour: A by day, G at dusk, E at night, D at dawn. Singing in
-// tune then sits inside the music instead of beside it.
+// key, A, so singing in tune sits inside the music. (It used to drift with the hour; that made
+// songs too hard to keep up with, so setKey is left for the console only.)
 const BASE = [880, 988, 1109, 1319, 1480]; // A major pentatonic, one per staff line (low to high)
 const KEYS = { day: 0, dusk: -2, night: -5, dawn: 5 };   // semitones from A
 
