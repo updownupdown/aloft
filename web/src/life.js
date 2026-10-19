@@ -133,6 +133,8 @@ export function updateHawk(G, h, dt) {
   // a mate flies a little behind and above you; a suitor circles wide, watching
   else if (h.kind === 'mate') T = b.state === 'fly' ? { x: b.x - b.face * 65, y: b.y - 32 + Math.sin(G.t * .9) * 10 } : { x: b.x + Math.sin(G.t * .4) * 80, y: b.y - 75 + Math.sin(G.t * .7) * 14, circle: true };
   else if (h.kind === 'suitor') T = h.leaving ? { x: h.x + h.face * 400, y: h.y - 300 } : { x: b.x + Math.sin(G.t * .45) * 110, y: b.y - 90 + Math.sin(G.t * .8) * 25, circle: true };
+  // a grown hawk, once your chick: one wide circle with you, then off on its own
+  else if (h.kind === 'grown') T = h.life > 36 ? { x: h.x + h.face * 400, y: h.y - 260 } : { x: b.x + Math.sin(h.life * .35) * 120, y: b.y - 60 + Math.cos(h.life * .35) * 40, circle: true };
   else if (h.life > 150) T = { x: h.x + h.face * 400, y: h.y - 300 };
   else T = companionGoal(G, h);
   const dx = T.x - h.x, dy = T.y - h.y, d = Math.hypot(dx, dy) || 1;
@@ -146,7 +148,7 @@ export function updateHawk(G, h, dt) {
   h.flapT -= dt; if (h.vys < -25 && h.flapT <= 0 && !T.circle) { h.flapLeft = 2; h.flapT = 1.2; }
   h.turnT = Math.max(0, h.turnT - dt);
   pose(h, dt, G);
-  return !((h.kind === 'companion' && h.life > 150 || h.kind === 'suitor' && h.leaving) && Math.abs(h.x - b.x) > 900);
+  return !((h.kind === 'companion' && h.life > 150 || h.kind === 'suitor' && h.leaving || h.kind === 'grown' && h.life > 36) && Math.abs(h.x - b.x) > 900);
 }
 
 /* ---------- crows: two or three that mob a hawk flying low near their trees ---------- */
