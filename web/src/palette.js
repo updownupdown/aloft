@@ -35,6 +35,8 @@ function seasonal(P, sea, tod) {
   P.blossom = mix(hx('#f0b8c8'), P.leafHi, .3);
 }
 const lerpN = (a, b, t) => a + (b - a) * t;
+// focus and landing marks: fixed, strong pigments so a target reads at any hour or season
+export const MARK = { perch: hx('#3f7a3c'), mouse: hx('#b02c48'), fish: hx('#2f6f9a'), thermal: hx('#c98a1e'), ink: hx('#3a2418') };
 export const SEASONS = ['summer', 'autumn', 'winter', 'spring'];
 // s runs 0..4 (summer, autumn, winter, spring); each season holds steady, then blends into the next
 export function seasonAmounts(s) {

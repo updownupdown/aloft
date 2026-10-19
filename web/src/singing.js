@@ -1,84 +1,120 @@
-// Singing from a perch. A button at the top centre opens a string down the right edge (it takes
-// the place of the right thumb strip) with five fixed notes on it, pools of pale pigment. Touch a
-// pool and the hawk sings that note; slide along the string and each pool you cross sounds.
-// The next note to sing is tinted red, and a pool brightens in the bird's own colour while it
-// sings that note or when you sing it. Your finger is a drop of indigo on the string.
-import { wash, ellP } from './paint.js';
-import { C, mix } from './util.js';
+// Singing from a perch: whenever the hawk sits on a branch (or a songbird is close), two half
+// rings of pigment pools open around the joysticks. Around the right stick, the five song notes,
+// low to high, each its own colour: touch one to sing it, slide across to sing each you cross.
+// Around the left stick, the songbirds you know, each pooled in its breast colour with a dot of
+// its cap: touch one and the hawk sings that bird's song, and the bird answers. (Left-handed,
+// the rings swap.) The next note of a song you are copying wears a red ring; a pool brightens
+// while the songbird sings that note. The pools are painted once into images, so the rings cost
+// nothing per frame.
+import { wash, circP } from './paint.js';
 
-const PAD = 30;
-const INK = [58, 36, 24], POOL = [156, 192, 219], NEXT = [168, 72, 58], INDIGO = [47, 74, 116];
+export const NOTE_COLS = [[47, 74, 116], [62, 124, 136], [96, 136, 66], [196, 146, 52], [176, 78, 58]];
+const SPAN = 110 * Math.PI / 180, GAP = 40, BTN = 34;
 
-export function createSinging({ audio, onNote, onToggle }) {
+const pools = new Map();
+function pool(col, dot) {
+  const key = col.join() + (dot ? '/' + dot.join() : '');
+  if (pools.has(key)) return pools.get(key);
+  const cv = document.createElement('canvas'), s = 2 * BTN, r = s / 2, x = cv.getContext('2d');
+  cv.width = cv.height = s;
+  wash(x, circP(r, r, r * .8, 16), col, .55, { passes: 3, amp: r * .05, seed: col[0] + col[2], rim: .6, rimW: 2 });
+  if (dot) wash(x, circP(r + r * .18, r - r * .22, r * .26, 10), dot, .7, { passes: 2, amp: r * .03, seed: 4, rim: .3 });
+  const url = `url(${cv.toDataURL()})`; pools.set(key, url); return url;
+}
+
+export function createSinging({ audio, sticks, onNote, onMimic, onToggle }) {
   const root = document.getElementById('ui');
-  const btn = document.createElement('button'); btn.className = 'sing-btn hidden';
   const dots = document.createElement('div'); dots.className = 'sing-dots hidden';
-  const strip = document.createElement('div'); strip.className = 'sing-strip hidden';
   const cheer = document.createElement('div'); cheer.className = 'sing-cheer'; let cheerTimer = 0;
-  const cv = document.createElement('canvas'); strip.append(cv);
-  root.append(btn, dots, cheer, strip);
+  const notes = document.createElement('div'); notes.className = 'song-ring notes hidden';
+  const calls = document.createElement('div'); calls.className = 'song-ring calls hidden';
+  root.append(dots, cheer, notes, calls);
 
-  const S = { open: false, finger: null, glow: [0, 0, 0, 0, 0], hit: [0, 0, 0, 0, 0], col: [184, 83, 47], label: '', next: -1 };
-  // the five notes sit evenly down the string, highest at the top
-  const yAt = (lane, h) => PAD + (4 - lane) / 4 * (h - PAD * 2);
-  const laneAt = y => { const r = strip.getBoundingClientRect(); return Math.max(0, Math.min(4, Math.round(4 - (y - r.top - PAD) / (r.height - PAD * 2) * 4))); };
-  function sound(lane) { S.hit[lane] = 1; audio.note(lane, 1, .18); onNote(lane, 0); }
-
-  btn.addEventListener('click', () => setOpen(!S.open));
-  strip.addEventListener('pointerdown', e => {
-    e.preventDefault(); strip.setPointerCapture?.(e.pointerId); audio.unlock?.();
-    S.finger = { id: e.pointerId, lane: laneAt(e.clientY) }; sound(S.finger.lane);
+  const S = { open: false, finger: null, next: -1, lefty: false, species: '', key: '' };
+  const noteBtns = NOTE_COLS.map((col, lane) => {
+    const el = document.createElement('button'); el.className = 'pool'; el.style.backgroundImage = pool(col);
+    el.setAttribute('aria-label', `Note ${lane + 1}`); el.dataset.lane = lane; notes.append(el); return el;
   });
-  strip.addEventListener('pointermove', e => {
+  const flash = (el, cls = 'hit') => { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); };
+  function sound(lane) { flash(noteBtns[lane]); audio.note(lane, 1, .18); onNote(lane, 0); }
+
+  // touch a pool to sing it; slide on and each pool the finger reaches sings in turn
+  const laneAt = (x, y) => {
+    let best = -1, bd = BTN * .75;
+    noteBtns.forEach((el, i) => { const r = el.getBoundingClientRect(), d = Math.hypot(x - r.left - r.width / 2, y - r.top - r.height / 2); if (d < bd) { bd = d; best = i; } });
+    return best;
+  };
+  notes.addEventListener('pointerdown', e => {
+    const lane = laneAt(e.clientX, e.clientY); if (lane < 0) return;
+    e.preventDefault(); e.stopPropagation(); notes.setPointerCapture?.(e.pointerId); audio.unlock?.();
+    S.finger = { id: e.pointerId, lane }; sound(lane);
+  });
+  notes.addEventListener('pointermove', e => {
     const f = S.finger; if (f?.id !== e.pointerId) return;
-    // sliding on, a new note sounds once the finger is well into its pool (no flicker at the edges)
-    const r = strip.getBoundingClientRect(), pos = 4 - (e.clientY - r.top - PAD) / (r.height - PAD * 2) * 4;
-    const lane = Math.max(0, Math.min(4, Math.round(pos)));
-    if (lane !== f.lane && Math.abs(pos - lane) < .3) { f.lane = lane; sound(lane); }
+    const lane = laneAt(e.clientX, e.clientY);
+    if (lane >= 0 && lane !== f.lane) { f.lane = lane; sound(lane); }
   });
   const up = e => { if (S.finger?.id === e.pointerId) S.finger = null; };
-  strip.addEventListener('pointerup', up); strip.addEventListener('pointercancel', up);
-  strip.addEventListener('contextmenu', e => e.preventDefault());
+  notes.addEventListener('pointerup', up); notes.addEventListener('pointercancel', up);
+  calls.addEventListener('pointerdown', e => {
+    const el = e.target.closest('.pool'); if (!el) return;
+    e.preventDefault(); e.stopPropagation(); audio.unlock?.(); flash(el);
+    onMimic(+el.dataset.sp);
+  });
+  for (const r of [notes, calls]) r.addEventListener('contextmenu', e => e.preventDefault());
+
+  // the songbirds you know, one pool each, in the order you learned them
+  function setSpecies(list) {
+    const key = list.map(s => s.id).join();
+    if (key === S.species) return;
+    S.species = key; calls.textContent = '';
+    for (const sp of list) {
+      const el = document.createElement('button'); el.className = 'pool'; el.dataset.sp = sp.id;
+      el.style.backgroundImage = pool(sp.cols.breast, sp.cols.cap); el.setAttribute('aria-label', `Sing like the ${sp.name}`);
+      calls.append(el);
+    }
+    calls.classList.toggle('dense', list.length > 10);
+    S.key = '';
+  }
+
+  // lay the pools out on half circles round the sticks, rising from the outer side to the top
+  function layout() {
+    const key = [innerWidth, innerHeight, S.lefty, S.species].join();
+    if (key === S.key) return;
+    S.key = key;
+    const place = (ring, side, btns) => {
+      const r = sticks.el(side).getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+      let rho = r.width / 2 + 28, i = 0;
+      // the left ring opens rightward and up, the right one leftward and up
+      const a0 = side === 'L' ? -10 * Math.PI / 180 : Math.PI + 10 * Math.PI / 180, dir = side === 'L' ? 1 : -1;
+      while (i < btns.length) {
+        const n = Math.max(2, Math.floor(SPAN * rho / GAP) + 1), take = Math.min(n, btns.length - i);
+        for (let k = 0; k < take; k++, i++) {
+          const a = a0 + dir * SPAN * (take > 1 ? k / (n - 1) : 0);
+          btns[i].style.left = `${cx + Math.cos(a) * rho - BTN / 2}px`; btns[i].style.top = `${cy - Math.sin(a) * rho - BTN / 2}px`;
+        }
+        rho += GAP;
+      }
+    };
+    const ns = S.lefty ? 'L' : 'R';
+    place(notes, ns, noteBtns); place(calls, ns === 'L' ? 'R' : 'L', [...calls.children]);
+  }
 
   function setOpen(o) {
     if (o === S.open) return;
     S.open = o; S.finger = null;
-    strip.classList.toggle('hidden', !o); dots.classList.toggle('hidden', !o);
-    btn.textContent = o ? 'Done' : S.label; btn.classList.toggle('on', o);
+    for (const el of [notes, calls, dots]) el.classList.toggle('hidden', !o);
+    if (o) { S.key = ''; layout(); }
     onToggle?.(o);
   }
 
-  // per frame: which button to offer, the finger's pitch, and the string drawing
-  function update(dt, { available, label, color, next = -1 }) {
-    S.label = label; if (color) S.col = color; S.next = next;
-    if (!available && S.open) setOpen(false);
-    btn.classList.toggle('hidden', !available);
-    if (!S.open) { if (btn.textContent !== label) btn.textContent = label; return; }
-    for (let i = 0; i < 5; i++) { S.glow[i] = Math.max(0, S.glow[i] - dt * 2.2); S.hit[i] = Math.max(0, S.hit[i] - dt * 2.5); }
-    draw();
-  }
-
-  function draw() {
-    const dpr = Math.min(devicePixelRatio || 1, 2), w = strip.clientWidth, h = strip.clientHeight;
-    if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
-    const x = cv.getContext('2d'), cx = w * .5, f = S.finger;
-    x.setTransform(dpr, 0, 0, dpr, 0, 0); x.clearRect(0, 0, w, h);
-    // the five pools of pigment, one per song note (multiply on a clear canvas paints them straight on)
-    for (let i = 0; i < 5; i++) {
-      const y = yAt(i, h), g = Math.max(S.glow[i], S.hit[i]), base = i === S.next ? NEXT : POOL;
-      wash(x, ellP(cx, y, 19 + 4 * g, 8.5 + 2 * g, 0, 14), g > .02 ? mix(base, S.col, g) : base, (i === S.next ? .46 : .38) + .35 * g, { passes: 2, amp: 1.6, seed: 11 + i, rim: .35, rimW: .8 });
-    }
-    // the string, trembling while it sounds
-    x.strokeStyle = C(INK, .7); x.lineWidth = 1.2; x.beginPath();
-    for (let y = 8; y <= h - 8; y += 6) { const wob = f ? Math.sin(y * .25 + performance.now() * .05) * .9 * Math.min(1, Math.abs(y - yAt(f.lane, h)) / 60) : 0; y === 8 ? x.moveTo(cx + wob, y) : x.lineTo(cx + wob, y); }
-    x.stroke();
-    // your finger: a drop of indigo on the string, in the pool it is sounding
-    if (f) {
-      const y = yAt(f.lane, h);
-      x.fillStyle = C(INDIGO, .2); x.beginPath(); x.arc(cx, y, 20, 0, Math.PI * 2); x.fill();
-      x.fillStyle = C(INDIGO, .85); x.beginPath(); x.arc(cx, y, 9, 0, Math.PI * 2); x.fill();
-      x.strokeStyle = C(INDIGO, .9); x.lineWidth = .8; x.beginPath(); x.arc(cx, y, 9.6, 0, Math.PI * 2); x.stroke();
-    }
+  // per frame: whether the rings are out, the next note to sing, and the songs you know
+  function update(dt, { available, next = -1, known = [], lefty = false }) {
+    S.lefty = lefty; setSpecies(known);
+    setOpen(!!available);
+    if (!S.open) return;
+    layout();
+    if (next !== S.next) { noteBtns.forEach((el, i) => el.classList.toggle('next', i === next)); S.next = next; }
   }
 
   // progress under the button: one dot per note of the song being copied, or per note sung.
@@ -92,14 +128,15 @@ export function createSinging({ audio, onNote, onToggle }) {
   return {
     update, progress, setOpen,
     get open() { return S.open; },
-    glow(lane) { S.glow[lane] = 1; },
-    // a finished song: a line under the button and every pool on the string lights up
+    glow(lane) { if (S.open) flash(noteBtns[lane], 'glow'); },
+    // a finished song: a line at the top and every pool brightens
     cheer(text) {
       cheer.textContent = text; cheer.classList.remove('show'); void cheer.offsetWidth; cheer.classList.add('show');
-      S.hit = [1, 1, 1, 1, 1]; S.glow = [1, 1, 1, 1, 1];
+      for (const el of noteBtns) flash(el, 'glow');
       clearTimeout(cheerTimer); cheerTimer = setTimeout(() => cheer.classList.remove('show'), 2600);
     },
-    // where a lane sits on screen (for test scripts)
-    lanePt(lane) { const r = strip.getBoundingClientRect(); return [r.left + r.width / 2, r.top + yAt(lane, r.height)]; },
+    // where a pool sits on screen (for test scripts)
+    lanePt(lane) { const r = noteBtns[lane].getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; },
+    callPt(id) { const el = calls.querySelector(`[data-sp="${id}"]`); if (!el) return null; const r = el.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; },
   };
 }
