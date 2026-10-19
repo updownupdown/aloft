@@ -8,6 +8,7 @@ const OWL = 6;   // the owl's place in SPECIES
 import { GFX } from './gfx.js';
 import { mousePos, fishPos } from './life.js';
 import { drawFauna } from './fauna.js';
+import { sight } from './guide.js';
 import { keepsakesIn } from './story.js';
 
 const BS = 1.25; // hawk drawing scale
@@ -281,7 +282,7 @@ function pond(ctx, p, P, G) {
     return;
   }
   wash(ctx, poly, P.water, .45, { passes: 2, amp: 1, seed: p.k + 40, rim: .25 });
-  for (const f of p.fish) if (!G.eaten.has(f.id + ':' + G.day)) fish(ctx, fishPos(f, p, G.t), P, f.seed, G.view.spx);
+  for (const f of p.fish) if (!G.eaten.has(f.id + ':' + G.day)) { const q = fishPos(f, p, G.t); fish(ctx, q, P, f.seed, G.view.spx); sight(G, 'fish', q.x, q.y + 2, 9); }
   softWash(ctx, p.c, p.waterY + 6, (p.x1 - p.x0) * .6, 10, P.water, .25);
   ctx.save(); ctx.globalCompositeOperation = 'source-over'; ctx.strokeStyle = C(P.paper, .7); ctx.lineWidth = 1; ctx.beginPath();
   for (let k = 0; k < 3; k++) {
@@ -468,6 +469,7 @@ function worm(ctx, wm, P, G) {
 // crest, the finch's stubby bill, the thrush's spotted breast, the owl round and big-headed.
 function songbird(ctx, x, y, sp, singing, face, P, G) {
   const c = sp.cols, L = sp.look, bob = singing ? Math.sin(G.t * 18) * .4 : 0;
+  sight(G, 'sp' + sp.id, x, y - 2, 9 * L.size);
   const lv = singing ? Math.round((Math.sin(G.t * 30) + 1) * 1.5) : -1, open = lv < 0 ? 0 : .9 + (lv / 1.5 - 1) * .5;
   ctx.save(); ctx.translate(x, y + bob); ctx.scale(face * L.size, L.size);
   put(ctx, stamp('song' + sp.id + ':' + lv, pk, -10, -10, 9, 5, G.view.spx * 2 * L.size, x => {
@@ -510,6 +512,7 @@ function songbird(ctx, x, y, sp, singing, face, P, G) {
 }
 // a crow: the small flying bird, bigger and black
 function crow(ctx, c, P, G) {
+  sight(G, 'crow', c.x, c.y + 4, 14);
   ctx.save(); ctx.translate(c.x, c.y); ctx.scale(1.75, 1.75);
   smallBird(ctx, { x: 0, y: 0, vx: c.vxs, ph: c.ph, col: P.crow, wing: shade(P.crow, .85), seed: c.seed }, P, G);
   ctx.restore();
@@ -542,6 +545,7 @@ function mouse(ctx, m, P, G) {
   if (b.kiteT > .3 && Math.abs(m.x - b.x) < 140) q.show = Math.max(q.show, .9);   // a kiting hawk sees the grass move
   if (q.show <= .02) return;
   const y = q.y + 1 - 2.2 * q.show, hop = Math.abs(Math.sin(G.t * 14 + m.seed)) * .6 * q.run, sd = m.seed % 4;
+  if (q.show > .6) sight(G, 'mouse', q.x, y, 8);
   ctx.save(); ctx.translate(q.x, y - hop); ctx.scale(q.dir, 1);
   const col = mix(P.ground, [120, 110, 100], .5), a = .85;
   put(ctx, stamp('mouse' + sd, pk, -8, -3, 5, 3, G.view.spx, x => {

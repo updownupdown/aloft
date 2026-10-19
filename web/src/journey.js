@@ -19,6 +19,7 @@ export function loadJourney(G, store) {
   G.found = s?.found ?? {};
   G.nest = s?.nest ?? null;
   G.intent = s?.intent ?? null;
+  G.route = s?.route ?? [];
   G.songLog = store.get('songlog', {});
   const link = urlSeed();
   W.setSeed(s ? s.seed ?? 0 : link ?? store.get('seed', 0));
@@ -31,7 +32,7 @@ export function saveJourney(G, store) {
   store.set('save', {
     x: Math.round(b.x), y: Math.round(b.y), clockT: G.clockT, thirst: G.thirst, hunger: G.hunger,
     goal: G.goal, journeys: G.journeys, explored: G.explored.map(Math.round), found: G.found, nest: G.nest,
-    seed: G.seed, intent: G.intentions?.save(), ...saveStory(G),
+    seed: G.seed, intent: G.intentions?.save(), route: G.route, ...saveStory(G),
   });
 }
 // a link to this world, for a friend to fly the same hills
@@ -53,6 +54,7 @@ export function updateJourney(G, dt, { toast, once, audio }) {
   const b = G.bird;
   G.explored[0] = Math.min(G.explored[0], b.x); G.explored[1] = Math.max(G.explored[1], b.x);
   G.goalDir = G.goal === 'south' ? 1 : -1;
+  traceRoute(G);
   for (const l of W.landmarksIn(b.x - 220, b.x + 220)) {
     if (G.found[l.id] || Math.abs(l.x - b.x) > 200) continue;
     G.found[l.id] = { name: l.name, x: Math.round(l.x), note: `Found on day ${G.day}, in ${seasonName(G)}, in ${where(l.x)}` };
@@ -73,6 +75,18 @@ export function updateJourney(G, dt, { toast, once, audio }) {
   }
   if (G.gather) { G.gather.t -= dt; if (G.gather.t <= 0) G.gather = null; }
   once('journey', 'The flocks are heading south, to the right. Follow them to the wintering marsh.');
+}
+
+// the route flown, for the journal map: a point every so often along the way, with the height
+// above the ground in tens of units (0 when walking or perched on the ground, -1 when swimming)
+const ROUTE_STEP = 80, ROUTE_MAX = 900;
+function traceRoute(G) {
+  const b = G.bird, r = G.route, last = r[r.length - 1];
+  if (last && Math.abs(b.x - last[0]) < ROUTE_STEP) return;
+  const alt = b.state === 'fly' ? Math.max(1, Math.round((W.groundY(b.x) - b.y) / 10)) : b.state === 'swim' ? -1 : 0;
+  r.push([Math.round(b.x), alt]);
+  // a long life of flying: keep every other point of the older half
+  if (r.length > ROUTE_MAX) G.route = [...r.slice(0, ROUTE_MAX / 2).filter((_, i) => i % 2 === 0), ...r.slice(ROUTE_MAX / 2)];
 }
 
 /* ---------- the nest: twigs, an egg, a chick to feed, a fledgling ---------- */
@@ -148,6 +162,7 @@ export function drawMap(G, cv) {
     ctx.fillStyle = C(W.biomeAt(x).tint, .55);
     ctx.beginPath(); ctx.moveTo(X(x), h); ctx.lineTo(X(x), Y(y)); ctx.lineTo(X(x2), Y(y2)); ctx.lineTo(X(x2), h); ctx.fill();
   }
+  drawRoute(ctx, G.route, X, Y);
   ctx.font = 'italic 22px Spectral, Georgia, serif'; ctx.textAlign = 'center';
   const label = (x, y, text, col = 'rgba(58,36,24,.7)') => { const m = ctx.measureText(text).width / 2 + 8; ctx.fillStyle = col; ctx.fillText(text, clamp(X(x), m, w - m), y); };
   label(W.START_X, 26, 'Forest edge'); label(W.JOURNEY - 200, 26, 'Wintering marsh');
@@ -164,4 +179,28 @@ export function drawMap(G, cv) {
   const bx = X(G.bird.x), by = Math.min(Y(W.groundY(G.bird.x)) - 18, h * .4);
   ctx.strokeStyle = 'rgba(58,36,24,.9)'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(bx - 9, by - 4); ctx.quadraticCurveTo(bx - 4, by - 7, bx, by); ctx.quadraticCurveTo(bx + 4, by - 7, bx + 9, by - 4); ctx.stroke();
   ctx.lineWidth = 1;
+}
+
+// the route as a brush stroke in indigo: thick where the hawk soared high, thin near the ground,
+// and a dotted trail where it walked. Two passes with a little wobble, as if painted.
+function drawRoute(ctx, route, X, Y) {
+  if (route.length < 2) return;
+  const top = 8, at = ([x, a]) => [X(x), Math.max(top, Y(W.groundY(x)) - 6 - Math.max(0, a) * .9)];
+  ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  for (let pass = 0; pass < 2; pass++) {
+    for (let i = 1; i < route.length; i++) {
+      const p = route[i - 1], q = route[i];
+      if (Math.abs(q[0] - p[0]) > 600) continue;   // a jump (a new journey, a reload): no line across it
+      const [x0, y0] = at(p), [x1, y1] = at(q), j = pass ? .8 : 0;
+      if (p[1] <= 0 && q[1] <= 0) {
+        if (pass || i % 3) continue;
+        ctx.fillStyle = 'rgba(79,111,158,.7)'; ctx.beginPath(); ctx.arc((x0 + x1) / 2, (y0 + y1) / 2, 1.3, 0, Math.PI * 2); ctx.fill();
+        continue;
+      }
+      const hi = clamp((p[1] + q[1]) / 2 / 40, 0, 1);
+      ctx.strokeStyle = `rgba(79,111,158,${pass ? .3 : .55})`; ctx.lineWidth = (1 + hi * 4.5) * (pass ? .6 : 1);
+      ctx.beginPath(); ctx.moveTo(x0 + j, y0 - j); ctx.lineTo(x1 - j, y1 + j); ctx.stroke();
+    }
+  }
+  ctx.restore();
 }

@@ -1,6 +1,6 @@
 // Photo mode: the world holds still, the HUD hides, drag to frame the shot, then save it.
 // Every picture also leaves a small copy in the journal's album, with the day and the place.
-const ALBUM_MAX = 12;
+const ALBUM_MAX = 16;
 export function createPhoto({ canvas, G, ui, onEnd, store, caption }) {
   const bar = document.createElement('div');
   bar.className = 'photo-bar hidden';

@@ -6,6 +6,7 @@ import { TAU, hash, C, shade } from './util.js';
 import * as W from './world.js';
 import { wash, stroke, strokes, ellP, circP, lift, stamp, put } from './paint.js';
 import { timeOfDay } from './songs.js';
+import { sight } from './guide.js';
 
 export const createFauna = () => ({ herons: new Map(), deer: new Map(), squirrels: new Map() });
 
@@ -42,6 +43,7 @@ function drawHerons(ctx, G, P) {
     const st = F.get(p.k + ':' + G.day);
     if (st) { if (st.t < 14) heronFlying(ctx, st, P, G); continue; }
     const fishing = Math.sin(G.t * .35 + p.k) > .55, face = -h.side;
+    sight(G, 'heron', h.x, h.y - 12, 22);
     ctx.save(); ctx.translate(h.x, h.y); ctx.scale(face, 1);
     put(ctx, stamp('heron' + (fishing ? 1 : 0), P.heron.join(), -10, -32, 14, 2, G.view.spx * 1.5, x => {
       const col = P.heron, dk = shade(col, .7);
@@ -116,6 +118,7 @@ function drawDeer(ctx, G, P) {
     if (st) { x = st.x; face = st.dir; pose = 2 + (Math.floor(st.t * 5) % 2); hop = Math.abs(Math.sin(st.t * 7.5)) * 5; }
     else pose = Math.sin(G.t * .22 + i) > .3 ? 0 : 1;   // grazing, or head up listening
     const y = W.groundY(Math.round(x));
+    if (!st) sight(G, 'deer', x, y - 8, 22);
     ctx.save(); ctx.translate(x, y - hop); ctx.scale(face, 1);
     put(ctx, stamp('deer' + pose, col.join(), -16, -24, 16, 1, G.view.spx * 1.3, c => {
       const dk = shade(col, .72), run = pose >= 2, a = pose === 3 ? 1 : 0;
@@ -188,6 +191,7 @@ function drawSquirrels(ctx, G, P) {
       if (alpha <= 0) continue;
     } else q = squirrelPos(t, G);
     const flick = q.pose === 0 && Math.sin(G.t * 9 + t.i) > .85 ? 1 : 0;
+    if (q.pose === 0) sight(G, 'squirrel', q.x, q.y + 2, 11);
     ctx.save(); ctx.translate(q.x, q.y); ctx.scale(1.25, 1.25);
     if (q.pose >= 2) ctx.rotate(q.pose === 2 ? -Math.PI / 2 : Math.PI / 2); else ctx.scale(q.dir, 1);
     put(ctx, stamp('squirrel' + Math.min(q.pose, 2) + flick, col.join(), -12, -13, 7, 2, G.view.spx * 2, c => {
