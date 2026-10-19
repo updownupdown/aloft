@@ -363,4 +363,6 @@ export function ridgeLift(x, y) {
 // how mountainous the land is at x, 0 (meadow) to 1 (high crags): wave lift forms over it
 export const rugged = x => smooth(1.3, 2.6, blended(x, 'amp'));
 // total upward air speed at a point
-export const updraft = (x, y, time) => lift(x, y, time) + ridgeLift(x, y);
+export const updraft = (x, y, time) => lift(x, y, time) + ridgeLift(x, y) + extraLift(x, y);
+// lift from the sky itself rather than the land (a storm's gust front): set by skies.js
+export const extraLift = (x, y) => env.extra ? env.extra(x, y) : 0;
