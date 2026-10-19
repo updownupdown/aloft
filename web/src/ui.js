@@ -153,8 +153,8 @@ export function createUI({ audio, G, store, species, onPause, playSong, haptics,
       for (const p of pics.slice().reverse()) { const fig = $('figure'); fig.innerHTML = `<img alt=""><figcaption></figcaption>`; fig.querySelector('img').src = p.src; fig.querySelector('figcaption').textContent = p.note; album.append(fig); }
     }
   }
-  function open() { refresh(); menu.classList.remove('hidden'); onPause(true); }
-  function close() { menu.classList.add('hidden'); onPause(false); }
+  function open() { refresh(); menu.classList.remove('hidden'); root.classList.add('menu-open'); onPause(true); }
+  function close() { menu.classList.add('hidden'); root.classList.remove('menu-open'); onPause(false); }
   function toggle() { menu.classList.contains('hidden') ? open() : close(); }
 
   btn.addEventListener('click', () => { audio.unlock(); toggle(); });
@@ -173,7 +173,7 @@ export function createUI({ audio, G, store, species, onPause, playSong, haptics,
       else navigator.clipboard?.writeText(url).then(copied, () => { el.textContent = url; });
     }
     if (e.target.tagName === 'IMG' && e.target.closest('.album')) e.target.closest('figure').classList.toggle('big');
-    if (act === 'photo') { menu.classList.add('hidden'); hooks.photo(); }
+    if (act === 'photo') { menu.classList.add('hidden'); root.classList.remove('menu-open'); hooks.photo(); }
     if (act === 'install' && deferredInstall) { deferredInstall.prompt(); deferredInstall = null; installBtn.classList.add('hidden'); }
     if (act === 'debug') {
       const info = debugInfo(), el = e.target;

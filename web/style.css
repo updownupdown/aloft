@@ -117,6 +117,7 @@ small { display: block; font-size: 12.5px; font-style: italic; color: var(--ink2
 
 /* journal */
 .journey, .nest { font-size: 14.5px; line-height: 1.45; margin: 6px 0; }
+details > .map { margin: 6px 0; }
 .map { width: 100%; height: auto; border-radius: 4px; background: rgba(255, 255, 255, .3); border-bottom: 1px solid var(--rule); }
 .landmarks { list-style: none; padding: 0; margin: 4px 0 10px; font-size: 15px; }
 .landmarks li { padding: 6px 0; border-bottom: 1px solid var(--rule); }
@@ -183,25 +184,30 @@ small { display: block; font-size: 12.5px; font-style: italic; color: var(--ink2
 details button.quiet { font: inherit; font-size: 14px; font-style: italic; color: var(--ink2); margin: 8px 0 4px; padding: 6px 14px; min-height: 36px; background: none; border: 1px solid rgba(58, 36, 24, .35); border-radius: 18px; cursor: pointer; }
 details > small { margin: 4px 0; }
 
-/* the hawk's call: a round paper button in the bottom corner, away from the thumb that steers */
+/* the hawk's call: a paper ring like the menu button, washed with the red of the hawk's tail */
 .call-btn {
-  position: absolute; right: calc(14px + env(safe-area-inset-right)); bottom: calc(14px + env(safe-area-inset-bottom));
-  width: 48px; height: 48px; border-radius: 50%; border: 1.25px solid rgba(58, 36, 24, .5); background: rgba(244, 238, 225, .82);
-  font-family: var(--title); font-style: italic; font-weight: 600; font-size: 17px; color: var(--ink); cursor: pointer; padding: 0 0 2px;
+  position: absolute; right: calc(12px + env(safe-area-inset-right)); bottom: calc(12px + env(safe-area-inset-bottom));
+  width: 46px; height: 46px; border-radius: 50%; border: 1.25px solid rgba(58, 36, 24, .5); padding: 0 0 2px; cursor: pointer;
+  background: radial-gradient(circle at 38% 36%, rgba(184, 90, 74, .32), rgba(244, 238, 225, .8) 68%);
+  font-family: var(--title); font-style: italic; font-weight: 600; font-size: 17px; color: var(--ink);
 }
 .call-btn:active { background: var(--berry-wash); color: var(--card); border-color: transparent; }
+/* the corner buttons step back while the menu is open */
+#ui.menu-open .call-btn, #ui.menu-open .sing-btn, #ui.menu-open .sing-dots { display: none; }
 /* left-handed: the string and the call button swap sides */
 #ui.lefty .sing-strip { right: auto; left: 0; padding-right: 0; padding-left: env(safe-area-inset-left); border-left: none; border-right: 1px solid rgba(58, 36, 24, .25); }
 #ui.lefty .call-btn { right: auto; left: calc(14px + env(safe-area-inset-left)); }
 #ui.lefty.singing .menu-btn { display: none; }   /* the string covers the corner while it is open */
 
 /* the journal's intention, album and world line */
-.intent { font-size: 14.5px; line-height: 1.45; margin: 6px 0; font-style: italic; color: var(--ink2); }
+/* the day's intention: an italic note set off by a stroke of ochre, the colour of the feathers it earns */
+.card .intent { font-size: 14.5px; line-height: 1.45; margin: 10px 0; padding: 1px 0 1px 12px; font-style: italic; color: var(--ink2); border-left: 2px solid var(--ochre); }
+.card .intent:empty { display: none; }
 .album { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin: 4px 0 10px; }
 .album figure { margin: 0; cursor: pointer; }
 .album img { display: block; width: 100%; border: 1px solid rgba(58, 36, 24, .25); box-shadow: 2px 2px 0 rgba(58, 36, 24, .08); }
 .album figcaption { font-size: 11px; font-style: italic; color: var(--ink2); line-height: 1.25; margin-top: 3px; }
 .album figure.big { grid-column: 1 / -1; }
-.album .unknown { font-style: italic; color: var(--ink2); }
+.album .unknown { grid-column: 1 / -1; font-style: italic; color: var(--ink2); }
 .world { font-size: 13.5px; display: flex; align-items: center; gap: 10px; margin: 8px 0 0; padding-top: 8px; border-top: 1px solid var(--rule); }
 .world .quiet { margin: 0 0 0 auto; }
