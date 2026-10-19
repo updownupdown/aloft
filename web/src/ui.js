@@ -52,6 +52,7 @@ export function createUI({ audio, G, store, species, onPause, playSong, haptics,
           <p class="world"><span></span> <button data-act="share" class="quiet">Share this world</button></p>
         </section>
         <section class="pane" data-pane="songs">
+          <a class="quiet" href="lab.html">Bird song lab: try other voices for the songbirds</a>
           <ul class="songbook"></ul>
         </section>
         <section class="pane" data-pane="help">
@@ -74,7 +75,7 @@ export function createUI({ audio, G, store, species, onPause, playSong, haptics,
             <li>Perch near a <b>songbird</b> and tap <b>Sing</b>: a string appears down the right. The string takes the place of the right strip. Listen, then touch each note's pool in turn; the pools glow as the bird sings them. A wrong note only flashes, so carry on. When the song is done, a line under the button says so. On the left strip, tap high to take off. Sing a song you know from any perch and that species answers. Keyboard: keys 1 to 5.</li>
             <li>Once you know a bird's song, singing beside it is a <b>duet</b>: it sings the first half and you answer with the rest. The cleaner your pitch and timing, the longer its gift lasts. On some mornings the whole wood sings a <b>dawn chorus</b>: join in and every bird you know answers at once.</li>
             <li>Each dawn the <b>Journal</b> offers one small intention for the day; finish it and you earn a feather. Pictures from photo mode go in the journal's album.</li>
-            <li>The seasons turn every two days. Follow the flocks <b>south</b> (to the right) to the wintering marsh, and home again in spring. The <b>Journal</b> keeps your map and the landmarks you find.</li>
+            <li>The seasons turn every eight days. Follow the flocks <b>south</b> (to the right) to the wintering marsh, and home again in spring. The <b>Journal</b> keeps your map and the landmarks you find.</li>
             <li>Keep well fed and watered and flap cleanly, and over time your hawk grows <b>healthy</b>: its tail turns a deep, glossy red. Nothing bad happens when you are hungry or thirsty; health just builds more slowly.</li>
             <li>Rare <b>keepsakes</b> glint in the grass: land and tap one to keep it for a nest. Down south in the wintering marsh, a hawk may come to look you over. A healthy tail, keepsakes, songs you know and <b>acrobatics</b> win it as your <b>mate</b>, who flies with you and helps feed your chick.</li>
             <li>Pick up a <b>twig</b> under a tree and perch on a branch to start a <b>nest</b>. Five twigs and an egg appears; when it hatches, carry mice and fish home to feed the chick.</li>
