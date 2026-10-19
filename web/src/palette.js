@@ -57,3 +57,9 @@ export function palette(tod, overcast, dark, sea = null) {
 }
 // how dark it is, 0 day to 1 deep night
 export function nightness(tod) { const d = Math.abs(tod - .5) * 2; return clamp((d - .55) / .3, 0, 1); }
+// pigments for the rarer sights in the sky: a rainbow's bands (outer red to inner violet) and the
+// northern lights
+export const SKYFX = {
+  rainbow: ['#d8705a', '#e2a254', '#e6d27a', '#8ab87a', '#6f9ac4', '#9a82b8'].map(hx),
+  aurora: ['#7ad6a2', '#5fb8a8', '#a088d0'].map(hx),
+};

@@ -49,6 +49,8 @@ export function createUI({ audio, G, store, species, onPause, playSong, haptics,
           <p class="intent"></p>
           <p class="nest"></p>
           <p class="court"></p>
+          <p class="family"></p>
+          <p class="sky"></p>
           <h3>Landmarks</h3>
           <ul class="landmarks"></ul>
           <h3>Field guide <small class="guide-count"></small></h3>
@@ -182,7 +184,7 @@ export function createUI({ audio, G, store, species, onPause, playSong, haptics,
     book.insertAdjacentHTML('afterbegin', `<li class="count">${G.learned.size} of ${species.length} songs learned</li>`);
     if (hooks.journal) {
       const j = hooks.journal();
-      q('.journey').textContent = j.journey; q('.nest').textContent = j.nest; q('.court').textContent = j.court || '';
+      q('.journey').textContent = j.journey; q('.nest').textContent = j.nest; q('.court').textContent = j.court || ''; q('.family').textContent = j.family || ''; q('.sky').textContent = j.sky || '';
       const ul = q('.landmarks'); ul.innerHTML = '';
       if (!j.landmarks.length) ul.innerHTML = '<li class="unknown">None found yet. Rare sights hide along the way.</li>';
       for (const l of j.landmarks) ul.append($('li', '', `${l.name} <small>${l.note}</small>`));

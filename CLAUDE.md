@@ -24,10 +24,12 @@ web/index.html          entry; loads src/game.js as a module, registers sw.js
 web/style.css           DOM overlay in the Pigment style (menu button, pause menu, toasts, Sing, dial)
 web/src/game.js         state, systems (meters, weather, clock, critters, songs), taps, loop, HUD meters
 web/src/bird.js         hawk flight model, perch/ground/swim states, animation pose
-web/src/world.js        procedural world: biomes, ground, ponds + fish, landmarks, trees + perches, bushes, twigs, worms, mice, thermals, rings
+web/src/world.js        procedural world: biomes (incl. mountains), ground, cliff scarps + rock spires, ponds + fish, landmarks, trees + perches, bushes, twigs, worms, mice, thermals, rings
 web/src/air.js          wave lift + lens clouds, kettles of wild hawks, cumulus at the cloudbase and the tunnels carved in them
 web/src/airart.js       their art: lens clouds, kettle hawks, carved cumulus, ridge-lift grass lean and streaming leaves
 web/src/render.js       draws a frame (sky, parallax hills, world layer, hawk, weather)
+web/src/atmos.js        sky moods and slow changes: dawn fog, rainbow, meteors, aurora, moon phase, feather wear + moult, dream path, way hint
+web/src/skyfx.js        paints those: aurora, rainbow, golden rays, meteors, fog, moulted feathers, wind-arrow hint, the dream
 web/src/paint.js        watercolour toolkit: wash, bloom, softWash, lift, paper textures
 web/src/palette.js      day / dusk / night palettes blended by time of day, greyed by weather
 web/src/input.js        pointer + keyboard -> taps, steer point, keys (touches near the joysticks go to sticks.js)

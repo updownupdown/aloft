@@ -18,7 +18,10 @@ export function createAudio() {
     if (A.ctx) { if (A.ctx.state === 'suspended' && !document.hidden) A.ctx.resume(); return; }
     const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
     const ctx = A.ctx = new AC();
-    A.master = ctx.createGain(); A.master.gain.value = A.on ? .8 : 0; A.master.connect(ctx.destination);
+    A.master = ctx.createGain(); A.master.gain.value = A.on ? .8 : 0;
+    // fog (and anything else that should dull the world) closes this filter
+    A.muffleLp = ctx.createBiquadFilter(); A.muffleLp.type = 'lowpass'; A.muffleLp.frequency.value = 20000;
+    A.master.connect(A.muffleLp).connect(ctx.destination);
     noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
     const d = noiseBuf.getChannelData(0); let last = 0;
     for (let i = 0; i < d.length; i++) { const w = Math.random() * 2 - 1; last = last * .97 + w * .03; d[i] = w * .5 + last * 4; }
@@ -50,26 +53,43 @@ export function createAudio() {
   A.setOn = on => { A.on = on; if (A.master) A.master.gain.setTargetAtTime(on ? .8 : 0, A.ctx.currentTime, .05); };
   // continuous beds, called every frame. `scene` says where the hawk is: the biome, whether a
   // waterfall or a night pond is near, so the wind sighs in pines, surges over the cliffs,
-  // water babbles and frogs call.
-  let nextFrog = 0;
+  // water babbles and frogs call. Height mixes it: low down the streams, frogs and insects
+  // are close; high up they fade and there is only the wind (and the music).
+  // Night has its season: spring peepers and frogs, summer crickets, autumn katydids, and
+  // near silence over winter snow (`scene.night`, `scene.sea`).
+  let nextFrog = 0, nextBug = 0;
   A.ambience = (windAmt, rainAmt, scene = {}) => {
     if (!A.ctx) return; const t = A.ctx.currentTime;
-    const pines = scene.bio === 'forest' ? 1 : 0, surf = scene.bio === 'cliffs' ? 1 : 0;
+    const pines = scene.bio === 'forest' ? 1 : 0, surf = scene.bio === 'cliffs' || scene.bio === 'mountains' ? 1 : 0;
+    const high = Math.min(1, Math.max(0, ((scene.height ?? 0) - 50) / 250)), low = 1 - high;
     const sigh = .5 + .5 * Math.sin(t * (surf ? .45 : .25) + Math.sin(t * .11));   // a slow swell
-    const wg = .04 + windAmt * .22 + pines * .05 * sigh + surf * .09 * sigh;
+    const wg = .04 + windAmt * .22 + pines * .05 * sigh * low + surf * .09 * sigh + high * .06;
     A.wind.g.gain.setTargetAtTime(wg, t, .3);
     A.wind.fl.frequency.setTargetAtTime(300 + windAmt * 900 - pines * 120 + surf * 200 * sigh, t, .3);
     A.rain.g.gain.setTargetAtTime(rainAmt * .12, t, .5);
     A.whistle.g.gain.setTargetAtTime((scene.stoop || 0) * .07, t, .15);
     A.whistle.fl.frequency.setTargetAtTime(2200 + (scene.stoop || 0) * 900, t, .15);
-    A.babble.g.gain.setTargetAtTime((scene.falls || 0) * .09 * (.8 + .2 * Math.sin(t * 6.3)), t, .25);
-    if (scene.frogs > 0 && t > nextFrog) {
-      // a chorus of frogs: short low croaks, a few at a time, from the reeds
+    A.babble.g.gain.setTargetAtTime((scene.falls || 0) * .09 * (.8 + .2 * Math.sin(t * 6.3)) * (.4 + .6 * low), t, .25);
+    A.muffleLp.frequency.setTargetAtTime(20000 - (scene.fog || 0) * 18200, t, .4);
+    const frogs = (scene.frogs || 0) * low, sea = scene.sea || {};
+    if (frogs > 0 && t > nextFrog) {
+      // a chorus of frogs: short low croaks from the reeds; in spring the high peepers too
       const n = 1 + (Math.random() * 3 | 0);
-      for (let i = 0; i < n; i++) croak(scene.frogs * (.5 + Math.random() * .5), i * (.1 + Math.random() * .2));
+      for (let i = 0; i < n; i++) croak(frogs * (.5 + Math.random() * .5), i * (.1 + Math.random() * .2));
+      if ((sea.spring || 0) > .3) for (let i = 0; i < 2; i++) tone({ f: 2700 + Math.random() * 300, f2: 3100, dur: .09, vol: .03 * frogs * sea.spring, delay: .3 + i * (.4 + Math.random() * .5) });
       nextFrog = t + .6 + Math.random() * 2.2;
     }
+    const bugs = (scene.night || 0) * low * (1 - (sea.winter || 0)) * (1 - rainAmt), sum = sea.summer || 0, aut = sea.autumn || 0;
+    if (bugs > .05 && t > nextBug) {
+      if (sum > .2) cricket(bugs * sum);
+      if (aut > .2) katydid(bugs * aut, Math.random() * .5);
+      nextBug = t + .5 + Math.random() * .7;
+    }
   };
+  // a field cricket: three quick pure chirps, high
+  function cricket(vol) { const f = 4300 + Math.random() * 300; for (let k = 0; k < 3; k++) tone({ f, dur: .025, vol: .022 * vol, delay: k * .045, vib: 60, vibF: 90 }); }
+  // a katydid: a rasp of noise in three beats, "ka-ty-did"
+  function katydid(vol, delay) { for (let k = 0; k < 3; k++) burst({ f: 5200, q: 4, dur: .06, vol: .05 * vol, delay: delay + k * .11 }); }
   function burst({ f = 800, type = 'bandpass', q = 1, dur = .2, vol = .3, f2 = null, delay = 0 }) {
     if (!A.ctx) return; const ctx = A.ctx, t = ctx.currentTime + delay;
     const src = ctx.createBufferSource(); src.buffer = noiseBuf;
@@ -100,7 +120,13 @@ export function createAudio() {
   A.drink = () => { tone({ f: 620, f2: 380, dur: .12, vol: .18 }); tone({ f: 760, f2: 500, dur: .1, vol: .12, delay: .1 }); };
   A.eat = () => { tone({ f: 300, f2: 180, dur: .08, vol: .25, type: 'triangle' }); burst({ f: 1500, q: 2, dur: .06, vol: .15, delay: .02 }); };
   A.ring = () => { [0, 2, 4].forEach((n, i) => tone({ f: BASE[n] * keyMul() / 2, dur: .9, vol: .12, delay: i * .07, type: 'triangle' })); };
-  A.thunder = d => { burst({ f: 120, type: 'lowpass', dur: 2.6, vol: .7, delay: d }); burst({ f: 60, type: 'lowpass', dur: 3.2, vol: .5, delay: d + .2 }); };
+  // thunder arrives after its flash by the time sound takes to cross the distance (km): far
+  // storms rumble low and soft, a near one cracks first
+  A.thunder = (d, km = 2) => {
+    const v = Math.max(.25, 1 - km / 5);
+    if (km < 1.2) burst({ f: 900, f2: 200, type: 'lowpass', dur: .5, vol: .5 * v, delay: d });
+    burst({ f: 120 + 200 * v, type: 'lowpass', dur: 2.6 + km * .4, vol: .7 * v, delay: d }); burst({ f: 60, type: 'lowpass', dur: 3.2 + km * .5, vol: .5 * v, delay: d + .2 });
+  };
   A.learned = () => { [0, 1, 2, 3, 4].forEach((n, i) => tone({ f: BASE[n] * keyMul(), f2: BASE[n] * keyMul() * 1.06, dur: .3, vol: .1, delay: i * .09 })); };
   // a feather earned: a soft rising pair of notes
   A.feather = () => { tone({ f: BASE[2] * keyMul() / 2, dur: .5, vol: .1, type: 'triangle' }); tone({ f: BASE[4] * keyMul() / 2, dur: .9, vol: .1, type: 'triangle', delay: .18 }); };
@@ -116,9 +142,11 @@ export function createAudio() {
   // The red-tail's scream, "kee-eeeee-arr": a hoarse rising onset, a long rasping hold, then
   // the drop. The rasp is a fast wobble in pitch; a band of breath noise rides on top.
   // `far` is another hawk answering from across the valley, softer and echoing.
-  A.scream = (far = false) => {
+  // `echo` is the call coming back off a cliff: { delay, vol }, softer and duller.
+  A.scream = (far = false, echo = null) => {
     if (!A.ctx) return;
-    const ctx = A.ctx, t = ctx.currentTime + (far ? 1.1 + Math.random() * .6 : 0), vol = far ? .06 : .17, k = far ? .97 : 1;
+    if (echo) far = true;
+    const ctx = A.ctx, t = ctx.currentTime + (echo ? echo.delay : far ? 1.1 + Math.random() * .6 : 0), vol = echo ? .17 * echo.vol : far ? .06 : .17, k = far && !echo ? .97 : 1;
     const env = ctx.createGain(), bp = ctx.createBiquadFilter(), lp = ctx.createBiquadFilter();
     bp.type = 'bandpass'; bp.Q.value = 2.2; lp.type = 'lowpass'; lp.frequency.value = far ? 1900 : 5200;
     env.gain.setValueAtTime(0, t); env.gain.linearRampToValueAtTime(vol, t + .07); env.gain.linearRampToValueAtTime(vol * .85, t + .7);

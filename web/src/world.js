@@ -23,14 +23,15 @@ export const BIOMES = {
   meadow: { name: 'meadow', amp: .55, trees: .6, ponds: .6, bushes: 1.7, mice: .6, broadleaf: .85, wind: 1, tint: [128, 140, 80] },
   forest: { name: 'forest', amp: 1, trees: 1.8, ponds: .5, bushes: .6, mice: .15, broadleaf: .5, wind: .8, tint: [60, 110, 80] },
   lakeland: { name: 'lakeland', amp: .7, trees: 1, ponds: 1.35, bushes: 1, mice: .25, broadleaf: .7, wind: 1, tint: [80, 130, 120] },
-  cliffs: { name: 'cliffs', amp: 3.2, trees: .55, ponds: .35, bushes: .5, mice: .2, broadleaf: .15, wind: 1.5, tint: [130, 120, 105] },
+  cliffs: { name: 'cliffs', amp: 3.2, trees: .55, ponds: .35, bushes: .5, mice: .2, broadleaf: .15, wind: 1.5, tint: [130, 120, 105], peaks: .35 },
+  mountains: { name: 'mountains', amp: 2.4, trees: .45, ponds: .2, bushes: .4, mice: .15, broadleaf: .05, wind: 1.7, tint: [118, 116, 118], peaks: 1 },
   marsh: { name: 'marsh', amp: .35, trees: .45, ponds: 1.5, bushes: 1.2, mice: .3, broadleaf: .9, wind: .9, tint: [120, 140, 95] },
 };
 const biomeCache = new Map(); caches.push(biomeCache);
 function biomeRaw(x) {
   if (x > JOURNEY - 1800) return BIOMES.marsh;
   const v = vnoise(x / 2600, 51) * .75 + vnoise(x / 700, 52) * .25;
-  return v < .36 ? BIOMES.meadow : v < .55 ? BIOMES.forest : v < .72 ? BIOMES.lakeland : BIOMES.cliffs;
+  return v < .36 ? BIOMES.meadow : v < .55 ? BIOMES.forest : v < .7 ? BIOMES.lakeland : v < .8 ? BIOMES.cliffs : BIOMES.mountains;
 }
 export function biomeAt(x) {
   const k = Math.round(x / 50);
@@ -44,7 +45,7 @@ function blendedK(k, key) {
   const ck = key + k;
   let v = blendCache.get(ck);
   if (v === undefined) {
-    v = 0; for (let j = -4; j <= 4; j++) v += biomeAt((k + j * 2) * 40)[key];
+    v = 0; for (let j = -4; j <= 4; j++) v += biomeAt((k + j * 2) * 40)[key] || 0;
     v /= 9; blendCache.set(ck, v); if (blendCache.size > 40000) blendCache.clear();
   }
   return v;
@@ -53,10 +54,62 @@ function blendedK(k, key) {
 const blended = (x, key) => { const f = x / 40, i = Math.floor(f); return lerp(blendedK(i, key), blendedK(i + 1, key), f - i); };
 
 const groundRaw = x => {
-  const amp = blended(x, 'amp');
+  const amp = blended(x, 'amp'), peaks = blended(x, 'peaks');
   const crag = amp > 1.3 ? (amp - 1.3) * 14 * (Math.abs(fbm(x / 90, 6)) - .3) : 0;   // rocky cliffs get sharper ridges
-  return amp * (22 * fbm(x / 240, 1) + 5 * fbm(x / 60, 4)) + 40 * fbm(x / 1100, 3) - crag;
+  // mountains: broad peaks that rise well above the hills, with a jagged crest
+  const m = peaks > .01 ? peaks * (240 * Math.pow(Math.max(0, (vnoise(x / 760, 61) - .38) / .62), 1.5) + 18 * Math.abs(fbm(x / 70, 62))) : 0;
+  return amp * (22 * fbm(x / 240, 1) + 5 * fbm(x / 60, 4)) + 40 * fbm(x / 1100, 3) - crag - m - scarpRaise(x) - spireRaise(x);
 };
+
+/* ---------- scarps, waterfalls and rock spires ---------- */
+// A scarp is a real cliff edge: the ground steps up sheer by H, runs on as a plateau, then
+// slopes gently back down. Many in the cliffs and mountains, a few elsewhere. Some carry a
+// waterfall over the edge. Spires are lone stacks of rock standing out of the cliffs.
+const SC = 700, SCARP_P = { meadow: .3, forest: .38, lakeland: .32, cliffs: .8, mountains: .65, marsh: 0 };
+const FIRST_SCARP = Math.floor((START_X + 1500) / SC);   // the first cliff, with a waterfall, comes early in the flight
+const scarpCache = new Map(); caches.push(scarpCache);
+function scarpK(k) {
+  if (scarpCache.has(k)) return scarpCache.get(k);
+  let s = null;
+  const x = k * SC + 120 + hash(k * 4.3 + 1) * 460, bio = biomeAt(x), big = bio.name === 'cliffs' || bio.name === 'mountains';
+  const first = k === FIRST_SCARP;
+  if ((first || hash(k * 2.9 + 7) < SCARP_P[bio.name]) && Math.abs(x - START_X) > 600 && x < JOURNEY - 2000) {
+    s = { k, id: `s${k}`, x, H: big ? 70 + 110 * hash(k * 5.7) : 38 + 45 * hash(k * 5.7), dir: hash(k * 8.1) < .5 ? 1 : -1, L: 280 + 320 * hash(k * 6.3) };
+    s.falls = first || hash(k * 9.7 + 3) < (big ? .55 : .3);
+    if (first) s.H = Math.max(s.H, 64);
+  }
+  scarpCache.set(k, s); if (scarpCache.size > 4000) scarpCache.clear();
+  return s;
+}
+// how far x is up on a scarp's plateau (d), measured from the edge into the high side
+const scarpD = (s, x) => (x - s.x) * s.dir;
+function scarpRaise(x) {
+  let r = 0;
+  for (let k = Math.floor(x / SC) - 1; k <= Math.floor(x / SC) + 1; k++) {
+    const s = scarpK(k); if (!s) continue;
+    const d = scarpD(s, x);
+    if (d > 0 && d < s.L) r += s.H * smooth(0, 7, d) * (1 - smooth(s.L * .45, s.L, d));
+  }
+  return r;
+}
+export function scarpsIn(x0, x1) { const out = []; for (let k = Math.floor(x0 / SC) - 1; k <= Math.ceil(x1 / SC); k++) { const s = scarpK(k); if (s && s.x > x0 - 40 && s.x < x1 + 40) out.push(s); } return out; }
+export const scarpNear = (x, r) => scarpsIn(x - r - 600, x + r + 600).find(s => Math.abs(s.x - x) < r || (scarpD(s, x) > -r && scarpD(s, x) < s.L * .5)) || null;
+const SPC = 380;
+const spireCache = new Map(); caches.push(spireCache);
+function spireK(k) {
+  if (spireCache.has(k)) return spireCache.get(k);
+  let s = null;
+  const x = k * SPC + 80 + hash(k * 3.3 + 5) * 220, bio = biomeAt(x);
+  if ((bio.name === 'cliffs' || bio.name === 'mountains') && hash(k * 7.1 + 2) < .3 && !scarpsIn(x - 90, x + 90).some(c => Math.abs(c.x - x) < 90)) s = { x, w: 9 + 7 * hash(k * 1.9), H: 50 + 60 * hash(k * 2.3) };
+  spireCache.set(k, s); if (spireCache.size > 4000) spireCache.clear();
+  return s;
+}
+export function spiresIn(x0, x1) { const out = []; for (let k = Math.floor(x0 / SPC) - 1; k <= Math.ceil(x1 / SPC); k++) { const s = spireK(k); if (s && s.x > x0 - 30 && s.x < x1 + 30) out.push(s); } return out; }
+function spireRaise(x) {
+  const s = spireK(Math.floor(x / SPC)); if (!s) return 0;
+  const d = Math.abs(x - s.x);
+  return s.H * (1 - smooth(s.w * .7, s.w, d)) * (1 + .08 * Math.sin(x * .7));
+}
 
 /* ---------- ponds ---------- */
 const PS = 520;
@@ -64,7 +117,7 @@ const pondCache = new Map(); caches.push(pondCache);
 // A few cells hold a small lake instead: wide, deep enough never to freeze, and with the
 // cells either side left dry so its banks have room.
 const pondCentre = k => k * PS + 120 + hash(k * 1.7) * 280;
-const hasWater = k => hash(k * 3.1 + .5) < .45 * biomeAt(pondCentre(k)).ponds;
+const hasWater = k => hash(k * 3.1 + .5) < .45 * biomeAt(pondCentre(k)).ponds && !scarpNear(pondCentre(k), 240);
 const isLake = k => hasWater(k) && hash(k * 11.3 + 2) < (biomeAt(pondCentre(k)).ponds > 1.2 ? .45 : .15);
 function pondK(k) {
   if (pondCache.has(k)) return pondCache.get(k);
@@ -147,9 +200,9 @@ function landmarkK(k) {
   if (k !== 0 && hash(k * 2.7 + 9) < .8) {
     let x = k * LC + 700 + hash(k * 3.9) * (LC - 1400);
     // nudge off ponds
-    for (let n = 0; n < 6 && pondNear(x, 1.8); n++) x += 160;
+    for (let n = 0; n < 8 && (pondNear(x, 1.8) || scarpNear(x, 140)); n++) x += 160;
     const bio = biomeAt(x);
-    const type = bio.name === 'forest' ? 'oak' : bio.name === 'cliffs' ? 'falls' : bio.name === 'meadow' ? 'tower' : bio.name === 'marsh' ? 'stones' : (hash(k) < .5 ? 'stones' : 'oak');
+    const type = bio.name === 'forest' ? 'oak' : bio.name === 'cliffs' || bio.name === 'mountains' ? 'falls' : bio.name === 'meadow' ? 'tower' : bio.name === 'marsh' ? 'stones' : (hash(k) < .5 ? 'stones' : 'oak');
     const names = LM_NAMES[type], gy = groundY(x);
     l = { k, id: `l${k}`, x, y: gy, type, name: names[Math.floor(hash(k * 5.1) * names.length)], perches: [] };
     const P = (dx, dy, j) => l.perches.push({ id: `${l.id}_${j}`, landmark: l, x: x + dx, y: gy + dy, occupied: false });
@@ -173,7 +226,7 @@ const BRANCH = [1, 1, .8, 1.15, .5, .9];          // branch length relative to a
 const treeCache = new Map(); caches.push(treeCache);
 function treeType(i, x, bio) {
   const r = hash(i * 12.3 + 4);
-  if (hash(i * 7.7) >= bio.broadleaf) return bio.name === 'cliffs' && r < .5 ? 5 : 0;
+  if (hash(i * 7.7) >= bio.broadleaf) return (bio.name === 'cliffs' || bio.name === 'mountains') && r < .5 ? 5 : 0;
   if (pondNear(x, 3.4) && r < .65) return 3;
   if (r < .22 && bio.name !== 'marsh') return 2;
   if (r > .82 && bio.name !== 'forest') return 4;

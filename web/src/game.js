@@ -31,6 +31,8 @@ import { spriteCount } from './paint.js';
 import { captureSightings, guidePages, pageName } from './guide.js';
 import { postcard } from './postcard.js';
 import { airEnv, carve, kettlesIn, kettle, lensesIn, cumuliIn } from './air.js';
+import { initAtmos, updateAtmos, wakeAtmos } from './atmos.js';
+import { dream, fogDepth } from './skyfx.js';
 
 const DAY = 480;               // one day = 8 minutes
 const SEASON_DAYS = 8;         // days per season: a full year is 32 days
@@ -47,7 +49,9 @@ const ZOOM = 1.5, ZOOM_OUT = 2.85;
 const TAKEOFF_TAPS = .55;      // a second tap within this many seconds takes off
 const RING_BOOST = 85;         // speed a cloud ring adds (more straight out of a loop or flip)
 const CALL_CD = 6;             // seconds between screams
-const CHORUS_S = 60;           // how long a dawn chorus lasts
+const CHORUS_S = 150;          // how long the dawn chorus lasts
+const DREAM_S = 7;             // the dream while roosting
+const AWAY_S = 300;            // away this long, and the game says where you were on return
 
 const store = {
   get(k, d) { try { const v = localStorage.getItem('aloft.' + k); return v === null ? d : JSON.parse(v); } catch { return d; } },
@@ -85,7 +89,7 @@ export function start(canvas) {
   };
   const saved = loadJourney(G, store);
   G.ghosts = createGhosts(store); G.night = createNight(); G.skies = createSkies();
-  loadStory(G, saved);
+  loadStory(G, saved); initAtmos(G, saved?.atmos);
   const b = G.bird;
   if (saved) { b.x = saved.x; G.clockT = saved.clockT; G.thirst = saved.thirst; G.hunger = saved.hunger; }
   b.y = Math.min(saved?.y ?? -1e9, W.groundY(b.x) - 120) ; if (b.y < W.CEILING + 100) b.y = W.groundY(b.x) - 150;
@@ -169,7 +173,17 @@ export function start(canvas) {
     const n = 'Digit1 Digit2 Digit3 Digit4 Digit5'.split(' ').indexOf(k);
     if (n >= 0 && G.staff.mode) { audio.note(n, G.voiceNow(), .18); singer.glow(n); singNote(n); }
   };
-  const persist = () => { if (!G.noSave) { saveJourney(G, store); saveGhosts(G); } };
+  const persist = () => { if (!G.noSave) { saveJourney(G, store); saveGhosts(G); store.set('seen', { t: Date.now(), doing: doing() }); } };
+  // what the hawk was up to, for the welcome back after time away
+  function doing() {
+    if (G.roost) return 'roosting';
+    if (G.nest && !G.nest.fledged) return G.nest.chick ? 'feeding your chick' : 'building your nest';
+    return { perch: 'resting in a tree', ground: 'on the ground', swim: 'on the water' }[b.state] || (G.goal === 'south' ? 'flying south' : 'flying home');
+  }
+  function welcome(was) {
+    const h = hourName(G.tod);
+    return `Welcome back. ${h[0].toUpperCase()}${h.slice(1)} on day ${G.day}, over ${placeNote(G, b.x)}. You were ${was || 'flying'}.`;
+  }
   // hidden (another app, another tab, the screen off): save, pause and go quiet; sound comes back on return
   document.addEventListener('visibilitychange', () => { if (document.hidden) { persist(); audio.suspend(); if (!G.paused) ui.open(); } else { audio.resume(); stayAwake(); } });
   addEventListener('pagehide', () => { persist(); audio.suspend(); });
@@ -454,7 +468,7 @@ export function start(canvas) {
   // fledgling come to you
   function call() {
     if (G.callT > 0 || G.photo || G.roost) return;
-    G.callT = CALL_CD; audio.scream(); haptics.call(); b.peckT = .5;
+    G.callT = CALL_CD; audio.scream(false, echoOf(b.x, b.y)); haptics.call(); b.peckT = .5;
     freeze.until = G.t + 5; freeze.at = G.t;
     const others = G.hawks.filter(h => Math.hypot(h.x - b.x, h.y - b.y) > 60);
     if (others.length || Math.random() < .6) audio.scream(true);
@@ -462,12 +476,20 @@ export function start(canvas) {
     if (G.gather) audio.scream(true);
     once('call', 'Your call carries over the valley. Mice freeze where they stand, and any hawk that knows you comes.');
   }
-  // some mornings the whole wood sings at once for a minute
+  // a cliff, a rock spire or a mountainside within reach sends the call back, later the further off
+  function echoOf(x, y) {
+    let d = Infinity;
+    const sc = W.scarpNear(x, 1400); if (sc) d = Math.hypot(sc.x - x, W.groundY(sc.x) - sc.H * .5 - y);
+    for (const sp of W.spiresIn(x - 1000, x + 1000)) d = Math.min(d, Math.hypot(sp.x - x, W.groundY(sp.x) - y));
+    if (W.biomeAt(x).name === 'mountains') d = Math.min(d, 500 + hash(x * .01) * 400);
+    return d < 1400 ? { delay: d / 343 * 1.6, vol: .5 * (1 - d / 1400) } : null;
+  }
+  // every clear morning but in winter, the whole wood sings at once for a few minutes
   function updateChorus(dt) {
     if (G.chorus) { if ((G.chorus.t -= dt) <= 0) G.chorus = null; return; }
     if (G.chorusDay === G.day || G.tod < .27 || G.tod > .31 || G.sea.winter > .5 || G.storm > .4) return;
     G.chorusDay = G.day;
-    if (hash(G.day * 3.3 + G.seed) < .45) { G.chorus = { t: CHORUS_S }; ui.toast('A dawn chorus: every bird is singing. Join in and all the songs you know answer at once.', 5); }
+    G.chorus = { t: CHORUS_S }; once('chorus', 'The dawn chorus: for a few minutes at sunrise every bird nearby sings. Join in and all the songs you know answer at once.', 5);
   }
   function updateSongs(dt) {
     const S = G.staff;
@@ -475,7 +497,7 @@ export function start(canvas) {
     for (const t of W.treesIn(G.cam.x - 60, G.cam.x + G.view.w + 60)) {
       const s = t.song; if (!s) continue;
       s.sp ??= speciesFor(t.bio, s.seed);
-      const on = (active(s.sp, G.tod, G.storm, G.sea.winter) || G.singAllT > 0 && G.storm < .6) && b.perch !== s.perch;
+      const on = (active(s.sp, G.tod, G.storm, G.sea.winter) || (G.singAllT > 0 || G.chorus && s.sp.name !== 'Owl') && G.storm < .6) && b.perch !== s.perch;
       if (on !== !!s.active) { s.active = on; s.perch.occupied = on; }
       if (!on) continue;
       s.singingT = Math.max(0, (s.singingT || 0) - dt);
@@ -658,11 +680,12 @@ export function start(canvas) {
     airEnv.wave = smooth(.6, .66, G.tod) * (1 - smooth(.79, .84, G.tod)) * (1 - G.storm) * (1 - G.overcast * .6);
     G.cloudDrift += dt * (2.5 + G.wind * .2);
     G.flash = Math.max(0, G.flash - dt * 3);
-    if (G.storm > .75 && G.sea.winter < .5) { G.nextBolt -= dt; if (G.nextBolt <= 0) { G.flash = 1; G.nextBolt = 6 + Math.random() * 12; audio.thunder(.4 + Math.random() * 1.4); } }
+    if (G.storm > .75 && G.sea.winter < .5) { G.nextBolt -= dt; if (G.nextBolt <= 0) { const km = .3 + Math.random() * 3.5; G.flash = 1 - km / 5; G.nextBolt = 6 + Math.random() * 12; audio.thunder(km / .343, km); } }
     if (G.rain > .3 && G.wet > .25 && G.sea.winter < .5) once('worms', 'Rain brings worms up. Land on open ground after rain and tap them to eat.');
     if (G.sea.autumn > .6) once('autumn', 'Autumn. The leaves are turning, and the flocks fly south.');
     if (G.sea.winter > .6) once('winter', 'Winter. Small ponds freeze, most songbirds have gone, and only some bushes keep their berries.', 6);
     if (G.sea.spring > .6) once('spring', 'Spring. Blossom, and the songbirds are back.');
+    if (G.sea.winter > .35) once('snow', 'First snow. The ground is white and berries are scarce. Mice under the snow are only a faint stir: hover or kite over the grass to spot them.', 6);
   }
   function updateCritters(dt) {
     const { w, h } = G.view.scr, camDx = (G.camC.x - (G.lastCamX ?? G.camC.x)) / G.view.z; G.lastCamX = G.camC.x;
@@ -702,25 +725,27 @@ export function start(canvas) {
   }
   // night roost: perched in the evening or at night, the Sleep button sleeps until dawn
   const canSleep = () => b.state === 'perch' && (G.tod > .66 || G.tod < .2) && !G.roost && !G.photo && !singer.open;
-  function sleep() { if (canSleep()) { G.roost = { t: 0, done: false }; audio.rustle(.4); } }
+  function sleep() { if (canSleep()) { G.roost = { t: 0, done: false, D: G.dream.length > 5 ? DREAM_S : 0 }; audio.rustle(.4); } }
   function updateRoost(dt) {
     const dark = G.tod > .72 || G.tod < .2;
     if (dark && b.state === 'fly') once('roost', 'Night is falling. Perch in a tree and tap Sleep to roost until dawn.');
     if (canSleep()) once('sleep', 'Tap Sleep (at the top) to roost here until dawn, or stay up for the night.', 5);
     if (!G.roost) return;
     const R = G.roost; R.t += dt;
-    if (R.t > 1.6 && !R.done) {
+    if (R.t > 1.6 + R.D && !R.done) {
       R.done = true;
       const cur = .36 + G.clockT / DAY, frac = cur % 1;
       G.clockT = ((frac > .25 ? Math.floor(cur) + 1.25 : Math.floor(cur) + .25) - .36) * DAY;
       G.thirst = Math.min(100, G.thirst + 15); G.hunger = Math.min(100, G.hunger + 15); b.stamina = 1;
       G.weather = 'sunny'; G.weatherT = 60 + Math.random() * 60; G.overcast = 0; G.storm = 0;
       updateClock(); persist(); intentions.note('roost');
+      wakeAtmos(G);
       ui.toast(`Dawn, day ${G.day}. You roosted through the night.`, 3);
     }
-    if (R.t > 4) G.roost = null;
+    if (R.D && R.t > 1.5 && R.t < 1.6) once('dream', 'Asleep, the hawk dreams the day\'s flight.', 3);
+    if (R.t > 4 + R.D) G.roost = null;
   }
-  const roostFade = () => { const R = G.roost; if (!R) return 0; return R.t < 1.5 ? R.t / 1.5 : R.t < 2.4 ? 1 : Math.max(0, 1 - (R.t - 2.4) / 1.6); };
+  const roostFade = () => { const R = G.roost; if (!R) return 0; const t = R.t > 1.5 + R.D ? R.t - R.D : Math.min(R.t, 1.5); return t < 1.5 ? t / 1.5 : t < 2.4 ? 1 : Math.max(0, 1 - (t - 2.4) / 1.6); };
   // Zoom eases out with height and speed, and back in to land. The view resizes about its centre.
   function updateZoom(dt, snap) {
     const up = W.groundY(b.x) - b.y;
@@ -814,7 +839,8 @@ export function start(canvas) {
     updateSinging(dt); dial.update(G.tod, G.day, G.photo, G.score); intentions.update();
     callBtn.classList.toggle('hidden', G.photo || !!G.roost);
     sleepBtn.classList.toggle('hidden', !canSleep());
-    updateJourney(G, dt, { toast: ui.toast, once, audio });
+    updateJourney(G, dt, { toast: ui.toast, once, audio, spring: () => { G.seasonShift = ((3.05 - G.clockT / DAY / SEASON_DAYS - 3.75) % 4 + 4) % 4; updateClock(); } });
+    updateAtmos(G, dt, { toast: ui.toast, once, place: x => placeNote(G, x) });
     updateNest(G, DAY, ui.toast);
     updateCourtship(G, dt, { toast: ui.toast, audio, makeHawk, place: placeNote(G, b.x) });
     const vr = [];
@@ -823,10 +849,12 @@ export function start(canvas) {
     }
     G.visibleRings = vr;
     // the soundscape of where the hawk is: pines or cliffs in the wind, a waterfall, night frogs
-    const falls = W.landmarksIn(b.x - 400, b.x + 400).find(l => l.type === 'falls'), pondHere = W.pondNear(b.x, 2.5);
+    const falls = W.landmarksIn(b.x - 400, b.x + 400).find(l => l.type === 'falls') || W.scarpsIn(b.x - 400, b.x + 400).filter(sc => sc.falls).map(sc => ({ x: sc.x, y: W.groundY(sc.x) - sc.H * .5 }))[0], pondHere = W.pondNear(b.x, 2.5);
+    const height = W.groundY(b.x) - b.y;
     const night = nightness(G.tod), frogs = pondHere && !W.frozen(pondHere) && night > .5 && G.sea.winter < .5 && G.rain < .5 ? clamp(1 - Math.abs(b.x - pondHere.c) / 260, 0, 1) * night : 0;
     audio.ambience(b.state === 'fly' ? clamp(b.s / 200, 0, 1) * .8 + G.storm * .3 : G.storm * .4, G.rain * (G.sea.winter > .5 ? .2 : 1), {
       bio: W.biomeAt(b.x).name, stoop, falls: falls ? clamp(1 - Math.hypot(falls.x - b.x, falls.y - b.y) / 380, 0, 1) : 0, frogs,
+      height, night, sea: G.sea, fog: G.fog * fogDepth(b.x, b.y),
     });
     audio.vario(b.state === 'fly' ? b.air : 0);
     if ((saveT -= dt) <= 0) { saveT = 4; persist(); }
@@ -921,13 +949,15 @@ export function start(canvas) {
       drawHUD();
       const f = roostFade();
       if (f > 0) { ctx.fillStyle = C([28, 30, 46], f * .92); ctx.fillRect(0, 0, G.view.w, G.view.h); }
+      const R = G.roost; if (R?.D && R.t > 1.5 && !R.done) { const k = (R.t - 1.5) / R.D; dream(ctx, G, G.P, G.view.w, G.view.h, Math.min(1, k * 1.3), Math.min(1, k * 6, (1 - k) * 6)); }
     }
     if (!G.paused) { record(ms, t1 - ta, performance.now() - t1); stats.sprites = spriteCount(); }
     music.update(dt, { night: nightness(G.tod), storm: G.storm, learned: G.learned, species: SPECIES, speed: b.state === 'fly' ? b.s : 0, wind: G.wind, height: W.groundY(b.x) - b.y });
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
-  ui.toast(saved ? `Welcome back. Day ${G.day}, ${seasonName(G)}.` : 'A thumb on each stick in the corners: tap both together to flap, flick one sideways to turn. The menu has more.', saved ? 3 : 7);
+  const seen = store.get('seen', null), away = seen ? (Date.now() - seen.t) / 1000 : 0;
+  ui.toast(saved && away > AWAY_S ? welcome(seen.doing) : saved ? `Welcome back. Day ${G.day}, ${seasonName(G)}.` : 'A thumb on each stick in the corners: tap both together to flap, flick one sideways to turn. The menu has more.', saved ? 3 : 7);
   if (G.sharedSeed !== null) ui.toast(`A friend shared world ${G.sharedSeed}. "Start a new journey" in the menu flies it (your songs are kept).`, 6);
   else if (!saved && G.seed) ui.toast(`World ${G.seed}: new hills, new ponds. The journal has a link to share it.`, 5);
   if (innerHeight > innerWidth) ui.toast('Turn your phone sideways for a wider view.', 4);
@@ -938,6 +968,8 @@ export function start(canvas) {
   G.dbg = {
     treeWithSong() { for (let x = b.x; x < b.x + 20000; x += 200) for (const t of W.treesIn(x, x + 200)) if (t.song && active(speciesFor(t.bio, t.song.seed), G.tod, G.storm, G.sea.winter)) return t; },
     pond() { return W.pondsIn(b.x, b.x + 5000)[0]; },
+    biome: x => W.biomeAt(x).name,
+    scarp(falls) { for (let x = b.x + 200; x < b.x + 60000; x += 700) { const s = W.scarpsIn(x, x + 700).find(s => !falls || s.falls); if (s) return s; } },
     landmark(type) { for (let x = b.x + 200; x < b.x + 60000; x += 2000) { const l = W.landmarksIn(x, x + 2000).find(l => !type || l.type === type); if (l) return l; } },
     goto(x, y) { fresh(); b.state = 'fly'; b.x = x; b.y = y ?? W.groundY(x) - 120; b.s = 85; b.g = -.17; snap(); },
     trees: W.treesIn, bushes: W.bushesIn, mice: W.miceIn, twigs: W.twigsIn, perches: W.perchesIn,
