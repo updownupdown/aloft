@@ -28,8 +28,8 @@ const three = (x, y) => dot(x, y - 12, 3) + dot(x, y, 3) + dot(x, y + 12, 3);
 
 const DRAW = {
   flap: () => tap(32, 34),
-  aim: () => dot(32, 32, 5) + ring(32, 32, 10) + line('M32 20 V9') + head(32, 9, -90) + line('M44 32 H55') + head(55, 32, 0)
-    + line('M32 44 V55') + head(32, 55, 90) + line('M20 32 H9') + head(9, 32, 180),
+  stick: () => `<circle cx="32" cy="34" r="20" fill="rgba(104,132,168,.22)" stroke="rgba(74,92,122,.45)" stroke-width="1.4"/>` + dot(32, 28, 7, 'rgba(58,76,112,.8)')
+    + head(32, 7, -90, INK, 5) + head(58, 34, 0, INK, 5) + head(32, 61, 90, INK, 5) + head(6, 34, 180, INK, 5),
   glide: () => dot(12, 36) + line('M12 36 H52') + head(52, 36, 0),
   turn: () => dot(52, 36) + line('M52 36 H12') + head(12, 36, 180) + head(20, 36, 180),
   hover: () => up(32),
@@ -53,15 +53,15 @@ const DRAW = {
 // [where it works, the gesture, what it does, its drawing]
 export const CONTROLS = [
   ['air', 'Tap anywhere', 'Flap. Flapping keeps a glide, a ride, a perch or a hunt going, but ends a hover or a landing.', 'flap'],
+  ['air', 'The stick, bottom left', 'Trims the line of flight: up toward a hover (kiting, into the wind), forward for a long straight glide, down to dive or far down to stoop, back to brake. It never turns the hawk; let go to fly hands off. Left-handed, it sits bottom right.', 'stick'],
   ['air', 'Swipe forward', 'Trim for a long glide.', 'glide'],
   ['air', 'Swipe back', 'Turn round. Only a clean swipe turns; a small double arrow by the hawk shows it.', 'turn'],
   ['air', 'Swipe up', 'Hover in place to look around. It tires the wings.', 'hover'],
   ['air', 'Swipe down', 'Settle softly and land, right where you are.', 'land'],
   ['air', 'Swipe forward, then back', 'Ride the thermal you are in, or head for the nearest one and ride it up. Its mark shows in ochre.', 'thermal'],
-  ['air', 'Draw a circle', 'A flip, drawn the way the nose goes: over the top for a loop, under for a front flip.', 'flip'],
+  ['air', 'Draw a circle', 'A flip, drawn the way the nose goes: over the top for a loop, under for a front flip. Draw it through a cloud ring nearby and the hawk loops through the ring.', 'flip'],
   ['air', 'Draw a line to a mouse or fish', 'Stoop on it. The line and its mark show in red.', 'hunt'],
   ['air', 'Double tap a branch', 'Fly to it and perch. The branch is marked in green.', 'perch'],
-  ['air', 'Touch and hold, then lean', 'Up: nose up toward a hover, or kiting into the wind. Forward: a longer glide. Down: dive, and far down to stoop. Back: slow down with back-beats; it never turns the hawk. Let go to fly hands off.', 'aim'],
   ['branch', 'Tap beside the hawk', 'Hop along the branch that way.', 'hop'],
   ['branch', 'Swipe down', 'Drop to the branch below.', 'drop'],
   ['branch', 'Swipe up, or three quick taps', 'Take off. Double tap another branch to fly straight there, or draw a line to prey to go after it.', 'takeoff'],
