@@ -188,6 +188,7 @@ details > .map { margin: 6px 0; }
 }
 .song-ring .pool::after { content: ''; position: absolute; inset: -12px; border-radius: 50%; }   /* a larger touch target */
 .song-ring.dense .pool { transform: scale(.84); }
+.song-ring .pool.heard { opacity: .55; box-shadow: 0 0 0 1px rgba(58, 36, 24, .3) inset; }
 .song-ring .pool.next { box-shadow: 0 0 0 2px rgba(168, 72, 58, .8); }
 .song-ring .pool.hit { animation: pool-hit .45s ease-out; }
 .song-ring .pool.glow { animation: pool-glow .7s ease-out; }

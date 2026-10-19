@@ -1,8 +1,9 @@
 // Singing from a perch: whenever the hawk sits on a branch (or a songbird is close), two half
 // rings of pigment pools open around the joysticks. Around the right stick, the five song notes,
 // low to high, each its own colour: touch one to sing it, slide across to sing each you cross.
-// Around the left stick, the songbirds you know, each pooled in its breast colour with a dot of
-// its cap: touch one and the hawk sings that bird's song, and the bird answers. (Left-handed,
+// Around the left stick, the songbirds you have heard, each pooled in its breast colour with a
+// dot of its cap (paler until you learn its song): touch one and the hawk sings that bird's song
+// in its voice, and the notes take on that voice; a bird whose song you know answers with a gift. (Left-handed,
 // the rings swap.) The next note of a song you are copying wears a red ring; a pool brightens
 // while the songbird sings that note. The pools are painted once into images, so the rings cost
 // nothing per frame.
@@ -22,7 +23,7 @@ function pool(col, dot) {
   const url = `url(${cv.toDataURL()})`; pools.set(key, url); return url;
 }
 
-export function createSinging({ audio, sticks, onNote, onMimic, onToggle }) {
+export function createSinging({ audio, sticks, voice = () => 1, onNote, onMimic, onToggle }) {
   const root = document.getElementById('ui');
   const dots = document.createElement('div'); dots.className = 'sing-dots hidden';
   const cheer = document.createElement('div'); cheer.className = 'sing-cheer'; let cheerTimer = 0;
@@ -36,7 +37,7 @@ export function createSinging({ audio, sticks, onNote, onMimic, onToggle }) {
     el.setAttribute('aria-label', `Note ${lane + 1}`); el.dataset.lane = lane; notes.append(el); return el;
   });
   const flash = (el, cls = 'hit') => { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); };
-  function sound(lane) { flash(noteBtns[lane]); audio.note(lane, 1, .18); onNote(lane, 0); }
+  function sound(lane) { flash(noteBtns[lane]); audio.note(lane, voice(), .18); onNote(lane, 0); }
 
   // touch a pool to sing it; slide on and each pool the finger reaches sings in turn
   const laneAt = (x, y) => {
@@ -63,14 +64,15 @@ export function createSinging({ audio, sticks, onNote, onMimic, onToggle }) {
   });
   for (const r of [notes, calls]) r.addEventListener('contextmenu', e => e.preventDefault());
 
-  // the songbirds you know, one pool each, in the order you learned them
-  function setSpecies(list) {
-    const key = list.map(s => s.id).join();
+  // the songbirds you have heard or learned, one pool each, in field-guide order
+  function setSpecies(list, learned) {
+    const key = list.map(s => s.id + (learned?.has(s.id) ? '' : '?')).join();
     if (key === S.species) return;
     S.species = key; calls.textContent = '';
     for (const sp of list) {
       const el = document.createElement('button'); el.className = 'pool'; el.dataset.sp = sp.id;
       el.style.backgroundImage = pool(sp.cols.breast, sp.cols.cap); el.setAttribute('aria-label', `Sing like the ${sp.name}`);
+      el.classList.toggle('heard', !learned?.has(sp.id));
       calls.append(el);
     }
     calls.classList.toggle('dense', list.length > 10);
@@ -109,8 +111,8 @@ export function createSinging({ audio, sticks, onNote, onMimic, onToggle }) {
   }
 
   // per frame: whether the rings are out, the next note to sing, and the songs you know
-  function update(dt, { available, next = -1, known = [], lefty = false }) {
-    S.lefty = lefty; setSpecies(known);
+  function update(dt, { available, next = -1, known = [], learned = null, lefty = false }) {
+    S.lefty = lefty; setSpecies(known, learned);
     setOpen(!!available);
     if (!S.open) return;
     layout();
