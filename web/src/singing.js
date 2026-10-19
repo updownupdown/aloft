@@ -71,9 +71,9 @@ export function createSinging({ audio, sticks, onNote, onMimic, onToggle }) {
     for (const sp of list) {
       const el = document.createElement('button'); el.className = 'pool'; el.dataset.sp = sp.id;
       el.style.backgroundImage = pool(sp.cols.breast, sp.cols.cap); el.setAttribute('aria-label', `Sing like the ${sp.name}`);
-      const name = document.createElement('span'); name.textContent = sp.name; el.append(name);
       calls.append(el);
     }
+    calls.classList.toggle('dense', list.length > 10);
     S.key = '';
   }
 
@@ -93,7 +93,7 @@ export function createSinging({ audio, sticks, onNote, onMimic, onToggle }) {
           const a = a0 + dir * SPAN * (take > 1 ? k / (n - 1) : 0);
           btns[i].style.left = `${cx + Math.cos(a) * rho - BTN / 2}px`; btns[i].style.top = `${cy - Math.sin(a) * rho - BTN / 2}px`;
         }
-        rho += ring === calls ? GAP + 8 : GAP;
+        rho += GAP;
       }
     };
     const ns = S.lefty ? 'L' : 'R';

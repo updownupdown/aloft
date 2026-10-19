@@ -187,10 +187,7 @@ details > .map { margin: 6px 0; }
   background: center / 100% no-repeat; box-shadow: 0 0 0 1px rgba(58, 36, 24, .14); transition: transform .12s;
 }
 .song-ring .pool::after { content: ''; position: absolute; inset: -12px; border-radius: 50%; }   /* a larger touch target */
-.song-ring .pool span {
-  position: absolute; left: 50%; top: 100%; transform: translateX(-50%); margin-top: 1px; white-space: nowrap; pointer-events: none;
-  font-size: 10px; font-style: italic; color: var(--ink2); text-shadow: 0 0 5px rgba(244, 238, 225, .95);
-}
+.song-ring.dense .pool { transform: scale(.84); }
 .song-ring .pool.next { box-shadow: 0 0 0 2px rgba(168, 72, 58, .8); }
 .song-ring .pool.hit { animation: pool-hit .45s ease-out; }
 .song-ring .pool.glow { animation: pool-glow .7s ease-out; }

@@ -504,7 +504,7 @@ export function start(canvas) {
     if (audio.mimic) audio.mimic(sp, .17);
     else sp.notes.forEach((n, i) => setTimeout(() => { if (!G.paused || G.photo) audio.note(n, sp.voice, .17); }, i * sp.gap * 1000));
     sp.notes.forEach((n, i) => setTimeout(() => part('note', b.x + b.face * 4, b.y - 8, (hash(i + G.t) - .3) * 12, -16, 1.4, { col: shade(sp.cols.breast, .8) }), i * sp.gap * 1000));
-    haptics.note();
+    haptics.note(); singer.cheer(`You sing the ${sp.name}'s song`);
     const tree = S.mode === 'learn' && S.tree?.song.sp === sp ? S.tree : null;
     setTimeout(() => { S.sang = sp; respond(sp, tree, .8); intentions.note('song'); if (G.suitor) G.courtBonus += .06; }, sp.notes.length * sp.gap * 1000 + 200);
   }
