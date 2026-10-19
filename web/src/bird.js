@@ -22,7 +22,7 @@ export function createBird(x, y) {
     vx: 80, vy: 0, kick: 0, turnT: 0, flapCD: 0, autoFlapT: 0,
     target: null, walkTo: null, perch: null, circling: false, stall: false, air: 0,
     yaw: null, yawSgn: 1, hover: 0, hop: null, left: null, leftT: 0, hopT: 0, noPerchT: 0,
-    head: 0, loop: null, flipT: 0, trim: 0,
+    loop: null, flipT: 0, trim: 0,
     // pose (shared with the demo's rig)
     phase: 0, flapLeft: 0, flapAmt: 0, gTheta: .06, theta: .06, bend: 0, L: 1, Lg: 1, tailFan: .3, splay: .3, pitch: 0, bob: 0,
     walkPh: 0, peckT: 0, landT: 0, tuck: 0, flare: 0,
@@ -33,19 +33,19 @@ export function createBird(x, y) {
 // Turning in the air is a flat turn: the hawk swings round toward the viewer or away from
 // them, its forward speed passing through nothing while its wings sweep across the picture,
 // then carries on the other way at the same height. Faster birds take a wider, slower turn.
-export function turn(b) {
+export function turn(b, dur) {
   if (b.turnT > 0 || b.yaw) return;
-  if (b.state === 'fly') { b.yawSgn = -b.yawSgn; b.yaw = { t: 0, dur: b.s > 60 ? .62 : .4, flipped: false }; return; }
+  if (b.state === 'fly') { b.yawSgn = -b.yawSgn; b.yaw = { t: 0, dur: dur || (b.s > 60 ? .62 : .4), flipped: false }; return; }
   b.face = -b.face; b.turnT = .32;
   if (b.state === 'perch') b.hopT = .25;
 }
 
 // Out of stamina the wings won't beat at all: glide, or find rising air.
-// `sync` (0 to 1) is how together the two thumbs struck: a clean beat costs less and drives
-// harder; a ragged one wastes strength and swings the heading by `swing` (radians, either way).
-export function flap(b, power, G, sync = 1, swing = 0) {
+// `sync` (0 to 1) is how together the two thumbs struck: a clean beat costs a fraction of a
+// ragged one and drives harder, so well-timed flapping goes a long way.
+export function flap(b, power, G, sync = 1) {
   if (b.flapCD > 0) return false;
-  const cost = T.stamina * (1 + .7 * (1 - sync));
+  const cost = T.stamina * (.3 + 1.4 * Math.pow(1 - sync, 1.5));
   if (b.stamina < cost * .99) { if (!b.tiredT) G.emit('tired'); b.tiredT = .6; return false; }
   if (b.state !== 'fly') takeOff(b);
   b.stamina = Math.max(0, b.stamina - cost); b.restT = .7;
@@ -53,7 +53,6 @@ export function flap(b, power, G, sync = 1, swing = 0) {
   b.s = Math.min(MAX_SPEED, b.s + T.flap * power * (.5 + .7 * sync));
   if (!b.loop) b.g = Math.min(1.05, b.g + .08);
   b.kick = Math.max(-60, b.kick - T.kick * power * (.6 + .4 * sync));
-  if (b.state === 'fly') b.head += swing;
   b.flapLeft = 1; b.flapCD = .14;
   if (b.phase > Math.PI) b.phase = 0;
   G.emit('flap', { quality: sync });
@@ -64,7 +63,7 @@ export function flap(b, power, G, sync = 1, swing = 0) {
 // (nor can any other branch for a moment, or one in the same tree would catch it straight back)
 function takeOff(b) {
   if (b.perch) { b.left = b.perch; b.leftT = .8; b.perch = null; }
-  b.state = 'fly'; b.s = 48; b.g = .6; b.kick = -24; b.walkTo = null; b.y -= 2; b.stall = false; b.yaw = null; b.hover = 0; b.hop = null; b.noPerchT = .5; b.head = 0; b.loop = null;
+  b.state = 'fly'; b.s = 48; b.g = .6; b.kick = -24; b.walkTo = null; b.y -= 2; b.stall = false; b.yaw = null; b.hover = 0; b.hop = null; b.noPerchT = .5; b.loop = null;
 }
 
 // Dropping a level: from a branch, hop down to the next branch below in the same tree, or to
@@ -100,7 +99,7 @@ export function nudge(b, dir) {
 
 function land(b, kind, G, y, soft = false) {
   const speed = b.s;
-  b.state = kind; b.s = 0; b.g = 0; b.y = y; b.target = null; b.landT = .35; b.flapLeft = 0; b.kiteT = 0; b.hover = 0; b.yaw = null; b.hop = null; b.head = 0; b.loop = null; b.pitch = 0;
+  b.state = kind; b.s = 0; b.g = 0; b.y = y; b.target = null; b.landT = .35; b.flapLeft = 0; b.kiteT = 0; b.hover = 0; b.yaw = null; b.hop = null; b.loop = null; b.pitch = 0;
   G.emit('land', { kind, soft, speed });
 }
 
@@ -157,20 +156,20 @@ function fly(b, dt, inp, G) {
     gT = Math.atan2(ady, Math.max(Math.abs(adx), 4));
   } else if (inp.pitch) { manual = true; gT = b.g + inp.pitch * 1.5; aim = inp.pitch < 0 ? -1.2 : 0; }
   // the two thumbs as a yoke: tilted (one up, one down) pitches the nose; both low settles the
-  // hawk down to land, both high trims it for its longest glide. Tilted hard at speed, it loops.
-  const Y = inp.yoke; b.trim = 0;
+  // hawk down to land, both high trims it for its longest glide (or, in a thermal, rides it).
+  // Tilted hard at speed, it loops.
+  const Y = inp.yoke; b.trim = 0; b.ride = null;
   if (!manual && Y) {
     if (Math.abs(Y.p) > .14) { manual = true; gT = b.g + Y.p * 1.8; }
     else if (Y.avg < -.4) { manual = true; aim = -1.2; if (b.s >= 88) gT = .3; }   // fast, it flares to slow first
-    else if (Y.avg > .4) { b.trim = 1; gT = -.1; }
+    else if (Y.avg > .4) {
+      const th = thermal > 2 && W.thermalAt(b.x);
+      if (th) b.ride = th; else { b.trim = 1; gT = -.1; }
+    }
     if (Math.abs(Y.p) > .7 && b.s > 88 && !b.loop && !b.yaw && !b.hover) { b.loop = { dir: Math.sign(Y.p), a: 0 }; G.emit('loop'); }
   }
   if (inp.face && inp.face !== b.face) { manual = true; turn(b); }
   if (manual) b.target = null;
-  // heading: ragged wingbeats swing the hawk toward or away from the viewer; past side-on it
-  // has come round to face the other way. It straightens itself only very slowly.
-  if (Math.abs(b.head) > Math.PI / 2) { b.face = -b.face; b.head -= Math.sign(b.head) * Math.PI; }
-  b.head -= b.head * Math.min(1, dt * .12);
 
   // Settling down: pointed steeply down while slow, the hawk stops gliding and lets itself
   // down on slow wingbeats, drifting toward the finger, so landing is easy. Fast, it dives.
@@ -197,6 +196,13 @@ function fly(b, dt, inp, G) {
   if (b.circling) {
     if (b.s > 64) b.s += (64 - b.s) * .8 * dt;
     gT = -.1;
+  }
+  // riding a thermal: the hawk spreads everything, slows to its gentlest sink so the air
+  // lifts it as high as it will go, and turns softly back each time it reaches the edge
+  if (b.ride) {
+    b.circling = true; gT = -.04;
+    b.s += (54 - b.s) * Math.min(1, dt * 3); b.stall = false;
+    if ((b.x - b.ride.c) * b.face > b.ride.w * .5) turn(b, 1.1);
   }
   // kiting: held nose-up into a headwind, low and slow over open ground, the hawk hangs on
   // the air with small wing trims, scanning the grass below. Strong wind pushes it back a
@@ -253,7 +259,7 @@ function fly(b, dt, inp, G) {
 
   // through a turn the forward speed swings away from the picture and back
   const swing = b.yaw ? Math.abs(Math.cos(Math.PI * Math.min(1, b.yaw.t / b.yaw.dur))) : 1;
-  b.vx = Math.cos(b.g) * b.s * b.face * swing * Math.cos(b.head) + W.windAt(b.y) * .5;
+  b.vx = Math.cos(b.g) * b.s * b.face * swing + W.windAt(b.y) * .5;
   b.kick *= Math.exp(-dt * 2.6);
   b.vy = -Math.sin(b.g) * b.s - air + b.kick;
   if (b.kiteT > 0) {

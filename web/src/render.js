@@ -67,7 +67,6 @@ export function render(ctx, G) {
   for (const hl of hawks) ctx.drawImage(hl.c, hl.x, hl.y, hl.w, hl.w);
   if (G.carry) carried(ctx, G, P);
   stamina(ctx, G.bird, P);
-  gyro(ctx, G.bird, P, G);
   if (G.focus) focusMark(ctx, G.focus, P, G);
   for (const r of rings) ring(ctx, r, P, G, 1);
   particles(ctx, G, P);
@@ -764,7 +763,7 @@ function thermal(ctx, t, G, P) {
   // leaves carried up the column, tumbling as they rise: they show where the air is rising
   // without a word. Two fills for all of them (the ones fading in at the base, and the rest).
   ctx.save();
-  const span = t.y0 - top, n = 24, y0 = G.cam.y - 10, y1 = G.cam.y + G.view.h + 10;
+  const span = t.y0 - top, n = 34, y0 = G.cam.y - 10, y1 = G.cam.y + G.view.h + 10;
   const col = mix(P.leafDk, P.leafHi, .35), al = Math.min(1, vis * 1.6);
   for (let lv = 1; lv <= 2; lv++) {
     ctx.beginPath();
@@ -856,7 +855,6 @@ function drawHawk(ctx, b, P, G, k = 1) {
     // turning, the hawk swings square to the viewer and on round: yaw 0 is side-on, ±π/2 head-on
     let yaw = 0;
     if (b.yaw) { const u = Math.min(1, b.yaw.t / b.yaw.dur); yaw = (u < .5 ? u * Math.PI : u * Math.PI - Math.PI) * b.yawSgn; }
-    else if (b.head) yaw = b.head;
     else if (b.turnT > 0) yaw = (1 - b.turnT / .32) * Math.PI - Math.PI;   // other hawks: already facing the new way
     ctx.save(); ctx.translate(b.x, b.y + b.bob); ctx.scale(b.face * BS * k, BS * k);
     ctx.rotate(b.pitch * Math.cos(yaw)); flyingHawk(ctx, b, P, yaw);
@@ -1018,27 +1016,6 @@ function glideLine(ctx, pts, P, G) {
     ctx.globalAlpha = .2 + .5 * (1 - (g + .5) / 3); ctx.stroke();
   }
   if (pts.end) { const e = pts[n - 1]; ctx.globalAlpha = .5; ctx.strokeStyle = C(P.birdFar, .6); ctx.lineWidth = .8; ctx.beginPath(); ctx.ellipse(e[0], e[1] + 5, 5, 1.6, 0, 0, TAU); ctx.stroke(); }
-  ctx.restore();
-}
-
-// The heading gyro: a flat pencil ring under the hawk, as if seen from the side, with a bead of
-// indigo where the hawk is pointing. Square-on it sits at the front; ragged wingbeats swing it
-// toward the viewer or away. It shows only while the heading is off, or just after a beat
-// (washed red for a ragged one).
-function gyro(ctx, b, P, G) {
-  if (b.state !== 'fly') return;
-  const beat = G.lastBeat && G.t - G.lastBeat.t < 1.2 ? 1 - (G.t - G.lastBeat.t) / 1.2 : 0;
-  const a = Math.min(1, Math.max(Math.abs(b.head) * 5, beat));
-  if (a < .03) return;
-  const cx = b.x, cy = b.y + 14, rx = 20, ry = 4.5, ragged = G.lastBeat && G.lastBeat.sync < .6 ? beat : 0;
-  ctx.save(); ctx.lineCap = 'round';
-  ctx.strokeStyle = C(mix(P.birdFar, P.tail, ragged), .3 * a); ctx.lineWidth = .9;
-  ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, TAU);
-  // the mark for straight ahead
-  ctx.moveTo(cx + b.face * (rx + 2.5), cy); ctx.lineTo(cx + b.face * (rx - 2.5), cy);
-  ctx.stroke();
-  const bx = cx + b.face * Math.cos(b.head) * rx, by = cy + Math.sin(b.head) * ry;
-  ctx.fillStyle = C([47, 74, 116], .85 * a); ctx.beginPath(); ctx.arc(bx, by, 2, 0, TAU); ctx.fill();
   ctx.restore();
 }
 

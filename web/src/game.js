@@ -674,7 +674,7 @@ export function start(canvas) {
     G.perchT = b.state === 'perch' ? G.perchT + dt : 0;
     if (G.pendingEat && b.state === 'ground' && b.walkTo === null) { if (Math.abs(G.pendingEat.x - b.x) < 14) eat(G.pendingEat); G.pendingEat = null; }
     if (b.state !== 'ground') G.pendingEat = null;
-    if (b.circling) once('thermal', 'A thermal: warm rising air. Let go and the hawk floats up as it glides across. Turn back to stay in it.');
+    if (b.circling) once('thermal', 'A thermal: warm rising air. Hold both thumbs high to ride it up; the hawk turns back at the edges on its own.');
     // entering rising air: a pulse in the hand, and a thermal counted for the day's intention
     const inLift = b.state === 'fly' && b.air > 12;
     if (inLift && !G.wasLift) { haptics.lift(); if (b.air > 20 && G.t - (G.liftAt || -99) > 6) { G.liftAt = G.t; intentions.note('thermals'); } }
