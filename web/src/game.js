@@ -26,6 +26,7 @@ import { GFX, loadGfx, overlay, record, stats } from './gfx.js';
 import { createGhosts, updateGhost, saveGhosts, ghostDebug } from './ghost.js';
 import { createNight, updateNight } from './night.js';
 import { createSkies, updateSkies, skiesDebug, hush } from './skies.js';
+import { createRidge, updateRidge, RIDGE } from './ridge.js';
 import { createEnc, updateEncounters, caughtFish, scrapsIn, eatScrap, morphOf, encDebug } from './encounters.js';
 import { spriteCount } from './paint.js';
 import { captureSightings, guidePages, pageName } from './guide.js';
@@ -88,7 +89,7 @@ export function start(canvas) {
     settings: { glide: store.get('glide', true), music: store.get('music', true), lefty: store.get('lefty', false), full: store.get('full', true), quiet: store.get('quietHud', true), oneThumb: store.get('oneThumb', false), saver: store.get('saver', false) },
   };
   const saved = loadJourney(G, store);
-  G.ghosts = createGhosts(store); G.night = createNight(); G.skies = createSkies();
+  G.ghosts = createGhosts(store); G.night = createNight(); G.skies = createSkies(); G.ridge = createRidge(store);
   loadStory(G, saved); initAtmos(G, saved?.atmos);
   const b = G.bird;
   if (saved) { b.x = saved.x; G.clockT = saved.clockT; G.thirst = saved.thirst; G.hunger = saved.hunger; }
@@ -706,7 +707,7 @@ export function start(canvas) {
     updateFlock(G, dt, audio, once);
     updateCrows(G, dt, { audio, haptics, once }); updateFauna(G, dt, { audio, once });
     updateEncounters(G, dt, { audio, haptics, once, toast: ui.toast, store, makeHawk });
-    updateGhost(G, dt, { once }); updateNight(G, dt, { audio, once }); updateSkies(G, dt, { once, haptics, audio });
+    updateGhost(G, dt, { once }); updateNight(G, dt, { audio, once }); updateSkies(G, dt, { once, haptics, audio }); updateRidge(G, dt, { once, toast: ui.toast, audio });
     if (G.spawnYoung) { G.spawnYoung = false; G.hawks.push(Object.assign(makeHawk(G.nest.x, G.nest.y - 10, 'young'), { morph: morphOf(G.nest) })); }
     G.hawks = G.hawks.filter(h => updateHawk(G, h, dt));
     if (G.hawks.some(h => h.kind === 'companion' && h.life < 1)) once('companion', 'A red-shouldered hawk, smaller than you, its tail barred black and white. Follow it: it knows where the thermals and food are.');
@@ -997,7 +998,7 @@ export function start(canvas) {
     cloud() { this.time(.5); const c = cumuliIn(b.x + 300, b.x + 6000)[0]; fresh(); b.state = 'fly'; b.x = c.x - c.w * .7; b.y = c.y; b.s = 80; b.g = 0; b.face = 1; snap(); return c; },
     heron() { const p = W.pondsIn(b.x, b.x + 20000).find(p => p.w >= 40 && hash(p.k * 4.4 + 2) <= .32); fresh(); b.state = 'fly'; b.x = p.c - 150; b.y = p.waterY - 60; b.s = 70; b.face = 1; snap(); return p; },
   };
-  Object.assign(G.dbg, encDebug(G, { fresh, snap }), ghostDebug(G, { fresh, snap }), skiesDebug(G, { fresh, snap }));
+  Object.assign(G.dbg, encDebug(G, { fresh, snap }), ghostDebug(G, { fresh, snap }), skiesDebug(G, { fresh, snap }), { ridge() { fresh(); b.state = 'fly'; b.x = RIDGE.x0 + 500; b.y = W.groundY(b.x) - 120; b.s = 85; b.face = 1; snap(); } });
   window.__aloft = G;
   return G;
 }

@@ -417,5 +417,6 @@ export function ridgeLift(x, y) {
 export const rugged = x => smooth(1.3, 2.6, blended(x, 'amp'));
 // total upward air speed at a point
 export const updraft = (x, y, time) => lift(x, y, time) + ridgeLift(x, y) + extraLift(x, y);
-// lift from the sky itself rather than the land (a storm's gust front): set by skies.js
-export const extraLift = (x, y) => env.extra ? env.extra(x, y) : 0;
+// other lift, added by other modules (a storm's gust front, the great ridge's face)
+export const extraLifts = [];
+export const extraLift = (x, y) => { let v = 0; for (const f of extraLifts) v += f(x, y); return v; };

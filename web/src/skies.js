@@ -78,7 +78,7 @@ export const hush = G => G.skies?.above || 0;
 // things in the air below the cloud floor are hidden while you are above it
 export const underSea = (G, y) => G.skies?.inv && G.skies.above > .5 && y > G.skies.inv.y;
 export const extraLift = (x, y) => S ? stormLift(x, y) : 0;
-W.env.extra = extraLift;
+W.extraLifts.push(extraLift);
 
 /* ---------- drawing ---------- */
 // world space, behind the hawks
