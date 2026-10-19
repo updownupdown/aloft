@@ -1,16 +1,16 @@
-// Singing from a perch: whenever the hawk sits on a branch (or a songbird is close), two half
-// rings of pigment pools open in the bottom corners, toward the middle of the screen. In the right corner, the five song notes,
-// low to high, each its own colour: touch one to sing it, slide across to sing each you cross.
-// In the left corner, the songbirds you have heard, each pooled in its breast colour with a
+// Singing from a perch: whenever the hawk sits on a branch (or a songbird is close), pigment
+// pools open at the sides. Up the right edge, the five song notes in a ladder, lowest at the
+// bottom, each its own colour: touch one to sing it, slide across to sing each you cross.
+// Down the left side, the songbirds you have heard, each pooled in its breast colour with a
 // dot of its cap (paler until you learn its song): touch one and the hawk sings that bird's song
 // in its voice, and the notes take on that voice; a bird whose song you know answers with a gift. (Left-handed,
-// the rings swap.) The next note of a song you are copying wears a red ring; a pool brightens
-// while the songbird sings that note. The pools are painted once into images, so the rings cost
+// the sides swap.) The next note of a song you are copying wears a red ring; a pool brightens
+// while the songbird sings that note. The pools are painted once into images, so they cost
 // nothing per frame.
 import { wash, circP } from './paint.js';
 
 export const NOTE_COLS = [[47, 74, 116], [62, 124, 136], [96, 136, 66], [196, 146, 52], [176, 78, 58]];
-const LOW = 75 * Math.PI / 180, HIGH = 80 * Math.PI / 180, GAP = 40, BTN = 34;
+const GAP = 44, BTN = 34;
 
 const pools = new Map();
 function pool(col, dot) {
@@ -75,40 +75,29 @@ export function createSinging({ audio, voice = () => 1, onNote, onMimic, onToggl
       el.classList.toggle('heard', !learned?.has(sp.id));
       calls.append(el);
     }
-    calls.classList.toggle('dense', list.length > 10);
+    calls.classList.toggle('dense', list.length > 24);
     S.key = '';
   }
 
-  // where the rings centre: a circle in each bottom corner, where the joysticks used to sit
-  const corner = side => {
-    const d = Math.max(104, Math.min(148, Math.min(innerWidth, innerHeight) * .29)), top = innerHeight - 30 - d;
-    return { left: side === 'L' ? 6 : innerWidth - 6 - d, top, width: d, height: d };
-  };
-  // lay the pools out on half circles round the corners, opening toward the middle of the screen:
-  // from below the corner's inner side up and over it, as low as the screen's bottom edge allows.
-  // Notes run low to high from the bottom; a row that is not full sits centred on the inner side.
+  // the notes stand in a ladder up the right edge, lowest at the bottom, each a step above the
+  // last, so high and low read at a glance; the birds you know fill the left side in columns
+  // from the edge inward, bottom up (left-handed, the sides swap). No stick while perched, so
+  // both sides have the room.
   function layout() {
     const key = [innerWidth, innerHeight, S.lefty, S.species].join();
     if (key === S.key) return;
     S.key = key;
-    const place = (ring, side, btns) => {
-      const r = corner(side), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
-      const inward = side === 'L' ? 1 : -1;
-      let rho = r.width / 2 + 28, i = 0;
-      while (i < btns.length) {
-        const room = innerHeight - cy - BTN / 2 - 6;
-        const lo = -Math.min(LOW, Math.asin(Math.max(-1, Math.min(1, room / rho)))), span = HIGH - lo;
-        const step = GAP / rho, n = Math.max(2, Math.floor(span / step) + 1), take = Math.min(n, btns.length - i);
-        const a0 = take < n ? (lo + HIGH) / 2 - step * (take - 1) / 2 : lo, st = take < n ? step : span / (n - 1);
-        for (let k = 0; k < take; k++, i++) {
-          const a = Math.max(lo, a0 + st * k);
-          btns[i].style.left = `${cx + inward * Math.cos(a) * rho - BTN / 2}px`; btns[i].style.top = `${cy - Math.sin(a) * rho - BTN / 2}px`;
-        }
-        rho += GAP;
-      }
-    };
-    const ns = S.lefty ? 'L' : 'R';
-    place(notes, ns, noteBtns); place(calls, ns === 'L' ? 'R' : 'L', [...calls.children]);
+    const bottom = innerHeight - 22 - BTN / 2, top = Math.min(130, innerHeight * .3), edge = 18 + BTN / 2;
+    const ns = S.lefty ? -1 : 1, at = (el, x, y) => { el.style.left = `${x - BTN / 2}px`; el.style.top = `${y - BTN / 2}px`; };
+    // notes: a rising ladder, each step a little inward too, like notes on a stave
+    const step = Math.min(64, (bottom - top) / (noteBtns.length - 1));
+    noteBtns.forEach((el, i) => at(el, ns > 0 ? innerWidth - edge - i * 7 : edge + i * 7, bottom - i * step));
+    // birds: columns up from the bottom of the other side, moving inward
+    const birds = [...calls.children], rows = Math.max(1, Math.floor((bottom - top) / GAP) + 1);
+    birds.forEach((el, i) => {
+      const c = Math.floor(i / rows), r = i % rows, x = edge + c * GAP;
+      at(el, ns > 0 ? x : innerWidth - x, bottom - r * GAP);
+    });
   }
 
   function setOpen(o) {
@@ -119,7 +108,7 @@ export function createSinging({ audio, voice = () => 1, onNote, onMimic, onToggl
     onToggle?.(o);
   }
 
-  // per frame: whether the rings are out, the next note to sing, and the songs you know
+  // per frame: whether the pools are out, the next note to sing, and the songs you know
   function update(dt, { available, next = -1, known = [], learned = null, lefty = false }) {
     S.lefty = lefty; setSpecies(known, learned);
     setOpen(!!available);
