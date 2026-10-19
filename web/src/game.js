@@ -493,25 +493,25 @@ export function start(canvas) {
   document.getElementById('ui').append(callBtn, sleepBtn);
   const intentions = createIntentions(G, store, { toast: ui.toast, audio, spark }); G.intentions = intentions;
   // the singing button and string, and the dots that show how far into a song you are
-  const singer = createSinging({ audio, sticks, onNote: singNote, onMimic: mimic, onToggle: o => { G.singing = o; hudKey = ''; document.getElementById('ui').classList.toggle('singing', o); if (o) once('string', 'The pools round the right stick are song notes: touch them to sing. Round the left stick are the birds you know: touch one to sing its song.', 6); } });
+  const singer = createSinging({ audio, sticks, voice: () => G.voiceNow(), onNote: singNote, onMimic: mimic, onToggle: o => { G.singing = o; hudKey = ''; document.getElementById('ui').classList.toggle('singing', o); if (o) once('string', 'The pools round the right stick are song notes: touch them to sing. Round the left stick are the birds you know: touch one to sing its song.', 6); } });
   const controls = createControls({ G, b, sticks, interact, call, once });
-  // a pool round the left stick: the hawk sings a known bird's whole song, and that bird answers
-  // (beside its tree, it is a duet)
+  // a pool round the left stick: the hawk sings that bird's song in its voice (and the notes take
+  // on that voice); a bird whose song you have learned answers with its gift
   function mimic(id) {
     const sp = SPECIES[id], S = G.staff;
-    if (!sp || !G.learned.has(id) || G.t - (G.mimicT || -9) < .6) return;
+    if (!sp || G.t - (G.mimicT || -9) < .6) return;
     G.mimicT = G.t + sp.notes.length * sp.gap;
-    if (audio.mimic) audio.mimic(sp, .17);
-    else sp.notes.forEach((n, i) => setTimeout(() => { if (!G.paused || G.photo) audio.note(n, sp.voice, .17); }, i * sp.gap * 1000));
+    G.imitate(id);
     sp.notes.forEach((n, i) => setTimeout(() => part('note', b.x + b.face * 4, b.y - 8, (hash(i + G.t) - .3) * 12, -16, 1.4, { col: shade(sp.cols.breast, .8) }), i * sp.gap * 1000));
     haptics.note(); singer.cheer(`You sing the ${sp.name}'s song`);
+    if (!G.learned.has(id)) return;   // (only heard so far: its voice, but no gift yet)
     const tree = S.mode === 'learn' && S.tree?.song.sp === sp ? S.tree : null;
     setTimeout(() => { S.sang = sp; respond(sp, tree, .8); intentions.note('song'); if (G.suitor) G.courtBonus += .06; }, sp.notes.length * sp.gap * 1000 + 200);
   }
   function updateSinging(dt) {
     const S = G.staff, sp = S.mode === 'learn' ? SPECIES[S.species] : null;
     const available = !G.photo && !G.roost && b.state !== 'fly' && (b.state === 'perch' || S.mode === 'learn');
-    singer.update(dt, { available, next: sp ? sp.notes[S.tries.length] ?? -1 : -1, known: [...G.learned].map(id => SPECIES[id]), lefty: G.settings.lefty });
+    singer.update(dt, { available, next: sp ? sp.notes[S.tries.length] ?? -1 : -1, known: G.callable().map(id => SPECIES[id]), learned: G.learned, lefty: G.settings.lefty });
     if (!singer.open) return;
     const state = S.wrongT > 0 ? 'wrong' : S.doneT > 0 ? 'done' : '', off = sp && S.duet ? Math.ceil(sp.notes.length / 2) : 0;
     if (sp) singer.progress(sp.notes.length, off + S.tries.length, state, off);
