@@ -1,13 +1,13 @@
 // Larger life that is only there to be seen: a heron fishing at some ponds that lifts off
-// when the hawk comes close, and deer at the forest edge at dawn and dusk that bolt when
-// you fly over. Where they stand is a pure function of the world; only what has been
+// when the hawk comes close, deer at the forest edge at dawn and dusk that bolt when
+// you fly over, and squirrels in the broadleaf trees that scold you from the trunk. Where they stand is a pure function of the world; only what has been
 // startled today is kept, in G.fauna.
 import { TAU, hash, C, shade } from './util.js';
 import * as W from './world.js';
-import { wash, stroke, ellP, circP, lift, stamp, put } from './paint.js';
+import { wash, stroke, strokes, ellP, circP, lift, stamp, put } from './paint.js';
 import { timeOfDay } from './songs.js';
 
-export const createFauna = () => ({ herons: new Map(), deer: new Map() });
+export const createFauna = () => ({ herons: new Map(), deer: new Map(), squirrels: new Map() });
 
 /* ---------- herons ---------- */
 export const heronOf = p => {
@@ -139,5 +139,81 @@ function drawDeer(ctx, G, P) {
   }
 }
 
-export function updateFauna(G, dt, { audio, once }) { updateHerons(G, dt, audio); updateDeer(G, dt, audio, once); }
-export function drawFauna(ctx, G, P) { drawDeer(ctx, G, P); drawHerons(ctx, G, P); }
+/* ---------- squirrels ---------- */
+// Some broadleaf trees have a squirrel. Its day is a loop of time: forage in the grass by the
+// tree, dash to the trunk, climb to a branch and sit, then back down. A hawk coming close
+// sends it up the trunk, scolding, to hide in the leaves for a while.
+export const squirrelTree = t => !t.ever && t.type !== 3 && t.bio !== 'marsh' && t.bio !== 'cliffs' && hash(t.i * 13.1 + 2) < .3;
+const squirrelsOut = G => G.storm < .6 && G.tod > .24 && G.tod < .78;
+export function squirrelPos(t, G) {
+  const per = 18 + 8 * hash(t.i), u = ((G.t + hash(t.i * 3) * per) % per) / per, side = hash(t.i * 5.7) < .5 ? -1 : 1;
+  const trunk = t.x + side * Math.max(2, t.h * .035), br = t.branches[0];
+  const sit = { x: t.x + br.x1 * .45 + t.lean * -br.y0, y: t.y + br.y0 + (br.y1 - br.y0) * .45 - 1.3 };
+  const fx = t.x + side * (16 + 12 * Math.sin(G.t * .5 + t.i)), up = t.y - t.h * .36;
+  if (u < .45) { const run = Math.sin(G.t * 1.7 + t.i) > .2; return { x: fx, y: W.groundY(fx), pose: run ? 1 : 0, dir: Math.cos(G.t * .5 + t.i) > 0 ? side : -side }; }
+  if (u < .52) { const k = (u - .45) / .07, x = fx + (trunk - fx) * k; return { x, y: W.groundY(x), pose: 1, dir: Math.sign(trunk - fx) || 1 }; }
+  if (u < .62) { const k = (u - .52) / .1; return { x: trunk, y: t.y + (up - t.y) * k, pose: 2, dir: side }; }
+  if (u < .66) { const k = (u - .62) / .04, x = trunk + (sit.x - trunk) * k; return { x, y: up + (sit.y - up) * k, pose: 1, dir: Math.sign(sit.x - trunk) || 1 }; }
+  if (u < .88) return { x: sit.x, y: sit.y, pose: 0, dir: Math.sin(G.t * .3 + t.i) > 0 ? 1 : -1 };
+  if (u < .92) { const k = (u - .88) / .04, x = sit.x + (trunk - sit.x) * k; return { x, y: sit.y + (up - sit.y) * k, pose: 1, dir: Math.sign(trunk - sit.x) || 1 }; }
+  const k = (u - .92) / .08; return { x: trunk, y: up + (t.y - up) * k, pose: 3, dir: side };
+}
+function updateSquirrels(G, dt, audio, once) {
+  if (!squirrelsOut(G)) return;
+  const b = G.bird, F = G.fauna.squirrels;
+  for (const t of W.treesIn(G.cam.x - 60, G.cam.x + G.view.w + 60)) {
+    if (!squirrelTree(t)) continue;
+    const st = F.get(t.i);
+    if (st) { if (G.t - st.t0 > 24) F.delete(t.i); continue; }
+    const q = squirrelPos(t, G), d = Math.hypot(q.x - b.x, q.y - b.y);
+    if (d < 70 && (b.state !== 'fly' || b.s > 40)) {
+      F.set(t.i, { t0: G.t, x: q.x, y: q.y, top: t.y - t.h * .74, trunk: t.x + (q.x < t.x ? -1 : 1) * Math.max(2, t.h * .035) });
+      audio.chatter?.(); once('squirrel', 'A squirrel, scolding you from the trunk. They come back down once the coast is clear.');
+    }
+  }
+  if (F.size > 60) F.clear();
+}
+function drawSquirrels(ctx, G, P) {
+  if (!squirrelsOut(G)) return;
+  const F = G.fauna.squirrels, col = P.squirrel;
+  for (const t of W.treesIn(G.cam.x - 60, G.cam.x + G.view.w + 60)) {
+    if (!squirrelTree(t)) continue;
+    const st = F.get(t.i);
+    let q, alpha = 1;
+    if (st) {
+      // a dash to the trunk and straight up into the leaves, then gone
+      const e = G.t - st.t0;
+      if (e < .35) q = { x: st.x + (st.trunk - st.x) * e / .35, y: st.y, pose: 1, dir: Math.sign(st.trunk - st.x) || 1 };
+      else { const k = Math.min(1, (e - .35) / 1.2); q = { x: st.trunk, y: st.y + (st.top - st.y) * k, pose: 2, dir: 1 }; alpha = 1 - Math.max(0, (e - 1.6) / .6); }
+      if (alpha <= 0) continue;
+    } else q = squirrelPos(t, G);
+    const flick = q.pose === 0 && Math.sin(G.t * 9 + t.i) > .85 ? 1 : 0;
+    ctx.save(); ctx.translate(q.x, q.y); ctx.scale(1.25, 1.25);
+    if (q.pose >= 2) ctx.rotate(q.pose === 2 ? -Math.PI / 2 : Math.PI / 2); else ctx.scale(q.dir, 1);
+    put(ctx, stamp('squirrel' + Math.min(q.pose, 2) + flick, col.join(), -12, -13, 7, 2, G.view.spx * 2, c => {
+      const dk = shade(col, .72);
+      if (q.pose === 0) {
+        // sitting up, the tail curled up its back like a question mark
+        wash(c, [[-1.4, -.5], [-4.2, -3], [-4.6 - flick, -7.5], [-3.6 - flick, -10.5], [-1.4 - flick * .5, -11], [-1.6, -9], [-3, -7.4], [-2.6, -3.6], [-.2, -1.6]], col, .7, { passes: 2, amp: .3, seed: 41 + flick, rim: .35 });
+        wash(c, ellP(.2, -3.4, 2.1, 3, -.25, 12), col, .82, { passes: 2, amp: .25, seed: 42, rim: .4 });
+        lift(c, ellP(1, -3.2, 1, 2, -.25, 10), P.paper, .45);
+        wash(c, circP(1.4, -6.9, 1.6, 10), col, .85, { passes: 2, amp: .2, seed: 43, rim: .4 });
+        wash(c, [[.6, -8.2], [.4, -9.6], [1.4, -8.4]], dk, .85, { passes: 1, amp: .1, seed: 44, rim: 0 });
+        stroke(c, [[1.4, -4.4], [2.5, -5.2]], dk, .8, .6, 45);   // paws held up
+        c.fillStyle = C(P.birdFar); c.beginPath(); c.arc(2, -7.2, .35, 0, TAU); c.fill();
+        return;
+      }
+      // running (or climbing, turned upright): stretched out, the tail streaming behind
+      wash(c, [[-2.4, -1.6], [-6, -3], [-9.6, -6.2], [-11, -9.4], [-8.6, -8.6], [-6.6, -5.6], [-2.8, -3.2]], col, .65, { passes: 2, amp: .3, seed: 46, rim: .35 });
+      wash(c, ellP(0, -1.9, 3.4, 1.7, -.08, 12), col, .82, { passes: 2, amp: .25, seed: 47, rim: .4 });
+      wash(c, circP(3.4, -2.6, 1.5, 10), col, .85, { passes: 2, amp: .2, seed: 48, rim: .4 });
+      wash(c, [[2.8, -3.8], [2.6, -5.1], [3.6, -4]], dk, .85, { passes: 1, amp: .1, seed: 49, rim: 0 });
+      strokes(c, [[[2, -.8], [3.2, .4]], [[-2, -.8], [-3.4, .3]]], dk, .8, .6, 50);
+      c.fillStyle = C(P.birdFar); c.beginPath(); c.arc(4, -2.9, .33, 0, TAU); c.fill();
+    }), alpha);
+    ctx.restore();
+  }
+}
+
+export function updateFauna(G, dt, { audio, once }) { updateHerons(G, dt, audio); updateDeer(G, dt, audio, once); updateSquirrels(G, dt, audio, once); }
+export function drawFauna(ctx, G, P) { drawDeer(ctx, G, P); drawHerons(ctx, G, P); drawSquirrels(ctx, G, P); }

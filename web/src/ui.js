@@ -29,6 +29,7 @@ export function createUI({ audio, G, store, species, onPause, playSong, haptics,
           <button data-act="photo" class="row-btn hidden">Photo mode</button>
           <button data-act="sound" class="sw" role="switch"><span>Sound</span><i></i></button>
           <button data-act="music" class="sw hidden" role="switch"><span>Music</span><i></i></button>
+          <button data-act="musicmode" class="row-btn hidden">Music style <em></em></button>
           <button data-act="haptics" class="sw" role="switch"><span>Vibration</span><i></i></button>
           <button data-act="glide" class="sw" role="switch"><span>Glide line</span><i></i></button>
           <button data-act="lefty" class="sw" role="switch"><span>Left-handed</span><i></i></button>
@@ -42,6 +43,7 @@ export function createUI({ audio, G, store, species, onPause, playSong, haptics,
           <canvas class="map" width="720" height="150"></canvas>
           <p class="intent"></p>
           <p class="nest"></p>
+          <p class="court"></p>
           <h3>Landmarks</h3>
           <ul class="landmarks"></ul>
           <h3>Album</h3>
@@ -72,6 +74,8 @@ export function createUI({ audio, G, store, species, onPause, playSong, haptics,
             <li>Once you know a bird's song, singing beside it is a <b>duet</b>: it sings the first half and you answer with the rest. The cleaner your pitch and timing, the longer its gift lasts. On some mornings the whole wood sings a <b>dawn chorus</b>: join in and every bird you know answers at once.</li>
             <li>Each dawn the <b>Journal</b> offers one small intention for the day; finish it and you earn a feather. Pictures from photo mode go in the journal's album.</li>
             <li>The seasons turn every two days. Follow the flocks <b>south</b> (to the right) to the wintering marsh, and home again in spring. The <b>Journal</b> keeps your map and the landmarks you find.</li>
+            <li>Keep well fed and watered and flap cleanly, and over time your hawk grows <b>healthy</b>: its tail turns a deep, glossy red. Nothing bad happens when you are hungry or thirsty; health just builds more slowly.</li>
+            <li>Rare <b>keepsakes</b> glint in the grass: land and tap one to keep it for a nest. Down south in the wintering marsh, a hawk may come to look you over. A healthy tail, keepsakes, songs you know and <b>acrobatics</b> win it as your <b>mate</b>, who flies with you and helps feed your chick.</li>
             <li>Pick up a <b>twig</b> under a tree and perch on a branch to start a <b>nest</b>. Five twigs and an egg appears; when it hatches, carry mice and fish home to feed the chick.</li>
             <li>Keyboard: Space flap, arrow keys or WASD to steer and walk, E to drink or eat, Esc for this menu.</li>
           </ul>
@@ -95,7 +99,9 @@ export function createUI({ audio, G, store, species, onPause, playSong, haptics,
   const hapticsBtn = q('[data-act=haptics]'), leftyBtn = q('[data-act=lefty]');
   root.classList.toggle('lefty', !!G.settings.lefty);
   const installBtn = q('[data-act=install]'), book = q('.songbook');
+  const modeBtn = q('[data-act=musicmode]');
   if (hooks.music) musicBtn.classList.remove('hidden');
+  if (hooks.musicMode) modeBtn.classList.remove('hidden');
   if (hooks.photo) q('[data-act=photo]').classList.remove('hidden');
   if (hooks.journal) q('[data-tab=journal]').classList.remove('hidden');
 
@@ -147,6 +153,7 @@ export function createUI({ audio, G, store, species, onPause, playSong, haptics,
     gfxButtons();
     q('.sub').textContent = hooks.subtitle ? hooks.subtitle() : 'Paused';
     const sw = (el, on) => { el.classList.toggle('on', !!on); el.setAttribute('aria-checked', !!on); };
+    if (hooks.musicMode) { const m = hooks.musicMode(); modeBtn.querySelector('em').textContent = hooks.musicModes.find(x => x[0] === m)?.[1] ?? m; }
     sw(soundBtn, audio.on); sw(musicBtn, G.settings.music); sw(glideBtn, G.settings.glide); sw(hapticsBtn, haptics?.on); sw(leftyBtn, G.settings.lefty); sw(fullBtn, G.settings.full);
     if (!haptics) hapticsBtn.classList.add('hidden');
     book.innerHTML = '';
@@ -162,7 +169,7 @@ export function createUI({ audio, G, store, species, onPause, playSong, haptics,
     book.insertAdjacentHTML('afterbegin', `<li class="count">${G.learned.size} of ${species.length} songs learned</li>`);
     if (hooks.journal) {
       const j = hooks.journal();
-      q('.journey').textContent = j.journey; q('.nest').textContent = j.nest;
+      q('.journey').textContent = j.journey; q('.nest').textContent = j.nest; q('.court').textContent = j.court || '';
       const ul = q('.landmarks'); ul.innerHTML = '';
       if (!j.landmarks.length) ul.innerHTML = '<li class="unknown">None found yet. Rare sights hide along the way.</li>';
       for (const l of j.landmarks) ul.append($('li', '', `${l.name} <small>${l.note}</small>`));
@@ -185,6 +192,13 @@ export function createUI({ audio, G, store, species, onPause, playSong, haptics,
     if (act === 'resume' || e.target === menu) close();
     if (act === 'sound') { audio.unlock(); audio.setOn(!audio.on); store.set('sound', audio.on); refresh(); }
     if (act === 'music') { audio.unlock(); G.settings.music = !G.settings.music; store.set('music', G.settings.music); hooks.music(G.settings.music); refresh(); }
+    if (act === 'musicmode') {
+      // each tap moves to the next style; music comes on if it was off, so the new style is heard
+      audio.unlock(); const M = hooks.musicModes, i = M.findIndex(x => x[0] === hooks.musicMode());
+      hooks.musicMode(M[(i + 1) % M.length][0]);
+      if (!G.settings.music) { G.settings.music = true; store.set('music', true); hooks.music(true); }
+      refresh();
+    }
     if (act === 'glide') { G.settings.glide = !G.settings.glide; store.set('glide', G.settings.glide); refresh(); }
     if (act === 'haptics' && haptics) { haptics.setOn(!haptics.on); if (haptics.on) haptics.land(false); refresh(); }
     if (act === 'full') { hooks.fullscreen(!G.settings.full); refresh(); }

@@ -3,6 +3,7 @@
 import { clamp, C } from './util.js';
 import * as W from './world.js';
 import { SEASONS } from './palette.js';
+import { saveStory } from './story.js';
 
 const MAP_A = W.START_X - 1500, MAP_B = W.JOURNEY + 800;
 
@@ -30,7 +31,7 @@ export function saveJourney(G, store) {
   store.set('save', {
     x: Math.round(b.x), y: Math.round(b.y), clockT: G.clockT, thirst: G.thirst, hunger: G.hunger,
     goal: G.goal, journeys: G.journeys, explored: G.explored.map(Math.round), found: G.found, nest: G.nest,
-    seed: G.seed, intent: G.intentions?.save(),
+    seed: G.seed, intent: G.intentions?.save(), ...saveStory(G),
   });
 }
 // a link to this world, for a friend to fly the same hills

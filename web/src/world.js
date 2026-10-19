@@ -61,16 +61,22 @@ const groundRaw = x => {
 /* ---------- ponds ---------- */
 const PS = 520;
 const pondCache = new Map(); caches.push(pondCache);
+// A few cells hold a small lake instead: wide, deep enough never to freeze, and with the
+// cells either side left dry so its banks have room.
+const pondCentre = k => k * PS + 120 + hash(k * 1.7) * 280;
+const hasWater = k => hash(k * 3.1 + .5) < .45 * biomeAt(pondCentre(k)).ponds;
+const isLake = k => hasWater(k) && hash(k * 11.3 + 2) < (biomeAt(pondCentre(k)).ponds > 1.2 ? .45 : .15);
 function pondK(k) {
   if (pondCache.has(k)) return pondCache.get(k);
   let p = null;
-  const c = k * PS + 120 + hash(k * 1.7) * 280, bio = biomeAt(c);
-  if (hash(k * 3.1 + .5) < .45 * bio.ponds) {
-    const w = (30 + 34 * hash(k * 5.3)) * (bio.ponds > 1.2 ? 1.3 : 1), rim = groundRaw(c);
-    p = { k, c, w, depth: 12 + 10 * hash(k * 7.9), rim, waterY: rim + 2, x0: null, x1: null, fish: [] };
+  const lake = isLake(k);
+  const c = lake ? k * PS + 260 : pondCentre(k), bio = biomeAt(c);
+  if (hasWater(k) && (lake || !(isLake(k - 1) || isLake(k + 1)))) {
+    const w = lake ? 115 + 60 * hash(k * 5.3) : (30 + 34 * hash(k * 5.3)) * (bio.ponds > 1.2 ? 1.3 : 1), rim = groundRaw(c);
+    p = { k, c, w, lake, depth: lake ? 20 + 10 * hash(k * 7.9) : 12 + 10 * hash(k * 7.9), rim, waterY: rim + 2, x0: null, x1: null, fish: [] };
     // larger ponds keep open water in winter; small ones freeze
     p.deep = w > 52;
-    const nf = 1 + Math.floor(hash(k * 6.1) * (w > 50 ? 3 : 2));
+    const nf = lake ? 3 + Math.floor(hash(k * 6.1) * 3) : 1 + Math.floor(hash(k * 6.1) * (w > 50 ? 3 : 2));
     for (let j = 0; j < nf; j++) p.fish.push({ id: `f${k}_${j}`, seed: k * 7 + j });
   }
   pondCache.set(k, p);
@@ -101,7 +107,7 @@ function bedY(x, p) {
   let h = groundAt(x);
   if (p) {
     const d = Math.abs(x - p.c) / p.w;
-    h = lerp(h, p.rim, smooth(2.4, 1.2, d));
+    h = lerp(h, p.rim, p.lake ? smooth(1.8, 1.12, d) : smooth(2.4, 1.2, d));
     if (d < 1) h += p.depth * Math.pow(1 - d * d, 1.2);
   }
   return h;
@@ -149,7 +155,7 @@ function landmarkK(k) {
     const P = (dx, dy, j) => l.perches.push({ id: `${l.id}_${j}`, landmark: l, x: x + dx, y: gy + dy, occupied: false });
     if (type === 'oak') { l.h = 210; P(0, -l.h - 2, 0); P(-58, -128, 1); P(64, -112, 2); }
     if (type === 'tower') { l.h = 150; P(-8, -l.h, 0); P(10, -l.h + 6, 1); }
-    if (type === 'falls') { l.h = 190; P(-14, -l.h + 2, 0); }
+    if (type === 'falls') { l.h = 150; P(-14, -l.h + 2, 0); }
     if (type === 'stones') { l.h = 44; P(0, -l.h, 0); P(-26, -30, 1); P(24, -34, 2); }
   }
   lmCache.set(k, l); return l;
@@ -158,8 +164,21 @@ export function landmarksIn(x0, x1) { const out = []; for (let k = Math.floor(x0
 const nearLandmark = x => { const l = landmarkK(Math.round((x - LC / 2) / LC)) || landmarkK(Math.floor(x / LC)); return l && Math.abs(l.x - x) < 90; };
 
 /* ---------- trees ---------- */
+// Tree kinds: 0 spruce, 1 broadleaf, 2 birch, 3 willow (by water), 4 poplar, 5 umbrella pine
+// (cliffs). Spruce and pine keep their needles through the winter.
 export const TC = 46;
+export const EVERGREEN = [true, false, false, false, false, true];
+const TREE_H = [1, 1, .85, .8, 1.18, 1.08];       // height relative to the base size
+const BRANCH = [1, 1, .8, 1.15, .5, .9];          // branch length relative to a broadleaf
 const treeCache = new Map(); caches.push(treeCache);
+function treeType(i, x, bio) {
+  const r = hash(i * 12.3 + 4);
+  if (hash(i * 7.7) >= bio.broadleaf) return bio.name === 'cliffs' && r < .5 ? 5 : 0;
+  if (pondNear(x, 3.4) && r < .65) return 3;
+  if (r < .22 && bio.name !== 'marsh') return 2;
+  if (r > .82 && bio.name !== 'forest') return 4;
+  return 1;
+}
 function treeAt(i) {
   if (treeCache.has(i)) return treeCache.get(i);
   let t = null;
@@ -168,9 +187,9 @@ function treeAt(i) {
     const p = pondNear(x, 1.6);
     if (!p && slope(x) < 7 && !nearLandmark(x)) {
       const gy = groundY(x);
-      const h = (g > .5 ? 74 : 60) + 64 * hash(i * 5.3);
-      const type = hash(i * 7.7) < bio.broadleaf ? 1 : 0;
-      t = { i, x, y: gy + 1, h, type, seed: i, perches: [], song: null, bio: bio.name };
+      const type = treeType(i, x, bio);
+      const h = ((g > .5 ? 74 : 60) + 64 * hash(i * 5.3)) * TREE_H[type];
+      t = { i, x, y: gy + 1, h, type, ever: EVERGREEN[type], seed: i, perches: [], song: null, bio: bio.name };
       buildTree(t);
     }
   }
@@ -180,14 +199,15 @@ function treeAt(i) {
 }
 function buildTree(t) {
   const { h, i } = t;
-  t.lean = (hash(i * 3.3) - .5) * .06;
+  t.lean = (hash(i * 3.3) - .5) * (t.type === 3 ? .14 : .06);
   const n = 2 + (hash(i * 4.1) < .5 ? 1 : 0);
   t.branches = [];
   let side = hash(i * 6.1) < .5 ? -1 : 1;
   for (let j = 0; j < n; j++) {
     let f, len;
     if (t.type === 0) { f = .28 + j * .14 + hash(i * 8 + j) * .06; len = h * .28 * (1 - (f - .15) / .85) + 8; }
-    else { f = .38 + j * .1 + hash(i * 8 + j) * .05; len = h * (.2 + .08 * hash(i * 9 + j)) + 6; }
+    else if (t.type === 5) { f = .5 + j * .07 + hash(i * 8 + j) * .04; len = (h * (.2 + .06 * hash(i * 9 + j)) + 6) * BRANCH[5]; }
+    else { f = .38 + j * .1 + hash(i * 8 + j) * .05; len = (h * (.2 + .08 * hash(i * 9 + j)) + 6) * BRANCH[t.type]; }
     const by = -h * f, rise = -(3 + 5 * hash(i * 10 + j));
     const b = { side, f, len, x0: 0, y0: by, x1: side * len, y1: by + rise };
     t.branches.push(b);
@@ -196,7 +216,9 @@ function buildTree(t) {
     t.perches.push({ id: `p${i}_${j}`, tree: t, x: t.x + b.x1 * k + t.lean * -by, y: t.y + b.y0 + (b.y1 - b.y0) * k - 1.2, occupied: false });
     side = -side;
   }
-  if (t.type === 0) t.perches.push({ id: `p${i}_top`, tree: t, x: t.x + t.lean * h, y: t.y - h + 1, occupied: false });
+  // spruce, poplar and the flat-topped pine have a perch right at the top
+  if (t.type === 0 || t.type === 4) t.perches.push({ id: `p${i}_top`, tree: t, x: t.x + t.lean * h, y: t.y - h + 1, occupied: false });
+  if (t.type === 5) t.perches.push({ id: `p${i}_top`, tree: t, x: t.x + t.lean * h * .9, y: t.y - h * .9 + 1, occupied: false });
   // some trees are home to a songbird; which species and when it is there is up to songs.js
   if (hash(i * 9.1) < .4) t.song = { perch: t.perches[0], seed: hash(i * 4.4), next: hash(i) * 4, singingT: 0 };
 }
