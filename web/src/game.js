@@ -24,6 +24,8 @@ import { createIntentions } from './intentions.js';
 import { createFauna, updateFauna, squirrelTree } from './fauna.js';
 import { GFX, loadGfx, overlay, record, stats } from './gfx.js';
 import { spriteCount } from './paint.js';
+import { captureSightings, guidePages, pageName } from './guide.js';
+import { postcard } from './postcard.js';
 
 const DAY = 480;               // one day = 8 minutes
 const SEASON_DAYS = 8;         // days per season: a full year is 32 days
@@ -74,7 +76,7 @@ export function start(canvas) {
     // song gifts
     powerCD: {}, wormsT: 0, followT: 0, calmT: 0, tailwindT: 0, tailDir: 1, brightT: 0, warmT: 0, liftT: 0, duskT: 0, singAllT: 0, ripen: null,
     thermalK: 1, streaks: [], glide: null, photo: false,
-    settings: { glide: store.get('glide', true), music: store.get('music', true), lefty: store.get('lefty', false), full: store.get('full', true) },
+    settings: { glide: store.get('glide', true), music: store.get('music', true), lefty: store.get('lefty', false), full: store.get('full', true), quiet: store.get('quietHud', true) },
   };
   const saved = loadJourney(G, store);
   loadStory(G, saved);
@@ -124,6 +126,7 @@ export function start(canvas) {
       journal: () => ({ ...journal(G, DAY), court: courtNote(G) }),
       drawMap: cv => drawMap(G, cv),
       album: () => store.get('album', []),
+      guide: () => guidePages(store),
       // a new journey flies a shared world if a link named one, else a fresh one of its own
       quit,
       fullscreen: on => { G.settings.full = on; store.set('full', on); if (on) goFull(); else if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {}); },
@@ -518,6 +521,28 @@ export function start(canvas) {
     else singer.progress(Math.max(S.tries.length, S.sang ? S.sang.notes.length : 0), S.tries.length, state);
   }
 
+  /* ---------- the field guide and postcards: cut from the finished frame ---------- */
+  // a landmark found puts a postcard in the album a moment later, once it is in the picture
+  let foundIds = new Set(Object.keys(G.found)), card = null;
+  function afterFrame() {
+    const when = `day ${G.day}, ${seasonName(G)}`;
+    for (const k of captureSightings(G, canvas, store, `First seen on ${when}, over ${placeNote(G, b.x)}.`)) ui.toast(`New in your field guide: ${pageName(k)}.`, 2.5);
+    for (const id in G.found) if (!foundIds.has(id)) { foundIds.add(id); card = { t: G.t + 1.2, name: G.found[id].name, x: G.found[id].x }; }
+    // the picture waits until the landmark is in view (a hawk high above it sees only sky); it gives up after a while
+    const at = card && [(card.x - G.cam.x) * G.view.px, (W.groundY(card.x) - 30 - G.cam.y) * G.view.px];
+    if (card && G.t > card.t + 40) card = null;
+    if (card && G.t > card.t && at[0] > canvas.width * .15 && at[0] < canvas.width * .85 && at[1] > canvas.height * .3 && at[1] < canvas.height * .95) {
+      try {
+        const album = store.get('album', []);
+        album.push({ src: postcard(canvas, card.name, `${when[0].toUpperCase()}${when.slice(1)}`, at), note: `A postcard from ${card.name}, ${when}.`, card: true });
+        while (album.length > 16) album.shift();
+        store.set('album', album);
+        ui.toast('A postcard is in your journal\'s album.', 2.5);
+      } catch { /* storage full: no postcard this time */ }
+      card = null;
+    }
+  }
+
   /* ---------- HUD meters (painted on the canvas) ---------- */
   // Thirst, hunger and wings, each a pencil line with a tick for every sip or berry that would
   // fill it, and a pool of pigment washed along it as far as the meter is full. The meters live
@@ -525,6 +550,15 @@ export function start(canvas) {
   // drawn a fifth larger than the rest of the screen art, with longer bars, so they read at a glance
   const HUD_K = 1.2, BAR = 64;
   const hud = document.createElement('canvas'); hud.className = 'hud'; document.body.append(hud);
+  // Quiet HUD: the meters fade away while all of them are well filled, and drift back when one
+  // runs low, or for a few seconds after a touch away from the sticks (or on the meters themselves)
+  let hudQuiet = false, hudWake = -9;
+  canvas.addEventListener('pointerdown', e => { if (!sticks.zoneAt(e.clientX, e.clientY) || e.clientY < 90) hudWake = G.t; });
+  function quietHUD() {
+    const low = Math.min(G.thirst, G.hunger), tired = b.stamina < (hudQuiet ? .3 : .45);
+    const q = G.settings.quiet && G.t - hudWake > 4 && !tired && (hudQuiet ? low > 50 : low > 70);
+    if (q !== hudQuiet) { hudQuiet = q; hud.classList.toggle('quiet', q); }
+  }
   let hudKey = '';
   // the meters start just right of the menu button, wherever the phone's cutout puts it
   let menuR = 0;
@@ -841,6 +875,7 @@ export function start(canvas) {
       ctx.setTransform(G.view.px, 0, 0, G.view.px, 0, 0);
       ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
       render(ctx, G);
+      if (!G.paused) { afterFrame(); quietHUD(); }
       drawHUD();
       const f = roostFade();
       if (f > 0) { ctx.fillStyle = C([28, 30, 46], f * .92); ctx.fillRect(0, 0, G.view.w, G.view.h); }

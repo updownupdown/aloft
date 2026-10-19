@@ -19,7 +19,8 @@ body { font-family: var(--text); color: var(--ink); -webkit-user-select: none; u
 button { font-family: inherit; }
 #game { position: fixed; inset: 0; display: block; touch-action: none; }
 #ui { position: fixed; inset: 0; pointer-events: none; z-index: 2; }
-.hud { position: fixed; left: 0; top: 0; pointer-events: none; z-index: 1; }
+.hud { position: fixed; left: 0; top: 0; pointer-events: none; z-index: 1; transition: opacity 1.6s ease; }
+.hud.quiet { opacity: 0; transition-duration: 3s; }   /* quiet meters: fade while all are well filled */
 #ui > * { pointer-events: auto; }
 #ui > .toast { pointer-events: none; }
 
@@ -146,6 +147,18 @@ details > .map { margin: 6px 0; }
 .map { width: 100%; height: auto; border-radius: 4px; background: rgba(255, 255, 255, .3); border-bottom: 1px solid var(--rule); }
 .landmarks { list-style: none; padding: 0; margin: 4px 0 10px; font-size: 15px; }
 .landmarks li { padding: 6px 0; border-bottom: 1px solid var(--rule); }
+/* the field guide: a round picture cut from the frame the animal was first seen in, its name and notes */
+.guide { list-style: none; padding: 0; margin: 4px 0 12px; display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 4px 18px; }
+.guide li { display: flex; gap: 12px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--rule); }
+.guide .pic { flex: none; width: 64px; height: 64px; border-radius: 50%; border: 1px dashed rgba(58, 36, 24, .3); overflow: hidden; }
+.guide li.seen .pic { border: 0; }
+.guide img { width: 100%; height: 100%; display: block; mix-blend-mode: multiply; }
+.guide b { display: block; font-family: var(--title); font-style: italic; font-weight: 600; font-size: 19px; line-height: 1.1; }
+.guide li:not(.seen) b { color: var(--ink2); opacity: .7; }
+.guide small { display: block; font-size: 13px; line-height: 1.35; color: var(--ink2); margin-top: 2px; }
+h3 .guide-count { font-family: Spectral, Georgia, serif; font-size: 14px; font-weight: 400; font-style: italic; color: var(--ink2); margin-left: 8px; }
+.album figure.postcard { grid-column: span 2; }
+.album figure.postcard img { border: 0; box-shadow: 1px 2px 6px rgba(58, 36, 24, .25); }
 
 /* graphics and tuning */
 .gfx-list { display: grid; grid-template-columns: 1fr 1fr; gap: 0 22px; margin: 2px 0 8px; }
@@ -299,6 +312,7 @@ details > small { margin: 4px 0; }
 }
 .letter .row-btn, .letter summary, .letter .sw { font-size: 18px; min-height: 48px; color: var(--ink); border-bottom-color: rgba(58, 36, 24, .22); }
 .letter .gfx-list .sw { font-size: 16px; min-height: 44px; }
+.sw span small { display: block; font-size: 13px; font-style: italic; color: var(--ink2); }
 .letter .howto { font-size: 16.5px; line-height: 1.5; padding-left: 20px; }
 .letter .howto li { margin: 7px 0; }
 .letter small { font-size: 14px; color: var(--ink2); }

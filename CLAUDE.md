@@ -33,7 +33,9 @@ web/src/sticks.js       the two watercolour joysticks: paired taps (flap sync), 
 web/src/controls.js     stick gestures (both up/down/inward/outward, tilt, lean) per state, focus targets
 web/src/songs.js        songbird species: songs, where and when they sing, the gift each song brings
 web/src/life.js         mice, fish, flocks (boids), visiting songbirds, companion hawk and fledgling
-web/src/journey.js      migration, landmarks found, nest and chick, journal + map, save/resume
+web/src/journey.js      migration, landmarks found, nest and chick, journal + map (with the route flown), save/resume
+web/src/guide.js        field guide: sight() from the drawing code, portraits cut from the frame, pages for the journal
+web/src/postcard.js     postcards at landmarks, saved to the album
 web/src/story.js        long-term health (tail colour), keepsakes, acrobatics, courtship and a mate down south
 web/src/fauna.js        herons, deer and squirrels: larger life that is only there to be seen
 web/src/music.js        generative music in four styles (valley, tape loops, wind harp, kalimba); Valley's numbers in VALLEY_TUNE

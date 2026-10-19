@@ -34,6 +34,7 @@ export function createUI({ audio, G, store, species, onPause, playSong, haptics,
           <a class="row-btn" href="musiclab.html">Music lab <em>tune Valley</em></a>
           <button data-act="haptics" class="sw" role="switch"><span>Vibration</span><i></i></button>
           <button data-act="glide" class="sw" role="switch"><span>Glide line</span><i></i></button>
+          <button data-act="quiet" class="sw" role="switch"><span>Quiet meters <small>hide when full</small></span><i></i></button>
           <button data-act="lefty" class="sw" role="switch"><span>Left-handed</span><i></i></button>
           <button data-act="full" class="sw hidden" role="switch"><span>Full screen</span><i></i></button>
           <button data-act="install" class="row-btn hidden">Install on this phone</button>
@@ -48,6 +49,8 @@ export function createUI({ audio, G, store, species, onPause, playSong, haptics,
           <p class="court"></p>
           <h3>Landmarks</h3>
           <ul class="landmarks"></ul>
+          <h3>Field guide <small class="guide-count"></small></h3>
+          <ul class="guide"></ul>
           <h3>Album</h3>
           <div class="album"></div>
           <p class="world"><span></span> <button data-act="share" class="quiet">Share this world</button></p>
@@ -101,7 +104,7 @@ export function createUI({ audio, G, store, species, onPause, playSong, haptics,
   root.append(menu);
   letter(menu);
   const q = s => menu.querySelector(s);
-  const soundBtn = q('[data-act=sound]'), musicBtn = q('[data-act=music]'), glideBtn = q('[data-act=glide]');
+  const soundBtn = q('[data-act=sound]'), musicBtn = q('[data-act=music]'), glideBtn = q('[data-act=glide]'), quietBtn = q('[data-act=quiet]');
   const hapticsBtn = q('[data-act=haptics]'), leftyBtn = q('[data-act=lefty]');
   root.classList.toggle('lefty', !!G.settings.lefty);
   const installBtn = q('[data-act=install]'), book = q('.songbook');
@@ -160,7 +163,7 @@ export function createUI({ audio, G, store, species, onPause, playSong, haptics,
     q('.sub').textContent = hooks.subtitle ? hooks.subtitle() : 'Paused';
     const sw = (el, on) => { el.classList.toggle('on', !!on); el.setAttribute('aria-checked', !!on); };
     if (hooks.musicMode) { const m = hooks.musicMode(); modeBtn.querySelector('em').textContent = hooks.musicModes.find(x => x[0] === m)?.[1] ?? m; }
-    sw(soundBtn, audio.on); sw(musicBtn, G.settings.music); sw(glideBtn, G.settings.glide); sw(hapticsBtn, haptics?.on); sw(leftyBtn, G.settings.lefty); sw(fullBtn, G.settings.full);
+    sw(soundBtn, audio.on); sw(musicBtn, G.settings.music); sw(glideBtn, G.settings.glide); sw(quietBtn, G.settings.quiet); sw(hapticsBtn, haptics?.on); sw(leftyBtn, G.settings.lefty); sw(fullBtn, G.settings.full);
     if (!haptics) hapticsBtn.classList.add('hidden');
     book.innerHTML = '';
     for (const sp of species) {
@@ -182,9 +185,21 @@ export function createUI({ audio, G, store, species, onPause, playSong, haptics,
       if (tab === 'journal') hooks.drawMap?.(q('.map'));
       q('.intent').textContent = j.intent || '';
       q('.world span').textContent = j.world || '';
+      // the field guide: a page per animal, its picture once seen, an empty round until then
+      const pages = hooks.guide?.() || [], gl = q('.guide');
+      q('.guide-count').textContent = `${pages.filter(p => p.seen).length} of ${pages.length} seen`;
+      gl.textContent = '';
+      for (const p of pages) {
+        const li = $('li'); li.className = p.seen ? 'seen' : '';
+        li.innerHTML = `<div class="pic"></div><div><b></b><small></small></div>`;
+        if (p.seen) { const img = $('img'); img.alt = ''; img.src = p.seen.src; li.querySelector('.pic').append(img); }
+        li.querySelector('b').textContent = p.seen ? p.name : 'Not yet seen';
+        li.querySelector('small').textContent = p.seen ? `${p.note} ${p.seen.note}` : p.hint ? `A songbird. ${p.hint}.` : 'Keep your eyes open.';
+        gl.append(li);
+      }
       const album = q('.album'), pics = hooks.album?.() || [];
       album.innerHTML = pics.length ? '' : '<small class="unknown">No pictures yet. Photo mode is in this menu.</small>';
-      for (const p of pics.slice().reverse()) { const fig = $('figure'); fig.innerHTML = `<img alt=""><figcaption></figcaption>`; fig.querySelector('img').src = p.src; fig.querySelector('figcaption').textContent = p.note; album.append(fig); }
+      for (const p of pics.slice().reverse()) { const fig = $('figure', p.card ? 'postcard' : ''); fig.innerHTML = `<img alt=""><figcaption></figcaption>`; fig.querySelector('img').src = p.src; fig.querySelector('figcaption').textContent = p.note; album.append(fig); }
     }
   }
   function open() { refresh(); showTab(tab); menu.classList.remove('hidden'); root.classList.add('menu-open'); onPause(true); }
@@ -206,6 +221,7 @@ export function createUI({ audio, G, store, species, onPause, playSong, haptics,
       refresh();
     }
     if (act === 'glide') { G.settings.glide = !G.settings.glide; store.set('glide', G.settings.glide); refresh(); }
+    if (act === 'quiet') { G.settings.quiet = !G.settings.quiet; store.set('quietHud', G.settings.quiet); refresh(); }
     if (act === 'haptics' && haptics) { haptics.setOn(!haptics.on); if (haptics.on) haptics.land(false); refresh(); }
     if (act === 'full') { hooks.fullscreen(!G.settings.full); refresh(); }
     if (act === 'quit') { close(); hooks.quit(); }
