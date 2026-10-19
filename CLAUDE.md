@@ -28,14 +28,16 @@ web/src/world.js        procedural world: biomes, ground, ponds + fish, landmark
 web/src/render.js       draws a frame (sky, parallax hills, world layer, hawk, weather)
 web/src/paint.js        watercolour toolkit: wash, bloom, softWash, lift, paper textures
 web/src/palette.js      day / dusk / night palettes blended by time of day, greyed by weather
-web/src/input.js        pointer + keyboard -> taps, steer point, keys
+web/src/input.js        pointer + keyboard -> taps, steer point, keys (touches on the thumb strips go to strips.js)
+web/src/strips.js       the two thumb strips: paired taps (flap sync), lone taps, swipes, held thumbs, focus
+web/src/controls.js     what the strip gestures do in each state (flying, perched, ground, singing), focus targets
 web/src/songs.js        songbird species: songs, where and when they sing, the gift each song brings
 web/src/life.js         mice, fish, flocks (boids), visiting songbirds, companion hawk and fledgling
 web/src/journey.js      migration, landmarks found, nest and chick, journal + map, save/resume
 web/src/music.js        generative music (Web Audio)
 web/src/photo.js        photo mode (pan, save or share a PNG)
 web/src/ui.js           pause menu, settings, how to play, songbook, toasts
-web/src/singing.js      perched singing: the Sing button and the fretless string down the right edge
+web/src/singing.js      perched singing: the Sing button and the five-note string over the right strip
 web/src/dial.js         time-of-day dial (top right)
 web/icons/              app icons (generated, see tools/make-icons.mjs)
 web/fonts/              bundled Cormorant Garamond italic and Spectral (SIL OFL, licences alongside)
@@ -73,7 +75,8 @@ add colours there rather than inline.
 ## Gameplay tuning (where the numbers live)
 
 - Flight: `bird.js` constants (gravity, drag, relax angle, stall, flap) and `world.js`
-  `lift()` for thermal strength. One tap = one flap.
+  `lift()` for thermal strength. Both strips tapped together = one flap; `flap(b, power, G, sync, swing)`
+  scales cost and thrust by sync and swings the heading (`b.head`). Strip timing constants: top of `strips.js`.
 - Camera zoom (`ZOOM` default, `ZOOM_OUT` high and fast) and the two-tap take-off window: top of
   `game.js`. `G.view` is the zoomed world view; `G.view.scr` is screen space (sky, far hills,
   weather, HUD), sized as the art was first drawn; world sprites paint at the fixed `G.view.spx`.

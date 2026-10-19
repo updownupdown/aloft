@@ -32,7 +32,9 @@ export function createUI({ audio, G, store, species, onPause, playSong, haptics,
           <button data-act="haptics" class="sw" role="switch"><span>Vibration</span><i></i></button>
           <button data-act="glide" class="sw" role="switch"><span>Glide line</span><i></i></button>
           <button data-act="lefty" class="sw" role="switch"><span>Left-handed</span><i></i></button>
+          <button data-act="full" class="sw hidden" role="switch"><span>Full screen</span><i></i></button>
           <button data-act="install" class="row-btn hidden">Install on this phone</button>
+          <button data-act="quit" class="row-btn hidden">Quit</button>
           <button data-act="newgame" class="quiet hidden">Start a new journey</button>
         </section>
         <section class="pane" data-pane="journal">
@@ -51,19 +53,22 @@ export function createUI({ audio, G, store, species, onPause, playSong, haptics,
         </section>
         <section class="pane" data-pane="help">
           <ul class="howto">
-            <li><b>Tap</b> to flap. One tap, one wingbeat. Each flap tires the wings; when they are spent they won't beat until gliding rests them.</li>
-            <li><b>Press and hold</b> anywhere to point the hawk toward your finger. Point down to dive, up to climb, behind to swing round.</li>
-            <li>Flying slowly, point <b>steeply down</b> and the hawk stops gliding and lets itself down on slow wingbeats, drifting toward your finger. That is the easy way to land.</li>
-            <li>On a branch, the ground or the water, <b>one tap</b> turns or steps toward it; <b>two quick taps</b> take off. On a branch, <b>tap below</b> the hawk to drop down to the next branch or the ground.</li>
+            <li>Hold the phone sideways with a thumb on each of the two faint <b>strips</b> at the sides.</li>
+            <li><b>Tap both strips together</b> to flap. The closer together the taps, the stronger the beat and the less it tires the wings. Ragged taps waste strength and swing the hawk toward you or away: the little ring under it shows its heading. Tap the other side first to swing it back. One strip on its own gives a weak half-beat that swings it further.</li>
+            <li><b>Swipe sideways</b> on one strip to turn that way.</li>
+            <li><b>Hold both thumbs:</b> both low and the hawk slows and settles down to land; both high and it trims for its longest glide. One thumb high and the other low tilts the nose up or down. Tilted hard at speed, it flies a <b>loop</b> (nose up) or a <b>front flip</b> (nose down), and a cloud ring straight after gives a big burst of speed.</li>
+            <li><b>Slide both thumbs inward</b> to focus: the hawk picks out a mouse, a fish or a branch ahead and goes for it. A solid ring means it has a target; a dashed one means nothing is in reach.</li>
+            <li>On a branch, the ground or the water: tap <b>one strip</b> to turn or step that way; tap <b>both high</b> to take off; tap <b>both low</b> to eat or drink, or on a branch to drop down to the one below.</li>
+            <li>In the middle of the screen, tap things to go to them (a branch, berries, the water). Press and hold there to point the hawk at your finger, as before.</li>
             <li>Let go and the hawk glides on its own. Diving builds speed; pulling up trades it for height. Too slow and it stalls.</li>
             <li>To land softly, <b>flare</b>: point up just before the branch or the ground.</li>
             <li><b>Thermals</b> rise above the treeline on sunny afternoons. Let go inside one and the hawk floats up as it glides across; turn back to stay in it, and the lift is strongest in the core. Look for <b>leaves</b> spiralling upward. <b>Cloud rings</b> hang all over the sky; fly through one for a burst of speed. Wind against a hillside gives <b>ridge lift</b>. Rising air beeps.</li>
             <li><b>Kiting:</b> face into the wind, low over open ground, and hold the nose a little up. The hawk hangs still on the air and the mice below show themselves. Point down to stoop on one.</li>
-            <li>The <b>call</b> button (bottom corner) gives the red-tail's scream. Mice freeze in the open, other hawks answer, and your companion or fledgling comes to you. Keyboard: C.</li>
-            <li><b>Tap a branch</b> to fly to it and perch. From evening on, a perched hawk can tap <b>Sleep</b> (bottom corner) to roost until dawn.</li>
+            <li>The <b>call</b> button (top, beside the strip) gives the red-tail's scream. Mice freeze in the open, other hawks answer, and your companion or fledgling comes to you. Keyboard: C.</li>
+            <li><b>Tap a branch</b> to fly to it and perch. From evening on, a perched hawk can tap <b>Sleep</b> (top, beside the strip) to roost until dawn.</li>
             <li>Land on a pond to swim, then <b>tap the water</b> to drink. Three sips fill your thirst.</li>
             <li>On the ground, hold left or right to walk. <b>Tap berries</b> (six fill you) or, after rain, <b>worms</b> (three fill you). Dive at <b>mice</b> in the grass or <b>fish</b> in ponds.</li>
-            <li>Perch near a <b>songbird</b> and tap <b>Sing</b>: a string appears down the right. Listen, then slide to each note and hold it in tune; the marks glow as the bird sings them. A wrong note only flashes, so carry on. When the song is done, a line under the button says so. Sing a song you know from any perch and that species answers. Keyboard: keys 1 to 5.</li>
+            <li>Perch near a <b>songbird</b> and tap <b>Sing</b>: a string appears down the right. The string takes the place of the right strip. Listen, then touch each note's pool in turn; the pools glow as the bird sings them. A wrong note only flashes, so carry on. When the song is done, a line under the button says so. On the left strip, tap high to take off. Sing a song you know from any perch and that species answers. Keyboard: keys 1 to 5.</li>
             <li>Once you know a bird's song, singing beside it is a <b>duet</b>: it sings the first half and you answer with the rest. The cleaner your pitch and timing, the longer its gift lasts. On some mornings the whole wood sings a <b>dawn chorus</b>: join in and every bird you know answers at once.</li>
             <li>Each dawn the <b>Journal</b> offers one small intention for the day; finish it and you earn a feather. Pictures from photo mode go in the journal's album.</li>
             <li>The seasons turn every two days. Follow the flocks <b>south</b> (to the right) to the wintering marsh, and home again in spring. The <b>Journal</b> keeps your map and the landmarks you find.</li>
@@ -105,6 +110,9 @@ export function createUI({ audio, G, store, species, onPause, playSong, haptics,
     if (t === 'journal') hooks.drawMap?.(q('.map'));
   }
   if (hooks.newGame) q('[data-act=newgame]').classList.remove('hidden');
+  if (hooks.quit) q('[data-act=quit]').classList.remove('hidden');
+  const fullBtn = q('[data-act=full]');
+  if (hooks.fullscreen && document.fullscreenEnabled && !matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches) fullBtn.classList.remove('hidden');
 
   // the tuning page is hidden: tap the title five times
   let titleTaps = 0, titleT = 0;
@@ -139,7 +147,7 @@ export function createUI({ audio, G, store, species, onPause, playSong, haptics,
     gfxButtons();
     q('.sub').textContent = hooks.subtitle ? hooks.subtitle() : 'Paused';
     const sw = (el, on) => { el.classList.toggle('on', !!on); el.setAttribute('aria-checked', !!on); };
-    sw(soundBtn, audio.on); sw(musicBtn, G.settings.music); sw(glideBtn, G.settings.glide); sw(hapticsBtn, haptics?.on); sw(leftyBtn, G.settings.lefty);
+    sw(soundBtn, audio.on); sw(musicBtn, G.settings.music); sw(glideBtn, G.settings.glide); sw(hapticsBtn, haptics?.on); sw(leftyBtn, G.settings.lefty); sw(fullBtn, G.settings.full);
     if (!haptics) hapticsBtn.classList.add('hidden');
     book.innerHTML = '';
     for (const sp of species) {
@@ -179,6 +187,8 @@ export function createUI({ audio, G, store, species, onPause, playSong, haptics,
     if (act === 'music') { audio.unlock(); G.settings.music = !G.settings.music; store.set('music', G.settings.music); hooks.music(G.settings.music); refresh(); }
     if (act === 'glide') { G.settings.glide = !G.settings.glide; store.set('glide', G.settings.glide); refresh(); }
     if (act === 'haptics' && haptics) { haptics.setOn(!haptics.on); if (haptics.on) haptics.land(false); refresh(); }
+    if (act === 'full') { hooks.fullscreen(!G.settings.full); refresh(); }
+    if (act === 'quit') { close(); hooks.quit(); }
     if (act === 'lefty') { G.settings.lefty = !G.settings.lefty; store.set('lefty', G.settings.lefty); root.classList.toggle('lefty', G.settings.lefty); refresh(); }
     if (act === 'share') {
       const el = e.target, url = hooks.journal?.().link || location.href;
@@ -222,5 +232,13 @@ export function createUI({ audio, G, store, species, onPause, playSong, haptics,
     }, secs * 1000);
   }
   const isOpen = () => !menu.classList.contains('hidden');
-  return { open, close, toggle, toast, refresh, isOpen, hideButton: h => btn.classList.toggle('hidden', h) };
+  // after Quit, if the page could not close itself: the journey is saved, close whenever you like
+  function goodbye() {
+    if (document.hidden) return;
+    const g = $('div', 'menu goodbye', `<div class="card"><header class="card-head"><h1>Aloft</h1></header><p class="bye">Your journey is saved. You can close the app now, or fly on.</p><footer class="card-foot"><button class="primary">Fly on</button></footer></div>`);
+    g.querySelector('.primary').onclick = () => g.remove();
+    root.append(g);
+    onPause(true); g.querySelector('.primary').addEventListener('click', () => onPause(false));
+  }
+  return { open, close, toggle, toast, refresh, isOpen, goodbye, hideButton: h => btn.classList.toggle('hidden', h) };
 }
