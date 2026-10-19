@@ -2,6 +2,7 @@
 import { TUNE, DEFAULTS, RANGES } from './tune.js';
 import { GFX, GFX_INFO, RES_OPTS, saveGfx, overlay, debugInfo } from './gfx.js';
 import { letter } from './letter.js';
+import { controlMap } from './controlmap.js';
 
 export function createUI({ audio, G, store, species, onPause, playSong, haptics, hooks = {} }) {
   const $ = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html !== undefined) e.innerHTML = html; return e; };
@@ -63,14 +64,9 @@ export function createUI({ audio, G, store, species, onPause, playSong, haptics,
           <ul class="songbook"></ul>
         </section>
         <section class="pane" data-pane="help">
+          <div class="controls">${controlMap()}</div>
+          <h3>The air, the land and the seasons</h3>
           <ul class="howto">
-            <li><b>Tap anywhere</b> to flap. <b>Double tap a branch</b> to fly to it and perch.</li>
-            <li><b>Swipe</b> against the way you fly to <b>turn round</b>; forward for a long <b>glide</b>; straight down to <b>settle and land</b>; straight up to <b>hover</b> (it tires the wings). Swipe forward and back in one hook to <b>ride a thermal</b>, or head for the nearest one.</li>
-            <li><b>Draw a line to a mouse or a fish</b> and the hawk stoops on it. <b>Draw a circle</b> for a <b>loop</b> or a <b>front flip</b>, drawn the way the nose goes.</li>
-            <li><b>Tap and hold</b>, then drag to aim: up noses up toward a hover (into the wind, the hawk kites), forward flattens into a long glide, down dives (far down is a stoop), back slows down with back-beats. Aiming back never turns; only a swipe does. Let go to fly on.</li>
-            <li><b>Battery saver</b> (Settings) runs at 30 frames a second; it comes on by itself when the battery is low.</li>
-            <li>A new gesture replaces what the hawk was doing. Flapping keeps a glide, a ride or a chase going, but ends a hover or a landing.</li>
-            <li>On a branch: tap either side to <b>hop</b> that way, swipe down to drop to the branch below, swipe up or tap three times quickly to <b>take off</b>. On the ground: tap to hop, tap food or water to eat or drink, swipe down to eat or drink where you stand. Swimming: tap to paddle, tap the water by the hawk to drink.</li>
             <li>Let go and the hawk glides on its own. Diving builds speed; pulling up trades it for height. Too slow and it stalls.</li>
             <li>To land softly, <b>flare</b>: point up just before the branch or the ground.</li>
             <li><b>Thermals</b> rise above the treeline on sunny afternoons. Let go inside one and the hawk floats up as it glides across; turn back to stay in it, and the lift is strongest in the core. Look for <b>leaves</b> spiralling upward. <b>Cloud rings</b> hang all over the sky; fly through one for a burst of speed. Wind against a hillside gives <b>ridge lift</b>: where grass and leaves stream uphill, glide along the face without a wingbeat. Rising air beeps.</li>
@@ -80,7 +76,7 @@ export function createUI({ audio, G, store, species, onPause, playSong, haptics,
             <li><b>Tap a branch</b> to fly to it and perch. From evening on, a perched hawk can tap <b>Sleep</b> (top) to roost until dawn.</li>
             <li>Land on a pond to swim, then <b>tap the water</b> to drink. Three sips fill your thirst.</li>
             <li>On the ground, hold left or right to walk. <b>Tap berries</b> (six fill you) or, after rain, <b>worms</b> (three fill you). Dive at <b>mice</b> in the grass or <b>fish</b> in ponds.</li>
-            <li>On a branch, two half rings of pools open in the bottom corners. In the right corner are the five <b>song notes</b>, low to high. Perch near a <b>songbird</b>, listen, then touch each note in turn; the pools glow as the bird sings them, and the next one wears a red ring. A wrong note only flashes, so carry on. In the left corner are the <b>birds you know</b>: touch one and the hawk sings its whole song, and that bird answers with its gift. Keyboard: keys 1 to 5.</li>
+            <li>On a branch, two half rings of pools open in the bottom corners. On the right are the five <b>song notes</b>, low to high. Perch near a <b>songbird</b>, listen, then touch each note in turn; the pools glow as the bird sings them, and the next one wears a red ring. A wrong note only flashes, so carry on. On the left are the <b>birds you know</b>: touch one and the hawk sings its whole song, and that bird answers with its gift. Keyboard: keys 1 to 5.</li>
             <li>Once you know a bird's song, singing beside it is a <b>duet</b>: it sings the first half and you answer with the rest. The cleaner your pitch and timing, the longer its gift lasts. On some mornings the whole wood sings a <b>dawn chorus</b>: join in and every bird you know answers at once.</li>
             <li>Each dawn the <b>Journal</b> offers one small intention for the day; finish it and you earn a feather. Pictures from photo mode go in the journal's album.</li>
             <li>The seasons turn every eight days. Follow the flocks <b>south</b> (to the right) to the wintering marsh, and home again in spring. The <b>Journal</b> keeps your map and the landmarks you find.</li>

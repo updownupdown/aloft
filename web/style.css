@@ -335,3 +335,13 @@ details > small { margin: 4px 0; }
   .letter .tabs { flex-direction: row; flex-wrap: wrap; column-gap: 16px; margin-bottom: 6px; }
   .letter .tabs button { font-size: 19px; min-height: 36px; }
 }
+
+/* How to play: the controls map, each gesture an ink drawing on a square of paper beside its words */
+.controls h3 { margin: 14px 0 4px; }
+.ctl-note { margin: 4px 0 8px; font-size: 14.5px; font-style: italic; color: var(--ink2); line-height: 1.45; }
+.ctl-map { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); column-gap: 18px; }
+.ctl-map figure { display: flex; gap: 12px; align-items: center; margin: 0; padding: 8px 0; border-bottom: 1px solid var(--rule); }
+.ctl-map svg { flex: none; width: 60px; height: 60px; border-radius: 6px; background: radial-gradient(circle at 40% 35%, rgba(255, 252, 244, .9), rgba(232, 222, 200, .55)); box-shadow: inset 0 0 0 1px rgba(58, 36, 24, .12); }
+.ctl-map figcaption { display: flex; flex-direction: column; gap: 2px; line-height: 1.35; }
+.ctl-map b { font-family: var(--title); font-style: italic; font-weight: 600; font-size: 19px; }
+.ctl-map small { font-size: 14px; color: var(--ink2); }

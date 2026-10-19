@@ -85,7 +85,7 @@ export function createSinging({ audio, voice = () => 1, onNote, onMimic, onToggl
     return { left: side === 'L' ? 6 : innerWidth - 6 - d, top, width: d, height: d };
   };
   // lay the pools out on half circles round the corners, opening toward the middle of the screen:
-  // from below the stick's inner side up and over it, as low as the screen's bottom edge allows.
+  // from below the corner's inner side up and over it, as low as the screen's bottom edge allows.
   // Notes run low to high from the bottom; a row that is not full sits centred on the inner side.
   function layout() {
     const key = [innerWidth, innerHeight, S.lefty, S.species].join();
