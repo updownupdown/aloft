@@ -19,17 +19,23 @@ export function setSeed(v) { seed.v = v | 0; for (const c of caches) c.clear(); 
 // Long noise-chosen stretches. The far south (the migration's end) is always marsh.
 export const JOURNEY = 36000;
 export const START_X = -1250;  // the edge of a forest
+// the coast (coast.js): two thirds of the way south the land ends in sea cliffs at an arm of
+// the sea, which you cross to the cliffs on the far side
+export const BAY = { c: Math.round(JOURNEY * .68), w: 760, name: 'The Sea Cliffs' };
+const COAST_R = BAY.w + 900;
 export const BIOMES = {
   meadow: { name: 'meadow', amp: .55, trees: .6, ponds: .6, bushes: 1.7, mice: .6, broadleaf: .85, wind: 1, tint: [128, 140, 80] },
   forest: { name: 'forest', amp: 1, trees: 1.8, ponds: .5, bushes: .6, mice: .15, broadleaf: .5, wind: .8, tint: [60, 110, 80] },
   lakeland: { name: 'lakeland', amp: .7, trees: 1, ponds: 1.35, bushes: 1, mice: .25, broadleaf: .7, wind: 1, tint: [80, 130, 120] },
   cliffs: { name: 'cliffs', amp: 3.2, trees: .55, ponds: .35, bushes: .5, mice: .2, broadleaf: .15, wind: 1.5, tint: [130, 120, 105], peaks: .35 },
   mountains: { name: 'mountains', amp: 2.4, trees: .45, ponds: .2, bushes: .4, mice: .15, broadleaf: .05, wind: 1.7, tint: [118, 116, 118], peaks: 1 },
+  coast: { name: 'coast', amp: .45, trees: .35, ponds: 0, bushes: 1.1, mice: .35, broadleaf: .2, wind: 1.6, tint: [128, 134, 110] },
   marsh: { name: 'marsh', amp: .35, trees: .45, ponds: 1.5, bushes: 1.2, mice: .3, broadleaf: .9, wind: .9, tint: [120, 140, 95] },
 };
 const biomeCache = new Map(); caches.push(biomeCache);
 function biomeRaw(x) {
   if (x > JOURNEY - 1800) return BIOMES.marsh;
+  if (Math.abs(x - BAY.c) < COAST_R) return BIOMES.coast;
   const v = vnoise(x / 2600, 51) * .75 + vnoise(x / 700, 52) * .25;
   return v < .36 ? BIOMES.meadow : v < .55 ? BIOMES.forest : v < .7 ? BIOMES.lakeland : v < .8 ? BIOMES.cliffs : BIOMES.mountains;
 }
@@ -53,13 +59,24 @@ function blendedK(k, key) {
 
 const blended = (x, key) => { const f = x / 40, i = Math.floor(f); return lerp(blendedK(i, key), blendedK(i + 1, key), f - i); };
 
-const groundRaw = x => {
+const groundRaw = x => coastShape(x, landRaw(x));
+const landRaw = x => {
   const amp = blended(x, 'amp'), peaks = blended(x, 'peaks');
   const crag = amp > 1.3 ? (amp - 1.3) * 14 * (Math.abs(fbm(x / 90, 6)) - .3) : 0;   // rocky cliffs get sharper ridges
   // mountains: broad peaks that rise well above the hills, with a jagged crest
   const m = peaks > .01 ? peaks * (240 * Math.pow(Math.max(0, (vnoise(x / 760, 61) - .38) / .62), 1.5) + 18 * Math.abs(fbm(x / 70, 62))) : 0;
   return amp * (22 * fbm(x / 240, 1) + 5 * fbm(x / 60, 4)) + 40 * fbm(x / 1100, 3) - crag - m - scarpRaise(x) - spireRaise(x) - ridgeRaise(x);
 };
+// sea level, and the coast's shape: headlands rising to the cliff tops, a sheer drop, then the sea
+export const SEA_Y = Math.round(40 * fbm0(BAY.c / 1100, 3) + 34);
+function coastShape(x, h) {
+  const d = Math.abs(x - BAY.c);
+  if (d > BAY.w + 700) return h;
+  const top = SEA_Y - 120 - 18 * fbm(x / 160, 81) - 8 * fbm(x / 40, 82);   // the cliff tops, a little broken
+  const land = lerp(h, top, smooth(BAY.w + 700, BAY.w + 160, d));
+  const bed = SEA_Y + 70 + 10 * fbm(x / 200, 83);
+  return lerp(bed, land, smooth(BAY.w, BAY.w + 9, d));
+}
 // the great ridge (ridge.js): once on the way south the land lifts into one long even ridge,
 // its crest wavering a little, with the wind up its face for lift
 export const GREAT_RIDGE = { x0: Math.round(JOURNEY * .42), x1: Math.round(JOURNEY * .42) + 3400, name: 'The Great Ridge' };
@@ -73,7 +90,7 @@ function ridgeRaise(x) {
 // A scarp is a real cliff edge: the ground steps up sheer by H, runs on as a plateau, then
 // slopes gently back down. Many in the cliffs and mountains, a few elsewhere. Some carry a
 // waterfall over the edge. Spires are lone stacks of rock standing out of the cliffs.
-const SC = 700, SCARP_P = { meadow: .3, forest: .38, lakeland: .32, cliffs: .8, mountains: .65, marsh: 0 };
+const SC = 700, SCARP_P = { meadow: .3, forest: .38, lakeland: .32, cliffs: .8, mountains: .65, marsh: 0, coast: 0 };
 const FIRST_SCARP = Math.floor((START_X + 1500) / SC);   // the first cliff, with a waterfall, comes early in the flight
 const scarpCache = new Map(); caches.push(scarpCache);
 function scarpK(k) {
@@ -150,8 +167,17 @@ function pondK(k) {
   if (pondCache.size > 4000) pondCache.clear();
   return p;
 }
+// the sea in the bay, as one great pond: never freezes, fish all along it
+let bayP = null;
+function bay() {
+  if (bayP?.seed === seed.v) return bayP;
+  const p = bayP = { k: 9973, seed: seed.v, sea: true, c: BAY.c, w: BAY.w, lake: false, deep: true, depth: 70, rim: SEA_Y, waterY: SEA_Y, x0: BAY.c - BAY.w, x1: BAY.c + BAY.w, fish: [] };
+  for (let j = 0; j < 14; j++) p.fish.push({ id: `fsea_${j}`, seed: 9973 * 7 + j, at: -.9 + 1.8 * j / 13 });
+  return p;
+}
 export const frozen = p => env.winter > .5 && !p.deep;
 export function pondNear(x, reach = 2.4) {
+  if (Math.abs(x - BAY.c) < BAY.w + 30 * reach) return bay();
   const k = Math.round((x - 260) / PS);
   for (let j = k - 1; j <= k + 1; j++) { const p = pondK(j); if (p && Math.abs(x - p.c) < p.w * reach) return p; }
   return null;
@@ -166,7 +192,7 @@ function groundAt(x) {
 }
 function bedY(x, p) {
   let h = groundAt(x);
-  if (p) {
+  if (p && !p.sea) {
     const d = Math.abs(x - p.c) / p.w;
     h = lerp(h, p.rim, p.lake ? smooth(1.8, 1.12, d) : smooth(2.4, 1.2, d));
     if (d < 1) h += p.depth * Math.pow(1 - d * d, 1.2);
@@ -186,6 +212,7 @@ export function waterAt(x) {
 }
 export function pondsIn(x0, x1) {
   const out = [];
+  if (x1 > BAY.c - BAY.w - 20 && x0 < BAY.c + BAY.w + 20) out.push(bay());
   for (let k = Math.floor((x0 - 260) / PS) - 1; k <= Math.ceil((x1 - 260) / PS) + 1; k++) { const p = pondK(k); if (p && p.x1 > x0 - 20 && p.x0 < x1 + 20) out.push(p); }
   return out;
 }

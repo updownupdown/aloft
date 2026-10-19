@@ -19,6 +19,7 @@ const NOTES = {
   redtail: ['Red-tailed hawk', 'Your own kind: the brick-red tail comes with the first full year.'],
   osprey: ['Osprey', 'Dives feet first for fish, and flies with a kink in its long wings like a gull.'],
   eagle: ['Bald eagle', 'Would rather steal a fish than catch one; ospreys and hawks are its usual victims.'],
+  gull: ['Herring gull', 'Hangs motionless on the wind along sea cliffs, and laughs at everything.'],
   bison: ['American bison', 'The largest animal on the prairie. Its hooves flush grasshoppers for hawks that follow the herd.'],
   bear: ['American black bear', 'Wades into the run in late summer to catch fish leaping upstream.'],
   grizzly: ['Grizzly bear', 'Stands at the top of a falls and lets the leaping salmon come to its jaws.'],
