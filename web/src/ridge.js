@@ -9,7 +9,7 @@ import { wash, stroke, ellP, circP, stamp, put } from './paint.js';
 import { sight } from './guide.js';
 W.extraLifts.push((x, y) => ridgeFaceLift(x, y));
 
-export const RIDGE = W.GREAT_RIDGE ?? { x0: W.JOURNEY * .42, x1: W.JOURNEY * .42 + 3400, name: 'The Great Ridge' };
+export const RIDGE = W.GREAT_RIDGE;
 export const onRidge = x => x > RIDGE.x0 && x < RIDGE.x1;
 const crest = x => W.groundY(Math.round(x));
 // the wind up the face: steady lift along the crest whenever a breeze blows, more on the big days

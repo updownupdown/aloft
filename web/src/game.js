@@ -998,7 +998,7 @@ export function start(canvas) {
     cloud() { this.time(.5); const c = cumuliIn(b.x + 300, b.x + 6000)[0]; fresh(); b.state = 'fly'; b.x = c.x - c.w * .7; b.y = c.y; b.s = 80; b.g = 0; b.face = 1; snap(); return c; },
     heron() { const p = W.pondsIn(b.x, b.x + 20000).find(p => p.w >= 40 && hash(p.k * 4.4 + 2) <= .32); fresh(); b.state = 'fly'; b.x = p.c - 150; b.y = p.waterY - 60; b.s = 70; b.face = 1; snap(); return p; },
   };
-  Object.assign(G.dbg, encDebug(G, { fresh, snap }), ghostDebug(G, { fresh, snap }), skiesDebug(G, { fresh, snap }), { ridge() { fresh(); b.state = 'fly'; b.x = RIDGE.x0 + 500; b.y = W.groundY(b.x) - 120; b.s = 85; b.face = 1; snap(); } });
+  Object.assign(G.dbg, encDebug(G, { fresh, snap }), ghostDebug(G, { fresh, snap }), skiesDebug(G, { fresh, snap }), { ridge() { fresh(); b.state = 'fly'; b.x = RIDGE.x0 + 1200; b.y = W.groundY(b.x) - 110; b.s = 85; b.face = 1; snap(); } });
   window.__aloft = G;
   return G;
 }
