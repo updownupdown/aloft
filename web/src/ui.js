@@ -1,6 +1,7 @@
 // DOM overlay: the menu button, pause menu (settings, journal, how to play, tuning) and toasts.
 import { TUNE, DEFAULTS, RANGES } from './tune.js';
 import { GFX, GFX_INFO, RES_OPTS, saveGfx, overlay, debugInfo } from './gfx.js';
+import { letter } from './letter.js';
 
 export function createUI({ audio, G, store, species, onPause, playSong, haptics, hooks = {} }) {
   const $ = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html !== undefined) e.innerHTML = html; return e; };
@@ -94,6 +95,7 @@ export function createUI({ audio, G, store, species, onPause, playSong, haptics,
       <footer class="card-foot"><button data-act="resume" class="primary">Resume</button></footer>
     </div>`;
   root.append(menu);
+  letter(menu);
   const q = s => menu.querySelector(s);
   const soundBtn = q('[data-act=sound]'), musicBtn = q('[data-act=music]'), glideBtn = q('[data-act=glide]');
   const hapticsBtn = q('[data-act=haptics]'), leftyBtn = q('[data-act=lefty]');
