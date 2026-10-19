@@ -7,26 +7,55 @@
 // A stick measures from where the thumb came down, so a thumb never has to find the centre.
 // The art is painted once into canvases (paintStick), so the sticks cost nothing per frame.
 import { wash, circP, ellP } from './paint.js';
+import { MARK } from './palette.js';
 
 const PAIR = .2, TAP = .26, MOVED = 10, FLICK = .55;
 const POOL = [104, 132, 168], RIM = [74, 92, 122], KNOB = [58, 76, 112], INK = [58, 36, 24];
+const MARKS = Object.fromEntries(Object.entries(MARK).map(([k, v]) => [k, v.join()]));
 
-export function paintStick(base, knob, px) {
+// The base: a washed pool with a small painted sign for each way it can lean (the same signs on
+// both sticks, mirrored, since the gestures are made by pushing both together): up glide, down
+// land; inward perch, inward and up thermal, inward and down prey; outward hang, outward and up
+// call, outward and down stoop. Perch, thermal and prey wear the colours of their focus marks.
+export function paintStick(base, knob, px, side = 'L') {
   const dpr = Math.min(devicePixelRatio || 1, 2);
   for (const [cv, d] of [[base, px], [knob, Math.round(px * .46)]]) { cv.width = cv.height = Math.round(d * dpr); cv.style.width = cv.style.height = d + 'px'; }
   let x = base.getContext('2d'), r = px / 2;
   x.setTransform(dpr, 0, 0, dpr, 0, 0); x.clearRect(0, 0, px, px);
-  // a pale pool, darker where the pigment dried at its edge, and four faint ticks for the ways it leans
-  wash(x, circP(r, r, r * .9, 22), POOL, .16, { passes: 3, amp: r * .035, seed: 3, rim: .7, rimW: 1.4 });
-  wash(x, circP(r, r, r * .5, 16), POOL, .07, { passes: 2, amp: r * .03, seed: 8, rim: .3 });
-  x.strokeStyle = `rgba(${INK},.28)`; x.lineWidth = 1; x.lineCap = 'round'; x.beginPath();
-  for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2, c = Math.cos(a), s = Math.sin(a); x.moveTo(r + c * r * .66, r + s * r * .66); x.lineTo(r + c * r * .78, r + s * r * .78); }
-  x.stroke();
+  wash(x, circP(r, r, r * .94, 24), POOL, .24, { passes: 3, amp: r * .035, seed: 3, rim: .8, rimW: 1.5 });
+  wash(x, circP(r, r, r * .52, 16), POOL, .08, { passes: 2, amp: r * .03, seed: 8, rim: .3 });
+  const inward = side === 'L' ? 1 : -1, s = r * .17, ring = r * .73;
+  for (const [ang, sign] of SIGNS) {
+    const a = ang * Math.PI / 180, cx = r + Math.cos(a) * ring * inward, cy = r - Math.sin(a) * ring;
+    x.save(); x.translate(cx, cy); x.scale(inward, 1); sign(x, s); x.restore();
+  }
   const k = Math.round(px * .46); r = k / 2;
   x = knob.getContext('2d'); x.setTransform(dpr, 0, 0, dpr, 0, 0); x.clearRect(0, 0, k, k);
-  wash(x, circP(r, r, r * .86, 16), KNOB, .42, { passes: 3, amp: r * .05, seed: 21, rim: .6, rimW: 1.2 });
-  wash(x, ellP(r - r * .22, r - r * .26, r * .3, r * .2, -.6, 10), RIM, .25, { passes: 1, amp: r * .03, seed: 5, rim: 0 });
+  wash(x, circP(r, r, r * .86, 16), KNOB, .62, { passes: 3, amp: r * .05, seed: 21, rim: .7, rimW: 1.3 });
+  wash(x, ellP(r - r * .22, r - r * .26, r * .3, r * .2, -.6, 10), RIM, .2, { passes: 1, amp: r * .03, seed: 5, rim: 0 });
 }
+
+// each sign is drawn about the origin, s is about half its size, +x points toward the middle of the screen
+const ink = (x, col, w, a = .8) => { x.lineCap = 'round'; x.lineJoin = 'round'; x.strokeStyle = `rgba(${col},${a})`; x.lineWidth = w; x.stroke(); };
+const fill = (x, col, a = .85) => { x.fillStyle = `rgba(${col},${a})`; x.fill(); };
+const SIGNS = [
+  // up: glide, wings spread flat
+  [90, (x, s) => { x.beginPath(); x.moveTo(-s * 1.2, s * .2); x.quadraticCurveTo(-s * .55, -s * .5, 0, s * .1); x.quadraticCurveTo(s * .55, -s * .5, s * 1.2, s * .2); ink(x, INK, 1.6); }],
+  // down: land, a chevron settling onto the ground
+  [-90, (x, s) => { x.beginPath(); x.moveTo(-s * .6, -s * .6); x.lineTo(0, 0); x.lineTo(s * .6, -s * .6); x.moveTo(-s * .9, s * .55); x.lineTo(s * .9, s * .55); ink(x, INK, 1.6); }],
+  // inward: perch, a branch with a leaf
+  [0, (x, s) => { x.beginPath(); x.moveTo(-s, s * .3); x.quadraticCurveTo(0, s * .05, s, s * .35); ink(x, MARKS.perch, 1.8); x.beginPath(); x.ellipse(s * .1, -s * .25, s * .45, s * .22, -.6, 0, Math.PI * 2); fill(x, MARKS.perch, .8); }],
+  // inward and up: thermal, chevrons rising
+  [45, (x, s) => { x.beginPath(); for (const dy of [s * .55, -s * .25]) { x.moveTo(-s * .65, dy + s * .3); x.lineTo(0, dy - s * .25); x.lineTo(s * .65, dy + s * .3); } ink(x, MARKS.thermal, 1.7, .9); }],
+  // inward and down: prey, a mouse
+  [-45, (x, s) => { x.beginPath(); x.ellipse(-s * .1, s * .1, s * .62, s * .38, 0, 0, Math.PI * 2); fill(x, MARKS.mouse, .8); x.beginPath(); x.arc(s * .38, -s * .22, s * .2, 0, Math.PI * 2); fill(x, MARKS.mouse, .8); x.beginPath(); x.moveTo(-s * .7, s * .2); x.quadraticCurveTo(-s * 1.1, s * .55, -s * 1.25, s * .05); ink(x, MARKS.mouse, 1.1); }],
+  // outward: hang, a hawk held in place on raised wings
+  [180, (x, s) => { x.beginPath(); x.moveTo(-s * 1.05, -s * .7); x.quadraticCurveTo(-s * .5, s * .05, 0, s * .05); x.quadraticCurveTo(s * .5, s * .05, s * 1.05, -s * .7); ink(x, INK, 1.5); x.beginPath(); x.ellipse(0, s * .25, s * .2, s * .38, 0, 0, Math.PI * 2); fill(x, INK, .8); x.beginPath(); x.moveTo(-s * .5, s * .95); x.lineTo(s * .5, s * .95); ink(x, INK, 1, .5); }],
+  // outward and up: the hawk's call, sound spreading
+  [135, (x, s) => { x.beginPath(); for (const rr of [.35, .75, 1.15]) { x.moveTo(Math.cos(-.7) * rr * s - s * .5, Math.sin(-.7) * rr * s + s * .3); x.arc(-s * .5, s * .3, rr * s, -.7, .7); } ink(x, INK, 1.4, .75); }],
+  // outward and down: stoop, a tucked dive with speed lines
+  [-135, (x, s) => { x.beginPath(); x.moveTo(-s * .55, s * .7); x.lineTo(s * .2, -s * .25); x.lineTo(s * .45, s * .1); x.closePath(); fill(x, INK, .75); x.beginPath(); x.moveTo(s * .2, -s * .6); x.lineTo(s * .75, -s * 1.05); x.moveTo(s * .6, -s * .3); x.lineTo(s * 1.05, -s * .65); ink(x, INK, 1, .55); }],
+];
 
 export function createSticks() {
   const root = document.getElementById('ui');
@@ -105,7 +134,7 @@ export function createSticks() {
     for (const side of ['L', 'R']) {
       const f = S[side], E = els[side], g = geo(side);
       // repaint only when the stick's size changes (rotation, resize)
-      if (Math.round(g.R * 2) !== E.px && g.R) { E.px = Math.round(g.R * 2); paintStick(E.base, E.knob, E.px); }
+      if (Math.round(g.R * 2) !== E.px && g.R) { E.px = Math.round(g.R * 2); paintStick(E.base, E.knob, E.px, side); }
       // a thumb counts as held once it has stayed down a moment or moved (a tap never steers)
       const v = f ? vec(f, g.R) : null;
       held[side] = f && (t - f.t0 > .16 || f.moved) ? v : null;

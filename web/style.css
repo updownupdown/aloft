@@ -240,18 +240,19 @@ details > small { margin: 4px 0; }
 }
 .sing-cheer.show { opacity: 1; transform: translate(-50%, 0); }
 
-/* the joysticks: a pale washed pool in each bottom corner, standing in from the edges (clear of
-   the phone's own edge gestures), with a darker knob that leans where the thumb pushes */
+/* the joysticks: a pale washed pool against each side edge near the bottom, with a sign painted
+   for each way it leans, and a darker knob that leans where the thumb pushes; raised a little so
+   the song rings have room below their inner side */
 :root {
-  --stick: clamp(96px, 27vmin, 140px); --stick-bot: calc(22px + env(safe-area-inset-bottom));
-  --stick-in-l: max(26px, calc(env(safe-area-inset-left) + 14px)); --stick-in-r: max(26px, calc(env(safe-area-inset-right) + 14px));
+  --stick: clamp(104px, 29vmin, 148px); --stick-bot: calc(30px + env(safe-area-inset-bottom));
+  --stick-in-l: max(6px, env(safe-area-inset-left)); --stick-in-r: max(6px, env(safe-area-inset-right));
   --hud-r: calc(130px + env(safe-area-inset-right));
 }
 .stick { position: absolute; bottom: var(--stick-bot); width: var(--stick); height: var(--stick); border-radius: 50%; pointer-events: none !important; transition: opacity .4s; }
 .stick-l { left: var(--stick-in-l); }
 .stick-r { right: var(--stick-in-r); }
 .stick canvas { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); }
-.stick .knob { margin: 0; transition: transform .08s; opacity: .75; }
+.stick .knob { margin: 0; transition: transform .08s; opacity: .85; }
 .stick.touch .knob { opacity: 1; transition: none; }
 .stick.faded { opacity: 0; }
 .stick.sync { animation: beat-sync .5s ease-out; }

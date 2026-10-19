@@ -522,6 +522,8 @@ export function start(canvas) {
   // Thirst, hunger and wings, each a pencil line with a tick for every sip or berry that would
   // fill it, and a pool of pigment washed along it as far as the meter is full. The meters live
   // on their own small canvas over the game, repainted only when they change.
+  // drawn a fifth larger than the rest of the screen art, with longer bars, so they read at a glance
+  const HUD_K = 1.2, BAR = 64;
   const hud = document.createElement('canvas'); hud.className = 'hud'; document.body.append(hud);
   let hudKey = '';
   // the meters start just right of the menu button, wherever the phone's cutout puts it
@@ -537,11 +539,11 @@ export function start(canvas) {
     return p;
   };
   function drawHUD() {
-    const P = G.P, S = G.view.scr.s, x = (menuRight() + 6) / S, y = 9, low = Math.sin(G.t * 6) > 0;
+    const P = G.P, S = G.view.scr.s * HUD_K, x = (menuRight() + 6) / S, y = 8, low = Math.sin(G.t * 6) > 0;
     const key = [Math.ceil(G.thirst), Math.ceil(G.hunger), Math.ceil(b.stamina * 50), G.thirst < 20 && low, G.hunger < 20 && low, S, G.photo, G.singing && G.settings.lefty, P.paper[0] >> 3, P.birdFar[0] >> 3, P.water[2] >> 3].join();
     if (key === hudKey) return;
     hudKey = key;
-    const dpr = Math.min(devicePixelRatio || 1, 2), sc = S * dpr, W0 = x + 70, H0 = y + 34;
+    const dpr = Math.min(devicePixelRatio || 1, 2), sc = S * dpr, W0 = x + 84, H0 = y + 36;
     if (hud.width !== Math.ceil(W0 * sc)) { hud.width = Math.ceil(W0 * sc); hud.height = Math.ceil(H0 * sc); hud.style.width = W0 * S + 'px'; hud.style.height = H0 * S + 'px'; }
     const ctx = hud.getContext('2d');
     ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, hud.width, hud.height);
@@ -550,15 +552,15 @@ export function start(canvas) {
     const meter = (yy, v, col, ticks, seed, icon) => {
       icon(x + 5, yy + 4);
       ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.strokeStyle = C(P.birdFar, .4); ctx.lineWidth = .6; ctx.beginPath();
-      ctx.moveTo(x + 13, yy + 4); ctx.lineTo(x + 63, yy + 4);
-      for (let i = 1; i < ticks; i++) { const tx = x + 13 + 50 * i / ticks; ctx.moveTo(tx, yy + 1.5); ctx.lineTo(tx, yy + 6.5); }
+      ctx.moveTo(x + 13, yy + 4); ctx.lineTo(x + 13 + BAR, yy + 4);
+      for (let i = 1; i < ticks; i++) { const tx = x + 13 + BAR * i / ticks; ctx.moveTo(tx, yy + 1.5); ctx.lineTo(tx, yy + 6.5); }
       ctx.stroke(); ctx.restore();
       const blink = v < 20 && low;
-      if (v > 1) wash(ctx, pillP(x + 13, yy + 1, 50 * v / 100, 6), blink ? [190, 70, 50] : col, .72, { passes: 2, amp: .6, seed, rim: .35, rimW: .8 });
+      if (v > 1) wash(ctx, pillP(x + 13, yy + 1, BAR * v / 100, 6), blink ? [190, 70, 50] : col, .72, { passes: 2, amp: .6, seed, rim: .35, rimW: .8 });
     };
     meter(y, G.thirst, P.water, 3, 3, (cx, cy) => wash(ctx, [[cx, cy - 4.5], [cx + 3, cy + .5], [cx + 2, cy + 3], [cx - 2, cy + 3], [cx - 3, cy + .5]], P.water, .9, { passes: 2, amp: .3, seed: 1, rim: .4 }));
-    meter(y + 11, G.hunger, P.berry, 6, 5, (cx, cy) => { wash(ctx, circP(cx - 1.5, cy + 1, 2.2, 8), P.berry, .9, { passes: 2, amp: .3, seed: 2, rim: .4 }); wash(ctx, circP(cx + 1.8, cy, 2.2, 8), P.berry, .9, { passes: 2, amp: .3, seed: 4, rim: .4 }); });
-    meter(y + 22, b.stamina * 100, shade(P.thermal, .8), 0, 7, (cx, cy) => wash(ctx, [[cx - 3.2, cy + 4], [cx - 1.2, cy - .5], [cx + 1.6, cy - 4], [cx + 3.4, cy - 3.2], [cx + 2.2, cy + 1], [cx - 1, cy + 4]], shade(P.thermal, .8), .9, { passes: 2, amp: .3, seed: 6, rim: .4 }));
+    meter(y + 11.5, G.hunger, P.berry, 6, 5, (cx, cy) => { wash(ctx, circP(cx - 1.5, cy + 1, 2.2, 8), P.berry, .9, { passes: 2, amp: .3, seed: 2, rim: .4 }); wash(ctx, circP(cx + 1.8, cy, 2.2, 8), P.berry, .9, { passes: 2, amp: .3, seed: 4, rim: .4 }); });
+    meter(y + 23, b.stamina * 100, shade(P.thermal, .8), 0, 7, (cx, cy) => wash(ctx, [[cx - 3.2, cy + 4], [cx - 1.2, cy - .5], [cx + 1.6, cy - 4], [cx + 3.4, cy - 3.2], [cx + 2.2, cy + 1], [cx - 1, cy + 4]], shade(P.thermal, .8), .9, { passes: 2, amp: .3, seed: 6, rim: .4 }));
   }
 
   /* ---------- wind streaks: paint flecks carried by the real air field ---------- */
