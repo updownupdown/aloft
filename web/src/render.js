@@ -12,6 +12,7 @@ import { sight } from './guide.js';
 import { ghostBird } from './ghost.js';
 import { drawNight } from './night.js';
 import { drawSkies, drawSkiesScreen, underSea } from './skies.js';
+import { drawRidge } from './ridge.js';
 import { drawEncountersGround, drawEncountersAir, morphPal } from './encounters.js';
 import { keepsakesIn } from './story.js';
 import { ridgeField, streamAt, ridgeLeaves, lenses, kettles, cumuli } from './airart.js';
@@ -84,6 +85,7 @@ export function render(ctx, G) {
   for (const o of G.boids) smallBird(ctx, o, P, G);
   for (const c of G.crows) crow(ctx, c, P, G);
   drawEncountersAir(ctx, G, P, smallBird);
+  drawRidge(ctx, G, P);
   kettles(ctx, G, P, x0, x1);
   drawSkies(ctx, G, P);
   for (const hl of hawks) { if (hl.a) ctx.globalAlpha = hl.a; ctx.drawImage(hl.c, hl.x, hl.y, hl.w, hl.w); ctx.globalAlpha = 1; }

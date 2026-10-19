@@ -58,8 +58,16 @@ const groundRaw = x => {
   const crag = amp > 1.3 ? (amp - 1.3) * 14 * (Math.abs(fbm(x / 90, 6)) - .3) : 0;   // rocky cliffs get sharper ridges
   // mountains: broad peaks that rise well above the hills, with a jagged crest
   const m = peaks > .01 ? peaks * (240 * Math.pow(Math.max(0, (vnoise(x / 760, 61) - .38) / .62), 1.5) + 18 * Math.abs(fbm(x / 70, 62))) : 0;
-  return amp * (22 * fbm(x / 240, 1) + 5 * fbm(x / 60, 4)) + 40 * fbm(x / 1100, 3) - crag - m - scarpRaise(x) - spireRaise(x);
+  return amp * (22 * fbm(x / 240, 1) + 5 * fbm(x / 60, 4)) + 40 * fbm(x / 1100, 3) - crag - m - scarpRaise(x) - spireRaise(x) - ridgeRaise(x);
 };
+// the great ridge (ridge.js): once on the way south the land lifts into one long even ridge,
+// its crest wavering a little, with the wind up its face for lift
+export const GREAT_RIDGE = { x0: Math.round(JOURNEY * .42), x1: Math.round(JOURNEY * .42) + 3400, name: 'The Great Ridge' };
+function ridgeRaise(x) {
+  const R = GREAT_RIDGE;
+  if (x < R.x0 - 50 || x > R.x1 + 50) return 0;
+  return smooth(R.x0 - 50, R.x0 + 550, x) * (1 - smooth(R.x1 - 600, R.x1 + 50, x)) * (150 + 14 * fbm(x / 300, 71));
+}
 
 /* ---------- scarps, waterfalls and rock spires ---------- */
 // A scarp is a real cliff edge: the ground steps up sheer by H, runs on as a plateau, then
@@ -417,5 +425,6 @@ export function ridgeLift(x, y) {
 export const rugged = x => smooth(1.3, 2.6, blended(x, 'amp'));
 // total upward air speed at a point
 export const updraft = (x, y, time) => lift(x, y, time) + ridgeLift(x, y) + extraLift(x, y);
-// lift from the sky itself rather than the land (a storm's gust front): set by skies.js
-export const extraLift = (x, y) => env.extra ? env.extra(x, y) : 0;
+// other lift, added by other modules (a storm's gust front, the great ridge's face)
+export const extraLifts = [];
+export const extraLift = (x, y) => { let v = 0; for (const f of extraLifts) v += f(x, y); return v; };
