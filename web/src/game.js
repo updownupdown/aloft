@@ -25,7 +25,7 @@ import { createFauna, updateFauna, squirrelTree } from './fauna.js';
 import { GFX, loadGfx, overlay, record, stats } from './gfx.js';
 import { createGhosts, updateGhost, saveGhosts, ghostDebug } from './ghost.js';
 import { createNight, updateNight } from './night.js';
-import { createSkies, updateSkies, skiesDebug } from './skies.js';
+import { createSkies, updateSkies, skiesDebug, hush } from './skies.js';
 import { createEnc, updateEncounters, caughtFish, scrapsIn, eatScrap, morphOf, encDebug } from './encounters.js';
 import { spriteCount } from './paint.js';
 import { captureSightings, guidePages, pageName } from './guide.js';
@@ -680,7 +680,7 @@ export function start(canvas) {
     airEnv.wave = smooth(.6, .66, G.tod) * (1 - smooth(.79, .84, G.tod)) * (1 - G.storm) * (1 - G.overcast * .6);
     G.cloudDrift += dt * (2.5 + G.wind * .2);
     G.flash = Math.max(0, G.flash - dt * 3);
-    if (G.storm > .75 && G.sea.winter < .5) { G.nextBolt -= dt; if (G.nextBolt <= 0) { const km = .3 + Math.random() * 3.5; G.flash = 1 - km / 5; G.nextBolt = 6 + Math.random() * 12; audio.thunder(km / .343, km); } }
+    if (G.storm > .75 && G.sea.winter < .5) { G.nextBolt -= dt; if (G.nextBolt <= 0) { const cell = G.skies?.cell, km = cell ? clamp(Math.abs(cell.x - b.x) / 700 + Math.random() * .4, .3, 4) : .3 + Math.random() * 3.5; G.flash = 1 - km / 5; G.nextBolt = 6 + Math.random() * 12; audio.thunder(km / .343, km); } }
     if (G.rain > .3 && G.wet > .25 && G.sea.winter < .5) once('worms', 'Rain brings worms up. Land on open ground after rain and tap them to eat.');
     if (G.sea.autumn > .6) once('autumn', 'Autumn. The leaves are turning, and the flocks fly south.');
     if (G.sea.winter > .6) once('winter', 'Winter. Small ponds freeze, most songbirds have gone, and only some bushes keep their berries.', 6);
@@ -850,7 +850,7 @@ export function start(canvas) {
     G.visibleRings = vr;
     // the soundscape of where the hawk is: pines or cliffs in the wind, a waterfall, night frogs
     const falls = W.landmarksIn(b.x - 400, b.x + 400).find(l => l.type === 'falls') || W.scarpsIn(b.x - 400, b.x + 400).filter(sc => sc.falls).map(sc => ({ x: sc.x, y: W.groundY(sc.x) - sc.H * .5 }))[0], pondHere = W.pondNear(b.x, 2.5);
-    const height = W.groundY(b.x) - b.y;
+    const height = W.groundY(b.x) - b.y + hush(G) * 400;   // above the sea of cloud the ground sounds are gone
     const night = nightness(G.tod), frogs = pondHere && !W.frozen(pondHere) && night > .5 && G.sea.winter < .5 && G.rain < .5 ? clamp(1 - Math.abs(b.x - pondHere.c) / 260, 0, 1) * night : 0;
     audio.ambience(b.state === 'fly' ? clamp(b.s / 200, 0, 1) * .8 + G.storm * .3 : G.storm * .4, G.rain * (G.sea.winter > .5 ? .2 : 1), {
       bio: W.biomeAt(b.x).name, stoop, falls: falls ? clamp(1 - Math.hypot(falls.x - b.x, falls.y - b.y) / 380, 0, 1) : 0, frogs,
