@@ -10,7 +10,7 @@
 import { wash, circP } from './paint.js';
 
 export const NOTE_COLS = [[47, 74, 116], [62, 124, 136], [96, 136, 66], [196, 146, 52], [176, 78, 58]];
-const SPAN = 110 * Math.PI / 180, GAP = 40, BTN = 34;
+const GAP = 40, BTN = 34;
 
 const pools = new Map();
 function pool(col, dot) {
@@ -79,21 +79,21 @@ export function createSinging({ audio, sticks, voice = () => 1, onNote, onMimic,
     S.key = '';
   }
 
-  // lay the pools out on half circles round the sticks, rising from the outer side to the top
+  // lay the pools out on half circles round the sticks, facing the middle of the screen, lowest
+  // first, rising to the top; outer rows for many birds, each kept clear of the screen's edges
   function layout() {
     const key = [innerWidth, innerHeight, S.lefty, S.species].join();
     if (key === S.key) return;
     S.key = key;
     const place = (ring, side, btns) => {
-      const r = sticks.el(side).getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+      const r = sticks.el(side).getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2, inward = side === 'L' ? 1 : -1;
       let rho = r.width / 2 + 28, i = 0;
-      // the left ring opens rightward and up, the right one leftward and up
-      const a0 = side === 'L' ? -10 * Math.PI / 180 : Math.PI + 10 * Math.PI / 180, dir = side === 'L' ? 1 : -1;
       while (i < btns.length) {
-        const n = Math.max(2, Math.floor(SPAN * rho / GAP) + 1), take = Math.min(n, btns.length - i);
+        const lo = Math.asin(Math.min(1, Math.max(0, innerHeight - 12 - BTN / 2 - cy) / rho)), hi = Math.asin(Math.min(1, Math.max(0, cy - 64 - BTN / 2) / rho));
+        const n = Math.max(2, Math.floor((lo + hi) * rho / GAP) + 1), take = Math.min(n, btns.length - i);
         for (let k = 0; k < take; k++, i++) {
-          const a = a0 + dir * SPAN * (take > 1 ? k / (n - 1) : 0);
-          btns[i].style.left = `${cx + Math.cos(a) * rho - BTN / 2}px`; btns[i].style.top = `${cy - Math.sin(a) * rho - BTN / 2}px`;
+          const a = -lo + (lo + hi) * (take > 1 ? k / (take - 1) : .5);
+          btns[i].style.left = `${cx + inward * Math.cos(a) * rho - BTN / 2}px`; btns[i].style.top = `${cy - Math.sin(a) * rho - BTN / 2}px`;
         }
         rho += GAP;
       }

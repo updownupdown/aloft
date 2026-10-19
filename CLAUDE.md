@@ -30,6 +30,7 @@ web/src/paint.js        watercolour toolkit: wash, bloom, softWash, lift, paper 
 web/src/palette.js      day / dusk / night palettes blended by time of day, greyed by weather
 web/src/input.js        pointer + keyboard -> taps, steer point, keys (touches near the joysticks go to sticks.js)
 web/src/sticks.js       the two watercolour joysticks: paired taps (flap sync), lone taps, flicks, held vectors
+web/src/stickart.js     how the sticks look (paintStick) and ACTIONS, the gesture behind each direction
 web/src/controls.js     stick gestures (both up/down/inward/outward, tilt, lean) per state, focus targets
 web/src/songs.js        songbird species: songs, where and when they sing, the gift each song brings
 web/src/life.js         mice, fish, flocks (boids), visiting songbirds, companion hawk and fledgling

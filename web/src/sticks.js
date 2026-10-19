@@ -5,28 +5,10 @@
 //  - held sticks report where they point (x right, y up, each -1 to 1); controls.js reads the
 //    pair as combinations: both up, both down, both inward, one up and one down, and so on
 // A stick measures from where the thumb came down, so a thumb never has to find the centre.
-// The art is painted once into canvases (paintStick), so the sticks cost nothing per frame.
-import { wash, circP, ellP } from './paint.js';
+// The art is painted once into canvases (paintStick in stickart.js), so the sticks cost nothing per frame.
+import { paintStick } from './stickart.js';
 
 const PAIR = .2, TAP = .26, MOVED = 10, FLICK = .55;
-const POOL = [104, 132, 168], RIM = [74, 92, 122], KNOB = [58, 76, 112], INK = [58, 36, 24];
-
-export function paintStick(base, knob, px) {
-  const dpr = Math.min(devicePixelRatio || 1, 2);
-  for (const [cv, d] of [[base, px], [knob, Math.round(px * .46)]]) { cv.width = cv.height = Math.round(d * dpr); cv.style.width = cv.style.height = d + 'px'; }
-  let x = base.getContext('2d'), r = px / 2;
-  x.setTransform(dpr, 0, 0, dpr, 0, 0); x.clearRect(0, 0, px, px);
-  // a pale pool, darker where the pigment dried at its edge, and four faint ticks for the ways it leans
-  wash(x, circP(r, r, r * .9, 22), POOL, .16, { passes: 3, amp: r * .035, seed: 3, rim: .7, rimW: 1.4 });
-  wash(x, circP(r, r, r * .5, 16), POOL, .07, { passes: 2, amp: r * .03, seed: 8, rim: .3 });
-  x.strokeStyle = `rgba(${INK},.28)`; x.lineWidth = 1; x.lineCap = 'round'; x.beginPath();
-  for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2, c = Math.cos(a), s = Math.sin(a); x.moveTo(r + c * r * .66, r + s * r * .66); x.lineTo(r + c * r * .78, r + s * r * .78); }
-  x.stroke();
-  const k = Math.round(px * .46); r = k / 2;
-  x = knob.getContext('2d'); x.setTransform(dpr, 0, 0, dpr, 0, 0); x.clearRect(0, 0, k, k);
-  wash(x, circP(r, r, r * .86, 16), KNOB, .42, { passes: 3, amp: r * .05, seed: 21, rim: .6, rimW: 1.2 });
-  wash(x, ellP(r - r * .22, r - r * .26, r * .3, r * .2, -.6, 10), RIM, .25, { passes: 1, amp: r * .03, seed: 5, rim: 0 });
-}
 
 export function createSticks() {
   const root = document.getElementById('ui');
@@ -105,7 +87,7 @@ export function createSticks() {
     for (const side of ['L', 'R']) {
       const f = S[side], E = els[side], g = geo(side);
       // repaint only when the stick's size changes (rotation, resize)
-      if (Math.round(g.R * 2) !== E.px && g.R) { E.px = Math.round(g.R * 2); paintStick(E.base, E.knob, E.px); }
+      if (Math.round(g.R * 2) !== E.px && g.R) { E.px = Math.round(g.R * 2); paintStick(E.base, E.knob, E.px, side); }
       // a thumb counts as held once it has stayed down a moment or moved (a tap never steers)
       const v = f ? vec(f, g.R) : null;
       held[side] = f && (t - f.t0 > .16 || f.moved) ? v : null;

@@ -243,8 +243,8 @@ details > small { margin: 4px 0; }
 /* the joysticks: a pale washed pool in each bottom corner, standing in from the edges (clear of
    the phone's own edge gestures), with a darker knob that leans where the thumb pushes */
 :root {
-  --stick: clamp(96px, 27vmin, 140px); --stick-bot: calc(22px + env(safe-area-inset-bottom));
-  --stick-in-l: max(26px, calc(env(safe-area-inset-left) + 14px)); --stick-in-r: max(26px, calc(env(safe-area-inset-right) + 14px));
+  --stick: clamp(96px, 27vmin, 140px); --stick-bot: calc(52px + env(safe-area-inset-bottom));
+  --stick-in-l: max(12px, calc(env(safe-area-inset-left) + 6px)); --stick-in-r: max(12px, calc(env(safe-area-inset-right) + 6px));
   --hud-r: calc(130px + env(safe-area-inset-right));
 }
 .stick { position: absolute; bottom: var(--stick-bot); width: var(--stick); height: var(--stick); border-radius: 50%; pointer-events: none !important; transition: opacity .4s; }
