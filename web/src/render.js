@@ -4,6 +4,7 @@ import { TAU, clamp, lerp, hash, vnoise, fbm, C, shade, mix } from './util.js';
 import { wash, stroke, strokes, jit, pathPts, circP, ellP, bloom, softWash, lift, mist, paperBase, paperFinish, sprite, blit, blitStrip, spriteFrame, stamp, put } from './paint.js';
 import * as W from './world.js';
 import { nightness } from './palette.js';
+const OWL = 6;   // the owl's place in SPECIES
 import { GFX } from './gfx.js';
 import { mousePos, fishPos } from './life.js';
 import { drawFauna } from './fauna.js';
@@ -77,8 +78,9 @@ export function render(ctx, G) {
   if (GFX.weather) rain(ctx, G, P, S.w, S.h);
   nearBirds(ctx, G, P, S.w, S.h);
   ctx.restore();
-  const night = nightness(G.tod) * (G.brightT > 0 ? .35 : 1);
-  if (night > 0) { ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = C([150, 160, 200], night * .35); ctx.fillRect(0, 0, w, h); ctx.restore(); }
+  // night falls deep and blue; an owl's song, once learned, lets the hawk see further into it
+  const night = nightness(G.tod) * (G.brightT > 0 ? .35 : 1) * (G.learned.has(OWL) ? .6 : 1);
+  if (night > 0) { ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = C([112, 122, 178], night * .6); ctx.fillRect(0, 0, w, h); ctx.restore(); }
   if (G.flash > 0) { ctx.save(); ctx.fillStyle = C([255, 255, 250], G.flash * .55); ctx.fillRect(0, 0, w, h); ctx.restore(); }
   if (GFX.paper) paperFinish(ctx, w, h);
 }
@@ -851,6 +853,7 @@ function hawkLayer(G, b, P, k, id) {
   return L;
 }
 function drawHawk(ctx, b, P, G, k = 1) {
+  if (b.kind === 'companion') P = shoulderPal(P);
   if (b.state === 'fly') {
     // turning, the hawk swings square to the viewer and on round: yaw 0 is side-on, ±π/2 head-on
     let yaw = 0;
@@ -868,6 +871,15 @@ function drawHawk(ctx, b, P, G, k = 1) {
   ctx.restore();
 }
 
+// The companion is a red-shouldered hawk, the red-tail's smaller woodland cousin: a rufous,
+// finely barred breast, and a black tail crossed by narrow white bands (in flight, pale crescent
+// windows near the wingtips). Painted with the red-tail's shapes in its own colours.
+let rsKey = null, rsPal = null;
+function shoulderPal(P) {
+  if (rsKey === P) return rsPal;
+  rsKey = P; rsPal = { ...P, birdPale: mix(P.tail, P.birdPale, .3), tail: mix(P.birdFar, P.bird, .15), bird: mix(P.bird, P.tail, .18), rs: true };
+  return rsPal;
+}
 // A soaring red-tail seen from a little below: dark brown back and head, cream underparts
 // with a streaky belly band, pale underwings with the dark leading-edge bar and dark
 // fingertips, and the brick-red tail with its dark band. Light is paper left bare.
@@ -887,9 +899,10 @@ function flyingHawk(ctx, b, P, yaw = 0) {
   tailSheen(ctx, b, P, [[-9, -.6], [-20, -1.8 - 2.6 * fan], [-20.5, -.6 - 1.2 * fan], [-9, .4]]);
   const tb = u => [lerp(-8, -21, u), lerp(-1.6, -3.2 - 3.6 * fan, u), lerp(2.2, 3.8 + 3.2 * fan, u)];
   // the adult's one dark band near the tip; a young hawk's tail is barred all along
-  for (const [u0, u1] of b.adult ? [[.78, .88]] : [[.3, .36], [.5, .56], [.7, .76], [.88, .94]]) {
-    const [bx0, ya0, yb0] = tb(u0), [bx1, ya1, yb1] = tb(u1);
-    wash(ctx, [[bx0, ya0], [bx1, ya1], [bx1, yb1], [bx0, yb0]], ink, a * (b.adult ? .35 : .28), { passes: 1, amp: .3, seed: 79, rim: 0 });
+  for (const [u0, u1] of P.rs ? [[.26, .36], [.5, .6], [.74, .84]] : b.adult ? [[.78, .88]] : [[.3, .36], [.5, .56], [.7, .76], [.88, .94]]) {
+    const [bx0, ya0, yb0] = tb(u0), [bx1, ya1, yb1] = tb(u1), q = [[bx0, ya0], [bx1, ya1], [bx1, yb1], [bx0, yb0]];
+    if (P.rs) lift(ctx, q, P.paper, .85);   // the red-shoulder's white tail bands
+    else wash(ctx, q, ink, a * (b.adult ? .35 : .28), { passes: 1, amp: .3, seed: 79, rim: 0 });
   }
   wash(ctx, body, P.bird, a, { passes: 2, amp, seed: 73, rim: .45 });
   // cream belly and the band of streaks across it
@@ -909,6 +922,7 @@ function flyingHawk(ctx, b, P, yaw = 0) {
   wash(ctx, near.outline, mix(P.birdPale, P.bird, .35), a * .6, { passes: 2, amp, seed: 76, rim: .6 });
   wash(ctx, [...near.band(0), ...near.band(.2).reverse()], ink, a * .5, { passes: 1, amp: .5, seed: 77, rim: .2 });
   wash(ctx, [...near.band(.78), ...near.band(1).reverse()], ink, a * .3, { passes: 1, amp, seed: 78, rim: 0 });
+  if (P.rs) lift(ctx, [...near.band(.6), ...near.band(.7).reverse()], P.paper, .55);   // the pale crescent windows
   ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.strokeStyle = C(ink, a * .7); ctx.lineWidth = .7;
   ctx.beginPath(); for (let k = 0; k < 5; k++) { ctx.moveTo(...near.bases[k]); ctx.lineTo(...near.fingers[k]); } ctx.stroke();
   ctx.restore();
@@ -918,6 +932,7 @@ function flyingHawk(ctx, b, P, yaw = 0) {
 // Long-term health shows in it too: a thin hawk's tail is faded and pale, a healthy one's deep
 // brick red (a young hawk's barred tail just warms a little).
 const tailColour = (b, P) => {
+  if (P.rs) return P.tail;
   const h = b.health ?? .85;
   return b.adult ? mix(mix(P.tail, P.birdPale, .5), P.tail, h) : mix(mix(P.bird, P.birdPale, .3), P.tail, .25 * h);
 };
@@ -960,7 +975,8 @@ function sittingHawk(ctx, b, P, G) {
   wash(ctx, tail, tailColour(b, P), a, { passes: 2, amp: .8, seed: 72, rim: .5 });
   if (mode === 'perch') tailSheen(ctx, b, P, [[-2.6, 4], [-7.6, 13.4], [-6.8, 13.8], [-1.8, 4.6]]);
   if (mode === 'perch') {
-    if (b.adult) wash(ctx, [[-7.6, 11.2], [-8.4, 12.8], [-5.6, 14.2], [-4.6, 12.6]], ink, a * .35, { passes: 1, amp: .2, seed: 79, rim: 0 });
+    if (P.rs) for (let k = 0; k < 3; k++) { const u = .35 + k * .24; lift(ctx, [[lerp(-3, -9, u), lerp(3, 14, u)], [lerp(-3, -9, u + .05), lerp(3, 14, u + .05)], [lerp(-.5, -6.2, u + .05), lerp(5, 15.6, u + .05)], [lerp(-.5, -6.2, u), lerp(5, 15.6, u)]], P.paper, .6); }
+    else if (b.adult) wash(ctx, [[-7.6, 11.2], [-8.4, 12.8], [-5.6, 14.2], [-4.6, 12.6]], ink, a * .35, { passes: 1, amp: .2, seed: 79, rim: 0 });
     else for (let k = 0; k < 3; k++) { const u = .45 + k * .2; wash(ctx, [[lerp(-3, -9, u), lerp(3, 14, u)], [lerp(-3, -9, u + .06), lerp(3, 14, u + .06)], [lerp(-.5, -6.2, u + .06), lerp(5, 15.6, u + .06)], [lerp(-.5, -6.2, u), lerp(5, 15.6, u)]], ink, a * .28, { passes: 1, amp: .15, seed: 79 + k, rim: 0 }); }
   }
   wash(ctx, body, P.bird, a, { passes: 2, amp: 1, seed: 73, rim: .45 });

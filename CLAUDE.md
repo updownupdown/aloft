@@ -36,7 +36,10 @@ web/src/life.js         mice, fish, flocks (boids), visiting songbirds, companio
 web/src/journey.js      migration, landmarks found, nest and chick, journal + map, save/resume
 web/src/story.js        long-term health (tail colour), keepsakes, acrobatics, courtship and a mate down south
 web/src/fauna.js        herons, deer and squirrels: larger life that is only there to be seen
-web/src/music.js        generative music in four styles (valley, tape loops, wind harp, kalimba)
+web/src/music.js        generative music in four styles (valley, tape loops, wind harp, kalimba); Valley's numbers in VALLEY_TUNE
+web/src/birdvoice.js    songbird voices: per-species call templates and synthesis engines
+web/lab.html            bird song lab (pick the songbird voice, saved as aloft.birdVoice)
+web/musiclab.html       music lab (tune Valley, saved as aloft.musicTune); both labs share lab.css
 web/src/photo.js        photo mode (pan, save or share a PNG)
 web/src/ui.js           pause menu, settings, how to play, songbook, toasts
 web/src/singing.js      perched singing: the Sing button and the five-note string over the right strip

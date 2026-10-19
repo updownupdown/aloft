@@ -12,7 +12,7 @@ import { createAudio } from './audio.js';
 import { SPECIES, speciesFor, active, timeOfDay } from './songs.js';
 import { render } from './render.js';
 import { createUI } from './ui.js';
-import { mousePos, fishPos, updateFlock, callVisitor, updateVisitor, makeHawk, updateHawk, updateCrows, freeze } from './life.js';
+import { mousePos, fishPos, reveal, rise, updateFlock, callVisitor, updateVisitor, makeHawk, updateHawk, updateCrows, freeze } from './life.js';
 import { loadJourney, saveJourney, updateJourney, journal, drawMap, placeNote, atPerch, updateNest, seasonName, NEST_TWIGS } from './journey.js';
 import { createMusic, MUSIC_MODES } from './music.js';
 import { loadStory, updateHealth, noteFlap, noteTrick, keepsakesIn, takeKeepsake, updateCourtship, courtNote } from './story.js';
@@ -69,10 +69,10 @@ export function start(canvas) {
     boids: [], flockGoal: null, nextBoids: 10, scatterT: 0, hawks: [], visitor: null, crows: [], fauna: createFauna(),
     chorus: null, chorusDay: 0, callT: 0, glideFrom: null,
     staff: { mode: null, species: null, tree: null, tries: [], lastTry: 0, wrongT: 0, doneT: 0, sang: null },
-    learned: new Set(store.get('learned', [])),
+    learned: new Set(store.get('learned', [])), heard: new Set(store.get('heard', [0, 1])),
     hint: null, paused: false, pendingEat: null, carry: null, perchT: 0, roostT: 0, roost: null,
     // song gifts
-    powerCD: {}, wormsT: 0, followT: 0, calmT: 0, tailwindT: 0, tailDir: 1, brightT: 0, ripen: null,
+    powerCD: {}, wormsT: 0, followT: 0, calmT: 0, tailwindT: 0, tailDir: 1, brightT: 0, warmT: 0, liftT: 0, duskT: 0, singAllT: 0, ripen: null,
     thermalK: 1, streaks: [], glide: null, photo: false,
     settings: { glide: store.get('glide', true), music: store.get('music', true), lefty: store.get('lefty', false), full: store.get('full', true) },
   };
@@ -158,7 +158,7 @@ export function start(canvas) {
     if (k === 'Escape' || k === 'KeyP') ui.toggle(); if (k === 'KeyE') interact(); if (k === 'KeyC') call();
     // number keys 1 to 5 sing the five song notes, for keyboards
     const n = 'Digit1 Digit2 Digit3 Digit4 Digit5'.split(' ').indexOf(k);
-    if (n >= 0 && G.staff.mode) { audio.note(n, 1, .18); singer.glow(n); singNote(n); }
+    if (n >= 0 && G.staff.mode) { audio.note(n, G.voiceNow(), .18); singer.glow(n); singNote(n); }
   };
   const persist = () => { if (!G.noSave) saveJourney(G, store); };
   // hidden (another app, another tab, the screen off): save, pause and go quiet; sound comes back on return
@@ -332,6 +332,7 @@ export function start(canvas) {
     sp.notes.slice(0, count).forEach((n, i) => setTimeout(() => {
       if (G.paused && !G.photo) return;
       if (v > .005) audio.note(n, sp.voice, v);
+      if (v > .04) hear(sp);
       part('note', perch.x + 3, perch.y - 8, (hash(i + G.t) - .3) * 12, -16, 1.4, { col: shade(sp.cols.body, .8) });
       if (G.staff.tree && G.staff.tree.song === owner) singer.glow(n);
     }, i * sp.gap * 1000));
@@ -408,8 +409,34 @@ export function start(canvas) {
       case 'tailwind': G.tailwindT = 45 * k; G.tailDir = b.face; break;
       case 'night': G.brightT = 90 * k; break;
       case 'lark': b.stamina = Math.min(1, b.stamina + k); G.thirst = Math.min(100, G.thirst + 15 * k); break;
+      case 'warm': G.warmT = 180 * k; break;
+      case 'mice': reveal.until = G.t + 60 * k; break;
+      case 'fish': rise.until = G.t + 60 * k; break;
+      case 'dew': G.thirst = Math.min(100, G.thirst + 30 * k); break;
+      case 'glint': glint(); break;
+      case 'sing': G.singAllT = 120 * k; break;
+      case 'lift': G.liftT = 90 * k; break;
+      case 'dusk': G.duskT = 150 * k; break;
     }
   }
+  // a blue jay's gift: it scolds toward the nearest keepsake still in the grass
+  function glint() {
+    const k = keepsakesIn(b.x - 4000, b.x + 4000).filter(k => !G.kept.has(k.id)).sort((p, q) => Math.abs(p.x - b.x) - Math.abs(q.x - b.x))[0];
+    if (!k) { ui.toast('The jay scolds, but there is nothing shining near here.', 3); return; }
+    const d = Math.abs(k.x - b.x), far = d < 400 ? 'close by' : d < 1500 ? 'a short flight' : 'a long glide';
+    ui.toast(`The jay scolds toward something shining in the grass, ${far} to the ${k.x > b.x ? 'south' : 'north'}.`, 4);
+  }
+  // Imitating a songbird: the hawk sings that species' song in its voice, and the right-hand
+  // notes take on that voice too. A bird of that kind singing nearby answers.
+  G.callable = () => SPECIES.filter(sp => G.heard.has(sp.id) || G.learned.has(sp.id)).map(sp => sp.id);
+  G.voiceNow = () => SPECIES[G.singVoice ?? 1].voice;
+  G.imitate = id => {
+    const sp = SPECIES[id]; if (!sp) return;
+    G.singVoice = id; playSong(sp);
+    const t = W.treesIn(b.x - 300, b.x + 300).find(t => t.song?.active && t.song.sp === sp);
+    if (t) t.song.next = Math.min(t.song.next, sp.notes.length * sp.gap + .8);
+  };
+  function hear(sp) { if (!G.heard.has(sp.id)) { G.heard.add(sp.id); store.set('heard', [...G.heard]); } }
   // the red-tail's scream: mice freeze in the open, distant hawks answer, your companion and
   // fledgling come to you
   function call() {
@@ -435,7 +462,7 @@ export function start(canvas) {
     for (const t of W.treesIn(G.cam.x - 60, G.cam.x + G.view.w + 60)) {
       const s = t.song; if (!s) continue;
       s.sp ??= speciesFor(t.bio, s.seed);
-      const on = active(s.sp, G.tod, G.storm, G.sea.winter) && b.perch !== s.perch;
+      const on = (active(s.sp, G.tod, G.storm, G.sea.winter) || G.singAllT > 0 && G.storm < .6) && b.perch !== s.perch;
       if (on !== !!s.active) { s.active = on; s.perch.occupied = on; }
       if (!on) continue;
       s.singingT = Math.max(0, (s.singingT || 0) - dt);
@@ -565,7 +592,7 @@ export function start(canvas) {
     const a = (G.tod - .25) / .5;
     const sun = a > 0 && a < 1 ? Math.pow(Math.sin(a * Math.PI), .8) * (.75 + .45 * a) : 0;
     G.thermalK = sun * (1 - .45 * G.overcast) * (1 - G.rain) * (1 - .35 * G.sea.winter);
-    W.env.thermal = G.thermalK;
+    W.env.thermal = G.thermalK * (G.liftT > 0 ? 1.35 : 1);
     G.cloudDrift += dt * (2.5 + G.wind * .2);
     G.flash = Math.max(0, G.flash - dt * 3);
     if (G.storm > .75 && G.sea.winter < .5) { G.nextBolt -= dt; if (G.nextBolt <= 0) { G.flash = 1; G.nextBolt = 6 + Math.random() * 12; audio.thunder(.4 + Math.random() * 1.4); } }
@@ -594,7 +621,7 @@ export function start(canvas) {
     updateCrows(G, dt, { audio, haptics, once }); updateFauna(G, dt, { audio, once });
     if (G.spawnYoung) { G.spawnYoung = false; G.hawks.push(makeHawk(G.nest.x, G.nest.y - 10, 'young')); }
     G.hawks = G.hawks.filter(h => updateHawk(G, h, dt));
-    if (G.hawks.some(h => h.kind === 'companion' && h.life < 1)) once('companion', 'Another hawk! Follow it: it knows where the thermals and food are.');
+    if (G.hawks.some(h => h.kind === 'companion' && h.life < 1)) once('companion', 'A red-shouldered hawk, smaller than you, its tail barred black and white. Follow it: it knows where the thermals and food are.');
     for (const p of G.parts) {
       p.life -= dt; p.x += p.vx * dt; p.y += p.vy * dt;
       if (p.type === 'drop' || p.type === 'feather') p.vy += (p.type === 'drop' ? 160 : 15) * dt;
@@ -666,7 +693,7 @@ export function start(canvas) {
   let saveT = 0;
   function step(dt) {
     G.t += dt; G.dt = dt;
-    G.clockT += dt; updateClock();
+    G.clockT += dt * (G.duskT > 0 ? .35 : 1); updateClock();   // a veery's gift: the evening lingers
     const raw = readInput(input);
     if (!G.roost) {
       for (const tp of raw.taps) onTap(tp);
@@ -710,7 +737,7 @@ export function start(canvas) {
     if (G.thirst < 25) once('thirsty', 'Thirsty. Find a pond and land on the water to drink.');
     if (G.hunger < 25) once('hungry', 'Hungry. Bushes have berries, worms come up after rain, and mice and fish can be caught with a dive.');
     G.hint = b.target;
-    for (const k of ['wormsT', 'followT', 'calmT', 'tailwindT', 'brightT']) G[k] = Math.max(0, G[k] - dt);
+    for (const k of ['wormsT', 'followT', 'calmT', 'tailwindT', 'brightT', 'warmT', 'liftT', 'duskT', 'singAllT']) G[k] = Math.max(0, G[k] - dt);
 
     G.callT = Math.max(0, G.callT - dt);
     updateWeather(dt); updateChorus(dt); updateCritters(dt); updateSongs(dt); updateRoost(dt); updateZoom(dt); updateCamera(dt);

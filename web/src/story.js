@@ -11,7 +11,7 @@ export const HEALTH_START = .35;
 // clean, synced wingbeats); with a meter run low it drifts back down, slowly, never below .15
 export function updateHealth(G, dt) {
   const fed = G.thirst > 50 && G.hunger > 50, low = G.thirst < 20 || G.hunger < 20;
-  if (fed) G.health = Math.min(1, G.health + dt / 900 * (.55 + .45 * G.flapQ));
+  if (fed) G.health = Math.min(1, G.health + dt / 900 * (.55 + .45 * G.flapQ) * (G.warmT > 0 ? 2 : 1));   // a cardinal's gift doubles it
   else if (low) G.health = Math.max(.15, G.health - dt / 2400);
   G.bird.health = G.health;
 }
