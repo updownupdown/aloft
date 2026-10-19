@@ -13,6 +13,7 @@ import { ghostBird } from './ghost.js';
 import { drawNight } from './night.js';
 import { drawEncountersGround, drawEncountersAir, morphPal } from './encounters.js';
 import { keepsakesIn } from './story.js';
+import { ridgeField, streamAt, ridgeLeaves, lenses, kettles, cumuli } from './airart.js';
 
 const BS = 1.25; // hawk drawing scale
 
@@ -48,6 +49,8 @@ export function render(ctx, G) {
 
   ctx.save(); ctx.translate(-cam.x, -cam.y);
   const x0 = cam.x - 40, x1 = cam.x + w + 40;
+  if (GFX.clouds) lenses(ctx, G, P, x0 - 300, x1 + 300);
+  ridgeField(G, x0, x1);
   if (GFX.thermals) for (const t of W.thermalsIn(x0 - 60, x1 + 60)) thermal(ctx, t, G, P);
   const rings = G.visibleRings;
   for (const r of rings) ring(ctx, r, P, G, 0);
@@ -60,6 +63,7 @@ export function render(ctx, G) {
   for (const t of trees) tree(ctx, t, P, G);
   if (G.nest) nest(ctx, G.nest, P, G);
   for (const b of W.bushesIn(x0, x1)) bush(ctx, b, P, G);
+  ridgeLeaves(ctx, G, P);
   if (G.wormsOk()) for (const wm of W.wormsIn(x0, x1)) if (!G.eaten.has(wm.id + G.rainId)) worm(ctx, wm, P, G);
   for (const tw of W.twigsIn(x0, x1)) if (!G.twigGone(tw.id)) twig(ctx, tw.x, tw.y, tw.a, P, G.view.spx);
   for (const k of keepsakesIn(x0, x1)) if (!G.kept.has(k.id)) keepsake(ctx, k, P, G);
@@ -74,8 +78,10 @@ export function render(ctx, G) {
   for (const o of G.boids) smallBird(ctx, o, P, G);
   for (const c of G.crows) crow(ctx, c, P, G);
   drawEncountersAir(ctx, G, P, smallBird);
+  kettles(ctx, G, P, x0, x1);
   for (const hl of hawks) { if (hl.a) ctx.globalAlpha = hl.a; ctx.drawImage(hl.c, hl.x, hl.y, hl.w, hl.w); ctx.globalAlpha = 1; }
   if (G.carry) carried(ctx, G, P);
+  if (GFX.clouds) cumuli(ctx, G, P, x0 - 200, x1 + 200);
   stamina(ctx, G.bird, P);
   if (G.focus) focusMark(ctx, G.focus, P, G);
   else if (G.bird.target && G.bird.state === 'fly') focusMark(ctx, { kind: 'perch', x: G.bird.target.x, y: G.bird.target.y - 3 }, P, G);
@@ -268,7 +274,7 @@ function groundLayer(ctx, G, P, x0, x1) {
   ctx.beginPath();
   for (let i = i0; i <= i1; i++) {
     if (hash(i * 3.17) > .45) continue;
-    const x = i * step + hash(i) * 3, y = W.groundY(Math.round(x)), l = (2 + hash(i * 1.3) * 3) * (W.biomeAt(x).name === 'marsh' ? 2.6 : 1), sw = Math.sin(G.t * 1.5 + i) * .8 + G.wind * .04;
+    const x = i * step + hash(i) * 3, y = W.groundY(Math.round(x)), l = (2 + hash(i * 1.3) * 3) * (W.biomeAt(x).name === 'marsh' ? 2.6 : 1), sw = Math.sin(G.t * 1.5 + i) * .8 + G.wind * .04 + streamAt(x, G.t, i);
     ctx.moveTo(x, y + 1); ctx.lineTo(x + sw - .8, y - l); ctx.moveTo(x + 1, y + 1); ctx.lineTo(x + 1.5 + sw, y - l * .8);
   }
   ctx.stroke(); ctx.restore();

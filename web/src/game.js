@@ -29,6 +29,7 @@ import { createEnc, updateEncounters, caughtFish, scrapsIn, eatScrap, morphOf, e
 import { spriteCount } from './paint.js';
 import { captureSightings, guidePages, pageName } from './guide.js';
 import { postcard } from './postcard.js';
+import { airEnv, carve, kettlesIn, kettle, lensesIn, cumuliIn } from './air.js';
 
 const DAY = 480;               // one day = 8 minutes
 const SEASON_DAYS = 8;         // days per season: a full year is 32 days
@@ -79,7 +80,7 @@ export function start(canvas) {
     // song gifts
     powerCD: {}, wormsT: 0, followT: 0, calmT: 0, tailwindT: 0, tailDir: 1, brightT: 0, warmT: 0, liftT: 0, duskT: 0, singAllT: 0, ripen: null,
     thermalK: 1, streaks: [], glide: null, photo: false,
-    settings: { glide: store.get('glide', true), music: store.get('music', true), lefty: store.get('lefty', false), full: store.get('full', true), quiet: store.get('quietHud', true) },
+    settings: { glide: store.get('glide', true), music: store.get('music', true), lefty: store.get('lefty', false), full: store.get('full', true), quiet: store.get('quietHud', true), oneThumb: store.get('oneThumb', false), saver: store.get('saver', false) },
   };
   const saved = loadJourney(G, store);
   G.ghosts = createGhosts(store); G.night = createNight();
@@ -505,7 +506,9 @@ export function start(canvas) {
   const intentions = createIntentions(G, store, { toast: ui.toast, audio, spark }); G.intentions = intentions;
   // the singing button and string, and the dots that show how far into a song you are
   const singer = createSinging({ audio, sticks, voice: () => G.voiceNow(), onNote: singNote, onMimic: mimic, onToggle: o => { G.singing = o; hudKey = ''; document.getElementById('ui').classList.toggle('singing', o); if (o) once('string', 'The pools round the right stick are song notes: touch them to sing. Round the left stick are the birds you know: touch one to sing its song.', 6); } });
-  const controls = createControls({ G, b, sticks, interact, call, once });
+  // one-thumb mode plays on the stick under the thumb you'd use: the right, or the left if left-handed
+  const single = () => G.settings.oneThumb ? (G.settings.lefty ? 'L' : 'R') : null;
+  const controls = createControls({ G, b, sticks, interact, call, once, single });
   // a pool round the left stick: the hawk sings that bird's song in its voice (and the notes take
   // on that voice); a bird whose song you have learned answers with its gift
   function mimic(id) {
@@ -582,7 +585,7 @@ export function start(canvas) {
   };
   function drawHUD() {
     const P = G.P, S = G.view.scr.s * HUD_K, x = (menuRight() + 6) / S, y = 8, low = Math.sin(G.t * 6) > 0;
-    const key = [Math.ceil(G.thirst), Math.ceil(G.hunger), Math.ceil(b.stamina * 50), G.thirst < 20 && low, G.hunger < 20 && low, S, G.photo, G.singing && G.settings.lefty, P.paper[0] >> 3, P.birdFar[0] >> 3, P.water[2] >> 3].join();
+    const key = [Math.ceil(G.thirst), Math.ceil(G.hunger), Math.ceil(b.stamina * 50), G.thirst < 20 && low, G.hunger < 20 && low, S, G.photo, G.singing && G.settings.lefty, G.saverOn, P.paper[0] >> 3, P.birdFar[0] >> 3, P.water[2] >> 3].join();
     if (key === hudKey) return;
     hudKey = key;
     const dpr = Math.min(devicePixelRatio || 1, 2), sc = S * dpr, W0 = x + 84, H0 = y + 36;
@@ -602,6 +605,8 @@ export function start(canvas) {
     };
     meter(y, G.thirst, P.water, 3, 3, (cx, cy) => wash(ctx, [[cx, cy - 4.5], [cx + 3, cy + .5], [cx + 2, cy + 3], [cx - 2, cy + 3], [cx - 3, cy + .5]], P.water, .9, { passes: 2, amp: .3, seed: 1, rim: .4 }));
     meter(y + 11.5, G.hunger, P.berry, 6, 5, (cx, cy) => { wash(ctx, circP(cx - 1.5, cy + 1, 2.2, 8), P.berry, .9, { passes: 2, amp: .3, seed: 2, rim: .4 }); wash(ctx, circP(cx + 1.8, cy, 2.2, 8), P.berry, .9, { passes: 2, amp: .3, seed: 4, rim: .4 }); });
+    // battery saver on: a small leaf after the meters
+    if (G.saverOn) { const lx = x + 13 + BAR + 6, ly = y + 12; wash(ctx, [[lx - 3, ly + 3.5], [lx - 2.6, ly - .5], [lx, ly - 3.5], [lx + 3, ly - 4], [lx + 2.6, ly], [lx, ly + 3]], P.leaf, .85, { passes: 2, amp: .3, seed: 8, rim: .4 }); ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.strokeStyle = C(shade(P.leaf, .6), .7); ctx.lineWidth = .5; ctx.beginPath(); ctx.moveTo(lx - 3.4, ly + 4); ctx.lineTo(lx + 2.2, ly - 3); ctx.stroke(); ctx.restore(); }
     meter(y + 23, b.stamina * 100, shade(P.thermal, .8), 0, 7, (cx, cy) => wash(ctx, [[cx - 3.2, cy + 4], [cx - 1.2, cy - .5], [cx + 1.6, cy - 4], [cx + 3.4, cy - 3.2], [cx + 2.2, cy + 1], [cx - 1, cy + 4]], shade(P.thermal, .8), .9, { passes: 2, amp: .3, seed: 6, rim: .4 }));
   }
 
@@ -650,6 +655,8 @@ export function start(canvas) {
     const sun = a > 0 && a < 1 ? Math.pow(Math.sin(a * Math.PI), .8) * (.75 + .45 * a) : 0;
     G.thermalK = sun * (1 - .45 * G.overcast) * (1 - G.rain) * (1 - .35 * G.sea.winter);
     W.env.thermal = G.thermalK * (G.liftT > 0 ? 1.35 : 1);
+    // the evening wave over the mountains: smooth lift on calm, clear evenings
+    airEnv.wave = smooth(.6, .66, G.tod) * (1 - smooth(.79, .84, G.tod)) * (1 - G.storm) * (1 - G.overcast * .6);
     G.cloudDrift += dt * (2.5 + G.wind * .2);
     G.flash = Math.max(0, G.flash - dt * 3);
     if (G.storm > .75 && G.sea.winter < .5) { G.nextBolt -= dt; if (G.nextBolt <= 0) { G.flash = 1; G.nextBolt = 6 + Math.random() * 12; audio.thunder(.4 + Math.random() * 1.4); } }
@@ -761,6 +768,7 @@ export function start(canvas) {
     let steer = null;
     if (raw.steer && !G.roost) { const w = toWorld(raw.steer); steer = { wx: w.x, wy: w.y }; }
     const ctl = controls.update(raw.sticks);
+    if (G.settings.oneThumb) once('onethumb', 'One thumb: tap the stick to flap. Hold it up to glide, down to land, inward to perch or hunt, outward to turn round. On a branch, tap to fly and flick sideways to hop.', 7);
     updateBird(b, dt, G.roost ? { steer: null, pitch: 0, face: 0 } : { steer: steer || ctl.steer, pitch: raw.pitch, face: raw.face, yoke: ctl.yoke }, G);
     G.perchT = b.state === 'perch' ? G.perchT + dt : 0;
     if (G.pendingEat && b.state === 'ground' && b.walkTo === null) { if (Math.abs(G.pendingEat.x - b.x) < 14) eat(G.pendingEat); G.pendingEat = null; }
@@ -776,7 +784,11 @@ export function start(canvas) {
     if (b.state === 'fly') { G.glideFrom ??= b.x; intentions.note('glide', undefined, Math.abs(b.x - G.glideFrom)); } else G.glideFrom = null;
     const stoop = b.state === 'fly' ? smooth(175, 250, b.s) : 0;
     haptics.stoop(stoop, G.t);
-    if (W.ridgeLift(b.x, b.y) > 8 && b.state === 'fly') once('ridge', 'Ridge lift: wind hitting the hillside pushes up along its face.');
+    if (W.ridgeLift(b.x, b.y) > 8 && b.state === 'fly') once('ridge', 'Ridge lift: wind meeting a hillside rises up its face. Grass and leaves streaming uphill show where. Glide along it without a wingbeat.', 6);
+    if (b.wave > 8 && b.state === 'fly') once('wave', 'Wave lift: on calm evenings the air over the mountains rises in long smooth waves. The lens-shaped clouds mark each crest.', 6);
+    if (G.thermalK > .06 && carve(G, b)) once('carve', 'Into the cloud. The hawk carves a tunnel through it, and the cloud slowly heals.', 5);
+    if (b.kettle === 'join') once('kettle-join', 'Flying with the kettle: the wild hawks show you the strongest air, and you climb faster with them. When they peel off south, follow the line.', 6);
+    else if ((G.kettleSeenT = (G.kettleSeenT || 0) - dt) <= 0) { G.kettleSeenT = 2; if (kettlesIn(G.cam.x, G.cam.x + G.view.w, G).length) once('kettle', 'A kettle: wild hawks gathering in a strong thermal on their way south, circling up together. Join them.', 6); }
     if (b.stamina < .15 && b.state === 'fly') once('tired', 'Tired wings. Glide a while, or find rising air, and your strength comes back.');
     // storms are bumpy in open air; shelter in a tree
     if (G.storm > .3 && b.state === 'fly') b.kick += fbm(G.t * 1.7, 41) * G.storm * 120 * dt;
@@ -826,7 +838,20 @@ export function start(canvas) {
   // steps down while frames run slow; the level that worked is remembered for next time.
   const RES_MIN = .7;
   let res = 0, resLock = false;
-  function resMax() { return Math.min(devicePixelRatio || 1, 1.6, 1500 / Math.max(innerWidth, innerHeight)); }
+  function resMax() { return Math.min(devicePixelRatio || 1, 1.6, 1500 / Math.max(innerWidth, innerHeight)) * (saverOn ? .7 : 1); }
+  // Battery saver: on a low battery that isn't charging (or always, by the setting) the game
+  // draws 30 frames a second at a lower resolution, and a small leaf shows by the meters.
+  let saverOn = false, batteryLow = false;
+  navigator.getBattery?.().then(bt => {
+    const f = () => { batteryLow = !bt.charging && bt.level <= .2; };
+    f(); bt.addEventListener('levelchange', f); bt.addEventListener('chargingchange', f);
+  }).catch(() => {});
+  function updateSaver() {
+    const on = !!G.settings.saver || batteryLow;
+    if (on === saverOn) return;
+    saverOn = G.saverOn = on; res = 0; resLock = false; perf.prev = 0; resize(); hudKey = '';
+    if (on && !G.settings.saver) ui.toast('Battery low: Aloft drops to 30 frames a second to save it.', 4);
+  }
   // G.view.scr is screen space, sized as the art was first drawn (300 units tall): the sky, far
   // hills, weather and HUD live there. G.view itself is the zoomed world view, and spx is the
   // fixed resolution world sprites are painted at, so zooming never repaints them.
@@ -854,7 +879,7 @@ export function start(canvas) {
   const perf = { n: 0, sum: 0, prev: 0, settle: 0, fails: 0, step: 1 }, now = () => performance.now(), t0 = now();
   function setRes(r) { res = r; perf.settle = 1; resize(); store.set('res', res); }
   function watchFrames(ms) {
-    if (resLock || GFX.res !== 'auto' || ms > 250) { perf.n = perf.sum = 0; return; }
+    if (resLock || GFX.res !== 'auto' || ms > 250 || saverOn) { perf.n = perf.sum = 0; return; }
     perf.n++; perf.sum += ms;
     if (perf.sum < 2000) return;
     const avg = perf.sum / perf.n; perf.n = perf.sum = 0;
@@ -872,7 +897,11 @@ export function start(canvas) {
 
   let last = performance.now();
   let camKey = '';
+  let lastDrawn = 0;
   function frame(now) {
+    updateSaver();
+    if (saverOn && now - lastDrawn < 1000 / 30 - 4) { requestAnimationFrame(frame); return; }
+    lastDrawn = now;
     const ms = now - last, dt = Math.min(.05, ms / 1000); last = now;
     const ta = performance.now();
     if (!G.paused) { step(dt); watchFrames(ms); }
@@ -928,6 +957,9 @@ export function start(canvas) {
     health(v) { G.health = v; b.health = v; },
     marsh() { fresh(); b.state = 'fly'; b.x = W.JOURNEY - 1500; b.y = W.groundY(b.x) - 150; b.s = 85; b.face = 1; G.goal = 'north'; snap(); },
     trick: k => events.trick({ kind: k || 'loop' }),
+    kettle(on = true) { kettle.force = on; const t = W.thermalsIn(b.x + 200, b.x + 8000).find(t => t.str >= .95) || W.thermalsIn(b.x + 200, b.x + 8000)[0]; fresh(); b.state = 'fly'; b.x = t.c - t.w * .8; b.y = t.y0 - 120; b.s = 70; b.face = 1; snap(); return t; },
+    wave() { this.time(.7); this.weather('sunny'); G.overcast = G.storm = 0; airEnv.wave = 1; let c; for (let x = b.x; !c && x < b.x + 200000; x += 2000) c = lensesIn(x, x + 2000)[0]; fresh(); b.state = 'fly'; b.x = c.x - 260; b.y = -900; b.s = 70; b.face = 1; snap(); return c; },
+    cloud() { this.time(.5); const c = cumuliIn(b.x + 300, b.x + 6000)[0]; fresh(); b.state = 'fly'; b.x = c.x - c.w * .7; b.y = c.y; b.s = 80; b.g = 0; b.face = 1; snap(); return c; },
     heron() { const p = W.pondsIn(b.x, b.x + 20000).find(p => p.w >= 40 && hash(p.k * 4.4 + 2) <= .32); fresh(); b.state = 'fly'; b.x = p.c - 150; b.y = p.waterY - 60; b.s = 70; b.face = 1; snap(); return p; },
   };
   Object.assign(G.dbg, encDebug(G, { fresh, snap }), ghostDebug(G, { fresh, snap }));

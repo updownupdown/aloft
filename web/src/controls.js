@@ -7,6 +7,10 @@
 //              inward and up: seek the nearest thermal    both outward: hang in the air
 //              outward and down: stoop (a tucked dive)    outward and up: the hawk's call
 //              both leaning the same way: turn that way
+//  one thumb (a setting): a single stick does it all. Tap = flap; held up glide, down land,
+//            inward perch (and down prey, up thermal), outward turn round, outward and up
+//            call, outward and down stoop; on a branch or the ground tap = take off and a
+//            sideways flick hops.
 //  perched or on the ground: one tapped = hop that way; both tapped = take off;
 //            both pushed down = eat or drink, or on a branch drop down a level; the inward
 //            gestures work from here too (they take off for the target)
@@ -17,7 +21,7 @@ import { mousePos, fishPos } from './life.js';
 const RANGE = { perch: 260, prey: 320, thermal: 2600 };
 const ON = .45, OFF = .25;
 
-export function createControls({ G, b, sticks, interact, call, once }) {
+export function createControls({ G, b, sticks, interact, call, once, single = () => null }) {
   const sideDir = s => s === 'L' ? -1 : 1;
   const C = { gesture: null, loopArmed: true, pitchHold: false, wasLoop: false };
 
@@ -35,6 +39,7 @@ export function createControls({ G, b, sticks, interact, call, once }) {
       return;
     }
     if (e.type === 'swipe' && flying && e.dir !== b.face) turn(b);
+    else if (e.type === 'swipe' && !flying && sticks.single) { if (b.state === 'swim') nudge(b, e.dir); else hopSide(b, G, e.dir); }
   }
 
   // Which gesture a pair of held sticks makes. Inward is toward the middle of the screen.
@@ -50,6 +55,18 @@ export function createControls({ G, b, sticks, interact, call, once }) {
     if (upAvg > th('up')) return 'up';
     if (upAvg < -th('down')) return 'down';
     return 'tilt';
+  }
+
+  // The same gestures from one stick: which way it leans, inward being toward the middle
+  function gestureOne(v, side) {
+    if (!v) return null;
+    const inn = v.x * (side === 'L' ? 1 : -1), up = v.y, was = C.gesture, th = g => was?.startsWith(g) ? OFF : ON;
+    const vert = up < -.35 ? '-down' : up > .35 ? '-up' : '';
+    if (inn > th('in') && inn > Math.abs(up) * .6) return 'in' + vert;
+    if (inn < -th('out') && -inn > Math.abs(up) * .6) return 'out' + vert;
+    if (up > th('up')) return 'up';
+    if (up < -th('down')) return 'down';
+    return null;
   }
 
   // the best thing to focus on for a gesture: a branch nearby, prey ahead and below, or a thermal
@@ -118,8 +135,10 @@ export function createControls({ G, b, sticks, interact, call, once }) {
   function update(st) {
     sticks.show(!G.photo && !G.roost && !G.paused);
     if (G.roost || G.photo) { G.focus = null; return { yoke: null, steer: null }; }
+    const one = single();
+    sticks.setSingle(one);
     for (const e of st.events) onEvent(e);
-    const { L, R } = st.held, g = gestureOf(L, R), prev = C.gesture;
+    const { L, R } = one ? { L: st.held[one], R: st.held[one] } : st.held, g = one ? gestureOne(st.held[one], one) : gestureOf(L, R), prev = C.gesture;
     C.gesture = g;
     if (!L && !R) { C.loopArmed = true; C.pitchHold = false; }
 
@@ -133,6 +152,7 @@ export function createControls({ G, b, sticks, interact, call, once }) {
     // one-shot gestures fire once as they begin
     if (g !== prev) {
       if (g === 'out-up') call();
+      if (one && g === 'out' && b.state === 'fly') turn(b);
       if (g === 'lean' && b.state === 'fly') { const dir = Math.sign(L.x); if (dir !== b.face) turn(b); }
       if (g === 'down' && b.state !== 'fly') { if (b.state === 'perch') hopDown(b, G, b.face); else interact(); }
     }
@@ -141,12 +161,12 @@ export function createControls({ G, b, sticks, interact, call, once }) {
     // one up and one down pitches the nose; hard over at speed it flies one loop, and then the
     // sticks have to come back toward the middle before they steer (or loop) again
     let p = L && R ? (R.y - L.y) / 2 : R ? R.y / 2 : -L.y / 2;
-    if (g && g !== 'tilt') p = 0;
+    if ((g && g !== 'tilt') || one) p = 0;
     if (b.loop && !C.wasLoop) { C.loopArmed = false; C.pitchHold = true; }
     C.wasLoop = !!b.loop;
     if (Math.abs(p) < .3) { C.loopArmed = true; C.pitchHold = false; }
     if (C.pitchHold && !b.loop) p = 0;
-    const mode = g === 'up' ? 'glide' : g === 'down' ? 'land' : g === 'out' ? 'hang' : g === 'out-down' ? 'stoop' : null;
+    const mode = g === 'up' ? 'glide' : g === 'down' ? 'land' : g === 'out' && !one ? 'hang' : g === 'out-down' ? 'stoop' : null;
     if (mode === 'hang') once('hang', 'Both sticks outward: the hawk hangs on beating wings to look around. It tires the wings.', 5);
     if (mode === 'stoop') once('stoop', 'Outward and down: a stoop, wings tucked, the fastest way down.', 5);
     return { yoke: { p: p * b.face, mode, loopOk: C.loopArmed }, steer: null };
