@@ -4,6 +4,7 @@ import { clamp, C } from './util.js';
 import * as W from './world.js';
 import { SEASONS } from './palette.js';
 import { saveStory } from './story.js';
+import { saveAtmos } from './atmos.js';
 
 const MAP_A = W.START_X - 1500, MAP_B = W.JOURNEY + 800;
 
@@ -20,6 +21,8 @@ export function loadJourney(G, store) {
   G.nest = s?.nest ?? null;
   G.intent = s?.intent ?? null;
   G.route = s?.route ?? [];
+  // generations: each journey south and home again is a year; the family tree keeps them
+  G.year = s?.year ?? 1; G.family = s?.family ?? []; G.yearChicks = s?.yearChicks ?? 0; G.oldNest = s?.oldNest ?? null;
   G.songLog = store.get('songlog', {});
   const link = urlSeed();
   W.setSeed(s ? s.seed ?? 0 : link ?? store.get('seed', 0));
@@ -32,7 +35,7 @@ export function saveJourney(G, store) {
   store.set('save', {
     x: Math.round(b.x), y: Math.round(b.y), clockT: G.clockT, thirst: G.thirst, hunger: G.hunger,
     goal: G.goal, journeys: G.journeys, explored: G.explored.map(Math.round), found: G.found, nest: G.nest,
-    seed: G.seed, intent: G.intentions?.save(), route: G.route, ...saveStory(G),
+    seed: G.seed, intent: G.intentions?.save(), route: G.route, year: G.year, family: G.family, yearChicks: G.yearChicks, oldNest: G.oldNest, atmos: saveAtmos(G), ...saveStory(G),
   });
 }
 // a link to this world, for a friend to fly the same hills
@@ -50,7 +53,7 @@ export function placeNote(G, x) {
 }
 
 // called every frame: exploration, landmarks, arriving at either end of the journey
-export function updateJourney(G, dt, { toast, once, audio }) {
+export function updateJourney(G, dt, { toast, once, audio, spring }) {
   const b = G.bird;
   G.explored[0] = Math.min(G.explored[0], b.x); G.explored[1] = Math.max(G.explored[1], b.x);
   G.goalDir = G.goal === 'south' ? 1 : -1;
@@ -72,8 +75,15 @@ export function updateJourney(G, dt, { toast, once, audio }) {
   if (G.goal === 'north' && b.x < W.START_X + 250 && G.journeys > 0) {
     G.goal = 'south'; G.journeys++;
     audio.ring(); toast('Home again at the edge of the forest. The journey is complete.', 6);
+    // a year ends: it goes in the family tree, and last year's nest tree waits to be built on again
+    G.family.push({ year: G.year, mate: !!G.mate, mateNote: G.mate?.note ?? null, chicks: G.yearChicks, landmarks: Object.keys(G.found).length });
+    G.year++; G.yearChicks = 0;
+    if (G.nest) { G.oldNest = { x: G.nest.x, y: G.nest.y, place: G.nest.place }; G.nest = null; }
+    toast(`Year ${G.year} begins.${G.oldNest ? ' Your old nest tree still stands; a few twigs there start this year\'s nest.' : ''}`, 6);
   }
-  if (G.gather) { G.gather.t -= dt; if (G.gather.t <= 0) G.gather = null; }
+  // the flight home: winter passes while the hawk rests in the marsh, and it flies north into spring
+  if (G.gather) { G.gather.t -= dt; if (G.gather.t <= 0) { G.gather = null; if (G.goal === 'north' && !(G.sea.spring > .5)) { spring(); toast('The winter passes in the marsh. Spring now: the land is greening and in bloom all the way home.', 6); } } }
+  if (G.goal === 'north' && G.oldNest && b.state === 'perch' && Math.hypot(b.x - G.oldNest.x, b.y - G.oldNest.y) < 30) once('oldnest', 'Last year\'s nest tree. Bring twigs to build here again.');
   once('journey', 'The flocks are heading south, to the right. Follow them to the wintering marsh.');
 }
 
@@ -106,6 +116,8 @@ export function atPerch(G, p, { toast, once, audio, spark }) {
   if (G.carry === 'twig') {
     if (!p.tree) { once('nestspot', 'A nest needs a tree branch.'); return; }
     if (!n) {
+      const old = G.oldNest && Math.hypot(p.x - G.oldNest.x, p.y - G.oldNest.y) < 40;
+      if (old) { G.nest = { x: G.oldNest.x, y: G.oldNest.y, twigs: 3, place: G.oldNest.place, fed: 0 }; G.oldNest = null; G.carry = null; audio.rustle(); toast('Last year\'s nest, mended: two more twigs.', 4); return; }
       G.nest = { x: p.x, y: p.y, twigs: 1, place: placeNote(G, p.x), fed: 0 };
       G.carry = null; audio.rustle(); toast('You started a nest. Bring four more twigs.', 4); return;
     }
@@ -120,7 +132,7 @@ export function atPerch(G, p, { toast, once, audio, spark }) {
   if ((G.carry === 'mouse' || G.carry === 'fish') && atNest && n.chick) {
     n.fed++; G.carry = null; audio.eat();
     for (let k = 0; k < 8; k++) spark(n.x + (Math.random() - .5) * 14, n.y - 6);
-    if (n.fed >= CHICK_MEALS) { n.chick = false; n.fledged = true; G.spawnYoung = true; audio.learned(); toast('Your chick has fledged! It will fly with you now.', 5); }
+    if (n.fed >= CHICK_MEALS) { n.chick = false; n.fledged = true; G.yearChicks++; G.spawnYoung = true; audio.learned(); toast('Your chick has fledged! It will fly with you now.', 5); }
     else toast(`Fed your chick: ${n.fed} of ${CHICK_MEALS}.`, 2.5);
   }
 }
@@ -144,7 +156,14 @@ export function journal(G, DAY) {
   const landmarks = Object.values(G.found).sort((a, c) => a.x - c.x).map(l => ({ name: l.name, note: l.note }));
   const intent = `${G.intentions?.status() || ''}${G.feathers ? ` Feathers earned: ${G.feathers}.` : ''}`.trim();
   const world = G.seed ? `World ${G.seed}.` : 'The original world.';
-  return { journey: `${head} ${trip}${done}`, nest: nestStatus(G, DAY), landmarks, intent, world, link: worldLink(G) };
+  return { journey: `${head} ${trip}${done}`, nest: nestStatus(G, DAY), family: familyNote(G), sky: G.skyNotes?.slice(-3).join(' ') || '', landmarks, intent, world, link: worldLink(G) };
+}
+// the family tree, a line a year: you, your mate, your chicks
+const COUNT = ['no chicks', 'one chick', 'two chicks', 'three chicks'];
+export function familyNote(G) {
+  const years = G.family.map(y => `Year ${y.year}: you${y.mate ? ' and your mate' : ''}, ${COUNT[y.chicks] ?? `${y.chicks} chicks`} fledged.`);
+  if (!years.length && !G.yearChicks) return '';
+  return `${years.join(' ')}${years.length ? ' ' : ''}Now year ${G.year}${G.yearChicks ? `, ${COUNT[G.yearChicks] ?? `${G.yearChicks} chicks`} fledged so far` : ''}.`;
 }
 export function drawMap(G, cv) {
   const ctx = cv.getContext('2d'), w = cv.width, h = cv.height;

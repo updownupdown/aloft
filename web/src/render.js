@@ -15,6 +15,7 @@ import { drawSkies, drawSkiesScreen, underSea } from './skies.js';
 import { drawEncountersGround, drawEncountersAir, morphPal } from './encounters.js';
 import { keepsakesIn } from './story.js';
 import { ridgeField, streamAt, ridgeLeaves, lenses, kettles, cumuli } from './airart.js';
+import { skyFx, moonPoly, moonLit, fog, molted, whisper } from './skyfx.js';
 
 const BS = 1.25; // hawk drawing scale
 
@@ -32,16 +33,17 @@ export function render(ctx, G) {
   background(bx, G, P, S.w, S.h, spx);
   celestial(bx, G, P, S.w, S.h);
   drawNight(bx, G, P);
+  skyFx(bx, G, P, S.w, S.h);
   if (GFX.clouds) for (const c of clouds(G, S.w, S.h, cx, lift0)) cloud(bx, c, P, G);
   // far and mid hills: parallax in both axes so climbing high drops them away
   const hz = 1 + (G.view.z - 1) * .45, hw = S.w * hz, hh = S.h * hz, hpx = bw / hw;
   bx.setTransform(hpx, 0, 0, hpx, 0, 0);
   const l0 = lift0 - hh * .32;
   if (GFX.hills) hillLayer(bx, G, 'far', cx * .12 - hw / 2, hh * .6 + l0 * .1, hw, hpx);
-  if (GFX.mist) mist(bx, hh * .3 + l0 * .1, hh * .8 + l0 * .1, hw, P.paper, .6);
+  if (GFX.mist) mist(bx, hh * .3 + l0 * .1 - G.fog * hh * .08, hh * .8 + l0 * .1, hw, P.paper, .6 + G.fog * .3);
   bx.setTransform(spx, 0, 0, spx, 0, 0); farBirds(bx, G, P, S.w, S.h); bx.setTransform(hpx, 0, 0, hpx, 0, 0);
   hillLayer(bx, G, 'mid', cx * .4 - hw / 2, hh * .7 + l0 * .28, hw, hpx);
-  if (GFX.mist) mist(bx, hh * .55 + l0 * .28, hh * .95 + l0 * .28, hw, P.paper, .4);
+  if (GFX.mist) mist(bx, hh * .55 + l0 * .28 - G.fog * hh * .1, hh * .95 + l0 * .28, hw, P.paper, .4 + G.fog * .4);
   ctx.drawImage(back, 0, 0, w, h);
   // each hawk is painted on its own small layer first, so its many passes never blend on the big canvas
   const hawks = [...G.hawks.map(hk => hawkLayer(G, hk, P, hk.scale, 'h' + G.hawks.indexOf(hk))), hawkLayer(G, G.bird, P, 1, 'me')];
@@ -58,6 +60,7 @@ export function render(ctx, G) {
   if (G.gather) gathering(ctx, G, P);
   groundLayer(ctx, G, P, x0, x1);
   for (const p of W.pondsIn(x0, x1)) pond(ctx, p, P, G);
+  for (const sc of W.scarpsIn(x0 - 20, x1 + 20)) if (sc.falls) scarpFall(ctx, sc, P, G);
   shadow(ctx, G.bird, P);
   for (const l of W.landmarksIn(x0 - 120, x1 + 120)) landmark(ctx, l, P, G);
   const trees = W.treesIn(x0 - 40, x1 + 40);
@@ -67,10 +70,12 @@ export function render(ctx, G) {
   ridgeLeaves(ctx, G, P);
   if (G.wormsOk()) for (const wm of W.wormsIn(x0, x1)) if (!G.eaten.has(wm.id + G.rainId)) worm(ctx, wm, P, G);
   for (const tw of W.twigsIn(x0, x1)) if (!G.twigGone(tw.id)) twig(ctx, tw.x, tw.y, tw.a, P, G.view.spx);
+  molted(ctx, G, P, x0, x1);
   for (const k of keepsakesIn(x0, x1)) if (!G.kept.has(k.id)) keepsake(ctx, k, P, G);
   drawFauna(ctx, G, P);
   drawEncountersGround(ctx, G, P);
   for (const m of W.miceIn(x0, x1)) if (!G.eaten.has(m.id + ':' + G.day)) mouse(ctx, m, P, G);
+  fog(ctx, G, P, x0, x1);
   for (const t of trees) if (t.song?.active) { const p = t.song.perch; songbird(ctx, p.x, p.y - 3.4, t.song.sp, t.song.singingT > 0, p.x < t.x ? -1 : 1, P, G); }
   if (G.visitor) visitor(ctx, G.visitor, P, G);
   if (G.hint) hintMark(ctx, G.hint, P, G);
@@ -96,6 +101,7 @@ export function render(ctx, G) {
   if (GFX.weather) rain(ctx, G, P, S.w, S.h);
   nearBirds(ctx, G, P, S.w, S.h);
   drawSkiesScreen(ctx, G, P, S.w, S.h);
+  whisper(ctx, G, P, S.w, S.h);
   ctx.restore();
   // night falls deep and blue; an owl's song, once learned, lets the hawk see further into it
   const night = nightness(G.tod) * (G.brightT > 0 ? .35 : 1) * (G.learned.has(OWL) ? .6 : 1);
@@ -166,24 +172,26 @@ function celestial(ctx, G, P, w, h) {
   if (night > .01) {
     for (let g = 0; g < 4; g++) {
       ctx.beginPath();
-      for (let i = 0; i < 60; i++) {
+      for (let i = 0; i < 90; i++) {
         const tw = .5 + .5 * Math.sin(G.t * 1.5 + i); if (Math.min(3, Math.floor(tw * 4)) !== g) continue;
-        const x = hash(i * 3.7) * w, y = hash(i * 9.1) * h * .55, r = .5 + hash(i * 5.5) * .7;
+        const x = hash(i * 3.7) * w, y = hash(i * 9.1) * h * .55, r = .55 + hash(i * 5.5) * (i < 12 ? 1.1 : .7);
         ctx.moveTo(x + r, y); ctx.arc(x, y, r, 0, TAU);
       }
-      ctx.fillStyle = C(P.paper, night * (1 - G.overcast) * .8 * (g + .5) / 4); ctx.fill();
+      ctx.fillStyle = C(P.paper, night * (1 - G.overcast) * (.45 + .55 * (g + .5) / 4)); ctx.fill();
     }
   }
-  const arc = (a, r, col, al) => {
+  const arc = (a, r, col, al, phase) => {
     if (a < -.05 || a > 1.05) return;
     const x = w * (.08 + .84 * a), y = h * .7 - Math.sin(clamp(a, 0, 1) * Math.PI) * h * .58;
+    // the moon shows only its lit part, and glows less as it thins
+    if (phase !== undefined) { al *= .3 + .7 * moonLit(phase); lift(ctx, moonPoly(x, y, r + 1.5, phase), P.paper, .8 * al); wash(ctx, moonPoly(x, y, r, phase), col, .5 * al, { passes: 2, amp: .8, seed: 33, rim: .35 }); bloom(ctx, x, y, r * 2.6, col, .18 * al); return; }
     lift(ctx, circP(x, y, r + 3, 16), P.paper, .6 * al);
     wash(ctx, circP(x, y, r, 16), col, .55 * al, { passes: 2, amp: 1.2, seed: 33, rim: .35 });
     bloom(ctx, x, y, r * 2.6, col, .18 * al);
   };
   const vis = 1 - G.overcast * .8;
   arc((G.tod - .25) / .5, 15, P.sun, vis);
-  arc(((G.tod + .25) % 1) / .5, 10, [230, 232, 236], vis * night);
+  arc(((G.tod + .25) % 1) / .5, 10, [230, 232, 236], vis * night, G.moonPhase ?? .5);
 }
 
 function clouds(G, w, h, cx, lift0) {
@@ -265,13 +273,15 @@ function groundLayer(ctx, G, P, x0, x1) {
       const gx = x.createLinearGradient(ga, 0, gb, 0);
       for (let wx = ga; wx <= gb; wx += 40) gx.addColorStop((wx - ga) / (gb - ga), C(W.biomeAt(wx).tint, tk));
       x.save(); x.globalCompositeOperation = 'multiply'; x.fillStyle = gx; pathPts(x, poly); x.fill(); x.restore();
+      for (const sc of W.scarpsIn(xa - 30, xb + 30)) rockFace(x, sc, P);
+      for (const sp of W.spiresIn(xa - 30, xb + 30)) spire(x, sp, P);
     });
     blitStrip(ctx, s);
   }
   const top = [];
   for (let i = i0; i <= i1; i++) top.push([i * step, W.groundY(i * step)]);
   // snow lies along the ground in winter
-  if (G.sea.winter > .05) lift(ctx, [...top.map(p => [p[0], p[1] - .5]), ...top.slice().reverse().map(p => [p[0], p[1] + 3.5 + 2 * vnoise(p[0] / 30, 12)])], P.paper, .75 * G.sea.winter);
+  if (G.sea.winter > .05) lift(ctx, [...top.map(p => [p[0], p[1] - .5]), ...top.slice().reverse().map(p => [p[0], p[1] + 3.5 + 7 * G.sea.winter + 2 * vnoise(p[0] / 30, 12)])], P.paper, .75 * G.sea.winter + .1 * clamp(G.sea.winter * 2 - 1, 0, 1));
   // grass tufts along the edge
   ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.strokeStyle = C(shade(P.near, .8), .5); ctx.lineWidth = .8;
   ctx.beginPath();
@@ -281,6 +291,47 @@ function groundLayer(ctx, G, P, x0, x1) {
     ctx.moveTo(x, y + 1); ctx.lineTo(x + sw - .8, y - l); ctx.moveTo(x + 1, y + 1); ctx.lineTo(x + 1.5 + sw, y - l * .8);
   }
   ctx.stroke(); ctx.restore();
+}
+
+// the bare rock of a scarp: the wall is near vertical, so the stone shows as a band in the hill's
+// cut-away body behind the lip, its inner edge ragged, with ledges of strata (in the ground sprite)
+const rockOf = P => mix(P.far, P.ground, .5);
+function rockFace(c, sc, P) {
+  const d = sc.dir, at = u => [sc.x + d * u, W.groundY(sc.x + d * u)];
+  const Ty = W.groundY(sc.x + d * 9), By = W.groundY(sc.x - d * 3) + 2, deep = 12 + sc.H * .12;
+  const surf = []; for (let u = -2; u <= 12; u++) surf.push(at(u));
+  const inner = [];
+  for (let i = 0; i <= 6; i++) { const t = i / 6; inner.push([sc.x + d * (8 + deep * (1 - t * .55) * (.65 + .35 * hash(sc.k * 3 + i))), lerp(Ty + 3, By, t)]); }
+  wash(c, [...surf, ...inner, [sc.x - d * 2, By]], rockOf(P), .48, { passes: 3, amp: 1.4, seed: sc.k, rim: .45 });
+  // the wall itself in shadow
+  wash(c, [at(0), at(3), at(7), [sc.x + d * 7.5, By], [sc.x - d * 1, By]], shade(rockOf(P), .7), .22, { passes: 1, amp: .8, seed: sc.k + 1, rim: 0 });
+  const lines = [];
+  for (let y = Ty + 7 + hash(sc.k) * 4; y < By - 4; y += 10 + hash(sc.k + y) * 5) { const t = (y - Ty) / (By - Ty), len = deep * (1 - t * .55) * (.5 + .4 * hash(sc.k * 3 + y)); lines.push([[sc.x + d * 6.5, y], [sc.x + d * (6.5 + len * .5), y + .6], [sc.x + d * (6.5 + len), y - .3]]); }
+  if (lines.length) strokes(c, lines, shade(P.ground, .55), .4, .9, sc.k + 2);
+  // a fringe of grass hangs over the lip
+  wash(c, [[sc.x + d * 16, W.groundY(sc.x + d * 16) - 1], [sc.x + d * 7, Ty - 2], [sc.x + d * 5.5, Ty + 5], [sc.x + d * 8, Ty + 3], [sc.x + d * 16, W.groundY(sc.x + d * 16) + 4]], P.near, .5, { passes: 2, amp: .8, seed: sc.k + 3, rim: .3 });
+}
+function spire(c, sp, P) {
+  const base = Math.min(W.groundY(sp.x - sp.w - 3), W.groundY(sp.x + sp.w + 3)) + 4, pts = [];
+  for (let u = -sp.w - 1; u <= sp.w + 1; u += 1) pts.push([sp.x + u, W.groundY(sp.x + u)]);
+  wash(c, [...pts, [sp.x + sp.w + 2, base], [sp.x - sp.w - 2, base]], rockOf(P), .55, { passes: 3, amp: .9, seed: sp.x | 0, rim: .45 });
+  wash(c, [[sp.x + 1, W.groundY(sp.x) + 3], [sp.x + sp.w, W.groundY(sp.x + sp.w - 1)], [sp.x + sp.w + 2, base], [sp.x + 1, base]], shade(rockOf(P), .72), .35, { passes: 1, amp: .6, seed: (sp.x | 0) + 1, rim: 0 });
+  strokes(c, Array.from({ length: Math.floor(sp.H / 14) }, (_, i) => { const yy = W.groundY(sp.x) + 9 + i * 14; return [[sp.x - sp.w * .6, yy], [sp.x, yy + .7], [sp.x + sp.w * .6, yy - .3]]; }), shade(P.ground, .55), .3, .8, sp.x | 0);
+  wash(c, ellP(sp.x, W.groundY(sp.x) + 1, sp.w * .8, 2.4), P.near, .5, { passes: 1, amp: .6, seed: (sp.x | 0) + 2, rim: .2 });
+}
+// a waterfall pouring off a scarp's lip into a pool at its foot, with spray (live: the water moves)
+function scarpFall(ctx, sc, P, G) {
+  const d = sc.dir, topY = W.groundY(sc.x + d * 6), botY = W.groundY(sc.x - d * 6), ice = G.sea.winter;
+  const fall = [[sc.x + d * 6, topY + 1], [sc.x - d * 1, topY + 2], [sc.x - d * 7, botY], [sc.x + d * 1, botY]];
+  lift(ctx, fall, P.paper, .85);
+  wash(ctx, fall, P.water, .28 * (1 - ice * .5), { passes: 2, amp: .8, seed: sc.k, rim: .2 });
+  if (ice < .7) {
+    ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.strokeStyle = C(shade(P.water, .8), .35); ctx.lineWidth = .6; ctx.beginPath();
+    for (let i = 0; i < 4; i++) { const o = (G.t * 70 + i * 17) % 34; for (let yy = topY + 4 + o; yy < botY - 2; yy += 34) { const u = (yy - topY) / (botY - topY), xx = lerp(sc.x + d * (3 - i * 1.5), sc.x - d * (4 + i * 1.5), u); ctx.moveTo(xx, yy); ctx.lineTo(xx - d * 1.5, yy + 11); } }
+    ctx.stroke(); ctx.restore();
+  }
+  wash(ctx, ellP(sc.x - d * 12, botY + 1, 16, 2.6), P.water, .35, { passes: 1, amp: .6, seed: sc.k + 6, rim: .3 });
+  for (let i = 0; i < 3; i++) softWash(ctx, sc.x - d * (4 + i * 7), botY - 4 - i * 2, 12, 6, P.paper, .3 * (1 - ice * .6));
 }
 
 function pond(ctx, p, P, G) {
@@ -854,7 +905,8 @@ function wingGeo(b, side, yaw = 0) {
   const fingers = [], notches = [], bases = [];
   for (let k = 0; k < 5; k++) {
     const x = 1 - k * (1.6 + b.splay * 1.3);
-    fingers.push(at(1.05 - k * .035 * (1 + b.splay * .3), x)); bases.push(at(.8, x - .6));
+    // worn flight feathers fray and fall short at the tips until the hawk moults
+    fingers.push(at(1.05 - k * .035 * (1 + b.splay * .3) - (b.wear || 0) * .14 * hash(k * 3.1 + 1), x)); bases.push(at(.8, x - .6));
     if (k < 4) notches.push(at(.86, x - (.9 + b.splay * .6)));
   }
   const outline = [...lead]; for (let k = 0; k < 5; k++) { outline.push(fingers[k]); if (k < 4) outline.push(notches[k]); } outline.push(...trail);

@@ -145,7 +145,7 @@ export function predictGlide(b, G, maxT = 3.5) {
     if (s < T.stall) gT = -.85;
     const rate = 2.4 * clamp(s / 70, .25, 1.3);
     g += clamp(gT - g, -rate * dt, rate * dt);
-    s = clamp(s + (-T.gravity * Math.sin(g) - dragOf(s)) * dt, 8, MAX_SPEED);
+    s = clamp(s + (-T.gravity * Math.sin(g) - dragOf(s) * (1 + .25 * (b.wear || 0))) * dt, 8, MAX_SPEED);
     x += (Math.cos(g) * s * b.face + W.windAt(y) * .5) * dt;
     y += (-Math.sin(g) * s - W.updraft(x, y, G.t) - waveLift(x, y)) * dt;
     pts.push([x, y]);
@@ -292,7 +292,7 @@ function fly(b, dt, inp, G) {
   const brake = b.flaring ? (b.g - .3) * b.s * T.flare : 0;
   // (a turn costs a little speed, the wings working against the swing)
   // (a loop is flown on momentum the wings help carry; trimmed for gliding, drag eases off)
-  b.s = clamp(b.s + (-T.gravity * Math.sin(b.g) * (b.loop ? .35 : 1) - dragOf(b.s) * (b.trim ? .75 : b.stoop ? .55 : 1) - brake - (b.yaw ? b.s * .22 : 0)) * dt, 8, MAX_SPEED);
+  b.s = clamp(b.s + (-T.gravity * Math.sin(b.g) * (b.loop ? .35 : 1) - dragOf(b.s) * (b.trim ? .75 : b.stoop ? .55 : 1) * (1 + .25 * (b.wear || 0)) - brake - (b.yaw ? b.s * .22 : 0)) * dt, 8, MAX_SPEED);
   if (b.kiteT > 0) b.s = lerp(b.s, T.stall + 10, b.kiteT * Math.min(1, dt * 6));   // the wind holds a kiting hawk just above stall speed
 
   // through a turn the forward speed swings away from the picture and back
@@ -323,6 +323,12 @@ function move(b, G) {
     G.emit('splash', { x: b.x, y: wy, big: b.s > 90 });
     if (b.s > 140) { b.y = wy - 4; b.g = .28; b.s *= .55; }   // skip off the surface
     else { land(b, 'swim', G, wy - 3); }
+    return;
+  }
+  // a cliff face or a rock spire: the hawk glances off the rock instead of landing on top of it
+  if (b.y + FEET >= gy && gy < W.groundY(px) - 8 && py + FEET < W.groundY(px) + 1) {
+    b.x = px; b.y = Math.min(py, W.groundY(px) - FEET - 1); b.face = -b.face; b.s *= .45; b.g = .15;
+    G.emit('crash', { x: b.x, y: b.y });
     return;
   }
   if (b.y + FEET >= gy) {
@@ -395,6 +401,7 @@ function ground(b, dt, inp, G) {
     if (dir !== b.face) turn(b);
     const nx = b.x + dir * WALK * dt;
     if (W.waterAt(nx) !== null) { b.x = nx; land(b, 'swim', G, W.waterAt(nx) - 3); G.emit('splash', { x: nx, y: W.waterAt(nx), big: false }); return; }
+    if (W.groundY(nx) < W.groundY(b.x) - 5) { b.moving = false; return; }   // a rock wall: no walking up it
     b.x = nx; b.walkPh += dt * 11;
   }
   b.y = W.groundY(b.x) - FEET;

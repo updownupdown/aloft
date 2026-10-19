@@ -16,7 +16,7 @@ export function mousePos(m, t) {
   const ph = t * .45 + m.seed * 2.3, x = m.x + Math.sin(ph) * 16;
   // mice pop up out of the grass now and then
   const up = Math.sin(t * .21 + m.seed * 1.7), show = clamp((up + .2) * 3, 0, 1);
-  return { x, y: W.groundY(x), dir: Math.cos(ph) > 0 ? 1 : -1, show: frozen ? Math.max(show, .85) : t < reveal.until ? Math.max(show, .9) : show, run: frozen ? 0 : Math.abs(Math.cos(ph)) };
+  return { x, y: W.groundY(x), dir: Math.cos(ph) > 0 ? 1 : -1, show: frozen ? Math.max(show, .85) : t < reveal.until ? Math.max(show, .9) : W.env.winter > .5 ? Math.min(show, .25) : show, run: frozen ? 0 : Math.abs(Math.cos(ph)) };   // under snow, only a faint stir
 }
 export function fishPos(f, p, t) {
   const sp = .18 + .12 * hash(f.seed), ph = t * sp + f.seed * 1.9;
