@@ -13,7 +13,7 @@ const page = await browser.newPage({ viewport: { width: 512, height: 512 } });
 await page.goto(`http://localhost:${port}/tools/icon.html`);
 await page.waitForFunction('window.done');
 const shot = async (size, name, round = false) => {
-  await page.evaluate(([s, r]) => { const c = document.getElementById('c'); c.style.width = c.style.height = s + 'px'; c.style.borderRadius = r ? '22%' : '0'; }, [size, round]);
+  await page.evaluate(([s, r]) => { window.render(s); const c = document.getElementById('c'); c.style.width = c.style.height = s + 'px'; c.style.borderRadius = r ? '22%' : '0'; }, [size, round]);
   await page.setViewportSize({ width: size, height: size });
   await page.locator('#c').screenshot({ path: join(root, 'web/icons', name), omitBackground: round });
 };

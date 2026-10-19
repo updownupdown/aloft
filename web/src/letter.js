@@ -3,7 +3,8 @@
 // own wash() onto a canvas behind the card each time the menu opens or changes section; the game
 // is paused then, so none of this costs anything while flying.
 import { wash, jit, pathPts, handmadeTex } from './paint.js';
-import { C, TAU } from './util.js';
+import { C } from './util.js';
+import { drawSeal } from './seal.js';
 
 const INK = [58, 36, 24], BERRY = [168, 72, 58];
 const TABPIG = { play: [79, 127, 166], journal: [184, 134, 47], songs: [168, 72, 58], help: [111, 138, 74], gfx: [138, 122, 106] };
@@ -103,20 +104,5 @@ function brush(x, x0, cy, len, hgt, col, seed) {
   }
   x.restore();
 }
-// a wax seal beside the Resume label, with a feather pressed into it
-function seal(x, f) {
-  const cx = f.x + 28, cy = f.y + f.h / 2, r = 22, blob = [];
-  seedR(9); for (let i = 0; i < 26; i++) { const a = i / 26 * TAU, k = r * (1 + (rnd() < .2 ? .14 : .04) * rnd()); blob.push([cx + Math.cos(a) * k, cy + Math.sin(a) * k]); }
-  x.save(); x.shadowColor = 'rgba(60,20,10,.35)'; x.shadowBlur = 4; x.shadowOffsetY = 2; x.fillStyle = 'rgb(176,70,52)'; pathPts(x, blob); x.fill(); x.restore();
-  wash(x, blob, [150, 45, 35], .75, { amp: 1, seed: 2, rim: .8 });
-  x.save(); x.strokeStyle = 'rgba(255,190,170,.35)'; x.lineWidth = 1.4; x.beginPath(); x.arc(cx - .6, cy - .6, r * .66, 0, TAU); x.stroke();
-  x.strokeStyle = 'rgba(90,20,14,.45)'; x.lineWidth = 1.2; x.beginPath(); x.arc(cx + .6, cy + .6, r * .66, 0, TAU); x.stroke();
-  // the feather: a quill and barbs, lit on one side and shadowed on the other
-  for (const [col, o] of [['rgba(255,200,180,.45)', -.6], ['rgba(80,18,12,.55)', .6]]) {
-    x.strokeStyle = col; x.lineWidth = 1.1; x.beginPath(); x.moveTo(cx - 8 + o, cy + 9 + o); x.quadraticCurveTo(cx + o, cy + o, cx + 7 + o, cy - 10 + o); x.stroke();
-    x.lineWidth = .8; x.beginPath();
-    for (let i = 1; i < 6; i++) { const t = i / 6, px = cx - 8 + 15 * t + o, py = cy + 9 - 19 * t + o; x.moveTo(px, py); x.lineTo(px - 5, py - 2.5); x.moveTo(px, py); x.lineTo(px + 3.5, py + 3.5); }
-    x.stroke();
-  }
-  x.restore();
-}
+// Aloft's wax seal beside the Resume label
+function seal(x, f) { drawSeal(x, f.x + 28, f.y + f.h / 2, 23); }

@@ -52,7 +52,8 @@ web/src/ui.js           pause menu, settings, how to play, songbook, toasts
 web/src/controlmap.js   the controls map in How to play: one ink drawing per gesture (keep it in step with controls.js)
 web/src/singing.js      perched singing: a ladder of note pools up one edge (low at the bottom), known birds in columns on the other
 web/src/dial.js         time-of-day dial (top right)
-web/icons/              app icons (generated, see tools/make-icons.mjs)
+web/src/seal.js         Aloft's mark, the wax seal (drawSeal): the menu's Resume seal and the app icons
+web/icons/              app icons, the wax seal on paper (generated from tools/icon.html by tools/make-icons.mjs)
 web/fonts/              bundled Cormorant Garamond italic and Spectral (SIL OFL, licences alongside)
 tools/serve.sh          serve web/ on localhost:8000
 tools/make-icons.mjs    regenerate icons from tools/icon.html (needs Playwright)
