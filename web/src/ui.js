@@ -68,14 +68,13 @@ export function createUI({ audio, G, store, species, onPause, playSong, haptics,
           <h3>The air, the land and the seasons</h3>
           <ul class="howto">
             <li>Let go and the hawk glides on its own. Diving builds speed; pulling up trades it for height. Too slow and it stalls.</li>
-            <li>To land softly, <b>flare</b>: point up just before the branch or the ground.</li>
-            <li><b>Thermals</b> rise above the treeline on sunny afternoons. Let go inside one and the hawk floats up as it glides across; turn back to stay in it, and the lift is strongest in the core. Look for <b>leaves</b> spiralling upward. <b>Cloud rings</b> hang all over the sky; fly through one for a burst of speed. Wind against a hillside gives <b>ridge lift</b>: where grass and leaves stream uphill, glide along the face without a wingbeat. Rising air beeps.</li>
+            <li>To land softly, <b>flare</b>: touch, hold and lean up just before the branch or the ground.</li>
+            <li><b>Thermals</b> rise above the treeline on sunny afternoons. Glide into one and the hawk floats up as it crosses; <b>swipe forward, then back</b> and it rides the thermal up, turning at its edges. The lift is strongest in the core. Look for <b>leaves</b> spiralling upward. <b>Cloud rings</b> hang all over the sky; fly through one for a burst of speed. Wind against a hillside gives <b>ridge lift</b>: where grass and leaves stream uphill, glide along the face without a wingbeat. Rising air beeps.</li>
             <li>Every thermal tops out in a <b>cloud</b>. Fly into one and you carve a tunnel through it that slowly heals. On autumn days wild hawks gather in a strong thermal and circle up it together, a <b>kettle</b>: join them and you climb faster, then follow their line when they peel off south. On calm evenings long <b>lens-shaped clouds</b> hang over the mountains; climb high below them for smooth, silent <b>wave lift</b>.</li>
-            <li><b>Kiting:</b> face into the wind, low over open ground, and hold the nose a little up. The hawk hangs still on the air and the mice below show themselves. Point down to stoop on one.</li>
-            <li>The <b>call</b> button (top) gives the red-tail's scream: hold it longer for a louder call. Mice freeze in the open, other hawks answer, and your companion or fledgling comes to you. Keyboard: C.</li>
-            <li><b>Tap a branch</b> to fly to it and perch. From evening on, a perched hawk can tap <b>Sleep</b> (top) to roost until dawn.</li>
-            <li>Land on a pond to swim, then <b>tap the water</b> to drink. Three sips fill your thirst.</li>
-            <li>On the ground, hold left or right to walk. <b>Tap berries</b> (six fill you) or, after rain, <b>worms</b> (three fill you). Dive at <b>mice</b> in the grass or <b>fish</b> in ponds.</li>
+            <li><b>Kiting:</b> face into the wind, low over open ground, then touch, hold and lean a little up. The hawk hangs still on the air and the mice below show themselves. Draw a line to one to stoop on it.</li>
+            <li>The <b>call</b> button (top) gives the red-tail's scream, louder the longer you hold it. Mice freeze in the open, other hawks answer, and your companion or fledgling comes to you. Keyboard: C.</li>
+            <li>From evening on, a perched hawk can tap <b>Sleep</b> (top) to roost until dawn.</li>
+            <li><b>Berries</b> fill you in six, and after rain <b>worms</b> in three. <b>Mice</b> hide in the grass and <b>fish</b> rise in ponds: draw a line to one to stoop on it.</li>
             <li>On a branch, two half rings of pools open in the bottom corners. On the right are the five <b>song notes</b>, low to high. Perch near a <b>songbird</b>, listen, then touch each note in turn; the pools glow as the bird sings them, and the next one wears a red ring. A wrong note only flashes, so carry on. On the left are the <b>birds you know</b>: touch one and the hawk sings its whole song, and that bird answers with its gift. Keyboard: keys 1 to 5.</li>
             <li>Once you know a bird's song, singing beside it is a <b>duet</b>: it sings the first half and you answer with the rest. The cleaner your pitch and timing, the longer its gift lasts. On some mornings the whole wood sings a <b>dawn chorus</b>: join in and every bird you know answers at once.</li>
             <li>Each dawn the <b>Journal</b> offers one small intention for the day; finish it and you earn a feather. Pictures from photo mode go in the journal's album.</li>
@@ -83,6 +82,7 @@ export function createUI({ audio, G, store, species, onPause, playSong, haptics,
             <li>Keep well fed and watered and flap cleanly, and over time your hawk grows <b>healthy</b>: its tail turns a deep, glossy red. Nothing bad happens when you are hungry or thirsty; health just builds more slowly.</li>
             <li>Rare <b>keepsakes</b> glint in the grass: land and tap one to keep it for a nest. Down south in the wintering marsh, a hawk may come to look you over. A healthy tail, keepsakes, songs you know and <b>acrobatics</b> win it as your <b>mate</b>, who flies with you and helps feed your chick.</li>
             <li>Pick up a <b>twig</b> under a tree and perch on a branch to start a <b>nest</b>. Five twigs and an egg appears; when it hatches, carry mice and fish home to feed the chick.</li>
+            <li><b>Battery saver</b> (Settings) runs at 30 frames a second; it comes on by itself when the battery is low.</li>
             <li>Keyboard: Space flap, arrow keys or WASD to steer and walk, E to drink or eat, Esc for this menu.</li>
           </ul>
         </section>
