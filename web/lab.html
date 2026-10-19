@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f6f1e6">
+<title>Aloft · Bird song lab</title>
+<link rel="icon" href="icons/favicon-32.png">
+<style>
+@font-face { font-family: 'Cormorant Garamond'; font-style: italic; font-weight: 300 700; font-display: swap; src: url(fonts/cormorant-garamond-italic.woff2) format('woff2'); }
+@font-face { font-family: 'Spectral'; font-style: normal; font-weight: 400; font-display: swap; src: url(fonts/spectral-regular.woff2) format('woff2'); }
+@font-face { font-family: 'Spectral'; font-style: italic; font-weight: 400; font-display: swap; src: url(fonts/spectral-italic.woff2) format('woff2'); }
+:root { --paper: #f6f1e6; --ink: #3a2418; --ink2: #6a4530; --rule: rgba(58, 36, 24, .18); --indigo: #4f6f9e; --berry: #a8483a; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 17px/1.45 'Spectral', Georgia, serif; -webkit-tap-highlight-color: transparent; }
+main { max-width: 760px; margin: 0 auto; padding: 18px 16px 48px; }
+h1 { font: italic 600 34px/1.1 'Cormorant Garamond', Georgia, serif; margin: 4px 0 4px; }
+h2 { font: italic 600 23px/1.2 'Cormorant Garamond', Georgia, serif; margin: 22px 0 6px; padding-bottom: 4px; border-bottom: 1px solid var(--rule); }
+p, small { color: var(--ink2); }
+p { margin: 6px 0 10px; }
+small { display: block; font-style: italic; font-size: 14px; margin-top: 2px; }
+a { color: var(--indigo); }
+.top { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.opts { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0; }
+button { font: inherit; font-size: 16px; color: var(--ink); background: transparent; border: 1px solid var(--rule); border-radius: 18px; min-height: 40px; padding: 6px 14px; cursor: pointer; }
+button.on { background: var(--indigo); border-color: var(--indigo); color: #fbf7ee; }
+button:active { transform: translateY(1px); }
+.species { list-style: none; margin: 0; padding: 0; }
+.species li { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 0; border-bottom: 1px solid var(--rule); }
+.species b { min-width: 92px; font-weight: 400; }
+.species em { color: var(--ink2); font-size: 14px; flex: 1 1 140px; }
+.now { min-height: 1.5em; font-style: italic; color: var(--berry); }
+.save { background: var(--berry); border-color: var(--berry); color: #fbf7ee; font-size: 18px; padding: 8px 20px; }
+</style>
+</head>
+<body>
+<main>
+  <div class="top"><h1>Bird song lab</h1><a href="./">Back to the game</a></div>
+  <p>Try the songbirds in different voices. Pick a voice, a pitch and a space, play a few songs, and keep the one that sounds most like a real bird. The game uses whatever you keep.</p>
+
+  <h2>Voice</h2>
+  <div class="opts" data-k="engine"></div>
+  <small>Whistle is how the birds sounded before. Natural uses short, fast sweeps, the way small birds really sing. Two-voice syrinx adds the second, quieter line songbirds sing at the same time. Breathy is softer and airier, like a bird heard through leaves.</small>
+
+  <h2>Pitch</h2>
+  <div class="opts" data-k="octave"></div>
+  <small>Real songbirds sing high, mostly between 2 and 8 kHz. The songs keep their notes; only the octave changes. The owl always stays low.</small>
+
+  <h2>Space</h2>
+  <div class="opts" data-k="space"></div>
+  <div class="opts"><button data-far>Heard from far off</button><button data-wind>Wind behind it</button></div>
+
+  <h2>Songs</h2>
+  <p class="now">Tap a song to hear it.</p>
+  <div class="opts"><button data-all>Play every bird</button></div>
+  <ul class="species"></ul>
+
+  <h2>Keep it</h2>
+  <div class="opts"><button class="save" data-save>Use this voice in the game</button><button data-reset>Back to the suggested voice</button></div>
+  <small class="saved"></small>
+</main>
+<script type="module">
+import { createAudio } from './src/audio.js';
+import { SPECIES } from './src/songs.js';
+import { ENGINES, PITCHES, SPACES, DEFAULT_VOICE, loadVoice, saveVoice } from './src/birdvoice.js';
+
+const A = createAudio(), q = s => document.querySelector(s), now = q('.now');
+let V = loadVoice(), wind = false, timers = [];
+const wake = () => { A.unlock(); A.setBirdVoice(V); };
+const label = (list, v) => list.find(([k]) => k === v)?.[1];
+
+// the option rows
+for (const [k, list] of [['engine', ENGINES], ['octave', PITCHES], ['space', SPACES]]) {
+  const row = q(`[data-k=${k}]`);
+  for (const [v, name] of list) {
+    const b = document.createElement('button'); b.textContent = name; b.dataset.v = v;
+    b.onclick = () => { V[k] = v; wake(); draw(); };
+    row.append(b);
+  }
+}
+q('[data-far]').onclick = () => { V.far = !V.far; wake(); draw(); };
+q('[data-wind]').onclick = () => { wind = !wind; wake(); A.ambience(wind ? .35 : 0, 0, { bio: 'forest' }); if (!wind) A.wind.g.gain.value = 0; draw(); };
+function draw() {
+  for (const k of ['engine', 'octave', 'space']) for (const b of document.querySelectorAll(`[data-k=${k}] button`)) b.classList.toggle('on', String(V[k]) === b.dataset.v);
+  q('[data-far]').classList.toggle('on', V.far); q('[data-wind]').classList.toggle('on', wind);
+}
+for (const k of ['octave']) for (const b of document.querySelectorAll(`[data-k=${k}] button`)) b.onclick = () => { V.octave = +b.dataset.v; wake(); draw(); };
+
+// play a song; `at` is a delay in seconds so several can queue
+function song(sp, at = 0, voice) {
+  sp.notes.forEach((n, i) => timers.push(setTimeout(() => { if (voice) A.setBirdVoice(voice); A.note(n, sp.voice); }, (at + i * sp.gap) * 1000)));
+  return sp.notes.length * sp.gap + .9;
+}
+const stop = () => { timers.forEach(clearTimeout); timers = []; };
+const say = (t, at) => timers.push(setTimeout(() => { now.textContent = t; }, at * 1000));
+
+const list = q('.species');
+for (const sp of SPECIES) {
+  const li = document.createElement('li');
+  li.innerHTML = `<b>${sp.name}</b><em>${sp.hint}</em>`;
+  const play = document.createElement('button'); play.textContent = 'Play';
+  play.onclick = () => { wake(); stop(); now.textContent = `${sp.name}, ${label(ENGINES, V.engine).toLowerCase()}`; song(sp); };
+  const cmp = document.createElement('button'); cmp.textContent = 'Every voice';
+  cmp.onclick = () => {
+    wake(); stop(); let at = 0;
+    for (const [e, name] of ENGINES) { const v = { ...V, engine: e }; say(`${sp.name}: ${name}`, at); at += song(sp, at, v) + .5; }
+    timers.push(setTimeout(() => { A.setBirdVoice(V); now.textContent = 'Tap a song to hear it.'; }, at * 1000));
+  };
+  li.append(play, cmp); list.append(li);
+}
+q('[data-all]').onclick = () => { wake(); stop(); let at = 0; for (const sp of SPECIES) { say(sp.name, at); at += song(sp, at) + .4; } };
+q('[data-save]').onclick = () => { saveVoice(V); q('.saved').textContent = `Kept: ${label(ENGINES, V.engine)}, ${label(PITCHES, V.octave).toLowerCase()}, ${label(SPACES, V.space).toLowerCase()}${V.far ? ', from far off' : ''}. The game will use it next time it opens.`; };
+q('[data-reset]').onclick = () => { V = { ...DEFAULT_VOICE }; wake(); draw(); };
+document.addEventListener('visibilitychange', () => { if (document.hidden) { stop(); A.suspend(); } else A.resume(); });
+draw();
+</script>
+</body>
+</html>

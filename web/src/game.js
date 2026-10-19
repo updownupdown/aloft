@@ -26,12 +26,14 @@ import { GFX, loadGfx, overlay, record, stats } from './gfx.js';
 import { spriteCount } from './paint.js';
 
 const DAY = 480;               // one day = 8 minutes
+const SEASON_DAYS = 8;         // days per season: a full year is 32 days
 const THIRST_S = 420;          // full to empty in 7 minutes
 const HUNGER_S = 300;          // full to empty in 5 minutes
 const BERRY_REGROW = 120;
 const RING_RESPAWN = 90;
 const TWIG_REGROW = 300;
 const POWER_CD = 40;           // seconds before a song's gift works again
+const powerCD = sp => sp.powerKey === 'companion' ? POWER_CD * 4 : POWER_CD;   // a companion hawk is a rarer gift
 // Zoom, as how many times more world fits on screen than the art was first drawn at (300 units
 // tall). Perched or low and slow it sits at ZOOM; high and fast it eases out to ZOOM_OUT.
 const ZOOM = 1.5, ZOOM_OUT = 2.85;
@@ -159,8 +161,11 @@ export function start(canvas) {
     if (n >= 0 && G.staff.mode) { audio.note(n, 1, .18); singer.glow(n); singNote(n); }
   };
   const persist = () => { if (!G.noSave) saveJourney(G, store); };
-  document.addEventListener('visibilitychange', () => { if (document.hidden) { persist(); if (!G.paused) ui.open(); } else stayAwake(); });
-  addEventListener('pagehide', persist);
+  // hidden (another app, another tab, the screen off): save, pause and go quiet; sound comes back on return
+  document.addEventListener('visibilitychange', () => { if (document.hidden) { persist(); audio.suspend(); if (!G.paused) ui.open(); } else { audio.resume(); stayAwake(); } });
+  addEventListener('pagehide', () => { persist(); audio.suspend(); });
+  addEventListener('pageshow', () => audio.resume());
+  document.addEventListener('freeze', () => audio.suspend());
 
   /* ---------- events from the bird ---------- */
   const part = (type, x, y, vx, vy, life, extra = {}) => G.parts.push({ type, x, y, vx, vy, life, max: life, ...extra });
@@ -377,11 +382,11 @@ export function start(canvas) {
     singer.cheer(q > .85 ? `A perfect song: the ${sp.name} answers` : `The ${sp.name} answers`);
     if (G.chorus) {
       const others = [...G.learned].map(id => SPECIES[id]).filter(s => s !== sp && (G.powerCD[s.id] ?? 0) <= G.t);
-      for (const s2 of others) { G.powerCD[s2.id] = G.t + POWER_CD; usePower(s2, .5); }
+      for (const s2 of others) { G.powerCD[s2.id] = G.t + powerCD(s2); usePower(s2, .5); }
       if (others.length) ui.toast(`The whole chorus answers: ${others.map(s => s.name).join(', ')} too.`, 4);
     }
     if ((G.powerCD[sp.id] ?? 0) > G.t) { ui.toast(`The ${sp.name} answers your song.${how}`, 2.5); return; }
-    G.powerCD[sp.id] = G.t + POWER_CD;
+    G.powerCD[sp.id] = G.t + powerCD(sp);
     usePower(sp, scale);
     ui.toast(`The ${sp.name} answers: ${sp.power}.${how}`, 3.5);
   }
@@ -533,7 +538,7 @@ export function start(canvas) {
   function updateClock() {
     G.tod = (.36 + G.clockT / DAY) % 1;
     G.day = Math.floor(.36 + G.clockT / DAY) + 1;
-    G.seasonS = (G.clockT / DAY / 2 + 3.75 + (G.seasonShift || 0)) % 4;   // starts at the beginning of summer
+    G.seasonS = (G.clockT / DAY / SEASON_DAYS + 3.75 + (G.seasonShift || 0)) % 4;   // starts at the beginning of summer
     G.sea = seasonAmounts(G.seasonS);
     W.env.winter = G.sea.winter;
   }
@@ -824,7 +829,7 @@ export function start(canvas) {
     fly(y) { fresh(); b.state = 'fly'; b.y = y; b.s = 85; b.g = -.17; snap(); },
     thermal() { const t = W.thermalsIn(b.x + 200, b.x + 8000).find(t => t.rings.length); fresh(); b.state = 'fly'; b.x = t.c - t.w * .8; b.y = t.rings[0].y + 60; b.s = 85; b.face = 1; snap(); },
     time(tod) { G.clockT += (((tod - G.tod) % 1 + 1) % 1) * DAY; updateClock(); },
-    season(s) { G.seasonShift = ((s - G.clockT / DAY / 2 - 3.75) % 4 + 4) % 4; updateClock(); },
+    season(s) { G.seasonShift = ((s - G.clockT / DAY / SEASON_DAYS - 3.75) % 4 + 4) % 4; updateClock(); },
     weather(w) { G.weather = w; G.weatherT = 999; const t = { sunny: [0, 0], cloudy: [.65, 0], stormy: [1, 1] }[w]; G.overcast = t[0]; G.storm = t[1]; },
     learnAll() { for (const sp of SPECIES) G.learned.add(sp.id); },
     power(name) { usePower(SPECIES.find(s => s.name === name)); },

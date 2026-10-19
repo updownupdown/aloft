@@ -2,7 +2,7 @@
 // shared key (audio.key), so the songbirds and the hawk's voice sit inside them, and all go
 // through one soft filter and valley echo. Day is brighter, night lower and sparser, storms
 // go minor and quiet.
-//   valley: a slow pad drifting through chords, sparse pentatonic notes, learned songs
+//   valley: long bowed chords, a few slow piano notes between long silences, learned songs
 //   loops:  tape loops of different lengths, one soft piano note each, drifting in and out of phase
 //   harp:   a wind harp: overtones of one low string swell and fade, stronger the faster you fly
 //   kalimba: a gentle plucked pattern whose pace follows your speed and whose tune climbs with you
@@ -19,7 +19,7 @@ const LOOPS = [[17.8, 5], [20.1, 7], [23.3, 8], [25.9, 10], [29.7, 12], [31.9, 9
 const PATTERN = { day: [1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0], dark: [1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0] };
 
 export function createMusic(audio) {
-  const M = { on: false, mode: 'valley', out: null, next: 0, chordT: 0, chord: 0, motifT: 20, loops: [], harpT: 0, step: 0, stepT: 0, walk: 6 };
+  const M = { on: false, mode: 'valley', out: null, next: 0, chordT: 0, chord: 0, motifT: 6, phrase: 2, loops: [], harpT: 0, step: 0, stepT: 0, walk: 6 };
   const hz = st => ROOT * Math.pow(2, (st + audio.key) / 12);
   function ensure() {
     if (M.out || !audio.ctx) return !!M.out;
@@ -38,16 +38,20 @@ export function createMusic(audio) {
   M.setMode = mode => {
     if (mode === M.mode) return; M.mode = mode;
     const now = audio.ctx ? audio.ctx.currentTime : 0;
-    M.loops = []; M.chordT = now; M.next = now + .5; M.harpT = now + .5; M.stepT = now + .5;
+    M.loops = []; M.chordT = now; M.next = now + .5; M.phrase = 2; M.harpT = now + .5; M.stepT = now + .5;
   };
-  function pad(freqs, t, dur, vol) {
-    const ctx = audio.ctx;
-    for (const f of freqs) for (const det of [-4, 4]) {
-      const o = ctx.createOscillator(), g = ctx.createGain();
-      o.type = 'triangle'; o.frequency.value = f / 2; o.detune.value = det;
-      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + dur * .4); g.gain.linearRampToValueAtTime(0, t + dur);
-      o.connect(g).connect(M.out); o.start(t); o.stop(t + dur + .1);
+  // a bowed string section: two slightly detuned saws per note, softened, swelling in slowly
+  // with a gentle vibrato, and fading as slowly
+  function strings(freqs, t, dur, vol) {
+    const ctx = audio.ctx, lp = ctx.createBiquadFilter(), g = ctx.createGain(), l = ctx.createOscillator(), lg = ctx.createGain();
+    lp.type = 'lowpass'; lp.frequency.setValueAtTime(380, t); lp.frequency.linearRampToValueAtTime(950, t + dur * .45); lp.frequency.linearRampToValueAtTime(420, t + dur); lp.Q.value = .3;
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + dur * .4); g.gain.setValueAtTime(vol, t + dur * .55); g.gain.linearRampToValueAtTime(0, t + dur);
+    l.frequency.value = 4.6; lg.gain.value = 5; l.connect(lg);
+    for (const f of freqs) for (const det of [-6, 5]) {
+      const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f; o.detune.value = det + (Math.random() - .5) * 3;
+      lg.connect(o.detune); o.connect(lp); o.start(t); o.stop(t + dur + .1);
     }
+    lp.connect(g).connect(M.out); l.start(t); l.stop(t + dur + .1);
   }
   function pluck(f, t, vol) {
     const ctx = audio.ctx, o = ctx.createOscillator(), g = ctx.createGain();
@@ -87,25 +91,39 @@ export function createMusic(audio) {
   // down, plucked through the valley echo
   M.echo = lane => { if (M.on && ensure()) pluck(hz(LANE[lane]) / 2, audio.ctx.currentTime + .05, .04); };
 
+  // Valley, after A Winged Victory for the Sullen: long bowed chords that swell in and out of
+  // each other, now and then a held rest, and a felt piano that plays a few slow notes, then
+  // falls silent for a long while
   function valley(now, { night, storm, learned, species }, mode) {
-    const vol = .028 * (1 - storm * .4);
+    const vol = .02 * (1 - storm * .4), dark = night > .7;
     if (now > M.chordT - .5) {
-      const chords = CHORDS[mode]; M.chord = (M.chord + 1 + (Math.random() < .3 ? 1 : 0)) % chords.length;
-      const dur = 9 + Math.random() * 4; pad(chords[M.chord].map(hz), Math.max(now, M.chordT), dur + 2, vol);
-      M.chordT = Math.max(now, M.chordT) + dur;
+      const t = Math.max(now, M.chordT), chords = CHORDS[mode];
+      if (Math.random() < .2) M.chordT = t + 6 + Math.random() * 8;   // the strings rest
+      else {
+        M.chord = (M.chord + 1 + (Math.random() < .3 ? 1 : 0)) % chords.length;
+        const dur = 16 + Math.random() * 10, ch = chords[M.chord].map(hz);
+        strings(ch, t, dur, vol);
+        if (Math.random() < .6) strings([ch[0] / 2], t + dur * .15, dur * .85, vol * .9);   // a low cello under it
+        M.chordT = t + dur * .72;   // the next chord swells in as this one fades
+      }
     }
     if (now > M.next - .2) {
       const t = Math.max(now, M.next);
-      M.motifT -= 1;
-      if (M.motifT <= 0 && learned.size) {
-        // a phrase from a learned song, played slow
-        const ids = [...learned], sp = species[ids[(Math.random() * ids.length) | 0]];
-        sp.notes.forEach((n, i) => pluck(hz(LANE[n]) / (night > .7 ? 2 : 1), t + i * .45, .05));
-        M.motifT = 14 + Math.random() * 10; M.next = t + sp.notes.length * .45 + 3; return;
+      if (M.phrase <= 0) {
+        // a long quiet stretch, then a new phrase of a few notes
+        M.phrase = 2 + Math.floor(Math.random() * 3);
+        M.next = t + (dark ? 30 : 18) + Math.random() * 28; return;
       }
-      const sc = SCALE[mode], base = night > .7 ? 0 : 12;
-      if (Math.random() < .75 - storm * .3) pluck(hz(base + sc[(Math.random() * sc.length) | 0]), t, .045 * (1 - storm * .5));
-      M.next = t + (night > .7 ? 2.4 : 1.3) + Math.random() * (night > .7 ? 3 : 1.8);
+      M.phrase--; M.motifT--;
+      if (M.motifT <= 0 && learned.size) {
+        // a phrase from a learned song, played slow and low
+        const ids = [...learned], sp = species[ids[(Math.random() * ids.length) | 0]];
+        sp.notes.forEach((n, i) => piano(hz(LANE[n]) / 2, t + i * 1.1, .035));
+        M.motifT = 8 + Math.random() * 6; M.phrase = 0; M.next = t + sp.notes.length * 1.1 + 4; return;
+      }
+      const sc = SCALE[mode], base = dark ? -12 : 0;
+      if (Math.random() < .8 - storm * .4) piano(hz(base + sc[(Math.random() * sc.length) | 0]), t, .04 * (1 - storm * .5));
+      M.next = t + 3.5 + Math.random() * 4;
     }
   }
   function loops(now, { night, storm }, mode) {
