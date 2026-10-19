@@ -56,7 +56,7 @@ export function flap(b, power, G, sync = 1, swing = 0) {
   if (b.state === 'fly') b.head += swing;
   b.flapLeft = 1; b.flapCD = .14;
   if (b.phase > Math.PI) b.phase = 0;
-  G.emit('flap');
+  G.emit('flap', { quality: sync });
   return true;
 }
 
@@ -231,7 +231,7 @@ function fly(b, dt, inp, G) {
     const L = b.loop, w = TAU / 1.5 * L.dir;
     b.g += w * dt; L.a += Math.abs(w) * dt;
     if (b.s < 32) { b.loop = null; b.g = Math.atan2(Math.sin(b.g), Math.cos(b.g)); b.pitch = -b.g; }
-    else if (L.a >= TAU) { b.loop = null; b.g = Math.atan2(Math.sin(b.g), Math.cos(b.g)); b.pitch = -b.g; b.flipT = 3; G.emit('flip', { dir: L.dir }); }
+    else if (L.a >= TAU) { b.loop = null; b.g = Math.atan2(Math.sin(b.g), Math.cos(b.g)); b.pitch = -b.g; b.flipT = 3; G.emit('flip', { dir: L.dir }); G.emit('trick', { kind: L.dir > 0 ? 'loop' : 'frontflip' }); }
   } else {
     // control authority grows with airspeed; mid-turn the hawk levels out
     if (b.yaw) gT = lerp(gT, clamp(gT, -.3, .25), .7);
