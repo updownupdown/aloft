@@ -36,6 +36,8 @@ export function createUI({ audio, G, store, species, onPause, playSong, haptics,
           <button data-act="glide" class="sw" role="switch"><span>Glide line</span><i></i></button>
           <button data-act="quiet" class="sw" role="switch"><span>Quiet meters <small>hide when full</small></span><i></i></button>
           <button data-act="lefty" class="sw" role="switch"><span>Left-handed</span><i></i></button>
+          <button data-act="onethumb" class="sw" role="switch"><span>One thumb</span><i></i></button>
+          <button data-act="saver" class="sw" role="switch"><span>Battery saver</span><i></i></button>
           <button data-act="full" class="sw hidden" role="switch"><span>Full screen</span><i></i></button>
           <button data-act="install" class="row-btn hidden">Install on this phone</button>
           <button data-act="quit" class="row-btn hidden">Quit</button>
@@ -68,11 +70,13 @@ export function createUI({ audio, G, store, species, onPause, playSong, haptics,
             <li><b>One up and one down</b> tilts the nose. Pushed hard over at speed it flies one <b>loop</b> (nose up) or <b>front flip</b> (nose down); bring the sticks back toward the middle before the next. A cloud ring straight after gives a big burst of speed.</li>
             <li><b>Both inward</b> picks a branch nearby and flies to it. <b>Inward and down</b> picks a mouse or a fish and stoops on it. <b>Inward and up</b> finds the nearest thermal and heads for it. Let go to break off.</li>
             <li><b>Both outward</b> hangs the hawk on beating wings to look around (it tires them). <b>Outward and down</b> is a stoop, wings tucked. <b>Outward and up</b> gives the hawk's call.</li>
+            <li><b>One thumb</b> (Settings) plays it all on one stick: tap to flap, hold up to glide, down to land, inward to perch or hunt, outward to turn round. On a branch, tap to fly and flick sideways to hop. <b>Battery saver</b> runs at 30 frames a second; it comes on by itself when the battery is low.</li>
             <li>On a branch or the ground: tap <b>one stick</b> to hop that way; tap <b>both</b> to take off; push <b>both down</b> to eat or drink, or on a branch to drop down to the one below.</li>
             <li>In the middle of the screen, tap things to go to them (a branch, berries, the water). Press and hold there to point the hawk at your finger, as before.</li>
             <li>Let go and the hawk glides on its own. Diving builds speed; pulling up trades it for height. Too slow and it stalls.</li>
             <li>To land softly, <b>flare</b>: point up just before the branch or the ground.</li>
-            <li><b>Thermals</b> rise above the treeline on sunny afternoons. Let go inside one and the hawk floats up as it glides across; turn back to stay in it, and the lift is strongest in the core. Look for <b>leaves</b> spiralling upward. <b>Cloud rings</b> hang all over the sky; fly through one for a burst of speed. Wind against a hillside gives <b>ridge lift</b>. Rising air beeps.</li>
+            <li><b>Thermals</b> rise above the treeline on sunny afternoons. Let go inside one and the hawk floats up as it glides across; turn back to stay in it, and the lift is strongest in the core. Look for <b>leaves</b> spiralling upward. <b>Cloud rings</b> hang all over the sky; fly through one for a burst of speed. Wind against a hillside gives <b>ridge lift</b>: where grass and leaves stream uphill, glide along the face without a wingbeat. Rising air beeps.</li>
+            <li>Every thermal tops out in a <b>cloud</b>. Fly into one and you carve a tunnel through it that slowly heals. On autumn days wild hawks gather in a strong thermal and circle up it together, a <b>kettle</b>: join them and you climb faster, then follow their line when they peel off south. On calm evenings long <b>lens-shaped clouds</b> hang over the mountains; climb high below them for smooth, silent <b>wave lift</b>.</li>
             <li><b>Kiting:</b> face into the wind, low over open ground, and hold the nose a little up. The hawk hangs still on the air and the mice below show themselves. Point down to stoop on one.</li>
             <li>The <b>call</b> button (top) gives the red-tail's scream. Mice freeze in the open, other hawks answer, and your companion or fledgling comes to you. Keyboard: C.</li>
             <li><b>Tap a branch</b> to fly to it and perch. From evening on, a perched hawk can tap <b>Sleep</b> (top) to roost until dawn.</li>
@@ -105,7 +109,7 @@ export function createUI({ audio, G, store, species, onPause, playSong, haptics,
   letter(menu);
   const q = s => menu.querySelector(s);
   const soundBtn = q('[data-act=sound]'), musicBtn = q('[data-act=music]'), glideBtn = q('[data-act=glide]'), quietBtn = q('[data-act=quiet]');
-  const hapticsBtn = q('[data-act=haptics]'), leftyBtn = q('[data-act=lefty]');
+  const hapticsBtn = q('[data-act=haptics]'), leftyBtn = q('[data-act=lefty]'), oneBtn = q('[data-act=onethumb]'), saverBtn = q('[data-act=saver]');
   root.classList.toggle('lefty', !!G.settings.lefty);
   const installBtn = q('[data-act=install]'), book = q('.songbook');
   const modeBtn = q('[data-act=musicmode]');
@@ -163,7 +167,7 @@ export function createUI({ audio, G, store, species, onPause, playSong, haptics,
     q('.sub').textContent = hooks.subtitle ? hooks.subtitle() : 'Paused';
     const sw = (el, on) => { el.classList.toggle('on', !!on); el.setAttribute('aria-checked', !!on); };
     if (hooks.musicMode) { const m = hooks.musicMode(); modeBtn.querySelector('em').textContent = hooks.musicModes.find(x => x[0] === m)?.[1] ?? m; }
-    sw(soundBtn, audio.on); sw(musicBtn, G.settings.music); sw(glideBtn, G.settings.glide); sw(quietBtn, G.settings.quiet); sw(hapticsBtn, haptics?.on); sw(leftyBtn, G.settings.lefty); sw(fullBtn, G.settings.full);
+    sw(soundBtn, audio.on); sw(musicBtn, G.settings.music); sw(glideBtn, G.settings.glide); sw(quietBtn, G.settings.quiet); sw(hapticsBtn, haptics?.on); sw(leftyBtn, G.settings.lefty); sw(oneBtn, G.settings.oneThumb); sw(saverBtn, G.settings.saver); sw(fullBtn, G.settings.full);
     if (!haptics) hapticsBtn.classList.add('hidden');
     book.innerHTML = '';
     for (const sp of species) {
@@ -225,6 +229,8 @@ export function createUI({ audio, G, store, species, onPause, playSong, haptics,
     if (act === 'haptics' && haptics) { haptics.setOn(!haptics.on); if (haptics.on) haptics.land(false); refresh(); }
     if (act === 'full') { hooks.fullscreen(!G.settings.full); refresh(); }
     if (act === 'quit') { close(); hooks.quit(); }
+    if (act === 'onethumb') { G.settings.oneThumb = !G.settings.oneThumb; store.set('oneThumb', G.settings.oneThumb); refresh(); }
+    if (act === 'saver') { G.settings.saver = !G.settings.saver; store.set('saver', G.settings.saver); refresh(); }
     if (act === 'lefty') { G.settings.lefty = !G.settings.lefty; store.set('lefty', G.settings.lefty); root.classList.toggle('lefty', G.settings.lefty); refresh(); }
     if (act === 'share') {
       const el = e.target, url = hooks.journal?.().link || location.href;

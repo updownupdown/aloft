@@ -25,6 +25,8 @@ web/style.css           DOM overlay in the Pigment style (menu button, pause men
 web/src/game.js         state, systems (meters, weather, clock, critters, songs), taps, loop, HUD meters
 web/src/bird.js         hawk flight model, perch/ground/swim states, animation pose
 web/src/world.js        procedural world: biomes, ground, ponds + fish, landmarks, trees + perches, bushes, twigs, worms, mice, thermals, rings
+web/src/air.js          wave lift + lens clouds, kettles of wild hawks, cumulus at the cloudbase and the tunnels carved in them
+web/src/airart.js       their art: lens clouds, kettle hawks, carved cumulus, ridge-lift grass lean and streaming leaves
 web/src/render.js       draws a frame (sky, parallax hills, world layer, hawk, weather)
 web/src/paint.js        watercolour toolkit: wash, bloom, softWash, lift, paper textures
 web/src/palette.js      day / dusk / night palettes blended by time of day, greyed by weather
@@ -82,7 +84,7 @@ add colours there rather than inline.
 ## Gameplay tuning (where the numbers live)
 
 - Flight: `bird.js` constants (gravity, drag, relax angle, stall, flap) and `world.js`
-  `lift()` for thermal strength. Both sticks tapped together = one flap; `flap(b, power, G, sync)`
+  `lift()` for thermal strength. Ridge lift: `world.js` `ridgeLift()` and `TUNE.ridge`; wave lift and kettles: top of `air.js`. Both sticks tapped together = one flap; `flap(b, power, G, sync)`
   scales cost and thrust by sync. Stick timing constants: top of `sticks.js`; gesture thresholds: top of `controls.js`.
 - Camera zoom (`ZOOM` default, `ZOOM_OUT` high and fast) and the two-tap take-off window: top of
   `game.js`. `G.view` is the zoomed world view; `G.view.scr` is screen space (sky, far hills,

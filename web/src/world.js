@@ -342,14 +342,25 @@ export function lift(x, y, time) {
 }
 // horizontal wind, a little stronger with height and over the cliffs
 export const windAt = (y, x) => env.wind * (1 + clamp(-y / 600, 0, 1) * .6) * (x === undefined ? 1 : blended(x, 'wind'));
-// ridge lift: wind meeting a rising hillside is pushed up along its windward face
+// ridge lift: wind meeting a rising hillside is pushed up along its windward face, and keeps
+// rising a little way out over the crest, so a hawk can slope-soar a ridge without a wingbeat.
+// The ground is sampled every 40 units into the wind and the strongest face nearby counts.
+const RIDGE_D = [-80, -40, 0, 40, 80, 120];
 export function ridgeLift(x, y) {
-  const gy = groundY(x), h = gy - y;
-  if (h < 0 || h > 170) return 0;
-  const slope = (groundY(x + 30) - groundY(x - 30)) / 60;   // negative when the ground rises to the right
-  const up = -windAt(y, x) * slope;
-  if (up <= 0) return 0;
-  return up * TUNE.ridge * smooth(0, 12, h) * (1 - smooth(50, 170, h));
+  const wind = windAt(y, x), aw = Math.abs(wind);
+  if (aw < .4) return 0;
+  const dir = Math.sign(wind), g = RIDGE_D.map(d => groundY(x + dir * d));
+  let best = 0;
+  for (let i = 1; i < g.length - 1; i++) {
+    const d = RIDGE_D[i], h = g[i] - y;
+    if (h < 0 || h > 250) continue;
+    const rise = clamp((g[i - 1] - g[i + 1]) / 80, 0, 1.2);   // how steeply the ground climbs into the wind
+    const v = rise * smooth(0, 14, h) * (1 - smooth(110, 250, h)) * (d < 0 ? .7 : 1 - d / 200);
+    if (v > best) best = v;
+  }
+  return aw * best * TUNE.ridge;
 }
+// how mountainous the land is at x, 0 (meadow) to 1 (high crags): wave lift forms over it
+export const rugged = x => smooth(1.3, 2.6, blended(x, 'amp'));
 // total upward air speed at a point
 export const updraft = (x, y, time) => lift(x, y, time) + ridgeLift(x, y);

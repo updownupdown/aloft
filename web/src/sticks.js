@@ -2,6 +2,7 @@
 //  - tap both sticks together to flap; the closer together the taps, the cleaner the beat
 //  - a tap on one stick alone is a weak half-beat in the air, a hop on a branch or the ground
 //  - a quick sideways flick of one stick turns that way
+//  - one-thumb mode (setSingle) uses one stick alone: every tap on it is a clean flap
 //  - held sticks report where they point (x right, y up, each -1 to 1); controls.js reads the
 //    pair as combinations: both up, both down, both inward, one up and one down, and so on
 // A stick measures from where the thumb came down, so a thumb never has to find the centre.
@@ -66,7 +67,7 @@ export function createSticks() {
     return { el, base, knob, px: 0 };
   };
   const els = { L: mk('l'), R: mk('r') };
-  const S = { L: null, R: null, pend: null, events: [] };
+  const S = { L: null, R: null, pend: null, events: [], single: null };
   const now = () => performance.now() / 1000;
   const geo = side => { const r = els[side].el.getBoundingClientRect(); return { cx: r.left + r.width / 2, cy: r.top + r.height / 2, R: r.width / 2 }; };
   const vec = (f, R) => {
@@ -78,6 +79,7 @@ export function createSticks() {
   // which stick (if any) a touch at screen point x, y belongs to: anywhere near its pool
   function zoneAt(x, y) {
     for (const side of ['L', 'R']) {
+      if (S.single && side !== S.single) continue;
       const g = geo(side);
       if (g.R && Math.hypot(x - g.cx, y - g.cy) < g.R * 1.9) return side;
     }
@@ -107,6 +109,7 @@ export function createSticks() {
   }
   // a tap waits a moment for its partner on the other stick; pressed close together they are one beat
   function tap(side, t, u) {
+    if (S.single) { S.events.push({ type: 'flap', sync: 1, gap: 0, first: side, up: u, single: true }); flash('sync'); return; }
     const p = S.pend;
     if (p && p.side !== side && Math.abs(t - p.t) < PAIR) {
       const gap = Math.abs(t - p.t);
@@ -144,6 +147,8 @@ export function createSticks() {
     const ev = S.events; S.events = [];
     return { held, events: ev };
   }
-  function show(on) { for (const s of ['L', 'R']) els[s].el.classList.toggle('faded', !on); }
-  return { zoneAt, down, move, up, frame, show, el: side => els[side].el, owns: id => !!sideOf(id) };
+  function show(on) { for (const s of ['L', 'R']) { els[s].el.classList.toggle('faded', !on); els[s].el.classList.toggle('off', !!S.single && s !== S.single); } }
+  // one-thumb mode: only this stick ('L' or 'R') is used and shown; null for both
+  function setSingle(side) { if (side === S.single) return; S.single = side; S.pend = null; if (side) S[side === 'L' ? 'R' : 'L'] = null; }
+  return { zoneAt, down, move, up, frame, show, setSingle, get single() { return S.single; }, el: side => els[side].el, owns: id => !!sideOf(id) };
 }

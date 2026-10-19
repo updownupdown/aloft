@@ -268,6 +268,7 @@ details > small { margin: 4px 0; }
 .stick .knob { margin: 0; transition: transform .08s; opacity: .85; }
 .stick.touch .knob { opacity: 1; transition: none; }
 .stick.faded { opacity: 0; }
+.stick.off { visibility: hidden; }   /* one-thumb mode: the unused stick keeps its place for the song rings */
 .stick.sync { animation: beat-sync .5s ease-out; }
 .stick.ragged { animation: beat-ragged .5s ease-out; }
 @keyframes beat-sync { from { box-shadow: 0 0 0 3px rgba(79, 111, 158, .5); background-color: rgba(79, 111, 158, .12); } }

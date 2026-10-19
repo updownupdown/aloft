@@ -11,7 +11,7 @@ export const DEFAULTS = {
   stamina: 0.12,     // stamina spent per flap (of 1)
   regen: 0.2,        // stamina regained per second while gliding
   thermal: 48,       // peak thermal climb, units / s
-  ridge: 1.1,        // ridge lift per unit of wind
+  ridge: 2.6,        // ridge lift per unit of wind
   flare: 0.9,        // extra braking when nose-high
 };
 export const RANGES = {

@@ -8,6 +8,7 @@
 import { TAU, clamp, lerp, smooth } from './util.js';
 import * as W from './world.js';
 import { TUNE as T } from './tune.js';
+import { waveLift, kettleBoost, cumuliIn, inCloud } from './air.js';
 
 // Each flap spends stamina that refills while gliding, so spamming taps stops working
 // and thermals and ridge lift matter. Nose-high near a landing spot is a flare: it
@@ -146,7 +147,7 @@ export function predictGlide(b, G, maxT = 3.5) {
     g += clamp(gT - g, -rate * dt, rate * dt);
     s = clamp(s + (-T.gravity * Math.sin(g) - dragOf(s)) * dt, 8, MAX_SPEED);
     x += (Math.cos(g) * s * b.face + W.windAt(y) * .5) * dt;
-    y += (-Math.sin(g) * s - W.updraft(x, y, G.t)) * dt;
+    y += (-Math.sin(g) * s - W.updraft(x, y, G.t) - waveLift(x, y)) * dt;
     pts.push([x, y]);
     const wy = W.waterAt(x), gy = wy ?? W.groundY(x);
     if (y + FEET >= gy) { pts.end = 'ground'; break; }
@@ -169,8 +170,13 @@ export function updateBird(b, dt, inp, G) {
 
 function fly(b, dt, inp, G) {
   if (b.hop) { hop(b, dt, G); return; }
-  const thermal = W.lift(b.x, b.y, G.t), air = thermal + W.ridgeLift(b.x, b.y);
-  b.air = air;
+  // rising air: thermals (stronger inside a kettle of wild hawks, which mark the core), wind
+  // up a ridge, the evening wave over the mountains, a gentle lift close behind hawks gliding
+  // south, and the soft pull up into a cloud
+  const kb = kettleBoost(b, G), wave = waveLift(b.x, b.y);
+  const cloud = b.y < W.CEILING + 40 && cumuliIn(b.x, b.x).some(c => inCloud(c, b.x, b.y)) ? 4 : 0;
+  const thermal = W.lift(b.x, b.y, G.t) * kb.k, air = thermal + W.ridgeLift(b.x, b.y) + wave + kb.follow + cloud;
+  b.air = air; b.wave = wave; b.kettle = kb.k > 1 ? 'join' : kb.follow ? 'follow' : null;
   // hands off, the hawk holds its attitude: extra speed lifts the nose, too little drops it
   let gT = T.relax + clamp((b.s - 88) * .007, -.5, .45), manual = false, aim = 0, adx = 0, ady = 0;
   if (inp.steer) {
