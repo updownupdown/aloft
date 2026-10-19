@@ -23,6 +23,8 @@ import { createHaptics } from './haptics.js';
 import { createIntentions } from './intentions.js';
 import { createFauna, updateFauna, squirrelTree } from './fauna.js';
 import { GFX, loadGfx, overlay, record, stats } from './gfx.js';
+import { createGhosts, updateGhost, saveGhosts, ghostDebug } from './ghost.js';
+import { createNight, updateNight } from './night.js';
 import { createEnc, updateEncounters, caughtFish, scrapsIn, eatScrap, morphOf, encDebug } from './encounters.js';
 import { spriteCount } from './paint.js';
 import { captureSightings, guidePages, pageName } from './guide.js';
@@ -80,6 +82,7 @@ export function start(canvas) {
     settings: { glide: store.get('glide', true), music: store.get('music', true), lefty: store.get('lefty', false), full: store.get('full', true), quiet: store.get('quietHud', true) },
   };
   const saved = loadJourney(G, store);
+  G.ghosts = createGhosts(store); G.night = createNight();
   loadStory(G, saved);
   const b = G.bird;
   if (saved) { b.x = saved.x; G.clockT = saved.clockT; G.thirst = saved.thirst; G.hunger = saved.hunger; }
@@ -164,7 +167,7 @@ export function start(canvas) {
     const n = 'Digit1 Digit2 Digit3 Digit4 Digit5'.split(' ').indexOf(k);
     if (n >= 0 && G.staff.mode) { audio.note(n, G.voiceNow(), .18); singer.glow(n); singNote(n); }
   };
-  const persist = () => { if (!G.noSave) saveJourney(G, store); };
+  const persist = () => { if (!G.noSave) { saveJourney(G, store); saveGhosts(G); } };
   // hidden (another app, another tab, the screen off): save, pause and go quiet; sound comes back on return
   document.addEventListener('visibilitychange', () => { if (document.hidden) { persist(); audio.suspend(); if (!G.paused) ui.open(); } else { audio.resume(); stayAwake(); } });
   addEventListener('pagehide', () => { persist(); audio.suspend(); });
@@ -674,6 +677,7 @@ export function start(canvas) {
     updateFlock(G, dt, audio, once);
     updateCrows(G, dt, { audio, haptics, once }); updateFauna(G, dt, { audio, once });
     updateEncounters(G, dt, { audio, haptics, once, toast: ui.toast, store, makeHawk });
+    updateGhost(G, dt, { once }); updateNight(G, dt, { audio, once });
     if (G.spawnYoung) { G.spawnYoung = false; G.hawks.push(Object.assign(makeHawk(G.nest.x, G.nest.y - 10, 'young'), { morph: morphOf(G.nest) })); }
     G.hawks = G.hawks.filter(h => updateHawk(G, h, dt));
     if (G.hawks.some(h => h.kind === 'companion' && h.life < 1)) once('companion', 'A red-shouldered hawk, smaller than you, its tail barred black and white. Follow it: it knows where the thermals and food are.');
@@ -926,7 +930,7 @@ export function start(canvas) {
     trick: k => events.trick({ kind: k || 'loop' }),
     heron() { const p = W.pondsIn(b.x, b.x + 20000).find(p => p.w >= 40 && hash(p.k * 4.4 + 2) <= .32); fresh(); b.state = 'fly'; b.x = p.c - 150; b.y = p.waterY - 60; b.s = 70; b.face = 1; snap(); return p; },
   };
-  Object.assign(G.dbg, encDebug(G, { fresh, snap }));
+  Object.assign(G.dbg, encDebug(G, { fresh, snap }), ghostDebug(G, { fresh, snap }));
   window.__aloft = G;
   return G;
 }
