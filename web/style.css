@@ -173,24 +173,31 @@ details > .map { margin: 6px 0; }
 }
 .perf canvas { display: block; width: 240px; height: 40px; margin-top: 3px; }
 
-/* singing: an italic title button at the top centre, pigment dots under it, a paper strip down the right */
-.sing-btn {
-  position: absolute; left: 50%; top: calc(10px + env(safe-area-inset-top)); transform: translateX(-50%);
-  min-height: 44px; padding: 0 22px; border-radius: 22px; border: 1.25px solid var(--ink); background: rgba(244, 238, 225, .85);
-  font-family: var(--title); font-style: italic; font-weight: 600; font-size: 21px; letter-spacing: 0; color: var(--ink); cursor: pointer; white-space: nowrap;
-}
-.sing-btn.on { border-color: transparent; color: var(--card); background: var(--berry-wash); box-shadow: inset 0 0 0 1.2px rgba(122, 48, 34, .6); }
-.sing-dots { position: absolute; left: 50%; top: calc(60px + env(safe-area-inset-top)); transform: translateX(-50%); display: flex; gap: 8px; pointer-events: none !important; }
+/* singing: pigment dots for the song in progress at the top centre, and two half rings of
+   pools round the sticks (notes on one side, the birds you know on the other) */
+.sing-dots { position: absolute; left: 50%; top: calc(14px + env(safe-area-inset-top)); transform: translateX(-50%); display: flex; gap: 8px; pointer-events: none !important; }
 .sing-dots i { width: 9px; height: 9px; border-radius: 50%; border: 1px solid rgba(58, 36, 24, .5); transition: background .15s; }
 .sing-dots i.on { background: rgba(58, 36, 24, .8); border-color: rgba(58, 36, 24, .8); }
 .sing-dots i.done { background: var(--indigo); border-color: var(--indigo); }
 .sing-dots i.wrong { background: var(--berry); border-color: var(--berry); }
 .sing-dots i.bird { background: none; border-style: dotted; border-color: rgba(58, 36, 24, .6); opacity: .75; }
-.sing-strip {
-  position: absolute; right: var(--strip-in-r); top: var(--strip-top); bottom: var(--strip-bot); width: var(--strip-w);
-  background: rgba(244, 238, 225, .82); border: 1px solid rgba(58, 36, 24, .25); border-radius: 14px; touch-action: none;
+.song-ring { position: absolute; left: 0; top: 0; width: 0; height: 0; touch-action: none; transition: opacity .3s; }
+.song-ring .pool {
+  position: absolute; width: 34px; height: 34px; padding: 0; border: 0; border-radius: 50%; cursor: pointer; touch-action: none;
+  background: center / 100% no-repeat; box-shadow: 0 0 0 1px rgba(58, 36, 24, .14); transition: transform .12s;
 }
-.sing-strip canvas { display: block; width: 100%; height: 100%; }
+.song-ring .pool::after { content: ''; position: absolute; inset: -12px; border-radius: 50%; }   /* a larger touch target */
+.song-ring .pool span {
+  position: absolute; left: 50%; top: 100%; transform: translateX(-50%); margin-top: 1px; white-space: nowrap; pointer-events: none;
+  font-size: 10px; font-style: italic; color: var(--ink2); text-shadow: 0 0 5px rgba(244, 238, 225, .95);
+}
+.song-ring .pool.next { box-shadow: 0 0 0 2px rgba(168, 72, 58, .8); }
+.song-ring .pool.hit { animation: pool-hit .45s ease-out; }
+.song-ring .pool.glow { animation: pool-glow .7s ease-out; }
+@keyframes pool-hit { from { transform: scale(1.3); filter: saturate(1.6) brightness(.85); } }
+@keyframes pool-glow { from { transform: scale(1.18); box-shadow: 0 0 0 3px rgba(47, 74, 116, .45); } }
+.song-ring.hidden, .sing-dots.hidden { display: none; }
+#ui.menu-open .song-ring { display: none; }
 
 /* the clock, top right: a sun arc over a horizon line, the hours flown washed in, the day beneath */
 .dial { position: absolute; right: calc(12px + env(safe-area-inset-right)); top: calc(6px + env(safe-area-inset-top)); width: 104px; pointer-events: none !important; display: flex; flex-direction: column; align-items: center; color: var(--ink); }
@@ -211,59 +218,49 @@ details > small { margin: 4px 0; }
 
 /* the hawk's call: a paper ring like the menu button, washed with the red of the hawk's tail */
 .call-btn {
-  position: absolute; right: calc(var(--strip-in-r) + var(--strip-w) + 10px); top: calc(10px + env(safe-area-inset-top));
+  position: absolute; right: var(--hud-r); top: calc(10px + env(safe-area-inset-top));
   width: 46px; height: 46px; border-radius: 50%; border: 1.25px solid rgba(58, 36, 24, .5); padding: 0 0 2px; cursor: pointer;
   background: radial-gradient(circle at 38% 36%, rgba(184, 90, 74, .32), rgba(244, 238, 225, .8) 68%);
   font-family: var(--title); font-style: italic; font-weight: 600; font-size: 17px; color: var(--ink);
 }
 .call-btn:active { background: var(--berry-wash); color: var(--card); border-color: transparent; }
 /* the corner buttons step back while the menu is open */
-#ui.menu-open .call-btn, #ui.menu-open .sing-btn, #ui.menu-open .sing-dots, #ui.menu-open .sleep-btn, #ui.menu-open .sing-cheer { display: none; }
+#ui.menu-open .call-btn, #ui.menu-open .sing-dots, #ui.menu-open .sleep-btn, #ui.menu-open .sing-cheer { display: none; }
 /* sleep: a paper pill beside the call button, offered on a branch once evening comes */
 .sleep-btn {
-  position: absolute; right: calc(var(--strip-in-r) + var(--strip-w) + 66px); top: calc(10px + env(safe-area-inset-top));
+  position: absolute; right: calc(var(--hud-r) + 56px); top: calc(10px + env(safe-area-inset-top));
   height: 46px; padding: 0 18px 2px 34px; border-radius: 23px; border: 1.25px solid rgba(58, 36, 24, .5); cursor: pointer;
   background: radial-gradient(circle at 30% 40%, rgba(79, 111, 158, .3), rgba(244, 238, 225, .85) 70%);
   font-family: var(--title); font-style: italic; font-weight: 600; font-size: 18px; color: var(--ink);
 }
 .sleep-btn::before { content: ''; position: absolute; left: 12px; top: 50%; width: 12px; height: 12px; margin-top: -7px; border-radius: 50%; box-shadow: 4px 1px 0 0 var(--ochre); }   /* a crescent moon */
-#ui.lefty .sleep-btn { right: auto; left: calc(var(--strip-in-l) + var(--strip-w) + 66px); }
 /* a finished song: one italic line under the progress dots, washed in indigo */
 .sing-cheer {
-  position: absolute; left: 50%; top: calc(80px + env(safe-area-inset-top)); transform: translate(-50%, 6px); opacity: 0; pointer-events: none !important;
+  position: absolute; left: 50%; top: calc(34px + env(safe-area-inset-top)); transform: translate(-50%, 6px); opacity: 0; pointer-events: none !important;
   padding: 5px 18px 6px; border-radius: 18px; background: var(--indigo-wash); color: var(--card); white-space: nowrap;
   font-family: var(--title); font-style: italic; font-weight: 600; font-size: 19px; transition: opacity .35s, transform .35s;
 }
 .sing-cheer.show { opacity: 1; transform: translate(-50%, 0); }
-/* left-handed: the string and the call button swap sides */
-#ui.lefty .sing-strip { right: auto; left: var(--strip-in-l); }
-#ui.lefty .call-btn { right: auto; left: calc(var(--strip-in-l) + var(--strip-w) + 10px); }
 
-/* the thumb strips: faint paper bands standing in from the edges (clear of the phone's own
-   edge gestures), split by a pencil line into a high half and a low half */
+/* the joysticks: a pale washed pool in each bottom corner, standing in from the edges (clear of
+   the phone's own edge gestures), with a darker knob that leans where the thumb pushes */
 :root {
-  --strip-w: clamp(78px, 16vw, 150px); --strip-top: calc(66px + env(safe-area-inset-top)); --strip-bot: calc(30px + env(safe-area-inset-bottom));
-  --strip-in-l: max(18px, calc(env(safe-area-inset-left) + 8px)); --strip-in-r: max(18px, calc(env(safe-area-inset-right) + 8px));
+  --stick: clamp(96px, 27vmin, 140px); --stick-bot: calc(22px + env(safe-area-inset-bottom));
+  --stick-in-l: max(26px, calc(env(safe-area-inset-left) + 14px)); --stick-in-r: max(26px, calc(env(safe-area-inset-right) + 14px));
+  --hud-r: calc(130px + env(safe-area-inset-right));
 }
-.strip {
-  position: absolute; top: var(--strip-top); bottom: var(--strip-bot); width: var(--strip-w); border-radius: 14px; pointer-events: none !important;
-  background: linear-gradient(90deg, rgba(244, 238, 225, .1), rgba(244, 238, 225, .16)); box-shadow: inset 0 0 0 1px rgba(58, 36, 24, .09);
-  transition: opacity .4s;
-}
-.strip-l { left: var(--strip-in-l); }
-.strip-r { right: var(--strip-in-r); }
-.strip b { position: absolute; left: 22%; right: 22%; top: 50%; height: 1px; background: rgba(58, 36, 24, .2); }
-.strip i {
-  position: absolute; left: 0; top: 0; width: 38px; height: 38px; margin: -19px 0 0 -19px; border-radius: 50%; opacity: 0;
-  background: radial-gradient(circle, rgba(79, 111, 158, .4), rgba(79, 111, 158, .12) 55%, transparent 72%); transition: opacity .15s;
-}
-.strip.touch i { opacity: 1; }
-.strip.faded { opacity: 0; }
-.strip.sync { animation: beat-sync .5s ease-out; }
-.strip.ragged { animation: beat-ragged .5s ease-out; }
-@keyframes beat-sync { from { box-shadow: inset 0 0 0 2px rgba(79, 111, 158, .6); background-color: rgba(79, 111, 158, .14); } }
-@keyframes beat-ragged { from { box-shadow: inset 0 0 0 2px rgba(168, 72, 58, .55); background-color: rgba(168, 72, 58, .1); } }
-#ui.menu-open .strip { opacity: 0; }
+.stick { position: absolute; bottom: var(--stick-bot); width: var(--stick); height: var(--stick); border-radius: 50%; pointer-events: none !important; transition: opacity .4s; }
+.stick-l { left: var(--stick-in-l); }
+.stick-r { right: var(--stick-in-r); }
+.stick canvas { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); }
+.stick .knob { margin: 0; transition: transform .08s; opacity: .75; }
+.stick.touch .knob { opacity: 1; transition: none; }
+.stick.faded { opacity: 0; }
+.stick.sync { animation: beat-sync .5s ease-out; }
+.stick.ragged { animation: beat-ragged .5s ease-out; }
+@keyframes beat-sync { from { box-shadow: 0 0 0 3px rgba(79, 111, 158, .5); background-color: rgba(79, 111, 158, .12); } }
+@keyframes beat-ragged { from { box-shadow: 0 0 0 3px rgba(168, 72, 58, .5); background-color: rgba(168, 72, 58, .1); } }
+#ui.menu-open .stick { opacity: 0; }
 
 /* the journal's intention, album and world line */
 /* the day's intention: an italic note set off by a stroke of ochre, the colour of the feathers it earns */
