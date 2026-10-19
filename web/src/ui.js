@@ -29,8 +29,8 @@ export function createUI({ audio, G, store, species, onPause, playSong, haptics,
         <button data-act="haptics" class="half"></button>
         <button data-act="lefty" class="half"></button>
       </div>
-      <button data-act="install" class="hidden">Install the app</button>
-      <details class="journal-sec hidden">
+      <button data-act="install" class="hidden">Install on this phone</button>
+      <details class="journal-sec sec-journal hidden">
         <summary>Journal</summary>
         <p class="journey"></p>
         <canvas class="map" width="720" height="150"></canvas>
@@ -40,13 +40,13 @@ export function createUI({ audio, G, store, species, onPause, playSong, haptics,
         <ul class="landmarks"></ul>
         <h3>Album</h3>
         <div class="album"></div>
-        <p class="world"><span></span> <button data-act="share" class="play">Share this world</button></p>
+        <p class="world"><span></span> <button data-act="share" class="quiet">Share this world</button></p>
       </details>
-      <details>
+      <details class="sec-songbook">
         <summary>Songbook</summary>
         <ul class="songbook"></ul>
       </details>
-      <details>
+      <details class="sec-howto">
         <summary>How to play</summary>
         <ul class="howto">
           <li><b>Tap</b> to flap. One tap, one wingbeat. Each flap tires the wings; when they are spent they won't beat until gliding rests them.</li>
@@ -68,7 +68,7 @@ export function createUI({ audio, G, store, species, onPause, playSong, haptics,
           <li>Keyboard: Space flap, arrow keys or WASD to steer and walk, E to drink or eat, Esc for this menu.</li>
         </ul>
       </details>
-      <details>
+      <details class="sec-gfx">
         <summary>Graphics</summary>
         <div class="gfx-list"></div>
         <small>Turn layers off if the game runs slowly on your device. Resolution "auto" lowers itself while frames are slow.</small>
@@ -124,16 +124,18 @@ export function createUI({ audio, G, store, species, onPause, playSong, haptics,
     q('.sub').textContent = hooks.subtitle ? hooks.subtitle() : 'Paused';
     soundBtn.textContent = `Sound: ${audio.on ? 'on' : 'off'}`;
     musicBtn.textContent = `Music: ${G.settings.music ? 'on' : 'off'}`;
+    soundBtn.classList.toggle('on', audio.on); musicBtn.classList.toggle('on', G.settings.music);
     glideBtn.textContent = `Glide line: ${G.settings.glide ? 'shown' : 'hidden'}`;
-    hapticsBtn.textContent = `Vibration: ${haptics?.on ? 'on' : 'off'}`;
-    leftyBtn.textContent = `Left-handed: ${G.settings.lefty ? 'yes' : 'no'}`;
+    hapticsBtn.textContent = `Vibration: ${haptics?.on ? 'on' : 'off'}`; hapticsBtn.classList.toggle('on', !!haptics?.on);
+    leftyBtn.textContent = `Left-handed: ${G.settings.lefty ? 'yes' : 'no'}`; leftyBtn.classList.toggle('on', !!G.settings.lefty);
     book.innerHTML = '';
     for (const sp of species) {
       const li = $('li');
       const known = G.learned.has(sp.id), info = G.songLog?.[sp.id];
       const where = info ? `<small>${info}</small>` : sp.hint ? `<small class="unknown">${sp.hint}</small>` : '';
-      li.innerHTML = `<i style="background:${sp.breast};border-color:${sp.body}"></i><div>${known ? sp.name : '<span class="unknown">Not yet learned</span>'}${where}${known && sp.power ? `<small>Sing it: ${sp.power}</small>` : ''}</div>`;
-      if (known) { const b = $('button', 'play', 'Play'); b.onclick = () => { audio.unlock(); playSong(sp); }; li.append(b); }
+      li.innerHTML = `<i style="--body:${sp.body};--breast:${sp.breast}"></i><div>${known ? sp.name : '<span class="unknown">Not yet learned</span>'}${where}${known && sp.power ? `<small>Sing it: ${sp.power}</small>` : ''}</div>`;
+      if (!known) li.classList.add('unknown-sp');
+      if (known) { const b = $('button', 'play', 'Play'); b.setAttribute('aria-label', `Play the ${sp.name}'s song`); b.onclick = () => { audio.unlock(); playSong(sp); }; li.append(b); }
       book.append(li);
     }
     book.insertAdjacentHTML('afterbegin', `<li class="count">${G.learned.size} of ${species.length} songs learned</li>`);
