@@ -1,9 +1,9 @@
 // Two-thumb controls: a faint strip down each side of the screen, one for each thumb.
 //  - tap both strips together to flap; the closer together the taps, the cleaner the beat
-//  - a tap on one strip alone is a ragged half-beat that swings the hawk's heading
+//  - a tap on one strip alone is a weak half-beat that tires the wings more
 //  - swipe sideways on one strip to turn that way
 //  - hold both thumbs: one up and one down tilts the nose (hard over at speed: a loop),
-//    both low settles the hawk down to land, both high trims it for a long glide
+//    both low settles the hawk down to land, both high trims it for a long glide or rides a thermal
 //  - slide both thumbs inward to focus on something ahead (a mouse, a fish, a branch)
 // The strips stand in from the screen edges so thumbs stay clear of the phone's own gestures.
 const PAIR = .2, TAP = .26, SWIPE = 34, FOCUS_IN = 22;
@@ -63,7 +63,7 @@ export function createStrips() {
     if (p && p.side !== side && Math.abs(t - p.t) < PAIR) {
       const gap = Math.abs(t - p.t);
       S.pend = null;
-      S.events.push({ type: 'flap', sync: 1 - Math.max(0, Math.min(1, (gap - .03) / (PAIR - .03))), gap, first: t < p.t ? side : p.side, up: (u + p.up) / 2 });
+      S.events.push({ type: 'flap', sync: 1 - Math.max(0, Math.min(1, (gap - .05) / (PAIR - .05))), gap, first: t < p.t ? side : p.side, up: (u + p.up) / 2 });
       flash(gap < .06 ? 'sync' : 'ragged');
       return;
     }

@@ -289,20 +289,21 @@ export function miceIn(x0, x1) {
 }
 
 /* ---------- thermals and rings ---------- */
-// Wide, gentle columns: wide enough to glide across for a good climb without circling.
-const TS = 1150;
+// Wide, gentle columns: wide enough to glide across for a good climb without circling, and
+// spaced well apart, so finding one matters.
+const TS = 2300;
 const thCache = new Map(); caches.push(thCache);
 function thermalK(k) {
   if (thCache.has(k)) return thCache.get(k);
   let t = null;
   if (hash(k * 6.6 + 1) < .85) {
-    const c = k * TS + 300 + hash(k * 2.2) * (TS - 600);
-    t = { k, c, w: 130 + 110 * hash(k * 4.2), str: .8 + .35 * hash(k * 5.5), base: groundY(c), rings: [] };
+    const c = k * TS + 520 + hash(k * 2.2) * (TS - 1040);
+    t = { k, c, w: 260 + 220 * hash(k * 4.2), str: .8 + .35 * hash(k * 5.5), base: groundY(c), rings: [] };
     // a treeline-relative column: lift starts just above the tallest trees
     t.y0 = t.base - 110; t.y1 = t.base - 165;
     if (hash(k * 8.8) < .75) {
       const n = 1 + Math.floor(hash(k * 9.9) * 3);
-      for (let j = 0; j < n; j++) t.rings.push({ id: `r${k}_${j}`, x: t.c + (hash(k * 3 + j) - .5) * t.w * 1.6, y: t.base - 280 - j * 110 - hash(k * 7 + j) * 30, r: 15 });
+      for (let j = 0; j < n; j++) t.rings.push({ id: `r${k}_${j}`, x: t.c + (hash(k * 3 + j) - .5) * t.w * 1.4, y: t.base - 280 - j * 110 - hash(k * 7 + j) * 30, r: 15 });
     }
   }
   thCache.set(k, t); if (thCache.size > 2000) thCache.clear(); return t;

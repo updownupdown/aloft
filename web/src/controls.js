@@ -1,6 +1,6 @@
 // What the two thumb strips do, state by state (the strips themselves are in strips.js).
-//  flying:   both tap = flap (ragged taps swing the heading), one tap = a weak half-beat that
-//            swings it, swipe = turn, thumbs held = the yoke, thumbs slid inward = focus
+//  flying:   both tap = flap (ragged taps cost more), one tap = a weak, costly half-beat,
+//            swipe = turn, thumbs held = the yoke, thumbs slid inward = focus
 //  perched, on the ground or swimming: one tap = turn or step that way; both tapped high =
 //            take off; both tapped low = eat or drink, or on a branch drop down a level
 //  singing:  the right strip is the string; the left strip takes off (high) or stops (low)
@@ -12,14 +12,11 @@ const FOCUS_RANGE = 300;
 
 export function createControls({ G, b, strips, singer, interact, once }) {
   const sideDir = s => s === 'L' ? -1 : 1;
-  // a ragged beat swings the heading toward the viewer or away, depending which thumb led
-  const swingOf = (first, sync) => (1 - sync) * .6 * (first === 'L' ? 1 : -1) * b.face;
 
   function onEvent(e) {
     const flying = b.state === 'fly';
     if (e.type === 'flap') {
-      G.lastBeat = { t: G.t, sync: e.sync };
-      if (flying) { flap(b, G.flapPower, G, e.sync, swingOf(e.first, e.sync)); return; }
+      if (flying) { flap(b, G.flapPower, G, e.sync); return; }
       if (e.up > 0) { b.target = null; flap(b, G.flapPower, G); return; }
       if (b.state === 'perch') hopDown(b, G, b.face); else interact();
       return;
@@ -29,7 +26,7 @@ export function createControls({ G, b, strips, singer, interact, once }) {
         if (e.up > 0) { singer.setOpen(false); flap(b, G.flapPower, G); } else singer.setOpen(false);
         return;
       }
-      if (flying) { G.lastBeat = { t: G.t, sync: 0 }; flap(b, G.flapPower * .7, G, .2, .45 * (e.side === 'L' ? 1 : -1) * b.face); return; }
+      if (flying) { flap(b, G.flapPower * .7, G, .2); return; }
       nudge(b, sideDir(e.side));
       return;
     }
