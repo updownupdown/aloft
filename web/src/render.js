@@ -9,6 +9,8 @@ import { GFX } from './gfx.js';
 import { mousePos, fishPos } from './life.js';
 import { drawFauna } from './fauna.js';
 import { sight } from './guide.js';
+import { ghostBird } from './ghost.js';
+import { drawNight } from './night.js';
 import { drawEncountersGround, drawEncountersAir, morphPal } from './encounters.js';
 import { keepsakesIn } from './story.js';
 
@@ -27,6 +29,7 @@ export function render(ctx, G) {
   const cx = G.camC.x, cy = G.camC.y, lift0 = G.camGround - cy;
   background(bx, G, P, S.w, S.h, spx);
   celestial(bx, G, P, S.w, S.h);
+  drawNight(bx, G, P);
   if (GFX.clouds) for (const c of clouds(G, S.w, S.h, cx, lift0)) cloud(bx, c, P, G);
   // far and mid hills: parallax in both axes so climbing high drops them away
   const hz = 1 + (G.view.z - 1) * .45, hw = S.w * hz, hh = S.h * hz, hpx = bw / hw;
@@ -40,6 +43,8 @@ export function render(ctx, G) {
   ctx.drawImage(back, 0, 0, w, h);
   // each hawk is painted on its own small layer first, so its many passes never blend on the big canvas
   const hawks = [...G.hawks.map(hk => hawkLayer(G, hk, P, hk.scale, 'h' + G.hawks.indexOf(hk))), hawkLayer(G, G.bird, P, 1, 'me')];
+  // your own past flight, faint and cool, as if painted in a thin wash of sky
+  const gh = ghostBird(G); if (gh) hawks.unshift({ ...hawkLayer(G, gh.bird, ghostPal(P), 1, 'ghost'), a: gh.fade * .5 });
 
   ctx.save(); ctx.translate(-cam.x, -cam.y);
   const x0 = cam.x - 40, x1 = cam.x + w + 40;
@@ -69,7 +74,7 @@ export function render(ctx, G) {
   for (const o of G.boids) smallBird(ctx, o, P, G);
   for (const c of G.crows) crow(ctx, c, P, G);
   drawEncountersAir(ctx, G, P, smallBird);
-  for (const hl of hawks) ctx.drawImage(hl.c, hl.x, hl.y, hl.w, hl.w);
+  for (const hl of hawks) { if (hl.a) ctx.globalAlpha = hl.a; ctx.drawImage(hl.c, hl.x, hl.y, hl.w, hl.w); ctx.globalAlpha = 1; }
   if (G.carry) carried(ctx, G, P);
   stamina(ctx, G.bird, P);
   if (G.focus) focusMark(ctx, G.focus, P, G);
@@ -884,6 +889,13 @@ function drawHawk(ctx, b, P, G, k = 1) {
 // finely barred breast, and a black tail crossed by narrow white bands (in flight, pale crescent
 // windows near the wingtips). Painted with the red-tail's shapes in its own colours.
 let rsKey = null, rsPal = null;
+let ghKey = null, ghPal = null;
+function ghostPal(P) {
+  if (ghKey === P) return ghPal;
+  ghKey = P; ghPal = { ...P };
+  for (const k of ['bird', 'birdWing', 'birdFar', 'tail', 'beak', 'birdPale']) ghPal[k] = mix(P[k], P.sky, .55);
+  return ghPal;
+}
 function shoulderPal(P) {
   if (rsKey === P) return rsPal;
   rsKey = P; rsPal = { ...P, birdPale: mix(P.tail, P.birdPale, .3), tail: mix(P.birdFar, P.bird, .15), bird: mix(P.bird, P.tail, .18), rs: true };
