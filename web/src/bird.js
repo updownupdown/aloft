@@ -191,15 +191,17 @@ function fly(b, dt, inp, G) {
   // hawk down to land, both high trims it for its longest glide (or, in a thermal, rides it).
   // Tilted hard at speed, it loops.
   // Both outward hangs the hawk on beating wings (it tires them); outward and down is a stoop.
-  const Y = inp.yoke; b.trim = 0; b.ride = null; b.stoop = false;
+  const Y = inp.yoke; b.trim = 0; b.ride = null; b.stoop = false; b.brake = false;
   const hang = !!Y && Y.mode === 'hang' && b.stamina > .04 && !manual;
   if (!manual && Y) {
-    if (Math.abs(Y.p) > .14) { manual = true; gT = b.g + Y.p * 1.8; }
+    if (Y.aimG !== undefined) { manual = true; gT = Y.aimG; }   // a held aim: the path angle to hold
+    else if (Math.abs(Y.p) > .14) { manual = true; gT = b.g + Y.p * 1.8; }
     else if (Y.mode === 'land') { manual = true; aim = -1.2; if (b.s >= 88) gT = .3; }   // fast, it flares to slow first
     else if (Y.mode === 'glide') {
       const th = thermal > 2 && W.thermalAt(b.x);
       if (th) b.ride = th; else { b.trim = 1; gT = -.1; }
     } else if (Y.mode === 'stoop') { manual = true; b.stoop = true; gT = -1.3; }
+    else if (Y.mode === 'brake') { manual = true; b.brake = true; gT = Math.max(-.15, Math.min(gT, .15)); }   // back-beats: slows, never turns
     if (Math.abs(Y.p) > .7 && Y.loopOk !== false && b.s > 88 && !b.loop && !b.yaw && !b.hover) { b.loop = { dir: Math.sign(Y.p), a: 0 }; G.emit('loop'); }
   }
   if (inp.face && inp.face !== b.face) { manual = true; turn(b); }
@@ -246,7 +248,7 @@ function fly(b, dt, inp, G) {
   // the air with small wing trims, scanning the grass below. Strong wind pushes it back a
   // little, weak wind lets it sink; pointing down drops it into a stoop.
   const head = -W.windAt(b.y, b.x) * b.face, up = W.groundY(b.x) - b.y;
-  const canKite = !!inp.steer && head > 5 && b.s < 80 && gT > .12 && gT < .8 && up > 24 && up < 240 && thermal < 15 && !b.yaw && !b.target;
+  const canKite = (!!inp.steer || !!Y?.kite) && head > 5 && b.s < 80 && gT > .12 && gT < .8 && up > 24 && up < 240 && thermal < 15 && !b.yaw && !b.target;
   b.kiteT = clamp(b.kiteT + (canKite ? 2 : -3) * dt, 0, 1);
   if (b.kiteT > .5) { b.kiteLeft = G.t; b.stall = false; }
   if (b.kiteT > 0) gT = lerp(gT, .3, b.kiteT);
@@ -294,6 +296,8 @@ function fly(b, dt, inp, G) {
   // (a loop is flown on momentum the wings help carry; trimmed for gliding, drag eases off)
   b.s = clamp(b.s + (-T.gravity * Math.sin(b.g) * (b.loop ? .35 : 1) - dragOf(b.s) * (b.trim ? .75 : b.stoop ? .55 : 1) * (1 + .25 * (b.wear || 0)) - brake - (b.yaw ? b.s * .22 : 0)) * dt, 8, MAX_SPEED);
   if (b.kiteT > 0) b.s = lerp(b.s, T.stall + 10, b.kiteT * Math.min(1, dt * 6));   // the wind holds a kiting hawk just above stall speed
+  // braking: slow back-beats of the wings shed speed down to just above a stall
+  if (b.brake) { b.s = Math.max(T.stall + 6, b.s - (b.s - 30) * 1.3 * dt); if (b.flapLeft < 1) b.flapLeft = 1; b.stall = false; }
 
   // through a turn the forward speed swings away from the picture and back
   const swing = b.yaw ? Math.abs(Math.cos(Math.PI * Math.min(1, b.yaw.t / b.yaw.dur))) : 1;

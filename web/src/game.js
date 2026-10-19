@@ -6,7 +6,7 @@ import * as W from './world.js';
 import { createBird, updateBird, flap, nudge, perchOn, hopDown, predictGlide, FEET } from './bird.js';
 import { applyTune } from './tune.js';
 import { createInput, readInput } from './input.js';
-import { createSticks } from './sticks.js';
+import { createGestures } from './gestures.js';
 import { createControls } from './controls.js';
 import { createAudio } from './audio.js';
 import { SPECIES, speciesFor, active, timeOfDay } from './songs.js';
@@ -48,7 +48,7 @@ const powerCD = sp => sp.powerKey === 'companion' ? POWER_CD * 4 : POWER_CD;   /
 // Zoom, as how many times more world fits on screen than the art was first drawn at (300 units
 // tall). Perched or low and slow it sits at ZOOM; high and fast it eases out to ZOOM_OUT.
 const ZOOM = 1.5, ZOOM_OUT = 2.85;
-const TAKEOFF_TAPS = .55;      // a second tap within this many seconds takes off
+const TAKEOFF_TAPS = .55;      // (keyboard) a second flap key press within this many seconds takes off
 const RING_BOOST = 85;         // speed a cloud ring adds (more straight out of a loop or flip)
 const CALL_CD = 6;             // seconds between screams
 const CHORUS_S = 150;          // how long the dawn chorus lasts
@@ -62,8 +62,8 @@ const store = {
 
 export function start(canvas) {
   const ctx = canvas.getContext('2d');
-  const sticks = createSticks();
-  const input = createInput(canvas, sticks);
+  const gestures = createGestures(canvas);
+  const input = createInput(canvas, gestures);
   const audio = createAudio();
   audio.on = store.get('sound', true);
   const haptics = createHaptics(store);
@@ -87,7 +87,7 @@ export function start(canvas) {
     // song gifts
     powerCD: {}, wormsT: 0, followT: 0, calmT: 0, tailwindT: 0, tailDir: 1, brightT: 0, warmT: 0, liftT: 0, duskT: 0, singAllT: 0, ripen: null,
     thermalK: 1, streaks: [], glide: null, photo: false,
-    settings: { glide: store.get('glide', true), music: store.get('music', true), lefty: store.get('lefty', false), full: store.get('full', true), quiet: store.get('quietHud', true), oneThumb: store.get('oneThumb', false), saver: store.get('saver', false) },
+    settings: { glide: store.get('glide', true), music: store.get('music', true), lefty: store.get('lefty', false), full: store.get('full', true), quiet: store.get('quietHud', true), saver: store.get('saver', false) },
   };
   const saved = loadJourney(G, store);
   G.ghosts = createGhosts(store); G.night = createNight(); G.skies = createSkies(); G.ridge = createRidge(store); G.coast = createCoast();
@@ -170,7 +170,7 @@ export function start(canvas) {
   }
   input.onKey = k => {
     if (G.photo) { if (k === 'Escape') photo.end(); return; }
-    if (k === 'Escape' || k === 'KeyP') ui.toggle(); if (k === 'KeyE') interact(); if (k === 'KeyC') call();
+    if (k === 'Escape' || k === 'KeyP') ui.toggle(); if (k === 'KeyE') interact(); if (k === 'KeyC') call(.6);
     // number keys 1 to 5 sing the five song notes, for keyboards
     const n = 'Digit1 Digit2 Digit3 Digit4 Digit5'.split(' ').indexOf(k);
     if (n >= 0 && G.staff.mode) { audio.note(n, G.voiceNow(), .18); singer.glow(n); singNote(n); }
@@ -217,7 +217,7 @@ export function start(canvas) {
       if (kind === 'perch') {
         if (soft) { audio.rustle(.7); haptics.land(true); }
         else { audio.thump(.25); audio.rustle(); haptics.land(false); b.hopT = .4; b.stamina = Math.max(0, b.stamina - .1); for (let i = 0; i < 2; i++) part('feather', b.x, b.y - 4, (Math.random() - .5) * 24, -16, 1.4, { a: Math.random() * TAU }); }
-        once('perch', 'Perched. Tap one stick to hop, both to take off, push both down to drop to the branch below. Sing with the pools round the sticks.');
+        once('perch', 'Perched. Tap either side to hop, swipe down to drop to the branch below, swipe up (or three quick taps) to take off. Sing with the pools in the corners.', 6);
         if (!soft) once('softland', 'A clumsy landing. Flare (point up) just before the branch to settle softly.');
         atPerch(G, b.perch, { toast: ui.toast, once, audio, spark });
         if (b.perch.tree) intentions.note('perch', b.perch.tree.i);
@@ -225,9 +225,9 @@ export function start(canvas) {
       if (kind === 'ground') {
         if (soft) { audio.thump(.25); haptics.land(true); }
         else if (speed < 80) { audio.thump(.5); haptics.land(false); puff(b.x, b.y + FEET, 3); b.stamina = Math.max(0, b.stamina - .06); }
-        once('ground', 'On the ground. Tap one stick to hop that way, push both down to eat or drink, tap both to take off.');
+        once('ground', 'On the ground. Tap to hop that way, tap food or water to eat or drink, swipe up (or three quick taps) to take off.', 6);
       }
-      if (kind === 'swim') once('swim', 'Swimming. Tap the water to drink: three sips fill you up. Tap twice quickly to take off.');
+      if (kind === 'swim') once('swim', 'Swimming. Tap the water by the hawk to drink: three sips fill you up. Swipe up to take off.');
     },
   };
   const hintsSeen = new Set(store.get('hints', []));
@@ -313,38 +313,30 @@ export function start(canvas) {
     if (b.state === 'swim' || (b.state === 'ground' && nearWater())) { drink(); return; }
     if (b.state === 'ground') { const f = foodAt(b.x + b.face * 8, b.y, 40); if (f) { if (Math.abs(f.x - b.x) < 12) eat(f); else { b.walkTo = f.x - b.face * 6; G.pendingEat = f; } } }
   }
-  // on a perch, the ground or the water one tap turns or steps toward it; a quick second tap takes off
-  let lastTapT = -9;
-  function tapFlap(dir) {
-    if (b.state === 'fly') { b.target = null; flap(b, G.flapPower, G); return; }
-    if (G.t - lastTapT < TAKEOFF_TAPS) { lastTapT = -9; b.target = null; flap(b, G.flapPower, G); return; }
-    lastTapT = G.t; nudge(b, dir || b.face);
-  }
-  function onTap(p) {
-    const w = toWorld(p), z = G.view.z;
-    // water: drink while swimming or standing at the edge
+  // a tap on something the hawk can use from where it stands: water to drink, food to eat
+  // (walking over to it first). True if the tap was used.
+  function tapThing(w) {
+    const z = G.view.z;
     if ((b.state === 'swim' || (b.state === 'ground' && nearWater())) && Math.abs(w.x - b.x) < 90) {
       const wy = W.waterAt(w.x);
-      if (wy !== null && w.y > wy - 25 && w.y < wy + 30) { drink(); return; }
+      if (wy !== null && w.y > wy - 25 && w.y < wy + 30) { drink(); return true; }
     }
     if (b.state === 'ground') {
       const f = foodAt(w.x, w.y, 9 * z);
       if (f && Math.abs(f.x - b.x) < 180) {
         if (Math.abs(f.x - b.x) < 12) eat(f); else { b.walkTo = f.x - Math.sign(f.x - b.x) * 6; G.pendingEat = f; }
-        return;
+        return true;
       }
     }
-    const pr = nearestPerch(w.x, w.y, 11 * z);
-    // perched, a tap below the hawk drops it down a level: the next branch, or the ground
-    if (b.state === 'perch' && w.y > b.y + 12 && Math.abs(w.x - b.x) < 110 && (!pr || pr.y > b.y)) {
-      lastTapT = -9; hopDown(b, G, Math.abs(w.x - b.x) > 6 ? Math.sign(w.x - b.x) : b.face); return;
-    }
-    if (pr && pr !== b.perch) {
-      b.target = pr; once('tapperch', 'Heading for that branch. The hawk slows and lands if it can reach it.');
-      if (b.state !== 'fly') { flap(b, G.flapPower, G); b.target = pr; }
-      return;
-    }
-    tapFlap(Math.abs(w.x - b.x) > 4 ? Math.sign(w.x - b.x) : b.face);
+    return false;
+  }
+  // the keyboard's flap key: a flap in the air; on a perch, the ground or the water one press
+  // steps or turns, a quick second press takes off
+  let lastKeyT = -9;
+  function keyFlap(dir) {
+    if (b.state === 'fly') { flap(b, G.flapPower, G); return; }
+    if (G.t - lastKeyT < TAKEOFF_TAPS) { lastKeyT = -9; b.target = null; flap(b, G.flapPower, G); return; }
+    lastKeyT = G.t; nudge(b, dir || b.face);
   }
 
   /* ---------- songs: listen, then play them back on the singing string ---------- */
@@ -468,9 +460,11 @@ export function start(canvas) {
   function hear(sp) { if (!G.heard.has(sp.id)) { G.heard.add(sp.id); store.set('heard', [...G.heard]); } }
   // the red-tail's scream: mice freeze in the open, distant hawks answer, your companion and
   // fledgling come to you
-  function call() {
+  // the hawk's call; k is how hard it is given, from a quick press (soft) to a long hold (full)
+  function call(k = 1) {
     if (G.callT > 0 || G.photo || G.roost) return;
-    G.callT = CALL_CD; audio.scream(false, echoOf(b.x, b.y)); haptics.call(); b.peckT = .5;
+    const echo = echoOf(b.x, b.y); if (echo) echo.vol *= .4 + .6 * k;
+    G.callT = CALL_CD; audio.scream(false, echo, .3 + .7 * k); haptics.call(); b.peckT = .5;
     freeze.until = G.t + 5; freeze.at = G.t;
     const others = G.hawks.filter(h => Math.hypot(h.x - b.x, h.y - b.y) > 60);
     if (others.length || Math.random() < .6) audio.scream(true);
@@ -524,17 +518,31 @@ export function start(canvas) {
   }
   const dial = createDial();
   const callBtn = document.createElement('button'); callBtn.className = 'call-btn'; callBtn.textContent = 'Call'; callBtn.setAttribute('aria-label', 'Hawk call');
-  callBtn.addEventListener('click', () => { audio.unlock(); call(); });
+  // hold the button to call louder: the longer the hold, the fuller the scream. It goes on
+  // release, or by itself at full strength once held long enough. The button swells as it fills.
+  const CALL_HOLD = 1.5;
+  let callFrom = null, callTimer = 0;
+  const callGo = () => {
+    if (callFrom === null) return;
+    const k = Math.min(1, (performance.now() - callFrom) / 1000 / CALL_HOLD);
+    callFrom = null; clearTimeout(callTimer); callBtn.style.transform = ''; callBtn.style.transition = '';
+    call(k);
+  };
+  callBtn.addEventListener('pointerdown', e => {
+    e.preventDefault(); audio.unlock(); if (G.callT > 0) return;
+    callFrom = performance.now(); callBtn.style.transition = `transform ${CALL_HOLD}s ease-out`; callBtn.style.transform = 'scale(1.25)';
+    callTimer = setTimeout(callGo, CALL_HOLD * 1000);
+  });
+  for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) callBtn.addEventListener(ev, callGo);
+  callBtn.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); call(.6); } });
   const sleepBtn = document.createElement('button'); sleepBtn.className = 'sleep-btn hidden'; sleepBtn.textContent = 'Sleep'; sleepBtn.setAttribute('aria-label', 'Sleep until dawn');
   sleepBtn.addEventListener('click', () => { audio.unlock(); sleep(); });
   document.getElementById('ui').append(callBtn, sleepBtn);
   const intentions = createIntentions(G, store, { toast: ui.toast, audio, spark }); G.intentions = intentions;
   // the singing button and string, and the dots that show how far into a song you are
-  const singer = createSinging({ audio, sticks, voice: () => G.voiceNow(), onNote: singNote, onMimic: mimic, onToggle: o => { G.singing = o; hudKey = ''; document.getElementById('ui').classList.toggle('singing', o); if (o) once('string', 'The pools round the right stick are song notes: touch them to sing. Round the left stick are the birds you know: touch one to sing its song.', 6); } });
-  // one-thumb mode plays on the stick under the thumb you'd use: the right, or the left if left-handed
-  const single = () => G.settings.oneThumb ? (G.settings.lefty ? 'L' : 'R') : null;
-  const controls = createControls({ G, b, sticks, interact, call, once, single });
-  // a pool round the left stick: the hawk sings that bird's song in its voice (and the notes take
+  const singer = createSinging({ audio, voice: () => G.voiceNow(), onNote: singNote, onMimic: mimic, onToggle: o => { G.singing = o; hudKey = ''; document.getElementById('ui').classList.toggle('singing', o); if (o) once('string', 'The pools in the right corner are song notes: touch them to sing. In the left corner are the birds you know: touch one to sing its song.', 6); } });
+  const controls = createControls({ G, b, gestures, toWorld, tapThing, interact, nearestPerch, once });
+  // a pool in the left corner: the hawk sings that bird's song in its voice (and the notes take
   // on that voice); a bird whose song you have learned answers with its gift
   function mimic(id) {
     const sp = SPECIES[id], S = G.staff;
@@ -587,9 +595,9 @@ export function start(canvas) {
   const HUD_K = 1.2, BAR = 64;
   const hud = document.createElement('canvas'); hud.className = 'hud'; document.body.append(hud);
   // Quiet HUD: the meters fade away while all of them are well filled, and drift back when one
-  // runs low, or for a few seconds after a touch away from the sticks (or on the meters themselves)
+  // runs low, or for a few seconds after a touch on the meters themselves
   let hudQuiet = false, hudWake = -9;
-  canvas.addEventListener('pointerdown', e => { if (!sticks.zoneAt(e.clientX, e.clientY) || e.clientY < 90) hudWake = G.t; });
+  canvas.addEventListener('pointerdown', e => { if (e.clientY < 90 && e.clientX < 320) hudWake = G.t; });
   function quietHUD() {
     const low = Math.min(G.thirst, G.hunger), tired = b.stamina < (hudQuiet ? .3 : .45);
     const q = G.settings.quiet && G.t - hudWake > 4 && !tired && (hudQuiet ? low > 50 : low > 70);
@@ -788,14 +796,10 @@ export function start(canvas) {
     G.clockT += dt * (G.duskT > 0 ? .35 : 1); updateClock();   // a veery's gift: the evening lingers
     const raw = readInput(input);
     if (!G.roost) {
-      for (const tp of raw.taps) onTap(tp);
-      for (let i = 0; i < raw.flaps; i++) tapFlap(raw.face || b.face);
+      for (let i = 0; i < raw.flaps; i++) keyFlap(raw.face || b.face);
     }
-    let steer = null;
-    if (raw.steer && !G.roost) { const w = toWorld(raw.steer); steer = { wx: w.x, wy: w.y }; }
-    const ctl = controls.update(raw.sticks);
-    if (G.settings.oneThumb) once('onethumb', 'One thumb: tap the stick to flap. Hold it up to glide, down to land, inward to perch or hunt, outward to turn round. On a branch, tap to fly and flick sideways to hop.', 7);
-    updateBird(b, dt, G.roost ? { steer: null, pitch: 0, face: 0 } : { steer: steer || ctl.steer, pitch: raw.pitch, face: raw.face, yoke: ctl.yoke }, G);
+    const ctl = controls.update(raw.gestures);
+    updateBird(b, dt, G.roost ? { steer: null, pitch: 0, face: 0 } : { steer: ctl.steer, pitch: raw.pitch, face: raw.face, yoke: ctl.yoke }, G);
     G.perchT = b.state === 'perch' ? G.perchT + dt : 0;
     if (G.pendingEat && b.state === 'ground' && b.walkTo === null) { if (Math.abs(G.pendingEat.x - b.x) < 14) eat(G.pendingEat); G.pendingEat = null; }
     if (b.state !== 'ground') G.pendingEat = null;
@@ -947,6 +951,8 @@ export function start(canvas) {
       ctx.setTransform(G.view.px, 0, 0, G.view.px, 0, 0);
       ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
       render(ctx, G);
+      // the gestures' quiet feedback, in screen pixels
+      if (!G.photo && !G.roost) { const k = G.view.px / G.view.s; ctx.setTransform(k, 0, 0, k, 0, 0); gestures.draw(ctx, [(b.x - G.cam.x) * G.view.s, (b.y - G.cam.y) * G.view.s], b.face); ctx.setTransform(G.view.px, 0, 0, G.view.px, 0, 0); }
       if (!G.paused) { afterFrame(); quietHUD(); }
       drawHUD();
       const f = roostFade();
@@ -959,7 +965,7 @@ export function start(canvas) {
   }
   requestAnimationFrame(frame);
   const seen = store.get('seen', null), away = seen ? (Date.now() - seen.t) / 1000 : 0;
-  ui.toast(saved && away > AWAY_S ? welcome(seen.doing) : saved ? `Welcome back. Day ${G.day}, ${seasonName(G)}.` : 'A thumb on each stick in the corners: tap both together to flap, flick one sideways to turn. The menu has more.', saved ? 3 : 7);
+  ui.toast(saved && away > AWAY_S ? welcome(seen.doing) : saved ? `Welcome back. Day ${G.day}, ${seasonName(G)}.` : 'Tap anywhere to flap. Swipe back to turn, up to hover, down to land. Hold and drag to aim the glide. The menu shows every gesture.', saved ? 3 : 7);
   if (G.sharedSeed !== null) ui.toast(`A friend shared world ${G.sharedSeed}. "Start a new journey" in the menu flies it (your songs are kept).`, 6);
   else if (!saved && G.seed) ui.toast(`World ${G.seed}: new hills, new ponds. The journal has a link to share it.`, 5);
   if (innerHeight > innerWidth) ui.toast('Turn your phone sideways for a wider view.', 4);
@@ -997,6 +1003,7 @@ export function start(canvas) {
     kettle(on = true) { kettle.force = on; const t = W.thermalsIn(b.x + 200, b.x + 8000).find(t => t.str >= .95) || W.thermalsIn(b.x + 200, b.x + 8000)[0]; fresh(); b.state = 'fly'; b.x = t.c - t.w * .8; b.y = t.y0 - 120; b.s = 70; b.face = 1; snap(); return t; },
     wave() { this.time(.7); this.weather('sunny'); G.overcast = G.storm = 0; airEnv.wave = 1; let c; for (let x = b.x; !c && x < b.x + 200000; x += 2000) c = lensesIn(x, x + 2000)[0]; fresh(); b.state = 'fly'; b.x = c.x - 260; b.y = -900; b.s = 70; b.face = 1; snap(); return c; },
     cloud() { this.time(.5); const c = cumuliIn(b.x + 300, b.x + 6000)[0]; fresh(); b.state = 'fly'; b.x = c.x - c.w * .7; b.y = c.y; b.s = 80; b.g = 0; b.face = 1; snap(); return c; },
+    mode: () => controls.mode,
     heron() { const p = W.pondsIn(b.x, b.x + 20000).find(p => p.w >= 40 && hash(p.k * 4.4 + 2) <= .32); fresh(); b.state = 'fly'; b.x = p.c - 150; b.y = p.waterY - 60; b.s = 70; b.face = 1; snap(); return p; },
   };
   Object.assign(G.dbg, encDebug(G, { fresh, snap }), ghostDebug(G, { fresh, snap }), skiesDebug(G, { fresh, snap }), coastDebug(G, { fresh, snap }), { ridge() { fresh(); b.state = 'fly'; b.x = RIDGE.x0 + 1200; b.y = W.groundY(b.x) - 110; b.s = 85; b.face = 1; snap(); } });

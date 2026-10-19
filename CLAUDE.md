@@ -32,9 +32,9 @@ web/src/atmos.js        sky moods and slow changes: dawn fog, rainbow, meteors, 
 web/src/skyfx.js        paints those: aurora, rainbow, golden rays, meteors, fog, moulted feathers, wind-arrow hint, the dream
 web/src/paint.js        watercolour toolkit: wash, bloom, softWash, lift, paper textures
 web/src/palette.js      day / dusk / night palettes blended by time of day, greyed by weather
-web/src/input.js        pointer + keyboard -> taps, steer point, keys (touches near the joysticks go to sticks.js)
-web/src/sticks.js       the two watercolour joysticks: paired taps (flap sync), lone taps, flicks, held vectors
-web/src/controls.js     stick gestures (both up/down/inward/outward, tilt, lean) per state, focus targets
+web/src/input.js        keyboard (arrows/WASD, flap keys) and hands touches to gestures.js
+web/src/gestures.js     touch gestures drawn on the screen: taps (counted), strokes (line, hook, circle), hold-to-aim; their quiet feedback
+web/src/controls.js     what each gesture does per state (flap, perch, prey, turn, glide, land, hover, ride, flip, aim), latched modes
 web/src/songs.js        songbird species: songs, where and when they sing, the gift each song brings
 web/src/life.js         mice, fish, flocks (boids), visiting songbirds, companion hawk and fledgling
 web/src/journey.js      migration, landmarks found, nest and chick, journal + map (with the route flown), save/resume
@@ -48,7 +48,7 @@ web/lab.html            bird song lab (pick the songbird voice, saved as aloft.b
 web/musiclab.html       music lab (tune Valley, saved as aloft.musicTune); both labs share lab.css
 web/src/photo.js        photo mode (pan, save or share a PNG)
 web/src/ui.js           pause menu, settings, how to play, songbook, toasts
-web/src/singing.js      perched singing: half rings of note pools and known-bird pools round the sticks
+web/src/singing.js      perched singing: half rings of note pools and known-bird pools in the bottom corners
 web/src/dial.js         time-of-day dial (top right)
 web/icons/              app icons (generated, see tools/make-icons.mjs)
 web/fonts/              bundled Cormorant Garamond italic and Spectral (SIL OFL, licences alongside)
@@ -86,8 +86,8 @@ add colours there rather than inline.
 ## Gameplay tuning (where the numbers live)
 
 - Flight: `bird.js` constants (gravity, drag, relax angle, stall, flap) and `world.js`
-  `lift()` for thermal strength. Ridge lift: `world.js` `ridgeLift()` and `TUNE.ridge`; wave lift and kettles: top of `air.js`. Both sticks tapped together = one flap; `flap(b, power, G, sync)`
-  scales cost and thrust by sync. Stick timing constants: top of `sticks.js`; gesture thresholds: top of `controls.js`.
+  `lift()` for thermal strength. Ridge lift: `world.js` `ridgeLift()` and `TUNE.ridge`; wave lift and kettles: top of `air.js`. A tap flaps; `flap(b, power, G, sync)`
+  scales cost and thrust by sync. Gesture timing and sizes: top of `gestures.js`; what they do: `controls.js`.
 - Camera zoom (`ZOOM` default, `ZOOM_OUT` high and fast) and the two-tap take-off window: top of
   `game.js`. `G.view` is the zoomed world view; `G.view.scr` is screen space (sky, far hills,
   weather, HUD), sized as the art was first drawn; world sprites paint at the fixed `G.view.spx`.

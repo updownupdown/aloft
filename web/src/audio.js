@@ -143,10 +143,11 @@ export function createAudio() {
   // the drop. The rasp is a fast wobble in pitch; a band of breath noise rides on top.
   // `far` is another hawk answering from across the valley, softer and echoing.
   // `echo` is the call coming back off a cliff: { delay, vol }, softer and duller.
-  A.scream = (far = false, echo = null) => {
+  // `gain` scales the whole call (the player's call is louder the longer the button is held).
+  A.scream = (far = false, echo = null, gain = 1) => {
     if (!A.ctx) return;
     if (echo) far = true;
-    const ctx = A.ctx, t = ctx.currentTime + (echo ? echo.delay : far ? 1.1 + Math.random() * .6 : 0), vol = echo ? .17 * echo.vol : far ? .06 : .17, k = far && !echo ? .97 : 1;
+    const ctx = A.ctx, t = ctx.currentTime + (echo ? echo.delay : far ? 1.1 + Math.random() * .6 : 0), vol = (echo ? .17 * echo.vol : far ? .06 : .17) * gain, k = far && !echo ? .97 : 1;
     const env = ctx.createGain(), bp = ctx.createBiquadFilter(), lp = ctx.createBiquadFilter();
     bp.type = 'bandpass'; bp.Q.value = 2.2; lp.type = 'lowpass'; lp.frequency.value = far ? 1900 : 5200;
     env.gain.setValueAtTime(0, t); env.gain.linearRampToValueAtTime(vol, t + .07); env.gain.linearRampToValueAtTime(vol * .85, t + .7);
