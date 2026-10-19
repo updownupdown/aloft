@@ -89,6 +89,8 @@ button { font-family: inherit; }
 .card .quiet { display: block; font: inherit; font-size: 14px; font-style: italic; color: var(--ink2); background: none; border: 0; min-height: 40px; padding: 8px 0; margin-top: 4px; cursor: pointer; }
 [data-act=photo] { --dot: var(--water); }
 [data-act=install] { --dot: var(--ochre); }
+[data-act=quit] { --dot: var(--ink2); }
+.goodbye .bye { font-size: 16px; line-height: 1.5; margin: 12px 0 16px; }
 
 /* switches: a pencilled track with a pigment bead; on, the track takes a wash and the bead slides over */
 .sw > span { flex: 1; }
@@ -185,10 +187,10 @@ details > .map { margin: 6px 0; }
 .sing-dots i.wrong { background: var(--berry); border-color: var(--berry); }
 .sing-dots i.bird { background: none; border-style: dotted; border-color: rgba(58, 36, 24, .6); opacity: .75; }
 .sing-strip {
-  position: absolute; right: 0; top: 0; bottom: 0; width: calc(104px + env(safe-area-inset-right)); padding-right: env(safe-area-inset-right);
-  background: rgba(244, 238, 225, .82); border-left: 1px solid rgba(58, 36, 24, .25); touch-action: none;
+  position: absolute; right: var(--strip-in-r); top: var(--strip-top); bottom: var(--strip-bot); width: var(--strip-w);
+  background: rgba(244, 238, 225, .82); border: 1px solid rgba(58, 36, 24, .25); border-radius: 14px; touch-action: none;
 }
-.sing-strip canvas { display: block; width: 104px; height: 100%; }
+.sing-strip canvas { display: block; width: 100%; height: 100%; }
 
 /* the clock, top right: a sun arc over a horizon line, the hours flown washed in, the day beneath */
 .dial { position: absolute; right: calc(12px + env(safe-area-inset-right)); top: calc(6px + env(safe-area-inset-top)); width: 104px; pointer-events: none !important; display: flex; flex-direction: column; align-items: center; color: var(--ink); }
@@ -207,7 +209,7 @@ details > small { margin: 4px 0; }
 
 /* the hawk's call: a paper ring like the menu button, washed with the red of the hawk's tail */
 .call-btn {
-  position: absolute; right: calc(12px + env(safe-area-inset-right)); bottom: calc(12px + env(safe-area-inset-bottom));
+  position: absolute; right: calc(var(--strip-in-r) + var(--strip-w) + 10px); top: calc(10px + env(safe-area-inset-top));
   width: 46px; height: 46px; border-radius: 50%; border: 1.25px solid rgba(58, 36, 24, .5); padding: 0 0 2px; cursor: pointer;
   background: radial-gradient(circle at 38% 36%, rgba(184, 90, 74, .32), rgba(244, 238, 225, .8) 68%);
   font-family: var(--title); font-style: italic; font-weight: 600; font-size: 17px; color: var(--ink);
@@ -217,13 +219,13 @@ details > small { margin: 4px 0; }
 #ui.menu-open .call-btn, #ui.menu-open .sing-btn, #ui.menu-open .sing-dots, #ui.menu-open .sleep-btn, #ui.menu-open .sing-cheer { display: none; }
 /* sleep: a paper pill beside the call button, offered on a branch once evening comes */
 .sleep-btn {
-  position: absolute; right: calc(70px + env(safe-area-inset-right)); bottom: calc(12px + env(safe-area-inset-bottom));
+  position: absolute; right: calc(var(--strip-in-r) + var(--strip-w) + 66px); top: calc(10px + env(safe-area-inset-top));
   height: 46px; padding: 0 18px 2px 34px; border-radius: 23px; border: 1.25px solid rgba(58, 36, 24, .5); cursor: pointer;
   background: radial-gradient(circle at 30% 40%, rgba(79, 111, 158, .3), rgba(244, 238, 225, .85) 70%);
   font-family: var(--title); font-style: italic; font-weight: 600; font-size: 18px; color: var(--ink);
 }
 .sleep-btn::before { content: ''; position: absolute; left: 12px; top: 50%; width: 12px; height: 12px; margin-top: -7px; border-radius: 50%; box-shadow: 4px 1px 0 0 var(--ochre); }   /* a crescent moon */
-#ui.lefty .sleep-btn { right: auto; left: calc(70px + env(safe-area-inset-left)); }
+#ui.lefty .sleep-btn { right: auto; left: calc(var(--strip-in-l) + var(--strip-w) + 66px); }
 /* a finished song: one italic line under the progress dots, washed in indigo */
 .sing-cheer {
   position: absolute; left: 50%; top: calc(80px + env(safe-area-inset-top)); transform: translate(-50%, 6px); opacity: 0; pointer-events: none !important;
@@ -232,9 +234,34 @@ details > small { margin: 4px 0; }
 }
 .sing-cheer.show { opacity: 1; transform: translate(-50%, 0); }
 /* left-handed: the string and the call button swap sides */
-#ui.lefty .sing-strip { right: auto; left: 0; padding-right: 0; padding-left: env(safe-area-inset-left); border-left: none; border-right: 1px solid rgba(58, 36, 24, .25); }
-#ui.lefty .call-btn { right: auto; left: calc(14px + env(safe-area-inset-left)); }
-#ui.lefty.singing .menu-btn { display: none; }   /* the string covers the corner while it is open */
+#ui.lefty .sing-strip { right: auto; left: var(--strip-in-l); }
+#ui.lefty .call-btn { right: auto; left: calc(var(--strip-in-l) + var(--strip-w) + 10px); }
+
+/* the thumb strips: faint paper bands standing in from the edges (clear of the phone's own
+   edge gestures), split by a pencil line into a high half and a low half */
+:root {
+  --strip-w: clamp(78px, 16vw, 150px); --strip-top: calc(66px + env(safe-area-inset-top)); --strip-bot: calc(30px + env(safe-area-inset-bottom));
+  --strip-in-l: max(18px, calc(env(safe-area-inset-left) + 8px)); --strip-in-r: max(18px, calc(env(safe-area-inset-right) + 8px));
+}
+.strip {
+  position: absolute; top: var(--strip-top); bottom: var(--strip-bot); width: var(--strip-w); border-radius: 14px; pointer-events: none !important;
+  background: linear-gradient(90deg, rgba(244, 238, 225, .1), rgba(244, 238, 225, .16)); box-shadow: inset 0 0 0 1px rgba(58, 36, 24, .09);
+  transition: opacity .4s;
+}
+.strip-l { left: var(--strip-in-l); }
+.strip-r { right: var(--strip-in-r); }
+.strip b { position: absolute; left: 22%; right: 22%; top: 50%; height: 1px; background: rgba(58, 36, 24, .2); }
+.strip i {
+  position: absolute; left: 0; top: 0; width: 38px; height: 38px; margin: -19px 0 0 -19px; border-radius: 50%; opacity: 0;
+  background: radial-gradient(circle, rgba(79, 111, 158, .4), rgba(79, 111, 158, .12) 55%, transparent 72%); transition: opacity .15s;
+}
+.strip.touch i { opacity: 1; }
+.strip.faded { opacity: 0; }
+.strip.sync { animation: beat-sync .5s ease-out; }
+.strip.ragged { animation: beat-ragged .5s ease-out; }
+@keyframes beat-sync { from { box-shadow: inset 0 0 0 2px rgba(79, 111, 158, .6); background-color: rgba(79, 111, 158, .14); } }
+@keyframes beat-ragged { from { box-shadow: inset 0 0 0 2px rgba(168, 72, 58, .55); background-color: rgba(168, 72, 58, .1); } }
+#ui.menu-open .strip { opacity: 0; }
 
 /* the journal's intention, album and world line */
 /* the day's intention: an italic note set off by a stroke of ochre, the colour of the feathers it earns */

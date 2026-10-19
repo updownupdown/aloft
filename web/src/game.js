@@ -6,6 +6,8 @@ import * as W from './world.js';
 import { createBird, updateBird, flap, nudge, perchOn, hopDown, predictGlide, FEET } from './bird.js';
 import { applyTune } from './tune.js';
 import { createInput, readInput } from './input.js';
+import { createStrips } from './strips.js';
+import { createControls } from './controls.js';
 import { createAudio } from './audio.js';
 import { SPECIES, speciesFor, active, timeOfDay } from './songs.js';
 import { render } from './render.js';
@@ -31,9 +33,9 @@ const TWIG_REGROW = 300;
 const POWER_CD = 40;           // seconds before a song's gift works again
 // Zoom, as how many times more world fits on screen than the art was first drawn at (300 units
 // tall). Perched or low and slow it sits at ZOOM; high and fast it eases out to ZOOM_OUT.
-const ZOOM = 1.5, ZOOM_OUT = 2.5;
+const ZOOM = 1.5, ZOOM_OUT = 2.85;
 const TAKEOFF_TAPS = .55;      // a second tap within this many seconds takes off
-const RING_BOOST = 55;         // speed a cloud ring adds
+const RING_BOOST = 85;         // speed a cloud ring adds (more straight out of a loop or flip)
 const CALL_CD = 6;             // seconds between screams
 const CHORUS_S = 60;           // how long a dawn chorus lasts
 
@@ -44,7 +46,8 @@ const store = {
 
 export function start(canvas) {
   const ctx = canvas.getContext('2d');
-  const input = createInput(canvas);
+  const strips = createStrips();
+  const input = createInput(canvas, strips);
   const audio = createAudio();
   audio.on = store.get('sound', true);
   const haptics = createHaptics(store);
@@ -68,7 +71,7 @@ export function start(canvas) {
     // song gifts
     powerCD: {}, wormsT: 0, followT: 0, calmT: 0, tailwindT: 0, tailDir: 1, brightT: 0, ripen: null,
     thermalK: 1, streaks: [], glide: null, photo: false,
-    settings: { glide: store.get('glide', true), music: store.get('music', true), lefty: store.get('lefty', false) },
+    settings: { glide: store.get('glide', true), music: store.get('music', true), lefty: store.get('lefty', false), full: store.get('full', true) },
   };
   const saved = loadJourney(G, store);
   const b = G.bird;
@@ -87,11 +90,13 @@ export function start(canvas) {
     for (const r of G.visibleRings) {
       if (r.gone || (px - r.x) * (x - r.x) > 0 || px === x) continue;
       const yy = lerp(py, y, (r.x - px) / (x - px));
-      if (Math.abs(yy - r.y) < r.r * .8) {
+      if (Math.abs(yy - r.y) < r.r * 1.5) {
         G.ringsTaken.set(r.id, G.t); r.gone = true; G.score++; store.set('score', G.score);
         audio.ring(); haptics.ring(); intentions.note('rings'); for (let i = 0; i < 10; i++) spark(r.x, r.y + (Math.random() - .5) * r.r * 2);
         // a gust through the cloud: a burst of speed along the line the hawk is flying
-        b.s = Math.min(260, b.s + RING_BOOST); b.stall = false; b.hover = 0;
+        const flip = b.flipT > 0;
+        b.s = Math.min(280, b.s + RING_BOOST * (flip ? 1.8 : 1)); b.stall = false; b.hover = 0;
+        if (flip) { b.flipT = 0; ui.toast('Through the ring out of a flip: a big burst of speed!', 2); }
         for (let i = 0; i < 4; i++) part('puff', r.x + (Math.random() - .5) * 10, r.y + (Math.random() - .5) * r.r * 1.6, -b.face * (20 + Math.random() * 20), (Math.random() - .5) * 8, .8);
         once('ring', 'A cloud ring! Flying through one gives a burst of speed. There are more all over the sky.');
       }
@@ -112,6 +117,8 @@ export function start(canvas) {
       drawMap: cv => drawMap(G, cv),
       album: () => store.get('album', []),
       // a new journey flies a shared world if a link named one, else a fresh one of its own
+      quit,
+      fullscreen: on => { G.settings.full = on; store.set('full', on); if (on) goFull(); else if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {}); },
       newGame: () => { store.set('save', null); store.set('seed', G.sharedSeed ?? 1 + Math.floor(Math.random() * 99999)); G.noSave = true; location.reload(); },
       gfx: k => { if (k === 'res') { res = 0; resLock = false; perf.prev = 0; perf.fails = 0; resize(); } redraw = true; },
       subtitle: () => { const h = hourName(G.tod); return `${h[0].toUpperCase()}${h.slice(1)} on day ${G.day}, ${seasonName(G)}.`; },
@@ -122,6 +129,22 @@ export function start(canvas) {
   let wakeLock = null;
   const stayAwake = async () => { if (wakeLock || !navigator.wakeLock) return; try { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => { wakeLock = null; }); } catch { /* denied, or low battery */ } };
   input.onAny = () => { audio.unlock(); stayAwake(); };
+  canvas.addEventListener('pointerup', () => { if (G.settings.full) goFull(); });   // a touch's lift is what lets a page go full screen
+  // full screen in the browser hides the phone's buttons, so stray thumbs reach them less
+  // (an installed app is already full screen)
+  function goFull() {
+    const standalone = matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches;
+    if (standalone || document.fullscreenElement || !document.fullscreenEnabled || G.photo) return;
+    document.documentElement.requestFullscreen?.({ navigationUI: 'hide' }).then(() => screen.orientation?.lock?.('landscape').catch(() => {})).catch(() => {});
+  }
+  // quitting saves, then closes the app if the system lets a page do that; if not, it says the
+  // journey is safe and the app can be closed
+  function quit() {
+    persist();
+    if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
+    try { window.close(); } catch { /* not allowed */ }
+    setTimeout(() => ui.goodbye(), 250);
+  }
   input.onKey = k => {
     if (G.photo) { if (k === 'Escape') photo.end(); return; }
     if (k === 'Escape' || k === 'KeyP') ui.toggle(); if (k === 'KeyE') interact(); if (k === 'KeyC') call();
@@ -156,7 +179,7 @@ export function start(canvas) {
       if (kind === 'perch') {
         if (soft) { audio.rustle(.7); haptics.land(true); }
         else { audio.thump(.25); audio.rustle(); haptics.land(false); b.hopT = .4; b.stamina = Math.max(0, b.stamina - .1); for (let i = 0; i < 2; i++) part('feather', b.x, b.y - 4, (Math.random() - .5) * 24, -16, 1.4, { a: Math.random() * TAU }); }
-        once('perch', 'Perched. Tap once to turn, tap below to drop down a branch, tap twice quickly to take off.');
+        once('perch', 'Perched. Tap one strip to turn, both strips high to take off, both low to drop to the branch below.');
         if (!soft) once('softland', 'A clumsy landing. Flare (point up) just before the branch to settle softly.');
         atPerch(G, b.perch, { toast: ui.toast, once, audio, spark });
         if (b.perch.tree) intentions.note('perch', b.perch.tree.i);
@@ -164,7 +187,7 @@ export function start(canvas) {
       if (kind === 'ground') {
         if (soft) { audio.thump(.25); haptics.land(true); }
         else if (speed < 80) { audio.thump(.5); haptics.land(false); puff(b.x, b.y + FEET, 3); b.stamina = Math.max(0, b.stamina - .06); }
-        once('ground', 'On the ground. Tap to step, hold to walk, tap twice quickly to take off.');
+        once('ground', 'On the ground. Tap one strip to step that way, both low to eat or drink, both high to take off.');
       }
       if (kind === 'swim') once('swim', 'Swimming. Tap the water to drink: three sips fill you up. Tap twice quickly to take off.');
     },
@@ -182,12 +205,12 @@ export function start(canvas) {
       const p = W.pondNear(h.x, 1);
       if (p) for (const f of p.fish) {
         if (G.eaten.has(f.id + ':' + G.day)) continue;
-        const q = fishPos(f, p, G.t); if (Math.abs(q.x - h.x) < 15) { got = { kind: 'fish', id: f.id }; break; }
+        const q = fishPos(f, p, G.t); if (Math.abs(q.x - h.x) < (G.focus?.kind ? 22 : 15)) { got = { kind: 'fish', id: f.id }; break; }
       }
     } else {
       if (h.y + FEET < gy - 7) return false;
       // a stoop straight out of a kite has the mouse already picked: it reaches a little further
-      const fromKite = G.t - h.kiteLeft < 2.5, reach = fromKite ? 20 : 12;
+      const fromKite = G.t - h.kiteLeft < 2.5, reach = fromKite || G.focus?.kind ? 20 : 12;   // (so does a focused one)
       for (const m of W.miceIn(h.x - 30, h.x + 30)) {
         if (G.eaten.has(m.id + ':' + G.day)) continue;
         const q = mousePos(m, G.t); if ((q.show > .3 || fromKite) && Math.abs(q.x - h.x) < reach) { got = { kind: 'mouse', id: m.id }; break; }
@@ -428,7 +451,8 @@ export function start(canvas) {
   document.getElementById('ui').append(callBtn, sleepBtn);
   const intentions = createIntentions(G, store, { toast: ui.toast, audio, spark }); G.intentions = intentions;
   // the singing button and string, and the dots that show how far into a song you are
-  const singer = createSinging({ audio, onNote: singNote, onToggle: o => { G.singing = o; hudKey = ''; document.getElementById('ui').classList.toggle('singing', o); if (o) once('string', 'Slide along the string to sing. A note counts once you hold it in tune.', 5); } });
+  const singer = createSinging({ audio, onNote: singNote, onToggle: o => { G.singing = o; hudKey = ''; document.getElementById('ui').classList.toggle('singing', o); if (o) once('string', 'Touch the pools on the string to sing their notes. The left strip still takes off.', 5); } });
+  const controls = createControls({ G, b, strips, singer, interact, once });
   function updateSinging(dt) {
     const S = G.staff, sp = S.mode === 'learn' ? SPECIES[S.species] : null;
     const available = !G.photo && !G.roost && (b.state === 'perch' || S.mode === 'learn');
@@ -445,6 +469,10 @@ export function start(canvas) {
   // on their own small canvas over the game, repainted only when they change.
   const hud = document.createElement('canvas'); hud.className = 'hud'; document.body.append(hud);
   let hudKey = '';
+  // the meters start just right of the menu button, wherever the phone's cutout puts it
+  let menuR = 0;
+  const menuRight = () => menuR || (menuR = document.querySelector('.menu-btn')?.getBoundingClientRect().right || 54);
+  addEventListener('resize', () => { menuR = 0; hudKey = ''; });
   document.fonts?.ready.then(() => { hudKey = ''; });   // repaint once the bundled fonts are in
   // a rounded bar as a polygon, so wash() can give it a wobbly edge
   const pillP = (x0, y0, w, h) => {
@@ -454,7 +482,7 @@ export function start(canvas) {
     return p;
   };
   function drawHUD() {
-    const P = G.P, S = G.view.scr.s, x = 50 / S + 4, y = 9, low = Math.sin(G.t * 6) > 0;
+    const P = G.P, S = G.view.scr.s, x = (menuRight() + 6) / S, y = 9, low = Math.sin(G.t * 6) > 0;
     const key = [Math.ceil(G.thirst), Math.ceil(G.hunger), Math.ceil(b.stamina * 50), G.thirst < 20 && low, G.hunger < 20 && low, S, G.photo, G.singing && G.settings.lefty, P.paper[0] >> 3, P.birdFar[0] >> 3, P.water[2] >> 3].join();
     if (key === hudKey) return;
     hudKey = key;
@@ -462,7 +490,7 @@ export function start(canvas) {
     if (hud.width !== Math.ceil(W0 * sc)) { hud.width = Math.ceil(W0 * sc); hud.height = Math.ceil(H0 * sc); hud.style.width = W0 * S + 'px'; hud.style.height = H0 * S + 'px'; }
     const ctx = hud.getContext('2d');
     ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, hud.width, hud.height);
-    if (G.photo || (G.singing && G.settings.lefty)) return;
+    if (G.photo) return;
     ctx.setTransform(sc, 0, 0, sc, 0, 0);
     const meter = (yy, v, col, ticks, seed, icon) => {
       icon(x + 5, yy + 4);
@@ -569,7 +597,7 @@ export function start(canvas) {
   function updateRoost(dt) {
     const dark = G.tod > .72 || G.tod < .2;
     if (dark && b.state === 'fly') once('roost', 'Night is falling. Perch in a tree and tap Sleep to roost until dawn.');
-    if (canSleep()) once('sleep', 'Tap Sleep (bottom corner) to roost here until dawn, or stay up for the night.', 5);
+    if (canSleep()) once('sleep', 'Tap Sleep (at the top) to roost here until dawn, or stay up for the night.', 5);
     if (!G.roost) return;
     const R = G.roost; R.t += dt;
     if (R.t > 1.6 && !R.done) {
@@ -629,7 +657,8 @@ export function start(canvas) {
     }
     let steer = null;
     if (raw.steer && !G.roost) { const w = toWorld(raw.steer); steer = { wx: w.x, wy: w.y }; }
-    updateBird(b, dt, G.roost ? { steer: null, pitch: 0, face: 0 } : { steer, pitch: raw.pitch, face: raw.face }, G);
+    const ctl = controls.update(raw.strips);
+    updateBird(b, dt, G.roost ? { steer: null, pitch: 0, face: 0 } : { steer: steer || ctl.steer, pitch: raw.pitch, face: raw.face, yoke: ctl.yoke }, G);
     G.perchT = b.state === 'perch' ? G.perchT + dt : 0;
     if (G.pendingEat && b.state === 'ground' && b.walkTo === null) { if (Math.abs(G.pendingEat.x - b.x) < 14) eat(G.pendingEat); G.pendingEat = null; }
     if (b.state !== 'ground') G.pendingEat = null;
@@ -756,7 +785,7 @@ export function start(canvas) {
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
-  ui.toast(saved ? `Welcome back. Day ${G.day}, ${seasonName(G)}.` : 'Tap to flap. Press and hold to point the hawk where you want to go.', saved ? 3 : 6);
+  ui.toast(saved ? `Welcome back. Day ${G.day}, ${seasonName(G)}.` : 'A thumb on each strip at the sides: tap both together to flap, swipe one to turn. The menu has more.', saved ? 3 : 7);
   if (G.sharedSeed !== null) ui.toast(`A friend shared world ${G.sharedSeed}. "Start a new journey" in the menu flies it (your songs are kept).`, 6);
   else if (!saved && G.seed) ui.toast(`World ${G.seed}: new hills, new ponds. The journal has a link to share it.`, 5);
   if (innerHeight > innerWidth) ui.toast('Turn your phone sideways for a wider view.', 4);

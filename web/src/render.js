@@ -65,6 +65,8 @@ export function render(ctx, G) {
   for (const hl of hawks) ctx.drawImage(hl.c, hl.x, hl.y, hl.w, hl.w);
   if (G.carry) carried(ctx, G, P);
   stamina(ctx, G.bird, P);
+  gyro(ctx, G.bird, P, G);
+  if (G.focus) focusMark(ctx, G.focus, P, G);
   for (const r of rings) ring(ctx, r, P, G, 1);
   particles(ctx, G, P);
   ctx.restore();
@@ -698,6 +700,7 @@ function drawHawk(ctx, b, P, G, k = 1) {
     // turning, the hawk swings square to the viewer and on round: yaw 0 is side-on, ±π/2 head-on
     let yaw = 0;
     if (b.yaw) { const u = Math.min(1, b.yaw.t / b.yaw.dur); yaw = (u < .5 ? u * Math.PI : u * Math.PI - Math.PI) * b.yawSgn; }
+    else if (b.head) yaw = b.head;
     else if (b.turnT > 0) yaw = (1 - b.turnT / .32) * Math.PI - Math.PI;   // other hawks: already facing the new way
     ctx.save(); ctx.translate(b.x, b.y + b.bob); ctx.scale(b.face * BS * k, BS * k);
     ctx.rotate(b.pitch * Math.cos(yaw)); flyingHawk(ctx, b, P, yaw);
@@ -839,16 +842,56 @@ function streaks(ctx, G, P) {
   ctx.restore();
 }
 
-// a faint dotted arc to where the current glide would land
+// a faint pencil line to where the current glide would land, fading as it reaches ahead
 function glideLine(ctx, pts, P, G) {
-  ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = C(P.birdFar, .5);
-  const n = pts.length;
+  const n = pts.length; if (n < 4) return;
+  ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.strokeStyle = C(P.birdFar, .5); ctx.lineWidth = .9; ctx.lineCap = 'round';
   for (let g = 0; g < 3; g++) {
-    ctx.beginPath();
-    for (let i = 3; i < n; i += 3) { if (Math.min(2, Math.floor(i / n * 3)) !== g) continue; ctx.moveTo(pts[i][0] + .8, pts[i][1]); ctx.arc(pts[i][0], pts[i][1], .8, 0, TAU); }
-    ctx.globalAlpha = .2 + .5 * (1 - (g + .5) / 3); ctx.fill();
+    const i0 = Math.max(2, Math.floor(n * g / 3)), i1 = Math.min(n - 1, Math.floor(n * (g + 1) / 3));
+    ctx.beginPath(); ctx.moveTo(pts[i0][0], pts[i0][1]);
+    for (let i = i0 + 1; i <= i1; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+    ctx.globalAlpha = .2 + .5 * (1 - (g + .5) / 3); ctx.stroke();
   }
   if (pts.end) { const e = pts[n - 1]; ctx.globalAlpha = .5; ctx.strokeStyle = C(P.birdFar, .6); ctx.lineWidth = .8; ctx.beginPath(); ctx.ellipse(e[0], e[1] + 5, 5, 1.6, 0, 0, TAU); ctx.stroke(); }
+  ctx.restore();
+}
+
+// The heading gyro: a flat pencil ring under the hawk, as if seen from the side, with a bead of
+// indigo where the hawk is pointing. Square-on it sits at the front; ragged wingbeats swing it
+// toward the viewer or away. It shows only while the heading is off, or just after a beat
+// (washed red for a ragged one).
+function gyro(ctx, b, P, G) {
+  if (b.state !== 'fly') return;
+  const beat = G.lastBeat && G.t - G.lastBeat.t < 1.2 ? 1 - (G.t - G.lastBeat.t) / 1.2 : 0;
+  const a = Math.min(1, Math.max(Math.abs(b.head) * 5, beat));
+  if (a < .03) return;
+  const cx = b.x, cy = b.y + 14, rx = 20, ry = 4.5, ragged = G.lastBeat && G.lastBeat.sync < .6 ? beat : 0;
+  ctx.save(); ctx.lineCap = 'round';
+  ctx.strokeStyle = C(mix(P.birdFar, P.tail, ragged), .3 * a); ctx.lineWidth = .9;
+  ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, TAU);
+  // the mark for straight ahead
+  ctx.moveTo(cx + b.face * (rx + 2.5), cy); ctx.lineTo(cx + b.face * (rx - 2.5), cy);
+  ctx.stroke();
+  const bx = cx + b.face * Math.cos(b.head) * rx, by = cy + Math.sin(b.head) * ry;
+  ctx.fillStyle = C([47, 74, 116], .85 * a); ctx.beginPath(); ctx.arc(bx, by, 2, 0, TAU); ctx.fill();
+  ctx.restore();
+}
+
+// focus: a solid ring in the target's colour when the hawk has picked something out, a dashed
+// paper-white ring ahead when there is nothing in reach
+function focusMark(ctx, F, P, G) {
+  if (F.x === undefined) return;
+  const pulse = 1 + .12 * Math.sin(G.t * 6);
+  ctx.save(); ctx.lineWidth = 1.4;
+  if (F.kind) {
+    ctx.strokeStyle = C(F.kind === 'mouse' ? P.berry : F.kind === 'fish' ? P.water : P.leafDk, .85);
+    ctx.beginPath(); ctx.arc(F.x, F.y, 8 * pulse, 0, TAU);
+    for (let k = 0; k < 4; k++) { const an = k * Math.PI / 2; ctx.moveTo(F.x + Math.cos(an) * 10 * pulse, F.y + Math.sin(an) * 10 * pulse); ctx.lineTo(F.x + Math.cos(an) * 13 * pulse, F.y + Math.sin(an) * 13 * pulse); }
+    ctx.stroke();
+  } else {
+    ctx.strokeStyle = C(P.paper, .85); ctx.setLineDash([2.5, 2.5]);
+    ctx.beginPath(); ctx.arc(F.x, F.y, 9 * pulse, 0, TAU); ctx.stroke();
+  }
   ctx.restore();
 }
 
