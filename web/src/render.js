@@ -1126,52 +1126,44 @@ function glideLine(ctx, pts, P, G) {
 // paper-white ring ahead when there is nothing in reach
 function focusMark(ctx, F, P, G) {
   if (F.x === undefined) return;
-  const b = G.bird, k = F.kind, x = 0, y = 0, pulse = 1 + .07 * Math.sin(G.t * 6);
+  // quiet marks: thin pigment over a soft paper halo, small, with no words. Branches are green,
+  // prey (mice and fish alike) red, thermals ochre.
+  const b = G.bird, k = F.kind, x = 0, y = 0, pulse = 1 + .05 * Math.sin(G.t * 5);
   ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-  // every mark is drawn twice: a wide halo of paper, then the pigment, so it reads on any ground
-  const ink = (col, w, a = .95) => { ctx.strokeStyle = C(P.paper, .75); ctx.lineWidth = w + 3; ctx.stroke(); ctx.strokeStyle = C(col, a); ctx.lineWidth = w; ctx.stroke(); };
-  const label = (text, col, ly) => {
-    ctx.font = 'italic 700 15px "Cormorant Garamond", serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.lineWidth = 4; ctx.strokeStyle = C(P.paper, .85); ctx.strokeText(text, x, ly); ctx.fillStyle = C(col, 1); ctx.fillText(text, x, ly);
-  };
+  const ink = (col, w, a = .8) => { ctx.strokeStyle = C(P.paper, .5); ctx.lineWidth = w + 2; ctx.stroke(); ctx.strokeStyle = C(col, a); ctx.lineWidth = w; ctx.stroke(); };
   // the marks keep one size on screen however far the camera has pulled out
-  const Z = Math.max(1, 1.35 / (G.view.s || 1));
+  const Z = Math.max(1, 1.35 / (G.view.s || 1)) * .7;
   const local = () => { ctx.translate(F.x, F.y); ctx.scale(Z, Z); };
   if (!k) {
     local();
-    ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.arc(x, y, 20 * pulse, 0, TAU); ink(MARK.ink, 2, .6);
-    ctx.setLineDash([]); label(F.mode === 'thermal' ? 'no thermal near' : F.mode === 'prey' ? 'no prey in reach' : 'no branch near', MARK.ink, y + 32);
+    ctx.setLineDash([3, 4]); ctx.beginPath(); ctx.arc(x, y, 16 * pulse, 0, TAU); ink(MARK.ink, 1.6, .4);
     ctx.restore(); return;
   }
-  const col = MARK[k];
-  // a dotted lead from the hawk to its target
-  ctx.setLineDash([2, 6]); ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(F.x, F.y); ctx.strokeStyle = C(col, .6); ctx.lineWidth = 2; ctx.stroke(); ctx.setLineDash([]);
+  const col = k === 'fish' ? MARK.mouse : MARK[k];
+  // a faint dotted lead from the hawk to its target
+  ctx.setLineDash([2, 7]); ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(F.x, F.y); ctx.strokeStyle = C(col, .35); ctx.lineWidth = 1.4; ctx.stroke(); ctx.setLineDash([]);
   if (k === 'thermal') {
     const t = F.target?.ref, hw = t ? t.w * .4 : 60, y0 = G.cam.y, y1 = G.cam.y + G.view.h;
-    ctx.setLineDash([8, 8]); ctx.lineDashOffset = -G.t * 14; ctx.beginPath(); ctx.moveTo(F.x - hw, y0); ctx.lineTo(F.x - hw, y1); ctx.moveTo(F.x + hw, y0); ctx.lineTo(F.x + hw, y1); ink(col, 2.2 * Z, .75);
+    ctx.setLineDash([6, 10]); ctx.lineDashOffset = -G.t * 14; ctx.beginPath(); ctx.moveTo(F.x - hw, y0); ctx.lineTo(F.x - hw, y1); ctx.moveTo(F.x + hw, y0); ctx.lineTo(F.x + hw, y1); ink(col, 1.4 * Z, .4);
     ctx.setLineDash([]);
   }
   local();
   if (k === 'perch') {
-    // a landing pad on the branch and a chevron dropping onto it
-    ctx.beginPath(); ctx.ellipse(x, y + 3, 26 * pulse, 10 * pulse, 0, 0, TAU); ink(col, 3.2);
-    const cy = y - 30 - 4 * Math.abs(Math.sin(G.t * 3));
-    ctx.beginPath(); ctx.moveTo(x - 11, cy - 8); ctx.lineTo(x, cy + 3); ctx.lineTo(x + 11, cy - 8); ink(col, 3.4);
-    label('perch', col, y + 27);
+    // a small landing ring on the branch and a chevron settling onto it
+    ctx.beginPath(); ctx.ellipse(x, y + 3, 18 * pulse, 7 * pulse, 0, 0, TAU); ink(col, 2);
+    const cy = y - 20 - 3 * Math.abs(Math.sin(G.t * 3));
+    ctx.beginPath(); ctx.moveTo(x - 7, cy - 5); ctx.lineTo(x, cy + 2); ctx.lineTo(x + 7, cy - 5); ink(col, 2);
   } else if (k === 'thermal') {
-    // the warm column picked out by two dashed edges, with chevrons rising up the middle
     ctx.beginPath();
-    for (let j = 0; j < 3; j++) { const cy = y + 26 - j * 20 - (G.t * 14 % 20); ctx.moveTo(x - 12, cy + 7); ctx.lineTo(x, cy - 3); ctx.lineTo(x + 12, cy + 7); }
-    ink(col, 3.2);
-    label('thermal', col, y + 46);
+    for (let j = 0; j < 2; j++) { const cy = y + 14 - j * 14 - (G.t * 10 % 14); ctx.moveTo(x - 8, cy + 5); ctx.lineTo(x, cy - 2); ctx.lineTo(x + 8, cy + 5); }
+    ink(col, 2);
   } else {
-    // prey: a ring with crosshair arms, a dot at its heart
-    const r = 19 * pulse;
+    // prey: a thin ring with four short ticks and a dot
+    const r = 13 * pulse;
     ctx.beginPath(); ctx.arc(x, y, r, 0, TAU);
-    for (let j = 0; j < 4; j++) { const an = j * Math.PI / 2 + Math.PI / 4; ctx.moveTo(x + Math.cos(an) * (r + 4), y + Math.sin(an) * (r + 4)); ctx.lineTo(x + Math.cos(an) * (r + 13), y + Math.sin(an) * (r + 13)); }
-    ink(col, 3.2);
-    ctx.beginPath(); ctx.arc(x, y, 3.2, 0, TAU); ctx.fillStyle = C(col, .95); ctx.fill();
-    label(k, col, y + r + 22);
+    for (let j = 0; j < 4; j++) { const an = j * Math.PI / 2 + Math.PI / 4; ctx.moveTo(x + Math.cos(an) * (r + 3), y + Math.sin(an) * (r + 3)); ctx.lineTo(x + Math.cos(an) * (r + 8), y + Math.sin(an) * (r + 8)); }
+    ink(col, 2);
+    ctx.beginPath(); ctx.arc(x, y, 2.2, 0, TAU); ctx.fillStyle = C(col, .85); ctx.fill();
   }
   ctx.restore();
 }

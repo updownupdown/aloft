@@ -1,7 +1,7 @@
 // Singing from a perch: whenever the hawk sits on a branch (or a songbird is close), two half
-// rings of pigment pools open around the joysticks, toward the middle of the screen. Around the right stick, the five song notes,
+// rings of pigment pools open in the bottom corners, toward the middle of the screen. In the right corner, the five song notes,
 // low to high, each its own colour: touch one to sing it, slide across to sing each you cross.
-// Around the left stick, the songbirds you have heard, each pooled in its breast colour with a
+// In the left corner, the songbirds you have heard, each pooled in its breast colour with a
 // dot of its cap (paler until you learn its song): touch one and the hawk sings that bird's song
 // in its voice, and the notes take on that voice; a bird whose song you know answers with a gift. (Left-handed,
 // the rings swap.) The next note of a song you are copying wears a red ring; a pool brightens
@@ -23,7 +23,7 @@ function pool(col, dot) {
   const url = `url(${cv.toDataURL()})`; pools.set(key, url); return url;
 }
 
-export function createSinging({ audio, sticks, voice = () => 1, onNote, onMimic, onToggle }) {
+export function createSinging({ audio, voice = () => 1, onNote, onMimic, onToggle }) {
   const root = document.getElementById('ui');
   const dots = document.createElement('div'); dots.className = 'sing-dots hidden';
   const cheer = document.createElement('div'); cheer.className = 'sing-cheer'; let cheerTimer = 0;
@@ -79,7 +79,12 @@ export function createSinging({ audio, sticks, voice = () => 1, onNote, onMimic,
     S.key = '';
   }
 
-  // lay the pools out on half circles round the sticks, opening toward the middle of the screen:
+  // where the rings centre: a circle in each bottom corner, where the joysticks used to sit
+  const corner = side => {
+    const d = Math.max(104, Math.min(148, Math.min(innerWidth, innerHeight) * .29)), top = innerHeight - 30 - d;
+    return { left: side === 'L' ? 6 : innerWidth - 6 - d, top, width: d, height: d };
+  };
+  // lay the pools out on half circles round the corners, opening toward the middle of the screen:
   // from below the stick's inner side up and over it, as low as the screen's bottom edge allows.
   // Notes run low to high from the bottom; a row that is not full sits centred on the inner side.
   function layout() {
@@ -87,7 +92,7 @@ export function createSinging({ audio, sticks, voice = () => 1, onNote, onMimic,
     if (key === S.key) return;
     S.key = key;
     const place = (ring, side, btns) => {
-      const r = sticks.el(side).getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+      const r = corner(side), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
       const inward = side === 'L' ? 1 : -1;
       let rho = r.width / 2 + 28, i = 0;
       while (i < btns.length) {
