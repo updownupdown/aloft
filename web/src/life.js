@@ -20,7 +20,7 @@ export function mousePos(m, t) {
 }
 export function fishPos(f, p, t) {
   const sp = .18 + .12 * hash(f.seed), ph = t * sp + f.seed * 1.9;
-  const x = lerp(p.x0 + 6, p.x1 - 6, .5 + .45 * Math.sin(ph));
+  const x = p.sea ? p.c + p.w * (f.at + .05 * Math.sin(ph)) : lerp(p.x0 + 6, p.x1 - 6, .5 + .45 * Math.sin(ph));   // sea fish keep to their own stretch
   const y = Math.min(p.waterY + (t < rise.until ? 1.2 : 4 + 2.5 * Math.sin(t * .6 + f.seed)), W.pondBed(x, p) - 2);
   return { x, y, dir: Math.cos(ph) > 0 ? 1 : -1 };
 }

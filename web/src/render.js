@@ -13,6 +13,7 @@ import { ghostBird } from './ghost.js';
 import { drawNight } from './night.js';
 import { drawSkies, drawSkiesScreen, underSea } from './skies.js';
 import { drawRidge } from './ridge.js';
+import { drawCoast } from './coast.js';
 import { drawEncountersGround, drawEncountersAir, morphPal } from './encounters.js';
 import { keepsakesIn } from './story.js';
 import { ridgeField, streamAt, ridgeLeaves, lenses, kettles, cumuli } from './airart.js';
@@ -86,6 +87,7 @@ export function render(ctx, G) {
   for (const c of G.crows) crow(ctx, c, P, G);
   drawEncountersAir(ctx, G, P, smallBird);
   drawRidge(ctx, G, P);
+  drawCoast(ctx, G, P);
   kettles(ctx, G, P, x0, x1);
   drawSkies(ctx, G, P);
   for (const hl of hawks) { if (hl.a) ctx.globalAlpha = hl.a; ctx.drawImage(hl.c, hl.x, hl.y, hl.w, hl.w); ctx.globalAlpha = 1; }
@@ -362,6 +364,7 @@ function pond(ctx, p, P, G) {
   }
   ctx.stroke(); ctx.restore();
   stroke(ctx, [[p.x0, p.waterY], [p.x1, p.waterY]], shade(P.water, .7), .35, 1, p.k);
+  if (p.sea) return;   // the sea's waves, spray and gulls are coast.js's
   // a lake has lily pads out in the shallows from spring to autumn, all in one fill
   if (p.lake && G.sea.winter < .5) {
     ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = C(P.leaf, .6 * (1 - G.sea.winter * 2)); ctx.beginPath();
