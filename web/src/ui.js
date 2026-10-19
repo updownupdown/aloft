@@ -16,70 +16,73 @@ export function createUI({ audio, G, store, species, onPause, playSong, haptics,
   const menu = $('div', 'menu hidden');
   menu.innerHTML = `
     <div class="card" role="dialog" aria-label="Paused">
-      <h1 data-act="title">Aloft</h1>
-      <p class="sub"></p>
-      <button data-act="resume" class="primary">Resume</button>
-      <button data-act="photo" class="hidden">Photo mode</button>
-      <div class="row">
-        <button data-act="sound" class="half"></button>
-        <button data-act="music" class="half hidden"></button>
+      <header class="card-head"><h1 data-act="title">Aloft</h1><p class="sub"></p></header>
+      <nav class="tabs" role="tablist">
+        <button data-tab="play" role="tab">Settings</button>
+        <button data-tab="journal" role="tab" class="hidden">Journal</button>
+        <button data-tab="songs" role="tab">Songs</button>
+        <button data-tab="help" role="tab">How to play</button>
+        <button data-tab="gfx" role="tab">Graphics</button>
+      </nav>
+      <div class="panes">
+        <section class="pane" data-pane="play">
+          <button data-act="photo" class="row-btn hidden">Photo mode</button>
+          <button data-act="sound" class="sw" role="switch"><span>Sound</span><i></i></button>
+          <button data-act="music" class="sw hidden" role="switch"><span>Music</span><i></i></button>
+          <button data-act="haptics" class="sw" role="switch"><span>Vibration</span><i></i></button>
+          <button data-act="glide" class="sw" role="switch"><span>Glide line</span><i></i></button>
+          <button data-act="lefty" class="sw" role="switch"><span>Left-handed</span><i></i></button>
+          <button data-act="install" class="row-btn hidden">Install on this phone</button>
+          <button data-act="newgame" class="quiet hidden">Start a new journey</button>
+        </section>
+        <section class="pane" data-pane="journal">
+          <p class="journey"></p>
+          <canvas class="map" width="720" height="150"></canvas>
+          <p class="intent"></p>
+          <p class="nest"></p>
+          <h3>Landmarks</h3>
+          <ul class="landmarks"></ul>
+          <h3>Album</h3>
+          <div class="album"></div>
+          <p class="world"><span></span> <button data-act="share" class="quiet">Share this world</button></p>
+        </section>
+        <section class="pane" data-pane="songs">
+          <ul class="songbook"></ul>
+        </section>
+        <section class="pane" data-pane="help">
+          <ul class="howto">
+            <li><b>Tap</b> to flap. One tap, one wingbeat. Each flap tires the wings; when they are spent they won't beat until gliding rests them.</li>
+            <li><b>Press and hold</b> anywhere to point the hawk toward your finger. Point down to dive, up to climb, behind to swing round.</li>
+            <li>Flying slowly, point <b>steeply down</b> and the hawk stops gliding and lets itself down on slow wingbeats, drifting toward your finger. That is the easy way to land.</li>
+            <li>On a branch, the ground or the water, <b>one tap</b> turns or steps toward it; <b>two quick taps</b> take off. On a branch, <b>tap below</b> the hawk to drop down to the next branch or the ground.</li>
+            <li>Let go and the hawk glides on its own. Diving builds speed; pulling up trades it for height. Too slow and it stalls.</li>
+            <li>To land softly, <b>flare</b>: point up just before the branch or the ground.</li>
+            <li><b>Thermals</b> rise above the treeline on sunny afternoons. Let go inside one and the hawk floats up as it glides across; turn back to stay in it, and the lift is strongest in the core. Look for <b>leaves</b> spiralling upward. <b>Cloud rings</b> hang all over the sky; fly through one for a burst of speed. Wind against a hillside gives <b>ridge lift</b>. Rising air beeps.</li>
+            <li><b>Kiting:</b> face into the wind, low over open ground, and hold the nose a little up. The hawk hangs still on the air and the mice below show themselves. Point down to stoop on one.</li>
+            <li>The <b>call</b> button (bottom corner) gives the red-tail's scream. Mice freeze in the open, other hawks answer, and your companion or fledgling comes to you. Keyboard: C.</li>
+            <li><b>Tap a branch</b> to fly to it and perch. From evening on, a perched hawk can tap <b>Sleep</b> (bottom corner) to roost until dawn.</li>
+            <li>Land on a pond to swim, then <b>tap the water</b> to drink. Three sips fill your thirst.</li>
+            <li>On the ground, hold left or right to walk. <b>Tap berries</b> (six fill you) or, after rain, <b>worms</b> (three fill you). Dive at <b>mice</b> in the grass or <b>fish</b> in ponds.</li>
+            <li>Perch near a <b>songbird</b> and tap <b>Sing</b>: a string appears down the right. Listen, then slide to each note and hold it in tune; the marks glow as the bird sings them. A wrong note only flashes, so carry on. When the song is done, a line under the button says so. Sing a song you know from any perch and that species answers. Keyboard: keys 1 to 5.</li>
+            <li>Once you know a bird's song, singing beside it is a <b>duet</b>: it sings the first half and you answer with the rest. The cleaner your pitch and timing, the longer its gift lasts. On some mornings the whole wood sings a <b>dawn chorus</b>: join in and every bird you know answers at once.</li>
+            <li>Each dawn the <b>Journal</b> offers one small intention for the day; finish it and you earn a feather. Pictures from photo mode go in the journal's album.</li>
+            <li>The seasons turn every two days. Follow the flocks <b>south</b> (to the right) to the wintering marsh, and home again in spring. The <b>Journal</b> keeps your map and the landmarks you find.</li>
+            <li>Pick up a <b>twig</b> under a tree and perch on a branch to start a <b>nest</b>. Five twigs and an egg appears; when it hatches, carry mice and fish home to feed the chick.</li>
+            <li>Keyboard: Space flap, arrow keys or WASD to steer and walk, E to drink or eat, Esc for this menu.</li>
+          </ul>
+        </section>
+        <section class="pane" data-pane="gfx">
+          <div class="gfx-list"></div>
+          <small>Turn layers off if the game runs slowly on your device. Resolution "auto" lowers itself while frames are slow.</small>
+          <button data-act="debug" class="quiet">Copy debug info</button>
+          <details class="tuning hidden">
+            <summary>Tuning</summary>
+            <div class="sliders"></div>
+            <button data-act="tune-reset" class="quiet">Reset tuning</button>
+          </details>
+        </section>
       </div>
-      <button data-act="glide"></button>
-      <div class="row">
-        <button data-act="haptics" class="half"></button>
-        <button data-act="lefty" class="half"></button>
-      </div>
-      <button data-act="install" class="hidden">Install on this phone</button>
-      <details class="journal-sec sec-journal hidden">
-        <summary>Journal</summary>
-        <p class="journey"></p>
-        <canvas class="map" width="720" height="150"></canvas>
-        <p class="intent"></p>
-        <p class="nest"></p>
-        <h3>Landmarks</h3>
-        <ul class="landmarks"></ul>
-        <h3>Album</h3>
-        <div class="album"></div>
-        <p class="world"><span></span> <button data-act="share" class="quiet">Share this world</button></p>
-      </details>
-      <details class="sec-songbook">
-        <summary>Songbook</summary>
-        <ul class="songbook"></ul>
-      </details>
-      <details class="sec-howto">
-        <summary>How to play</summary>
-        <ul class="howto">
-          <li><b>Tap</b> to flap. One tap, one wingbeat. Each flap tires the wings; when they are spent they won't beat until gliding rests them.</li>
-          <li><b>Press and hold</b> anywhere to point the hawk toward your finger. Point down to dive, up to climb, behind to swing round in a wingover.</li>
-          <li>On a branch, the ground or the water, <b>one tap</b> turns or steps toward it; <b>two quick taps</b> take off.</li>
-          <li>Let go and the hawk glides on its own. Diving builds speed; pulling up trades it for height. Too slow and it stalls.</li>
-          <li>To land softly, <b>flare</b>: point up just before the branch or the ground.</li>
-          <li><b>Thermals</b> rise above the treeline on sunny afternoons. Let go inside one and the hawk floats up as it glides across; turn back to stay in it, and the lift is strongest in the core. <b>Rings</b> hang all over the sky. Wind against a hillside gives <b>ridge lift</b>. Rising air beeps.</li>
-          <li><b>Kiting:</b> face into the wind, low over open ground, and hold the nose a little up. The hawk hangs still on the air and the mice below show themselves. Point down to stoop on one.</li>
-          <li>The <b>call</b> button (bottom corner) gives the red-tail's scream. Mice freeze in the open, other hawks answer, and your companion or fledgling comes to you. Keyboard: C.</li>
-          <li><b>Tap a branch</b> to fly to it and perch. At dusk, stay perched and the hawk roosts until dawn.</li>
-          <li>Land on a pond to swim, then <b>tap the water</b> to drink. Three sips fill your thirst.</li>
-          <li>On the ground, hold left or right to walk. <b>Tap berries</b> (six fill you) or, after rain, <b>worms</b> (three fill you). Dive at <b>mice</b> in the grass or <b>fish</b> in ponds.</li>
-          <li>Perch near a <b>songbird</b> and tap <b>Sing</b>: a string appears down the right. Listen, then slide to each note and hold it in tune; the marks glow as the bird sings them. Sing a song you know from any perch and that species answers. Keyboard: keys 1 to 5.</li>
-          <li>Once you know a bird's song, singing beside it is a <b>duet</b>: it sings the first half and you answer with the rest. The cleaner your pitch and timing, the longer its gift lasts. On some mornings the whole wood sings a <b>dawn chorus</b>: join in and every bird you know answers at once.</li>
-          <li>Each dawn the <b>Journal</b> offers one small intention for the day; finish it and you earn a feather. Pictures from photo mode go in the journal's album.</li>
-          <li>The seasons turn every two days. Follow the flocks <b>south</b> (to the right) to the wintering marsh, and home again in spring. The <b>Journal</b> keeps your map and the landmarks you find.</li>
-          <li>Pick up a <b>twig</b> under a tree and perch on a branch to start a <b>nest</b>. Five twigs and an egg appears; when it hatches, carry mice and fish home to feed the chick.</li>
-          <li>Keyboard: Space flap, arrow keys or WASD to steer and walk, E to drink or eat, Esc for this menu.</li>
-        </ul>
-      </details>
-      <details class="sec-gfx">
-        <summary>Graphics</summary>
-        <div class="gfx-list"></div>
-        <small>Turn layers off if the game runs slowly on your device. Resolution "auto" lowers itself while frames are slow.</small>
-        <button data-act="debug" class="quiet">Copy debug info</button>
-      </details>
-      <details class="tuning hidden">
-        <summary>Tuning</summary>
-        <div class="sliders"></div>
-        <button data-act="tune-reset">Reset tuning</button>
-      </details>
-      <button data-act="newgame" class="quiet hidden">Start a new journey</button>
+      <footer class="card-foot"><button data-act="resume" class="primary">Resume</button></footer>
     </div>`;
   root.append(menu);
   const q = s => menu.querySelector(s);
@@ -89,7 +92,18 @@ export function createUI({ audio, G, store, species, onPause, playSong, haptics,
   const installBtn = q('[data-act=install]'), book = q('.songbook');
   if (hooks.music) musicBtn.classList.remove('hidden');
   if (hooks.photo) q('[data-act=photo]').classList.remove('hidden');
-  if (hooks.journal) q('.journal-sec').classList.remove('hidden');
+  if (hooks.journal) q('[data-tab=journal]').classList.remove('hidden');
+
+  // tabs: one section at a time, remembered between visits
+  let tab = store.get('tab', 'play');
+  function showTab(t) {
+    if (!q(`[data-tab=${t}]`) || q(`[data-tab=${t}]`).classList.contains('hidden')) t = 'play';
+    tab = t; store.set('tab', t);
+    for (const b of menu.querySelectorAll('[data-tab]')) { const on = b.dataset.tab === t; b.classList.toggle('on', on); b.setAttribute('aria-selected', on); }
+    for (const p of menu.querySelectorAll('.pane')) p.classList.toggle('hidden', p.dataset.pane !== t);
+    q('.panes').scrollTop = 0;
+    if (t === 'journal') hooks.drawMap?.(q('.map'));
+  }
   if (hooks.newGame) q('[data-act=newgame]').classList.remove('hidden');
 
   // the tuning page is hidden: tap the title five times
@@ -109,11 +123,13 @@ export function createUI({ audio, G, store, species, onPause, playSong, haptics,
   const gfxList = q('.gfx-list');
   function gfxButtons() {
     gfxList.innerHTML = '';
-    const r = $('button', '', `Resolution: ${GFX.res === 'auto' ? 'auto' : GFX.res + 'x'}`); r.dataset.gfx = 'res'; gfxList.append(r);
-    for (const [k, name] of GFX_INFO) { const b = $('button', GFX[k] ? '' : 'off', `${name}: ${GFX[k] ? 'on' : 'off'}`); b.dataset.gfx = k; gfxList.append(b); }
+    const r = $('button', 'row-btn res', `Resolution <em>${GFX.res === 'auto' ? 'auto' : GFX.res + 'x'}</em>`); r.dataset.gfx = 'res'; gfxList.append(r);
+    for (const [k, name] of GFX_INFO) {
+      const b = $('button', 'sw' + (GFX[k] ? ' on' : ''), `<span>${name}</span><i></i>`); b.dataset.gfx = k; b.setAttribute('role', 'switch'); b.setAttribute('aria-checked', !!GFX[k]); gfxList.append(b);
+    }
   }
   gfxList.addEventListener('click', e => {
-    const k = e.target.dataset?.gfx; if (!k) return;
+    const k = e.target.closest('[data-gfx]')?.dataset.gfx; if (!k) return;
     if (k === 'res') GFX.res = RES_OPTS[(RES_OPTS.indexOf(GFX.res) + 1) % RES_OPTS.length];
     else GFX[k] = !GFX[k];
     saveGfx(store); overlay(GFX.fps); hooks.gfx?.(k); gfxButtons();
@@ -122,12 +138,9 @@ export function createUI({ audio, G, store, species, onPause, playSong, haptics,
   function refresh() {
     gfxButtons();
     q('.sub').textContent = hooks.subtitle ? hooks.subtitle() : 'Paused';
-    soundBtn.textContent = `Sound: ${audio.on ? 'on' : 'off'}`;
-    musicBtn.textContent = `Music: ${G.settings.music ? 'on' : 'off'}`;
-    soundBtn.classList.toggle('on', audio.on); musicBtn.classList.toggle('on', G.settings.music);
-    glideBtn.textContent = `Glide line: ${G.settings.glide ? 'shown' : 'hidden'}`;
-    hapticsBtn.textContent = `Vibration: ${haptics?.on ? 'on' : 'off'}`; hapticsBtn.classList.toggle('on', !!haptics?.on);
-    leftyBtn.textContent = `Left-handed: ${G.settings.lefty ? 'yes' : 'no'}`; leftyBtn.classList.toggle('on', !!G.settings.lefty);
+    const sw = (el, on) => { el.classList.toggle('on', !!on); el.setAttribute('aria-checked', !!on); };
+    sw(soundBtn, audio.on); sw(musicBtn, G.settings.music); sw(glideBtn, G.settings.glide); sw(hapticsBtn, haptics?.on); sw(leftyBtn, G.settings.lefty);
+    if (!haptics) hapticsBtn.classList.add('hidden');
     book.innerHTML = '';
     for (const sp of species) {
       const li = $('li');
@@ -145,7 +158,7 @@ export function createUI({ audio, G, store, species, onPause, playSong, haptics,
       const ul = q('.landmarks'); ul.innerHTML = '';
       if (!j.landmarks.length) ul.innerHTML = '<li class="unknown">None found yet. Rare sights hide along the way.</li>';
       for (const l of j.landmarks) ul.append($('li', '', `${l.name} <small>${l.note}</small>`));
-      hooks.drawMap?.(q('.map'));
+      if (tab === 'journal') hooks.drawMap?.(q('.map'));
       q('.intent').textContent = j.intent || '';
       q('.world span').textContent = j.world || '';
       const album = q('.album'), pics = hooks.album?.() || [];
@@ -153,13 +166,14 @@ export function createUI({ audio, G, store, species, onPause, playSong, haptics,
       for (const p of pics.slice().reverse()) { const fig = $('figure'); fig.innerHTML = `<img alt=""><figcaption></figcaption>`; fig.querySelector('img').src = p.src; fig.querySelector('figcaption').textContent = p.note; album.append(fig); }
     }
   }
-  function open() { refresh(); menu.classList.remove('hidden'); root.classList.add('menu-open'); onPause(true); }
+  function open() { refresh(); showTab(tab); menu.classList.remove('hidden'); root.classList.add('menu-open'); onPause(true); }
   function close() { menu.classList.add('hidden'); root.classList.remove('menu-open'); onPause(false); }
   function toggle() { menu.classList.contains('hidden') ? open() : close(); }
 
   btn.addEventListener('click', () => { audio.unlock(); toggle(); });
   menu.addEventListener('click', e => {
-    const act = e.target.dataset?.act;
+    const t = e.target.closest?.('[data-tab]'); if (t) { showTab(t.dataset.tab); return; }
+    const act = e.target.closest?.('[data-act]')?.dataset.act;
     if (act === 'resume' || e.target === menu) close();
     if (act === 'sound') { audio.unlock(); audio.setOn(!audio.on); store.set('sound', audio.on); refresh(); }
     if (act === 'music') { audio.unlock(); G.settings.music = !G.settings.music; store.set('music', G.settings.music); hooks.music(G.settings.music); refresh(); }
@@ -183,7 +197,7 @@ export function createUI({ audio, G, store, species, onPause, playSong, haptics,
     if (act === 'newgame' && confirmNew(e.target)) { hooks.newGame(); close(); }
     if (act === 'title') {
       const now = performance.now(); titleTaps = now - titleT < 600 ? titleTaps + 1 : 1; titleT = now;
-      if (titleTaps >= 5) { q('.tuning').classList.remove('hidden'); q('.tuning').open = true; }
+      if (titleTaps >= 5) { q('.tuning').classList.remove('hidden'); q('.tuning').open = true; showTab('gfx'); }
     }
   });
   // a second tap confirms, so a stray tap never wipes a journey

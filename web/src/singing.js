@@ -11,7 +11,7 @@ import { C, mix } from './util.js';
 
 const LANES = [0, 2, 4, 7, 9];          // semitones above the lowest song note
 const LO = -3, HI = 13;                  // the string's range in semitones
-const TOL = .33, HOLD = .16;             // how close, and for how long, a note must be held
+const TOL = .5, HOLD = .12;              // how close, and for how long, a note must be held
 const INK = [58, 36, 24], POOL = [156, 192, 219], NEXT = [168, 72, 58], INDIGO = [47, 74, 116];
 const TRAIL_S = 1.4;                     // how long the sung path stays on the strip
 
@@ -20,8 +20,9 @@ export function createSinging({ audio, onNote, onToggle }) {
   const btn = document.createElement('button'); btn.className = 'sing-btn hidden';
   const dots = document.createElement('div'); dots.className = 'sing-dots hidden';
   const strip = document.createElement('div'); strip.className = 'sing-strip hidden';
+  const cheer = document.createElement('div'); cheer.className = 'sing-cheer'; let cheerTimer = 0;
   const cv = document.createElement('canvas'); strip.append(cv);
-  root.append(btn, dots, strip);
+  root.append(btn, dots, cheer, strip);
 
   const S = { open: false, finger: null, stable: null, glow: [0, 0, 0, 0, 0], hit: [0, 0, 0, 0, 0], col: [184, 83, 47], label: '', next: -1, trail: [] };
   const semiAt = y => { const r = strip.getBoundingClientRect(), pad = 26; return HI - (y - r.top - pad) / (r.height - pad * 2) * (HI - LO); };
@@ -105,6 +106,12 @@ export function createSinging({ audio, onNote, onToggle }) {
     update, progress, setOpen,
     get open() { return S.open; },
     glow(lane) { S.glow[lane] = 1; },
+    // a finished song: a line under the button and every pool on the string lights up
+    cheer(text) {
+      cheer.textContent = text; cheer.classList.remove('show'); void cheer.offsetWidth; cheer.classList.add('show');
+      S.hit = [1, 1, 1, 1, 1]; S.glow = [1, 1, 1, 1, 1];
+      clearTimeout(cheerTimer); cheerTimer = setTimeout(() => cheer.classList.remove('show'), 2600);
+    },
     // where a lane sits on screen (for test scripts)
     lanePt(lane) { const r = strip.getBoundingClientRect(); return [r.left + r.width / 2, r.top + yAt(LANES[lane], r.height)]; },
   };

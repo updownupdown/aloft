@@ -603,32 +603,52 @@ function thermal(ctx, t, G, P) {
     // the base of the column fades in from nothing, soft on every side
     for (let k = 0; k < 8; k++) { x.globalAlpha = (k + .5) / 8; x.fillRect(t.c - t.w, t.y0 - (t.y0 - t.y1) * (k + 1) / 8, t.w * 2, (t.y0 - t.y1) / 8 + .2); }
   }));
-  // rising wind curls (Windlines style): short arcs drifting upward in the column
-  ctx.save(); ctx.strokeStyle = C(shade(P.thermal, .7), .6 * vis); ctx.lineWidth = 1; ctx.lineCap = 'round';
-  const span = t.y0 - top, n = 22, y0 = G.cam.y - 10, y1 = G.cam.y + G.view.h + 10;
+  // leaves carried up the column, tumbling as they rise: they show where the air is rising
+  // without a word. Two fills for all of them (the ones fading in at the base, and the rest).
+  ctx.save();
+  const span = t.y0 - top, n = 24, y0 = G.cam.y - 10, y1 = G.cam.y + G.view.h + 10;
+  const col = mix(P.leafDk, P.leafHi, .35), al = Math.min(1, vis * 1.6);
   for (let lv = 1; lv <= 2; lv++) {
     ctx.beginPath();
     for (let j = 0; j < n; j++) {
-      const y = t.y0 - ((G.t * 30 + j * span / n + t.k * 37) % span);
+      const rate = 26 + 14 * hash(j * 5.1 + t.k);
+      const y = t.y0 - ((G.t * rate + j * span / n + t.k * 37) % span);
       const fade = Math.min(1, (t.y0 - y) / 50);
       if (fade <= 0 || (fade < 1) !== (lv === 1) || y < y0 || y > y1) continue;
-      const x = t.c + (hash(t.k * 3 + j) - .5) * t.w * 1.4 + Math.sin(G.t * .9 + j) * 3, r = 4 + 4 * hash(j + t.k), a0 = Math.PI * (1.1 + .3 * hash(j));
-      ctx.moveTo(x + Math.cos(a0) * r, y + Math.sin(a0) * r); ctx.arc(x, y, r, a0, Math.PI * (1.7 + .3 * hash(j * 2)));
+      // nearer the core the leaves rise in a tighter spiral
+      const ph = G.t * (1.2 + hash(j + t.k)) + j, x = t.c + (hash(t.k * 3 + j) - .5) * t.w * 1.3 + Math.sin(ph) * 9;
+      const rot = ph * 1.7, l = 3 + 1.6 * hash(j * 2.3), wdt = l * (.25 + .3 * Math.abs(Math.cos(ph * 1.3)));
+      ctx.moveTo(x + Math.cos(rot) * l, y + Math.sin(rot) * l); ctx.ellipse(x, y, l, wdt, rot, 0, TAU);
     }
-    ctx.globalAlpha = lv === 1 ? .5 : 1; ctx.stroke();
+    ctx.fillStyle = C(col, (lv === 1 ? .45 : .9) * al); ctx.fill();
   }
   ctx.restore();
 }
 
+// A ring is a small loop of cloud: puffs of paper around an upright oval, shaded underneath,
+// warmed a touch by the sun. Each half (behind the hawk, in front of it) is one cached stamp.
+const RING_RX = 10.5, RING_RY = 18.5;
 function ring(ctx, r, P, G, half) {
   if (r.gone) return;
-  const a0 = half ? -Math.PI / 2 : Math.PI / 2, wob = Math.sin(G.t * 2 + r.x) * .6;
-  ctx.save(); ctx.lineCap = 'round';
-  for (let k = 0; k < 2; k++) {
-    ctx.strokeStyle = C(shade(P.ring, k ? .85 : .9), k ? .45 : .75); ctx.lineWidth = k ? 1.2 : 2.6;
-    ctx.beginPath(); ctx.ellipse(r.x + k * .5, r.y + wob, 5 + k * .4, r.r, 0, a0, a0 + Math.PI); ctx.stroke();
-  }
-  ctx.restore();
+  const wob = Math.sin(G.t * 2 + r.x) * .6, dark = G.storm;
+  const st = stamp('cring' + half, [P.paper, P.cloudShade, P.ring].map(c => c.map(v => v >> 3).join()).join() + (dark > .3 ? 'd' : ''), -19, -27, 19, 27, G.view.spx * 1.3, x => {
+    const n = 8, puffs = [];
+    for (let i = 0; i < n; i++) {
+      const a = (half ? -Math.PI / 2 : Math.PI / 2) + Math.PI * (i + .5) / n, rr = 5 + 2.2 * hash(i * 3.1 + half * 7);
+      puffs.push([Math.cos(a) * RING_RX, Math.sin(a) * RING_RY, rr, i]);
+    }
+    x.fillStyle = C(P.paper, .96); x.beginPath();
+    for (const [px, py, rr, i] of puffs) { const q = jit(circP(px, py, rr, 12), rr * .12, i + half * 9, 1); x.moveTo(...q[0]); for (const v of q) x.lineTo(...v); x.closePath(); }
+    x.fill();
+    x.globalCompositeOperation = 'source-atop';   // shade and warmth stay inside the puffs
+    x.fillStyle = C(P.cloudShade, .6 + dark * .3); x.beginPath();
+    for (const [px, py, rr] of puffs) { x.moveTo(px + rr * .3 + rr * .85, py + rr * .45); x.arc(px + rr * .3, py + rr * .45, rr * .85, 0, TAU); }
+    x.fill();
+    x.fillStyle = C(P.ring, .3); x.beginPath();
+    for (const [px, py, rr] of puffs) { x.moveTo(px - rr * .2 + rr * .7, py - rr * .45); x.arc(px - rr * .2, py - rr * .45, rr * .7, 0, TAU); }
+    x.fill();
+  });
+  ctx.drawImage(st.c, r.x + st.x0, r.y + wob + st.y0, st.w, st.h);
 }
 
 function hintMark(ctx, p, P, G) {
@@ -638,12 +658,15 @@ function hintMark(ctx, p, P, G) {
 }
 
 /* ---------- the hawk ---------- */
-function wingGeo(b, side) {
-  const SPAN = 31 * b.L, cp = .87, sp = .5, sh = [2, -2.2], th0 = b.theta, th1 = b.theta + b.bend;
+// the wing is a little 3D rig seen from slightly below; `yaw` swings it round for a turn
+function wingGeo(b, side, yaw = 0) {
+  const cy = Math.cos(yaw), sy = Math.sin(yaw), V = .32 * Math.abs(sy);   // head-on, the wings show their shallow V
+  const SPAN = 31 * b.L, cp = .87, sp = .5, sh = [2, -2.2], th0 = b.theta + V, th1 = b.theta + b.bend + V;
   function at(s, xo) {
     const a = Math.min(s, .45) * SPAN; let y = -a * Math.sin(th0), z = a * Math.cos(th0);
     if (s > .45) { const hh = (s - .45) * SPAN; y -= hh * Math.sin(th1); z += hh * Math.cos(th1); }
-    z *= side; return [sh[0] + xo - s * s * 3.5 * b.L, sh[1] + y * cp + z * sp];
+    z *= side; const x = sh[0] + xo - s * s * 3.5 * b.L;
+    return [x * cy - z * sy, sh[1] + y * cp + (x * sy + z * cy) * sp];
   }
   const lead = [[0, 6], [.25, 7.5], [.5, 6.5], [.72, 3]].map(([s, x]) => at(s, x));
   const trail = [[.72, -8], [.5, -9.5], [.25, -10], [0, -8]].map(([s, x]) => at(s, x));
@@ -671,25 +694,36 @@ function hawkLayer(G, b, P, k, id) {
   return L;
 }
 function drawHawk(ctx, b, P, G, k = 1) {
+  if (b.state === 'fly') {
+    // turning, the hawk swings square to the viewer and on round: yaw 0 is side-on, ±π/2 head-on
+    let yaw = 0;
+    if (b.yaw) { const u = Math.min(1, b.yaw.t / b.yaw.dur); yaw = (u < .5 ? u * Math.PI : u * Math.PI - Math.PI) * b.yawSgn; }
+    else if (b.turnT > 0) yaw = (1 - b.turnT / .32) * Math.PI - Math.PI;   // other hawks: already facing the new way
+    ctx.save(); ctx.translate(b.x, b.y + b.bob); ctx.scale(b.face * BS * k, BS * k);
+    ctx.rotate(b.pitch * Math.cos(yaw)); flyingHawk(ctx, b, P, yaw);
+    ctx.restore(); return;
+  }
   const u = b.turnT > 0 ? 1 - b.turnT / .32 : 1;
   const xs = b.face * (b.turnT > 0 ? -Math.cos(u * Math.PI) : 1);
   const sx = Math.sign(xs) * Math.max(.18, Math.abs(xs));
   ctx.save(); ctx.translate(b.x, b.y + b.bob); ctx.scale(sx * BS * k, BS * k);
-  if (b.state === 'fly') { ctx.rotate(b.pitch); flyingHawk(ctx, b, P); }
-  else sittingHawk(ctx, b, P, G);
+  sittingHawk(ctx, b, P, G);
   ctx.restore();
 }
 
 // A soaring red-tail seen from a little below: dark brown back and head, cream underparts
 // with a streaky belly band, pale underwings with the dark leading-edge bar and dark
 // fingertips, and the brick-red tail with its dark band. Light is paper left bare.
-function flyingHawk(ctx, b, P) {
+function flyingHawk(ctx, b, P, yaw = 0) {
   const fan = b.tailFan, a = .8, amp = 1.1, ink = P.birdFar;
   const tail = [[-8, -1.6], [-21, -3.2 - 3.6 * fan], [-23.6, .6], [-21, 3.8 + 3.2 * fan], [-8, 2.2]];
   const body = ellP(0, .3, 11.8, 4.3), head = circP(11.2, -2.2, 4, 12);
-  const far = wingGeo(b, -1), near = wingGeo(b, 1);
+  const far = wingGeo(b, -1, yaw), near = wingGeo(b, 1, yaw);
   wash(ctx, far.outline, ink, a * .42, { passes: 1, amp, seed: 71, rim: .35 });
   wash(ctx, [...far.band(0), ...far.band(.22).reverse()], P.bird, a * .4, { passes: 1, amp: .6, seed: 70, rim: 0 });
+  // the body foreshortens as it swings round (never quite to a line: head-on it is still round)
+  const cy = Math.cos(yaw), bodyX = Math.sign(cy || 1) * Math.max(.3, Math.abs(cy));
+  ctx.save(); ctx.scale(bodyX, 1);
   // paper under the body so the far wing never shows through it
   lift(ctx, body, P.paper, .95); lift(ctx, head, P.paper, .95); lift(ctx, tail, P.paper, .9);
   wash(ctx, tail, tailColour(b, P), a * .75, { passes: 2, amp, seed: 72, rim: .5 });
@@ -710,6 +744,8 @@ function flyingHawk(ctx, b, P) {
   wash(ctx, ellP(10.4, -4.1, 3.7, 1.9, -.1), ink, a * .35, { passes: 1, amp: .3, seed: 81, rim: 0 });
   lift(ctx, ellP(12.6, -.2, 1.8, 1.1, .2), P.paper, .45);
   beakAt(ctx, 14.3, -2.6, P, a);
+  eye(ctx, 12.6, -3.3, P);
+  ctx.restore();
   // the near wing, underside: pale with the dark bar on its leading edge and dark tips
   lift(ctx, near.outline, P.paper, .6);
   wash(ctx, near.outline, mix(P.birdPale, P.bird, .35), a * .6, { passes: 2, amp, seed: 76, rim: .6 });
@@ -718,7 +754,6 @@ function flyingHawk(ctx, b, P) {
   ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.strokeStyle = C(ink, a * .7); ctx.lineWidth = .7;
   ctx.beginPath(); for (let k = 0; k < 5; k++) { ctx.moveTo(...near.bases[k]); ctx.lineTo(...near.fingers[k]); } ctx.stroke();
   ctx.restore();
-  eye(ctx, 12.6, -3.3, P);
 }
 
 // a red-tail earns its red tail: until the first migration is flown the tail is barred brown
