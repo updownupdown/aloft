@@ -175,7 +175,7 @@ function fly(b, dt, inp, G) {
   // south, and the soft pull up into a cloud
   const kb = kettleBoost(b, G), wave = waveLift(b.x, b.y);
   const cloud = b.y < W.CEILING + 40 && cumuliIn(b.x, b.x).some(c => inCloud(c, b.x, b.y)) ? 4 : 0;
-  const thermal = W.lift(b.x, b.y, G.t) * kb.k, air = thermal + W.ridgeLift(b.x, b.y) + wave + kb.follow + cloud;
+  const thermal = W.lift(b.x, b.y, G.t) * kb.k, air = thermal + W.ridgeLift(b.x, b.y) + wave + kb.follow + cloud + W.extraLift(b.x, b.y);
   b.air = air; b.wave = wave; b.kettle = kb.k > 1 ? 'join' : kb.follow ? 'follow' : null;
   // hands off, the hawk holds its attitude: extra speed lifts the nose, too little drops it
   let gT = T.relax + clamp((b.s - 88) * .007, -.5, .45), manual = false, aim = 0, adx = 0, ady = 0;

@@ -11,6 +11,7 @@ import { drawFauna } from './fauna.js';
 import { sight } from './guide.js';
 import { ghostBird } from './ghost.js';
 import { drawNight } from './night.js';
+import { drawSkies, drawSkiesScreen, underSea } from './skies.js';
 import { drawEncountersGround, drawEncountersAir, morphPal } from './encounters.js';
 import { keepsakesIn } from './story.js';
 import { ridgeField, streamAt, ridgeLeaves, lenses, kettles, cumuli } from './airart.js';
@@ -52,7 +53,7 @@ export function render(ctx, G) {
   if (GFX.clouds) lenses(ctx, G, P, x0 - 300, x1 + 300);
   ridgeField(G, x0, x1);
   if (GFX.thermals) for (const t of W.thermalsIn(x0 - 60, x1 + 60)) thermal(ctx, t, G, P);
-  const rings = G.visibleRings;
+  const rings = G.skies?.inv ? G.visibleRings.filter(r => !underSea(G, r.y)) : G.visibleRings;
   for (const r of rings) ring(ctx, r, P, G, 0);
   if (G.gather) gathering(ctx, G, P);
   groundLayer(ctx, G, P, x0, x1);
@@ -79,6 +80,7 @@ export function render(ctx, G) {
   for (const c of G.crows) crow(ctx, c, P, G);
   drawEncountersAir(ctx, G, P, smallBird);
   kettles(ctx, G, P, x0, x1);
+  drawSkies(ctx, G, P);
   for (const hl of hawks) { if (hl.a) ctx.globalAlpha = hl.a; ctx.drawImage(hl.c, hl.x, hl.y, hl.w, hl.w); ctx.globalAlpha = 1; }
   if (G.carry) carried(ctx, G, P);
   if (GFX.clouds) cumuli(ctx, G, P, x0 - 200, x1 + 200);
@@ -93,6 +95,7 @@ export function render(ctx, G) {
   ctx.save(); ctx.scale(w / S.w, h / S.h);
   if (GFX.weather) rain(ctx, G, P, S.w, S.h);
   nearBirds(ctx, G, P, S.w, S.h);
+  drawSkiesScreen(ctx, G, P, S.w, S.h);
   ctx.restore();
   // night falls deep and blue; an owl's song, once learned, lets the hawk see further into it
   const night = nightness(G.tod) * (G.brightT > 0 ? .35 : 1) * (G.learned.has(OWL) ? .6 : 1);
