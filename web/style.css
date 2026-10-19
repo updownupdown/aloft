@@ -36,6 +36,9 @@ button { font-family: inherit; }
 .menu-btn span:nth-child(2) { width: 13px; transform: translateX(-1px) rotate(1.5deg); }
 .menu-btn span:nth-child(3) { width: 16px; transform: rotate(-1deg); }
 .menu-btn.hidden { display: none; }
+/* battery saver on: a small leaf under the menu button */
+.saver-leaf { position: absolute; left: calc(24px + env(safe-area-inset-left)); top: calc(60px + env(safe-area-inset-top)); width: 16px; height: 16px; pointer-events: none; }
+.saver-leaf.hidden { display: none; }
 
 /* a hint: one italic line on a pale wash, underlined in pencil */
 .toast {
