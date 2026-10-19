@@ -65,6 +65,7 @@ export function updateJourney(G, dt, { toast, once, audio, spring }) {
   }
   if (G.goal === 'south' && b.x > W.JOURNEY - 700) {
     G.goal = 'north'; G.journeys++; G.gather = { t: 60, x: b.x };
+    if (G.nest) G.oldNest = { x: G.nest.x, y: G.nest.y, place: G.nest.place };   // remembered for the flight home, even once the young one has gone
     audio.ring();
     toast('The wintering marsh. Other hawks have gathered here, circling over the reeds.', 6);
     toast('Rest as long as you like. When you are ready, home lies back north, to the left.', 6);
