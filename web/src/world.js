@@ -1,11 +1,19 @@
 // The procedural world. Everything is a pure function of world x and a hash, so the
 // world is endless in both directions and identical on every visit.
 // Coordinates: x right (= south, the migration direction), y DOWN, ground sits around y = 0.
-import { hash, vnoise, fbm, lerp, smooth, clamp } from './util.js';
+import { hash as hash0, vnoise as vnoise0, fbm as fbm0, lerp, smooth, clamp } from './util.js';
 import { TUNE } from './tune.js';
 
 // set by the game every frame: thermal strength (time of day, weather), wind, winter
 export const env = { thermal: 1, wind: 0, winter: 0 };
+// The world seed. 0 is the original world; any other number lays out different hills, ponds,
+// trees and landmarks, so a journey can be shared as a link and flown by someone else.
+export const seed = { v: 0 };
+const hash = n => seed.v ? hash0(n + seed.v * 13.7) : hash0(n);
+const vnoise = (x, s) => vnoise0(x, s + seed.v * 3.1);
+const fbm = (x, s) => fbm0(x, s + seed.v * 3.1);
+const caches = [];
+export function setSeed(v) { seed.v = v | 0; for (const c of caches) c.clear(); }
 
 /* ---------- biomes ---------- */
 // Long noise-chosen stretches. The far south (the migration's end) is always marsh.
@@ -18,7 +26,7 @@ export const BIOMES = {
   cliffs: { name: 'cliffs', amp: 3.2, trees: .55, ponds: .35, bushes: .5, mice: .2, broadleaf: .15, wind: 1.5, tint: [130, 120, 105] },
   marsh: { name: 'marsh', amp: .35, trees: .45, ponds: 1.5, bushes: 1.2, mice: .3, broadleaf: .9, wind: .9, tint: [120, 140, 95] },
 };
-const biomeCache = new Map();
+const biomeCache = new Map(); caches.push(biomeCache);
 function biomeRaw(x) {
   if (x > JOURNEY - 1800) return BIOMES.marsh;
   const v = vnoise(x / 2600, 51) * .75 + vnoise(x / 700, 52) * .25;
@@ -31,7 +39,7 @@ export function biomeAt(x) {
   return b;
 }
 // a numeric biome property blended across the borders so terrain never steps
-const blendCache = new Map();
+const blendCache = new Map(); caches.push(blendCache);
 function blendedK(k, key) {
   const ck = key + k;
   let v = blendCache.get(ck);
@@ -52,7 +60,7 @@ const groundRaw = x => {
 
 /* ---------- ponds ---------- */
 const PS = 520;
-const pondCache = new Map();
+const pondCache = new Map(); caches.push(pondCache);
 function pondK(k) {
   if (pondCache.has(k)) return pondCache.get(k);
   let p = null;
@@ -82,7 +90,7 @@ export function pondNear(x, reach = 2.4) {
   return null;
 }
 // the drawing asks for the ground on whole-number x over and over, so those are remembered
-const rawCache = new Map();
+const rawCache = new Map(); caches.push(rawCache);
 function groundAt(x) {
   if (!Number.isInteger(x)) return groundRaw(x);
   let v = rawCache.get(x);
@@ -126,7 +134,7 @@ const LM_NAMES = {
   tower: ['The Ruined Tower', 'The Watchtower', 'The Lonely Tower'],
   stones: ['The Standing Stones', 'The Heron Stones', 'The Grey Stones'],
 };
-const lmCache = new Map();
+const lmCache = new Map(); caches.push(lmCache);
 function landmarkK(k) {
   if (lmCache.has(k)) return lmCache.get(k);
   let l = null;
@@ -151,7 +159,7 @@ const nearLandmark = x => { const l = landmarkK(Math.round((x - LC / 2) / LC)) |
 
 /* ---------- trees ---------- */
 export const TC = 46;
-const treeCache = new Map();
+const treeCache = new Map(); caches.push(treeCache);
 function treeAt(i) {
   if (treeCache.has(i)) return treeCache.get(i);
   let t = null;
@@ -215,7 +223,7 @@ export function twigsIn(x0, x1) {
 
 /* ---------- bushes and berries ---------- */
 const BC = 64;
-const bushCache = new Map();
+const bushCache = new Map(); caches.push(bushCache);
 function bushAt(i) {
   if (bushCache.has(i)) return bushCache.get(i);
   let b = null;
@@ -261,7 +269,7 @@ export function miceIn(x0, x1) {
 /* ---------- thermals and rings ---------- */
 // Wide, gentle columns: wide enough to glide across for a good climb without circling.
 const TS = 1150;
-const thCache = new Map();
+const thCache = new Map(); caches.push(thCache);
 function thermalK(k) {
   if (thCache.has(k)) return thCache.get(k);
   let t = null;
@@ -281,7 +289,7 @@ export function thermalsIn(x0, x1) { const out = []; for (let k = Math.floor(x0 
 export function thermalAt(x) { const k = Math.floor(x / TS); for (let j = k - 1; j <= k + 1; j++) { const t = thermalK(j); if (t && Math.abs(x - t.c) < t.w) return t; } return null; }
 // rings out in the open air too: low over ponds, along the hillsides, high over the trees
 const RC = 420;
-const ringCache = new Map();
+const ringCache = new Map(); caches.push(ringCache);
 function ringK(i) {
   if (ringCache.has(i)) return ringCache.get(i);
   let r = null;
@@ -304,7 +312,8 @@ export const SKY = -2400;      // above this the air is too thin even to flap hi
 export function lift(x, y, time) {
   const t = thermalAt(x); if (!t) return 0;
   const d = Math.abs(x - t.c) / t.w;
-  const horiz = .5 + .5 * Math.cos(d * Math.PI);
+  // a core: strongest in the middle third, softer out to the edge, so centring is the skill
+  const bell = .5 + .5 * Math.cos(d * Math.PI), horiz = bell * (.55 + .45 * bell * bell);
   const vert = smooth(-t.y0, -t.y1, -y) * (1 - smooth(-CEILING - 140, -CEILING, -y));
   return TUNE.thermal * env.thermal * t.str * horiz * vert * (.85 + .15 * Math.sin(time * .7 + t.k));
 }

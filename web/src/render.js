@@ -6,6 +6,7 @@ import * as W from './world.js';
 import { nightness } from './palette.js';
 import { GFX } from './gfx.js';
 import { mousePos, fishPos } from './life.js';
+import { drawFauna } from './fauna.js';
 
 const BS = 1.25; // hawk drawing scale
 
@@ -44,6 +45,7 @@ export function render(ctx, G) {
   if (G.gather) gathering(ctx, G, P);
   groundLayer(ctx, G, P, x0, x1);
   for (const p of W.pondsIn(x0, x1)) pond(ctx, p, P, G);
+  shadow(ctx, G.bird, P);
   for (const l of W.landmarksIn(x0 - 120, x1 + 120)) landmark(ctx, l, P, G);
   const trees = W.treesIn(x0 - 40, x1 + 40);
   for (const t of trees) tree(ctx, t, P, G);
@@ -51,6 +53,7 @@ export function render(ctx, G) {
   for (const b of W.bushesIn(x0, x1)) bush(ctx, b, P, G);
   if (G.wormsOk()) for (const wm of W.wormsIn(x0, x1)) if (!G.eaten.has(wm.id + G.rainId)) worm(ctx, wm, P, G);
   for (const tw of W.twigsIn(x0, x1)) if (!G.twigGone(tw.id)) twig(ctx, tw.x, tw.y, tw.a, P, G.view.spx);
+  drawFauna(ctx, G, P);
   for (const m of W.miceIn(x0, x1)) if (!G.eaten.has(m.id + ':' + G.day)) mouse(ctx, m, P, G);
   for (const t of trees) if (t.song?.active) { const p = t.song.perch; songbird(ctx, p.x, p.y - 3.4, t.song.sp, t.song.singingT > 0, p.x < t.x ? -1 : 1, P, G); }
   if (G.visitor) visitor(ctx, G.visitor, P, G);
@@ -58,6 +61,7 @@ export function render(ctx, G) {
   if (GFX.streaks) streaks(ctx, G, P);
   if (G.glide) glideLine(ctx, G.glide, P, G);
   for (const o of G.boids) smallBird(ctx, o, P, G);
+  for (const c of G.crows) crow(ctx, c, P, G);
   for (const hl of hawks) ctx.drawImage(hl.c, hl.x, hl.y, hl.w, hl.w);
   if (G.carry) carried(ctx, G, P);
   stamina(ctx, G.bird, P);
@@ -369,6 +373,17 @@ function bush(ctx, b, P, G) {
   }
 }
 
+// a soft shadow under a hawk flying low over the ground: one blended ellipse, so the height of
+// a landing or a stoop can be judged. Fainter and wider the higher the hawk.
+function shadow(ctx, b, P) {
+  if (b.state === 'perch' || b.state === 'swim') return;
+  const gy = W.groundY(b.x), up = gy - b.y;
+  if (up > 130 || W.waterAt(b.x) !== null) return;
+  const k = 1 - up / 130;
+  ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = C(shade(P.near, .55), .2 * k * k + .04);
+  ctx.beginPath(); ctx.ellipse(b.x + b.face * 2, gy + .6, 9 + up * .07, 2.2 + up * .008, 0, 0, TAU); ctx.fill(); ctx.restore();
+}
+
 function worm(ctx, wm, P, G) {
   const ph = G.t * 3 + wm.seed, x = wm.x, y = wm.y + 1;
   const pts = [];
@@ -377,24 +392,54 @@ function worm(ctx, wm, P, G) {
   ctx.fillStyle = C(shade(P.worm, .7), .8); ctx.beginPath(); ctx.ellipse(x, y + .3, 2.4, .9, 0, 0, TAU); ctx.fill();
 }
 
+// Each species is told by its silhouette (sp.look): the wren's tail cocked high, the lark's
+// crest, the finch's stubby bill, the thrush's spotted breast, the owl round and big-headed.
 function songbird(ctx, x, y, sp, singing, face, P, G) {
-  const c = sp.cols, bob = singing ? Math.sin(G.t * 18) * .4 : 0;
+  const c = sp.cols, L = sp.look, bob = singing ? Math.sin(G.t * 18) * .4 : 0;
   const lv = singing ? Math.round((Math.sin(G.t * 30) + 1) * 1.5) : -1, open = lv < 0 ? 0 : .9 + (lv / 1.5 - 1) * .5;
-  ctx.save(); ctx.translate(x, y + bob); ctx.scale(face, 1);
-  put(ctx, stamp('song' + sp.id + ':' + lv, pk, -9, -7, 8, 5, G.view.spx * 2, x => {
+  ctx.save(); ctx.translate(x, y + bob); ctx.scale(face * L.size, L.size);
+  put(ctx, stamp('song' + sp.id + ':' + lv, pk, -10, -10, 9, 5, G.view.spx * 2 * L.size, x => {
+    const ink = P.birdFar;
+    if (L.owl) {
+      // an owl: one round shape, a flat face with two big eyes, ear tufts, a stub of a tail
+      stroke(x, [[-.6, 2.4], [-1, 3.6]], ink, .7, .55, 6); stroke(x, [[1, 2.4], [1.2, 3.6]], ink, .7, .55, 5);
+      wash(x, [[-3, 1], [-5.5, 2.8], [-4.6, 3.6], [-2, 2.4]], c.cap, .8, { passes: 1, amp: .2, seed: 7, rim: .3 });
+      wash(x, ellP(0, -.6, 4.4, 3.6, -.1), c.body, .82, { passes: 2, amp: .35, seed: 8, rim: .4 });
+      wash(x, ellP(.8, .6, 2.8, 2.4, -.1), c.breast, .8, { passes: 1, amp: .25, seed: 9, rim: 0 });
+      x.fillStyle = C(shade(c.body, .6), .6); x.beginPath(); for (let k = 0; k < 5; k++) { const sx = -.6 + (k % 3) * 1.3, sy = -.2 + Math.floor(k / 3) * 1.4; x.moveTo(sx + .5, sy); x.ellipse(sx, sy, .5, .3, .4, 0, TAU); } x.fill();
+      wash(x, ellP(-1.6, -1.4, 2.6, 1.8, -.25), shade(c.body, .72), .7, { passes: 1, amp: .25, seed: 12, rim: .35 });
+      wash(x, circP(1.4, -4.2, 3.4, 12), c.body, .85, { passes: 2, amp: .3, seed: 10, rim: .4 });
+      wash(x, [[-1.2, -6.4], [-2.2, -9.4], [.2, -7.2]], c.cap, .85, { passes: 1, amp: .15, seed: 13, rim: 0 });
+      wash(x, [[3.2, -6.6], [4.8, -9.2], [4.6, -6.6]], c.cap, .85, { passes: 1, amp: .15, seed: 14, rim: 0 });
+      lift(x, ellP(2.2, -4, 2.4, 2.2, 0), P.paper, .55);   // the facial disc
+      for (const ex of [.9, 3.4]) { x.fillStyle = C(P.beak, .95); x.beginPath(); x.arc(ex, -4.3, 1, 0, TAU); x.fill(); x.fillStyle = C(ink); x.beginPath(); x.arc(ex + .1, -4.3, .55, 0, TAU); x.fill(); }
+      x.fillStyle = C(ink, .9); x.beginPath(); x.moveTo(1.6, -3.4); x.lineTo(2.9, -3.3 + open * .4); x.lineTo(2.2, -2.3); x.fill();
+      return;
+    }
     // a plump little bird with its tail cocked, standing on thin legs
-    stroke(x, [[-.4, 2.2], [-.8, 3.6]], P.birdFar, .7, .45, 6); stroke(x, [[.8, 2.2], [.9, 3.6]], P.birdFar, .7, .45, 5);
-    wash(x, [[-2.6, -.4], [-7.6, -3.4], [-7.4, -2], [-6.4, -1.6], [-2.2, 1.2]], c.cap, .75, { passes: 1, amp: .2, seed: 7, rim: .35 });
+    stroke(x, [[-.4, 2.2], [-.8, 3.6]], ink, .7, .45, 6); stroke(x, [[.8, 2.2], [.9, 3.6]], ink, .7, .45, 5);
+    const tl = L.tail, tip = [-7.6 + (tl - 1) * 1.8, -3.4 * tl];
+    wash(x, [[-2.6, -.4], tip, [tip[0] + .2, tip[1] + 1.4], [-6.4 + (tl - 1) * 1.6, -1.6 * tl], [-2.2, 1.2]], c.cap, .75, { passes: 1, amp: .2, seed: 7, rim: .35 });
     wash(x, ellP(0, 0, 4.2, 2.9, -.28), c.body, .8, { passes: 2, amp: .35, seed: 8, rim: .4 });
     wash(x, ellP(1.3, 1, 2.6, 1.8, -.2), c.breast, .85, { passes: 1, amp: .25, seed: 9, rim: 0 });
+    if (L.spots) { x.fillStyle = C(shade(c.body, .55), .7); x.beginPath(); for (let k = 0; k < 6; k++) { const sx = -.2 + (k % 3) * 1.3, sy = .3 + Math.floor(k / 3) * 1.1 + (k % 2) * .3; x.moveTo(sx + .4, sy); x.ellipse(sx, sy, .4, .28, .5, 0, TAU); } x.fill(); }
     wash(x, ellP(-1.2, -.7, 3.1, 1.5, -.32), shade(c.body, .72), .7, { passes: 1, amp: .25, seed: 12, rim: .35 });
     lift(x, [[-2.6, -.6], [.6, -1.4], [.4, -.9], [-2.4, -.1]], P.paper, .45);
     wash(x, circP(3.1, -2.7, 2.3, 10), c.body, .85, { passes: 2, amp: .25, seed: 10, rim: .4 });
     wash(x, ellP(2.7, -3.8, 2.1, 1.1, -.1, 9), c.cap, .85, { passes: 1, amp: .15, seed: 11, rim: 0 });
-    x.fillStyle = C(P.birdFar, .9); x.beginPath(); x.moveTo(5, -3); x.lineTo(7, -2.6 - open * .5); x.lineTo(5, -2.1); x.moveTo(5, -2.2); x.lineTo(6.6, -1.8 + open * .5); x.lineTo(5, -1.6); x.fill();
+    if (L.crest) wash(x, [[1.6, -4.6], [2.6, -7.4], [3.4, -6.8], [4, -4.7]], c.cap, .85, { passes: 1, amp: .15, seed: 15, rim: 0 });
+    if (L.bib) wash(x, ellP(3.2, -.9, 1.6, 1, .3, 8), c.cap, .85, { passes: 1, amp: .1, seed: 16, rim: 0 });
+    const bl = 5 + 2 * L.bill, bt = L.thick ? .5 : 0;
+    x.fillStyle = C(ink, .9); x.beginPath(); x.moveTo(5, -3 - bt); x.lineTo(bl, -2.6 - open * .5); x.lineTo(5, -2.1); x.moveTo(5, -2.2); x.lineTo(bl - .4, -1.8 + open * .5); x.lineTo(5, -1.6 + bt); x.fill();
     x.fillStyle = C(P.paper, .85); x.beginPath(); x.arc(3.8, -3, .75, 0, TAU); x.fill();
-    x.fillStyle = C(P.birdFar); x.beginPath(); x.arc(3.85, -3, .45, 0, TAU); x.fill();
+    x.fillStyle = C(ink); x.beginPath(); x.arc(3.85, -3, .45, 0, TAU); x.fill();
   }));
+  ctx.restore();
+}
+// a crow: the small flying bird, bigger and black
+function crow(ctx, c, P, G) {
+  ctx.save(); ctx.translate(c.x, c.y); ctx.scale(1.75, 1.75);
+  smallBird(ctx, { x: 0, y: 0, vx: c.vxs, ph: c.ph, col: P.crow, wing: shade(P.crow, .85), seed: c.seed }, P, G);
   ctx.restore();
 }
 function visitor(ctx, v, P, G) {
@@ -421,7 +466,9 @@ function smallBird(ctx, o, P, G) {
 }
 
 function mouse(ctx, m, P, G) {
-  const q = mousePos(m, G.t); if (q.show <= .02) return;
+  const q = mousePos(m, G.t), b = G.bird;
+  if (b.kiteT > .3 && Math.abs(m.x - b.x) < 140) q.show = Math.max(q.show, .9);   // a kiting hawk sees the grass move
+  if (q.show <= .02) return;
   const y = q.y + 1 - 2.2 * q.show, hop = Math.abs(Math.sin(G.t * 14 + m.seed)) * .6 * q.run, sd = m.seed % 4;
   ctx.save(); ctx.translate(q.x, y - hop); ctx.scale(q.dir, 1);
   const col = mix(P.ground, [120, 110, 100], .5), a = .85;
@@ -551,7 +598,7 @@ function thermal(ctx, t, G, P) {
   blit(ctx, sprite('th' + t.k, pk + Math.round(vis * 20) + (P.thermal[0] >> 2) + (P.thermal[1] >> 2), t.c - t.w, top, t.c + t.w, t.y0, G.view.spx * .4, x => {
     x.globalCompositeOperation = 'multiply';
     const hg = x.createLinearGradient(t.c - t.w, 0, t.c + t.w, 0);
-    hg.addColorStop(0, C(P.thermal, 0)); hg.addColorStop(.5, C(P.thermal, .2 * vis)); hg.addColorStop(1, C(P.thermal, 0));
+    hg.addColorStop(0, C(P.thermal, 0)); hg.addColorStop(.3, C(P.thermal, .07 * vis)); hg.addColorStop(.5, C(P.thermal, .24 * vis)); hg.addColorStop(.7, C(P.thermal, .07 * vis)); hg.addColorStop(1, C(P.thermal, 0));
     x.fillStyle = hg; x.fillRect(t.c - t.w, top, t.w * 2, t.y1 - top);
     // the base of the column fades in from nothing, soft on every side
     for (let k = 0; k < 8; k++) { x.globalAlpha = (k + .5) / 8; x.fillRect(t.c - t.w, t.y0 - (t.y0 - t.y1) * (k + 1) / 8, t.w * 2, (t.y0 - t.y1) / 8 + .2); }
@@ -645,10 +692,13 @@ function flyingHawk(ctx, b, P) {
   wash(ctx, [...far.band(0), ...far.band(.22).reverse()], P.bird, a * .4, { passes: 1, amp: .6, seed: 70, rim: 0 });
   // paper under the body so the far wing never shows through it
   lift(ctx, body, P.paper, .95); lift(ctx, head, P.paper, .95); lift(ctx, tail, P.paper, .9);
-  wash(ctx, tail, P.tail, a * .75, { passes: 2, amp, seed: 72, rim: .5 });
+  wash(ctx, tail, tailColour(b, P), a * .75, { passes: 2, amp, seed: 72, rim: .5 });
   const tb = u => [lerp(-8, -21, u), lerp(-1.6, -3.2 - 3.6 * fan, u), lerp(2.2, 3.8 + 3.2 * fan, u)];
-  const [bx0, ya0, yb0] = tb(.78), [bx1, ya1, yb1] = tb(.88);
-  wash(ctx, [[bx0, ya0], [bx1, ya1], [bx1, yb1], [bx0, yb0]], ink, a * .35, { passes: 1, amp: .3, seed: 79, rim: 0 });
+  // the adult's one dark band near the tip; a young hawk's tail is barred all along
+  for (const [u0, u1] of b.adult ? [[.78, .88]] : [[.3, .36], [.5, .56], [.7, .76], [.88, .94]]) {
+    const [bx0, ya0, yb0] = tb(u0), [bx1, ya1, yb1] = tb(u1);
+    wash(ctx, [[bx0, ya0], [bx1, ya1], [bx1, yb1], [bx0, yb0]], ink, a * (b.adult ? .35 : .28), { passes: 1, amp: .3, seed: 79, rim: 0 });
+  }
   wash(ctx, body, P.bird, a, { passes: 2, amp, seed: 73, rim: .45 });
   // cream belly and the band of streaks across it
   lift(ctx, ellP(1.2, 2.4, 9.6, 2.5), P.paper, .7);
@@ -671,6 +721,8 @@ function flyingHawk(ctx, b, P) {
   eye(ctx, 12.6, -3.3, P);
 }
 
+// a red-tail earns its red tail: until the first migration is flown the tail is barred brown
+const tailColour = (b, P) => b.adult ? P.tail : mix(P.bird, P.birdPale, .3);
 // hooked dark beak over a yellow cere
 function beakAt(ctx, x, y, P, a) {
   const k = .78, q = pts => pts.map(([u, v]) => [x + u * k, y + v * k]);
@@ -705,8 +757,11 @@ function sittingHawk(ctx, b, P, G) {
     stroke(ctx, [[1.5, by + 3.5], [1.5 - step, 6]], P.beak, .9, 1.1, 82);
   }
   lift(ctx, body, P.paper, .95); lift(ctx, head, P.paper, .95);
-  wash(ctx, tail, P.tail, a, { passes: 2, amp: .8, seed: 72, rim: .5 });
-  if (mode === 'perch') wash(ctx, [[-7.6, 11.2], [-8.4, 12.8], [-5.6, 14.2], [-4.6, 12.6]], ink, a * .35, { passes: 1, amp: .2, seed: 79, rim: 0 });
+  wash(ctx, tail, tailColour(b, P), a, { passes: 2, amp: .8, seed: 72, rim: .5 });
+  if (mode === 'perch') {
+    if (b.adult) wash(ctx, [[-7.6, 11.2], [-8.4, 12.8], [-5.6, 14.2], [-4.6, 12.6]], ink, a * .35, { passes: 1, amp: .2, seed: 79, rim: 0 });
+    else for (let k = 0; k < 3; k++) { const u = .45 + k * .2; wash(ctx, [[lerp(-3, -9, u), lerp(3, 14, u)], [lerp(-3, -9, u + .06), lerp(3, 14, u + .06)], [lerp(-.5, -6.2, u + .06), lerp(5, 15.6, u + .06)], [lerp(-.5, -6.2, u), lerp(5, 15.6, u)]], ink, a * .28, { passes: 1, amp: .15, seed: 79 + k, rim: 0 }); }
+  }
   wash(ctx, body, P.bird, a, { passes: 2, amp: 1, seed: 73, rim: .45 });
   // cream breast with a belly band of streaks
   const breast = ellP(...R(2.4, 2), 6, 3.1, rot);

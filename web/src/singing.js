@@ -5,7 +5,7 @@
 // red, and a pool brightens in the bird's own colour while it sings that note or when you land it.
 // Your voice is a drop of indigo that bleeds into the pool as you hold the note, and the path
 // you have sung drifts off to the right as it ages, so a steady note draws a straight line.
-import { NOTE_HZ } from './audio.js';
+// Pitches come from the shared key (audio.hz), so the string follows the music through the day.
 import { wash, ellP } from './paint.js';
 import { C, mix } from './util.js';
 
@@ -26,7 +26,7 @@ export function createSinging({ audio, onNote, onToggle }) {
   const S = { open: false, finger: null, stable: null, glow: [0, 0, 0, 0, 0], hit: [0, 0, 0, 0, 0], col: [184, 83, 47], label: '', next: -1, trail: [] };
   const semiAt = y => { const r = strip.getBoundingClientRect(), pad = 26; return HI - (y - r.top - pad) / (r.height - pad * 2) * (HI - LO); };
   const yAt = (st, h, pad = 26) => pad + (HI - st) / (HI - LO) * (h - pad * 2);
-  const hz = st => NOTE_HZ[0] * Math.pow(2, st / 12);
+  const hz = st => audio.hz(st);
 
   btn.addEventListener('click', () => setOpen(!S.open));
   strip.addEventListener('pointerdown', e => { e.preventDefault(); strip.setPointerCapture?.(e.pointerId); audio.unlock?.(); S.finger = { id: e.pointerId, st: semiAt(e.clientY) }; });
@@ -58,7 +58,7 @@ export function createSinging({ audio, onNote, onToggle }) {
       for (let i = 0; i < 5; i++) if (Math.abs(f.st - LANES[i]) < TOL) lane = i;
       if (lane < 0) S.stable = null;
       else if (S.stable?.lane !== lane) S.stable = { lane, t: 0, done: false };
-      else if (!S.stable.done && (S.stable.t += dt) >= HOLD) { S.stable.done = true; S.hit[lane] = 1; onNote(lane); }
+      else if (!S.stable.done && (S.stable.t += dt) >= HOLD) { S.stable.done = true; S.hit[lane] = 1; onNote(lane, Math.abs(f.st - LANES[lane]) / TOL); }
     }
     while (S.trail.length && now - S.trail[0][0] > TRAIL_S) S.trail.shift();
     draw(now);
@@ -93,10 +93,11 @@ export function createSinging({ audio, onNote, onToggle }) {
     }
   }
 
-  // progress under the button: one dot per note of the song being copied, or per note sung
-  function progress(total, done, state) {
+  // progress under the button: one dot per note of the song being copied, or per note sung.
+  // In a duet the first `bird` notes were the songbird's, shown hollow; yours follow.
+  function progress(total, done, state, bird = 0) {
     let html = '';
-    for (let i = 0; i < total; i++) html += `<i class="${i < done ? (state === 'wrong' ? 'wrong' : state === 'done' ? 'done' : 'on') : ''}"></i>`;
+    for (let i = 0; i < total; i++) html += `<i class="${i < bird ? 'bird' : i < done ? (state === 'wrong' ? 'wrong' : state === 'done' ? 'done' : 'on') : ''}"></i>`;
     if (dots.innerHTML !== html) dots.innerHTML = html;
   }
 

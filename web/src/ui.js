@@ -2,7 +2,7 @@
 import { TUNE, DEFAULTS, RANGES } from './tune.js';
 import { GFX, GFX_INFO, RES_OPTS, saveGfx, overlay, debugInfo } from './gfx.js';
 
-export function createUI({ audio, G, store, species, onPause, playSong, hooks = {} }) {
+export function createUI({ audio, G, store, species, onPause, playSong, haptics, hooks = {} }) {
   const $ = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html !== undefined) e.innerHTML = html; return e; };
   const root = document.getElementById('ui');
 
@@ -25,14 +25,22 @@ export function createUI({ audio, G, store, species, onPause, playSong, hooks = 
         <button data-act="music" class="half hidden"></button>
       </div>
       <button data-act="glide"></button>
+      <div class="row">
+        <button data-act="haptics" class="half"></button>
+        <button data-act="lefty" class="half"></button>
+      </div>
       <button data-act="install" class="hidden">Install on this phone</button>
       <details class="journal-sec sec-journal hidden">
         <summary>Journal</summary>
         <p class="journey"></p>
         <canvas class="map" width="720" height="150"></canvas>
+        <p class="intent"></p>
         <p class="nest"></p>
         <h3>Landmarks</h3>
         <ul class="landmarks"></ul>
+        <h3>Album</h3>
+        <div class="album"></div>
+        <p class="world"><span></span> <button data-act="share" class="quiet">Share this world</button></p>
       </details>
       <details class="sec-songbook">
         <summary>Songbook</summary>
@@ -46,11 +54,15 @@ export function createUI({ audio, G, store, species, onPause, playSong, hooks = 
           <li>On a branch, the ground or the water, <b>one tap</b> turns or steps toward it; <b>two quick taps</b> take off.</li>
           <li>Let go and the hawk glides on its own. Diving builds speed; pulling up trades it for height. Too slow and it stalls.</li>
           <li>To land softly, <b>flare</b>: point up just before the branch or the ground.</li>
-          <li><b>Thermals</b> rise above the treeline on sunny afternoons. Let go inside one and the hawk floats up as it glides across; turn back to stay in it. <b>Rings</b> hang all over the sky. Wind against a hillside gives <b>ridge lift</b>. Rising air beeps.</li>
+          <li><b>Thermals</b> rise above the treeline on sunny afternoons. Let go inside one and the hawk floats up as it glides across; turn back to stay in it, and the lift is strongest in the core. <b>Rings</b> hang all over the sky. Wind against a hillside gives <b>ridge lift</b>. Rising air beeps.</li>
+          <li><b>Kiting:</b> face into the wind, low over open ground, and hold the nose a little up. The hawk hangs still on the air and the mice below show themselves. Point down to stoop on one.</li>
+          <li>The <b>call</b> button (bottom corner) gives the red-tail's scream. Mice freeze in the open, other hawks answer, and your companion or fledgling comes to you. Keyboard: C.</li>
           <li><b>Tap a branch</b> to fly to it and perch. At dusk, stay perched and the hawk roosts until dawn.</li>
           <li>Land on a pond to swim, then <b>tap the water</b> to drink. Three sips fill your thirst.</li>
           <li>On the ground, hold left or right to walk. <b>Tap berries</b> (six fill you) or, after rain, <b>worms</b> (three fill you). Dive at <b>mice</b> in the grass or <b>fish</b> in ponds.</li>
           <li>Perch near a <b>songbird</b> and tap <b>Sing</b>: a string appears down the right. Listen, then slide to each note and hold it in tune; the marks glow as the bird sings them. Sing a song you know from any perch and that species answers. Keyboard: keys 1 to 5.</li>
+          <li>Once you know a bird's song, singing beside it is a <b>duet</b>: it sings the first half and you answer with the rest. The cleaner your pitch and timing, the longer its gift lasts. On some mornings the whole wood sings a <b>dawn chorus</b>: join in and every bird you know answers at once.</li>
+          <li>Each dawn the <b>Journal</b> offers one small intention for the day; finish it and you earn a feather. Pictures from photo mode go in the journal's album.</li>
           <li>The seasons turn every two days. Follow the flocks <b>south</b> (to the right) to the wintering marsh, and home again in spring. The <b>Journal</b> keeps your map and the landmarks you find.</li>
           <li>Pick up a <b>twig</b> under a tree and perch on a branch to start a <b>nest</b>. Five twigs and an egg appears; when it hatches, carry mice and fish home to feed the chick.</li>
           <li>Keyboard: Space flap, arrow keys or WASD to steer and walk, E to drink or eat, Esc for this menu.</li>
@@ -72,6 +84,8 @@ export function createUI({ audio, G, store, species, onPause, playSong, hooks = 
   root.append(menu);
   const q = s => menu.querySelector(s);
   const soundBtn = q('[data-act=sound]'), musicBtn = q('[data-act=music]'), glideBtn = q('[data-act=glide]');
+  const hapticsBtn = q('[data-act=haptics]'), leftyBtn = q('[data-act=lefty]');
+  root.classList.toggle('lefty', !!G.settings.lefty);
   const installBtn = q('[data-act=install]'), book = q('.songbook');
   if (hooks.music) musicBtn.classList.remove('hidden');
   if (hooks.photo) q('[data-act=photo]').classList.remove('hidden');
@@ -112,6 +126,8 @@ export function createUI({ audio, G, store, species, onPause, playSong, hooks = 
     musicBtn.textContent = `Music: ${G.settings.music ? 'on' : 'off'}`;
     soundBtn.classList.toggle('on', audio.on); musicBtn.classList.toggle('on', G.settings.music);
     glideBtn.textContent = `Glide line: ${G.settings.glide ? 'shown' : 'hidden'}`;
+    hapticsBtn.textContent = `Vibration: ${haptics?.on ? 'on' : 'off'}`; hapticsBtn.classList.toggle('on', !!haptics?.on);
+    leftyBtn.textContent = `Left-handed: ${G.settings.lefty ? 'yes' : 'no'}`; leftyBtn.classList.toggle('on', !!G.settings.lefty);
     book.innerHTML = '';
     for (const sp of species) {
       const li = $('li');
@@ -130,6 +146,11 @@ export function createUI({ audio, G, store, species, onPause, playSong, hooks = 
       if (!j.landmarks.length) ul.innerHTML = '<li class="unknown">None found yet. Rare sights hide along the way.</li>';
       for (const l of j.landmarks) ul.append($('li', '', `${l.name} <small>${l.note}</small>`));
       hooks.drawMap?.(q('.map'));
+      q('.intent').textContent = j.intent || '';
+      q('.world span').textContent = j.world || '';
+      const album = q('.album'), pics = hooks.album?.() || [];
+      album.innerHTML = pics.length ? '' : '<small class="unknown">No pictures yet. Photo mode is in this menu.</small>';
+      for (const p of pics.slice().reverse()) { const fig = $('figure'); fig.innerHTML = `<img alt=""><figcaption></figcaption>`; fig.querySelector('img').src = p.src; fig.querySelector('figcaption').textContent = p.note; album.append(fig); }
     }
   }
   function open() { refresh(); menu.classList.remove('hidden'); onPause(true); }
@@ -143,6 +164,15 @@ export function createUI({ audio, G, store, species, onPause, playSong, hooks = 
     if (act === 'sound') { audio.unlock(); audio.setOn(!audio.on); store.set('sound', audio.on); refresh(); }
     if (act === 'music') { audio.unlock(); G.settings.music = !G.settings.music; store.set('music', G.settings.music); hooks.music(G.settings.music); refresh(); }
     if (act === 'glide') { G.settings.glide = !G.settings.glide; store.set('glide', G.settings.glide); refresh(); }
+    if (act === 'haptics' && haptics) { haptics.setOn(!haptics.on); if (haptics.on) haptics.land(false); refresh(); }
+    if (act === 'lefty') { G.settings.lefty = !G.settings.lefty; store.set('lefty', G.settings.lefty); root.classList.toggle('lefty', G.settings.lefty); refresh(); }
+    if (act === 'share') {
+      const el = e.target, url = hooks.journal?.().link || location.href;
+      const copied = () => { el.textContent = 'Link copied'; setTimeout(() => { el.textContent = 'Share this world'; }, 2500); };
+      if (navigator.share) navigator.share({ title: 'Aloft', text: 'Fly the same hills as me in Aloft.', url }).catch(() => {});
+      else navigator.clipboard?.writeText(url).then(copied, () => { el.textContent = url; });
+    }
+    if (e.target.tagName === 'IMG' && e.target.closest('.album')) e.target.closest('figure').classList.toggle('big');
     if (act === 'photo') { menu.classList.add('hidden'); hooks.photo(); }
     if (act === 'install' && deferredInstall) { deferredInstall.prompt(); deferredInstall = null; installBtn.classList.add('hidden'); }
     if (act === 'debug') {
