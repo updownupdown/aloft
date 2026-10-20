@@ -28,6 +28,8 @@ export function fbm(x, z, s, oct = 3) {
 }
 // sharp crests where the noise crosses zero, 0..1
 export const ridged = (x, z, s, oct = 3) => 1 - Math.abs(fbm(x, z, s, oct));
+// the same crests, rounded over the top (soft sets how broad the rounding is)
+export const softRidged = (x, z, s, oct = 3, soft = .08) => { const f = fbm(x, z, s, oct); return 1 - Math.sqrt(f * f + soft * soft) + soft; };
 export const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 export const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
 
