@@ -101,8 +101,8 @@ export function journeySystem(G) {
     head.body.querySelector('.j-trip').textContent = `${G.placeNote()} ${trip}${J.journeys ? ` Journeys completed: ${J.journeys}.` : ''}`;
     const years = J.family.map(y => `Year ${y.year}: you${y.mate ? ' and your mate' : ''}, ${chicks(y.chicks)} fledged.`);
     head.body.querySelector('.j-family').textContent = years.length || J.yearChicks ? `${years.join(' ')} Now year ${J.year}${J.yearChicks ? `, ${chicks(J.yearChicks)} fledged so far` : ''}.` : '';
-    // the rings flown (sys/rings.js keeps G.rings) and the loops of them flown in one go
-    head.body.querySelector('.j-rings').textContent = G.rings ? `Rings of cloud flown: ${G.rings}${J.loops ? `, and ${J.loops} whole loop${J.loops > 1 ? 's' : ''} of them in one go` : ''}.` : '';
+    // the rings flown (sys/rings.js keeps G.rings) and the whole courses of them flown
+    head.body.querySelector('.j-rings').textContent = G.rings ? `Rings of cloud flown: ${G.rings}${J.loops ? `, and ${J.loops} whole course${J.loops > 1 ? 's' : ''} of them` : ''}.` : '';
     // the weather's notes on what the sky has shown lately (sys/weather.js)
     head.body.querySelector('.j-sky').textContent = (G.skyNotes || []).slice(-3).join(' ');
     const lms = Object.values(J.found).sort((a, c) => a.z - c.z);

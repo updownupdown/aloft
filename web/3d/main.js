@@ -215,7 +215,7 @@ export function start(canvas, ui) {
     audio.ambience(Math.min(1, b.s / 30 + (G.storm || 0) * .3), G.rain || 0, { height: above * 2, stoop: clamp((b.s - 25) / 18, 0, 1), night: L.night, frogs: L.night * (height(b.p[0], b.p[2]) < 3 ? 1 : 0) });
     music.update(dt, { night: L.night, storm: G.storm || 0, learned: G.learned || new Set(), species: G.species || [], speed: b.s * 4, wind: G.windK ?? .3, height: above * 2 });
 
-    glowT -= dt; setWings(b.stamina, glowT > 0 ? glow : '');
+    glowT -= dt; setWings(b.stamina, glowT > 0 ? glow : '', b.staminaMax ?? 1);
     H.flight = b.state === 'fly' ? { m: above.toFixed(0), kmh: (b.s * 3.6).toFixed(0), lift: b.ride ? 'ride' : b.lift > .8 ? 'rise' : '' } : null;
     H.status = b.state === 'fly' ? '' : b.eating > 0 ? 'eating' : b.state === 'perch' ? 'perched' : b.state === 'swim' ? 'on the water' : 'on the ground';
     takeoffBtn.classList.toggle('gone', b.state === 'fly' || b.settle > 0 || b.eating > 0);

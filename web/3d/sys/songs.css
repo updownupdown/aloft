@@ -80,9 +80,11 @@
   text-shadow: 0 0 6px rgba(255, 255, 255, .9); opacity: 0; transition: opacity .6s; pointer-events: none; white-space: nowrap; }
 .cheer3.show { opacity: 1; }
 /* Call sits left of the day dial (128px wide, 12px in) */
+/* Call: just the word, white with the HUD's dark halo, like the rest of the HUD */
 .call3 { pointer-events: auto; position: absolute; right: calc(12px + 128px + 10px + env(safe-area-inset-right)); top: calc(12px + env(safe-area-inset-top));
-  width: 54px; height: 54px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .66); cursor: pointer; touch-action: none; box-shadow: 0 4px 16px rgba(20, 40, 50, .14);
-  font-family: var(--text); font-weight: 700; font-size: 12.5px; color: var(--ink); background: rgba(255, 255, 255, .5); }
-.call3:active { background: var(--ink); color: #fff; }
+  min-width: 54px; height: 54px; padding: 0 6px; border: 0; border-radius: 27px; cursor: pointer; touch-action: none; background: none;
+  font-family: var(--text); font-weight: 700; font-size: 16px; letter-spacing: .02em; color: #fff;
+  filter: drop-shadow(0 1px 1.5px rgba(10, 20, 28, .55)) drop-shadow(0 0 6px rgba(10, 20, 28, .25)); -webkit-backdrop-filter: none; backdrop-filter: none; }
+.call3:active { color: #ffe9a8; transform: scale(.94); }
 .call3.rest { opacity: .4; }
 .menu-open .sing3, .menu-open .cheer3, .menu-open .call3, .bare3 .call3, .bare3 .sing3, .bare3 .cheer3 { display: none; }
