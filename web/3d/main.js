@@ -27,9 +27,16 @@ import { foodSystem } from './sys/food.js';
 import { aimSystem } from './sys/aim.js';
 import { songsSystem } from './sys/songs.js';
 import { appRows } from './app.js';
+import { guideSystem } from './sys/guide.js';
+import { journeySystem } from './sys/journey.js';
+import { nestSystem } from './sys/nest.js';
+import { storySystem } from './sys/story.js';
+import { photoSystem } from './sys/photo.js';
+import { howtoSystem } from './sys/howto.js';
 import { STYLES } from './post.js';
 
-const SYSTEMS = [clockSystem, airSystem, ringsSystem, foodSystem, aimSystem, songsSystem];
+const SYSTEMS = [clockSystem, airSystem, ringsSystem, foodSystem, aimSystem, songsSystem,
+  guideSystem, journeySystem, nestSystem, storySystem, photoSystem, howtoSystem];
 
 export function start(canvas, ui) {
   const gl = createGL(canvas);
@@ -109,7 +116,7 @@ export function start(canvas, ui) {
   H.tip('climb', () => b.state === 'fly', 'Push both thumbs up to climb, both down to dive.');
   H.tip('tuck', () => b.state === 'fly' && b.p[1] - height(b.p[0], b.p[2]) > 30, 'Slide your thumbs together to tuck your wings and stoop.');
   H.tip('flare', () => !!G.perchMark, 'A perch ahead. Slide your thumbs apart to flare, and glide onto it slowly.');
-  const play = 'play', how = 'how';
+  const play = 'play';
   G.menu.tab(play, 'Play');
   G.menu.toggle(play, { label: 'Sound', get: () => G.settings.sound, set: v => { G.settings.sound = v; audio.setOn(v); store.set('sound', v); } });
   G.menu.toggle(play, { label: 'Music', get: () => G.settings.music, set: v => { G.settings.music = v; music.setOn(v); store.set('music', v); } });
@@ -131,19 +138,6 @@ export function start(canvas, ui) {
   styleBtn.querySelector('em').textContent = STYLES.find(([k]) => k === R.style)[1];
   appRows(G);
   H.showFps(G.settings.fps);
-  G.menu.tab(how, 'How to fly').insertAdjacentHTML('beforeend', `<ul class="how">
-    <li><b>Your two thumbs are your wings.</b> Put one on each side of the screen; each becomes a stick where it lands.</li>
-    <li><b>Tap both together</b> to flap. One thumb alone leads with that wing (the other follows lightly): a weaker stroke that nudges you round.</li>
-    <li><b>Both up</b> to climb, <b>both down</b> to dive. Climbing costs speed, diving earns it.</li>
-    <li><b>One up, one down</b> banks toward the lower thumb, like tipping your wings.</li>
-    <li><b>Slide them together</b> to tuck your wings and stoop: the faint aim dots focus on a spot. <b>Slide them apart</b> to spread and flare: you slow, can hover with flaps, and drop your feet to land.</li>
-    <li><b>Mice</b> twitch the grass in open meadows. Dive at one and come in low; your feet reach for it. The aim ring turns berry-red on a mouse.</li>
-    <li>Fly slow into a <b>branch, a treetop or the leaves</b> and you settle on it. Trunks are hard; the hawk steers a little round the ones ahead. The aim ring is sage where a landing would be soft.</li>
-    <li><b>Drink</b> by landing at the water's edge or on the water.</li>
-    <li>Motes under a cloud mark a <b>thermal</b>. Inside it, hold a thumb still and the hawk circles the rising air on its own. Windward slopes lift too.</li>
-    <li>Fly through the <b>golden rings</b> for a burst of speed.</li>
-    <li>Keyboard: W/S climb and dive, A/D bank, Shift tuck, E flare, Space flap, P pause.</li>
-  </ul>`);
   G.on('pause', persist);
   document.addEventListener('visibilitychange', () => { if (document.hidden) { persist(); audio.suspend(); G.menu.set(true); } else audio.resume(); });
   addEventListener('pagehide', persist);

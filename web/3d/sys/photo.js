@@ -1,0 +1,142 @@
+// Photo mode, postcards and the album. In photo mode the world holds still and the HUD hides;
+// drag to swing the camera round the hawk, pinch (or the mouse wheel) to come closer, then take
+// the picture: it is shared or saved as a PNG, and a small copy goes in the Journal's album with
+// the day and the place. Finding a landmark puts a postcard of that moment in the album too.
+import { height, WATER } from '../world.js';
+import { afterDraw, project, thumb, glCanvas } from '../shot.js';
+import { handmadeTex } from '../paper.js';
+import { journal, esc } from '../journal.js';
+import { clamp } from '../util.js';
+
+const ALBUM_MAX = 16;
+
+export function photoSystem(G) {
+  const R = G.R, store = G.store;
+  let lastS = null, cam = null, raf = 0;
+  const album = () => store.get('album3d', []);
+  const keep = item => { try { const a = album(); a.push(item); while (a.length > ALBUM_MAX) a.shift(); store.set('album3d', a); } catch { /* storage full: the picture still saves */ } };
+
+  // ---- photo mode --------------------------------------------------------------------------
+  const ui = document.getElementById('ui3');
+  ui.insertAdjacentHTML('beforeend', `<div class="shoot3 hidden"></div>
+    <div class="photo3 hidden"><span>Drag to frame, pinch to come closer</span><button data-p="snap" class="main3">Take picture</button><button data-p="done">Done</button></div>`);
+  const pad = ui.querySelector('.shoot3'), bar = ui.querySelector('.photo3');
+  const pointers = new Map();
+  let pinch = 0;
+  pad.addEventListener('pointerdown', e => { pad.setPointerCapture(e.pointerId); pointers.set(e.pointerId, [e.clientX, e.clientY]); });
+  pad.addEventListener('pointermove', e => {
+    const p = pointers.get(e.pointerId); if (!p || !cam) return;
+    if (pointers.size === 1) { cam.yaw -= (e.clientX - p[0]) * .008; cam.pitch = clamp(cam.pitch + (e.clientY - p[1]) * .006, -.25, 1.35); }
+    pointers.set(e.pointerId, [e.clientX, e.clientY]);
+    if (pointers.size === 2) {
+      const [a, c] = [...pointers.values()], d = Math.hypot(a[0] - c[0], a[1] - c[1]);
+      if (pinch) cam.dist = clamp(cam.dist * pinch / d, 1.4, 30);
+      pinch = d;
+    }
+  });
+  const up = e => { pointers.delete(e.pointerId); pinch = 0; };
+  pad.addEventListener('pointerup', up); pad.addEventListener('pointercancel', up);
+  pad.addEventListener('wheel', e => { if (cam) cam.dist = clamp(cam.dist * (1 + Math.sign(e.deltaY) * .1), 1.4, 30); }, { passive: true });
+
+  function begin() {
+    if (!lastS) return;
+    G.menu.set(false); G.paused = true; G.photo = true;
+    const f = lastS.focus, d = [lastS.cam[0] - f[0], lastS.cam[1] - f[1], lastS.cam[2] - f[2]], dist = Math.hypot(...d);
+    cam = { f, yaw: Math.atan2(d[0], d[2]), pitch: Math.asin(clamp(d[1] / dist, -1, 1)), dist };
+    G.hud.hide(true); G.menu.hideButton(true);
+    pad.classList.remove('hidden'); bar.classList.remove('hidden');
+    raf = requestAnimationFrame(draw);
+  }
+  function end() {
+    G.photo = false; cam = null; cancelAnimationFrame(raf);
+    pad.classList.add('hidden'); bar.classList.add('hidden');
+    G.hud.hide(false); G.menu.hideButton(false); G.paused = false;
+  }
+  function view() {
+    const f = cam.f, c = Math.cos(cam.pitch);
+    const p = [f[0] + Math.sin(cam.yaw) * c * cam.dist, f[1] + Math.sin(cam.pitch) * cam.dist, f[2] + Math.cos(cam.yaw) * c * cam.dist];
+    p[1] = Math.max(p[1], height(p[0], p[2]) + .6, WATER + .4);
+    return { ...lastS, cam: p, look: [f[0], f[1] + .1, f[2]], camUp: [0, 1, 0], camHigh: p[1] - height(p[0], p[2]) };
+  }
+  function draw() {
+    if (!G.photo) return;
+    raf = requestAnimationFrame(draw);
+    const S = view(), c = glCanvas();
+    R.updateChunks(S.cam, 3);
+    R.draw(S, null, c.width, c.height);
+  }
+  function snap() {
+    bar.classList.add('hidden');
+    afterDraw(async c => {
+      // copy the frame now: WebGL clears it once shown
+      const copy = document.createElement('canvas'); copy.width = c.width; copy.height = c.height; copy.getContext('2d').drawImage(c, 0, 0);
+      bar.classList.remove('hidden');
+      keep({ src: thumb(copy), note: G.placeNote?.() || `Day ${G.day}` });
+      const blob = await new Promise(r => copy.toBlob(r, 'image/png'));
+      if (!blob) return;
+      const name = `aloft-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-')}.png`, file = new File([blob], name, { type: 'image/png' });
+      try { if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], title: 'Aloft' }); return; } } catch { /* cancelled: save instead */ }
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
+      document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+      G.hud.toast('Picture saved, and a copy is in the Journal’s album.', 2.5);
+    });
+    // a fresh frame to cut it from
+    const S = view(), c = glCanvas(); R.draw(S, null, c.width, c.height);
+  }
+  bar.addEventListener('click', e => { const p = e.target.closest('[data-p]')?.dataset.p; if (p === 'snap') snap(); if (p === 'done') end(); });
+  addEventListener('keydown', e => { if (G.photo && e.code === 'Escape') end(); });
+  G.menu.button('play', { label: 'Photo mode', sub: 'hold the world still and take a picture', onClick: begin }).style.setProperty('--dot', 'var(--water)');
+
+  // ---- postcards -----------------------------------------------------------------------------
+  // the view of the moment a landmark was found, framed with a white border on a card of
+  // handmade paper, with a greeting and the date
+  let tex = null;
+  function postcard(canvas, name, date, at) {
+    const W = 400, H = 250, c = document.createElement('canvas'); c.width = W; c.height = H;
+    const x = c.getContext('2d');
+    x.fillStyle = '#efe6d2'; x.fillRect(0, 0, W, H);
+    const pw = 300, ph = 150, py = 18, cw = canvas.width, ch = canvas.height;
+    const sw = Math.min(cw, ch * 2), sh = sw / 2;
+    const sx = clamp(at[0] - sw / 2, 0, cw - sw), sy = clamp(at[1] - sh * .6, 0, ch - sh);
+    x.save(); x.translate(W / 2, py + ph / 2 + 6); x.rotate(-.025);
+    x.shadowColor = 'rgba(40,25,12,.35)'; x.shadowBlur = 8; x.shadowOffsetY = 3;
+    x.fillStyle = '#fbf8f0'; x.fillRect(-pw / 2 - 8, -ph / 2 - 8, pw + 16, ph + 16);
+    x.shadowColor = 'transparent';
+    x.drawImage(canvas, sx, sy, sw, sh, -pw / 2, -ph / 2, pw, ph);
+    x.restore();
+    tex ||= handmadeTex(W, H, .6);
+    x.save(); x.globalCompositeOperation = 'multiply'; x.globalAlpha = .55; x.drawImage(tex, 0, 0); x.restore();
+    const ty = py + ph + 44;
+    x.fillStyle = '#2b1a10'; x.textAlign = 'center';
+    x.font = 'italic 600 26px "Cormorant Garamond", Georgia, serif'; x.fillText(`Greetings from ${name}`, W / 2, ty, W - 30);
+    x.fillStyle = '#5a3a26'; x.font = 'italic 14px Spectral, Georgia, serif'; x.fillText(date, W / 2, ty + 22, W - 30);
+    return c.toDataURL('image/jpeg', .72);
+  }
+  let card = null;
+  G.on('landmark', l => { card = l; });
+
+  // ---- the album, in the Journal ---------------------------------------------------------------
+  const sec = journal(G).section(70, 'Album');
+  sec.body.innerHTML = '<div class="album3"></div>';
+  const box = sec.body.firstChild;
+  box.addEventListener('click', e => e.target.closest('figure')?.classList.toggle('big'));
+  G.menu.onOpen(() => {
+    const pics = album();
+    box.innerHTML = pics.length ? pics.slice().reverse().map(p => `<figure class="${p.card ? 'card' : ''}"><img alt="" src="${p.src}"><figcaption>${esc(p.note)}</figcaption></figure>`).join('')
+      : '<p class="none">No pictures yet. Photo mode is in Settings, and finding a landmark sends a postcard.</p>';
+  });
+
+  return {
+    id: 'photo',
+    scene(S) {
+      lastS = S;
+      if (card) {
+        const l = card; card = null;
+        afterDraw(c => {
+          const at = project(S, [l.x, (l.y ?? height(l.x, l.z)) + 5, l.z], c.width, c.height) || { x: c.width / 2, y: c.height / 2 };
+          keep({ src: postcard(c, l.name, `Day ${G.day}, ${G.season.name}`, [at.x, at.y]), note: `Postcard: ${l.name}`, card: true });
+        });
+      }
+    },
+  };
+}
