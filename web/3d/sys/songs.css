@@ -19,8 +19,9 @@
   font-family: var(--title); font-style: italic; font-size: 22px; color: var(--ink); background: rgba(246, 241, 230, .78); border-radius: 3px;
   opacity: 0; transition: opacity .6s; pointer-events: none; white-space: nowrap; }
 .cheer3.show { opacity: 1; }
-.call3 { pointer-events: auto; position: absolute; right: calc(12px + env(safe-area-inset-right)); top: calc(58px + env(safe-area-inset-top));
+.call3 { pointer-events: auto; position: absolute; right: calc(12px + env(safe-area-inset-right)); top: calc(100px + env(safe-area-inset-top));
   width: 50px; height: 50px; border-radius: 50%; border: 1.25px solid rgba(58, 36, 24, .5); cursor: pointer; touch-action: none;
   font-family: var(--title); font-style: italic; font-size: 17px; color: var(--ink);
   background: radial-gradient(circle at 38% 36%, rgba(201, 106, 78, .5), rgba(244, 238, 225, .82) 70%); }
 .call3.rest { opacity: .4; }
+.menu-open .call3, .bare3 .call3, .bare3 .sing3, .bare3 .cheer3 { display: none; }
