@@ -9,6 +9,7 @@ import { PIG, C, shade, poly, facets } from '../facet.js';
 import { clamp } from '../util.js';
 import { esc } from '../journal.js';
 import { hourName } from '../dial.js';
+import { SEASON_DAYS } from '../sky.js';
 
 const CELL = 100;                        // fog cells, metres
 const SEE = [160, 2.2, 520];             // clearing radius: base, per metre of height, most
@@ -40,8 +41,8 @@ export function mapView(G, J, { HOME_Z, MARSH_Z }) {
   // ---- the tab ----------------------------------------------------------------------------
   const pane = G.menu.tab('map', 'Map');
   pane.classList.add('mappane3', 'flush3');
-  pane.innerHTML = `<div class="mapbox3"><canvas></canvas><div class="mapsum3"><b></b><span></span></div>
-      <div class="mapbtn3"><button data-z="in" aria-label="Zoom in">+</button><button data-z="out" aria-label="Zoom out">−</button><button data-z="me" aria-label="Centre on the hawk">◎</button></div>
+  pane.innerHTML = `<div class="mapbox3"><canvas></canvas><div class="mapsum3"></div>
+      <div class="mapbtn3"><button data-z="in" aria-label="Zoom in"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button><button data-z="out" aria-label="Zoom out"><svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button><button data-z="me" aria-label="Centre on the hawk"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="6.5"/><circle cx="12" cy="12" r="2" class="dot"/><path d="M12 2v3.5M12 18.5V22M2 12h3.5M18.5 12H22"/></svg></button></div>
       <div class="mapnote3 hidden"></div></div>`;
   const sum = pane.querySelector('.mapsum3'), box = pane.querySelector('.mapbox3'), cv = box.querySelector('canvas'), note = box.querySelector('.mapnote3');
   const V = { x: 0, z: 0, sc: ZOOM0, w: 0, h: 0, dpr: 1 };
@@ -58,10 +59,16 @@ export function mapView(G, J, { HOME_Z, MARSH_Z }) {
     if (!open) return;
     centre(); note.classList.add('hidden');
     const pct = Math.round(explored() * 100);
-    // the overlay: when it is, then where the hawk is and how much of the way is known
-    const h = hourName(G.tod), where = G.placeNote().replace(/^Day \d+, \w+, /, '');
-    sum.firstChild.textContent = `${h[0].toUpperCase()}${h.slice(1)} · Day ${G.day} · ${G.season.name[0].toUpperCase()}${G.season.name.slice(1)}`;
-    sum.lastChild.textContent = `${where[0].toUpperCase()}${where.slice(1)} ${pct}% of the way south explored.`;
+    // the overlay, a narrow card: the time of day by a little sun or moon, the day and the season
+    // with a pip for each of its days, where the hawk is, and how much of the way south is known
+    const h = hourName(G.tod), night = h === 'night', where = G.placeNote().replace(/^Day \d+, \w+, /, '');
+    const cap = t => t[0].toUpperCase() + t.slice(1), into = ((G.day - 1) % SEASON_DAYS) + 1;
+    const pips = Array.from({ length: SEASON_DAYS }, (_, i) => `<i class="${i < into ? 'on' : ''}"></i>`).join('');
+    sum.className = `mapsum3 ${G.season.name}${night ? ' night' : ''}`;
+    sum.innerHTML = `<div class="when3"><span class="sky3 ${h}"></span><b>${cap(h)}</b></div>
+      <div class="day3"><b>Day ${G.day}</b><span>${cap(G.season.name)}, ${into} of ${SEASON_DAYS}</span><span class="pips3s">${pips}</span></div>
+      <p>${esc(cap(where))}</p>
+      <div class="far3"><span><i style="width:${Math.max(2, pct)}%"></i></span><small>${pct}% of the way south known</small></div>`;
     requestAnimationFrame(() => { fit(); cache = null; draw(); });
   });
   addEventListener('resize', () => { if (open) { fit(); cache = null; soon(); } });
