@@ -16,8 +16,10 @@ const css = new URL('./songs.css', import.meta.url).href;
 if (!document.querySelector(`link[href="${css}"]`)) document.head.append(Object.assign(document.createElement('link'), { rel: 'stylesheet', href: css }));
 
 const rgb = c => `rgb(${c.join(',')})`;
-const poolBg = (col, dot) => (dot ? `radial-gradient(circle at 64% 30%, ${dot} 0 17%, transparent 19%), ` : '') +
-  `radial-gradient(circle at 42% 40%, ${col} 0 40%, color-mix(in srgb, ${col} 82%, #3a2418) 66%, transparent 70%)`;
+// a pool is a hexagon in two facets of its colour (low poly, like the world), with a chip of the
+// bird's cap colour when it has one
+const poolBg = (col, dot) => (dot ? `linear-gradient(135deg, transparent 0 58%, ${dot} 58% 76%, transparent 76%), ` : '') +
+  `linear-gradient(150deg, color-mix(in srgb, ${col} 80%, #fff) 0 50%, ${col} 50% 100%)`;
 
 export function createSingUI(ui, { audio, voice, onNote, onMimic, onCall }) {
   ui.insertAdjacentHTML('beforeend', `<div class="sing3 hidden"><div class="notes3"></div><div class="calls3"></div><div class="dots3"></div></div>

@@ -1,13 +1,16 @@
-/* Aloft 3D: the Pigment UI (sepia ink on paper, ruled lines, the world's pigments as accents).
-   The menu sheet itself is painted by letter.js; everything it needs from CSS is under .letter3,
-   so an art style can restyle the menu by swapping that block and letter.js. */
+/* Aloft 3D UI in low poly, like the world: flat faceted shapes with their corners cut, the world's
+   own colours (world.js PAL) as accents, sepia ink, and the bundled Cormorant and Spectral.
+   The menu sheet is painted by letter.js (facet.js), the meters by hud.js, the dial by dial.js. */
 @font-face { font-family: 'Cormorant Garamond'; font-style: italic; font-weight: 300 700; font-display: swap; src: url(../fonts/cormorant-garamond-italic.woff2) format('woff2'); }
 @font-face { font-family: 'Spectral'; font-style: normal; font-weight: 400; font-display: swap; src: url(../fonts/spectral-regular.woff2) format('woff2'); }
 @font-face { font-family: 'Spectral'; font-style: italic; font-weight: 400; font-display: swap; src: url(../fonts/spectral-italic.woff2) format('woff2'); }
 :root {
   --paper: #f6f1e6; --card: #f4eee1; --ink: #3a2418; --ink2: #6a4530; --rule: rgba(58, 36, 24, .18);
-  --indigo: #4f6f9e; --water: #4f7fa6; --berry: #a8483a; --ochre: #b8862f; --leaf: #6f8a4a; --stone: #8a7a6a;
-  --indigo-wash: radial-gradient(ellipse at 30% 35%, #5d7fae, var(--indigo) 60%, #46648f);
+  --indigo: #4f6f9e; --water: #4f7fa6; --berry: #a8483a; --ochre: #e2a93a; --leaf: #9bb067; --wood: #6f8f4e; --stone: #8f8577;
+  /* a facet pair: the upper left half lit, the lower right in shade */
+  --indigo-wash: linear-gradient(160deg, #6286b8 0 48%, #4f6f9e 48% 100%);
+  --hex: polygon(25% 3%, 75% 3%, 100% 50%, 75% 97%, 25% 97%, 0 50%);
+  --cut: polygon(8px 0, calc(100% - 8px) 0, 100% 8px, 100% calc(100% - 8px), calc(100% - 8px) 100%, 8px 100%, 0 calc(100% - 8px), 0 8px);
   --title: 'Cormorant Garamond', Georgia, serif; --text: 'Spectral', Georgia, serif;
 }
 * { box-sizing: border-box; }
@@ -19,15 +22,14 @@ button { font-family: inherit; }
 .hidden { display: none !important; }
 small { display: block; font-size: 12.5px; font-style: italic; color: var(--ink2); }
 
-/* the menu button: a ring of paper with a faint blue wash behind three brushed lines */
+/* the menu button: a flat hexagon in two facets, three bars of ink on it */
 .menu3 { pointer-events: auto; position: absolute; left: calc(10px + env(safe-area-inset-left)); top: calc(10px + env(safe-area-inset-top));
-  width: 44px; height: 44px; border-radius: 50%; border: 1.25px solid rgba(58, 36, 24, .5); cursor: pointer; padding: 0;
-  background: radial-gradient(circle at 38% 36%, rgba(156, 192, 219, .55), rgba(244, 238, 225, .78) 68%);
+  width: 46px; height: 42px; border: 0; cursor: pointer; padding: 0; background: none; filter: drop-shadow(2px 3px 0 rgba(30, 18, 10, .22));
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4.5px; }
-.menu3 i { display: block; height: 1.7px; border-radius: 2px; background: var(--ink); opacity: .8; }
-.menu3 i:nth-child(1) { width: 17px; transform: rotate(-2deg); }
-.menu3 i:nth-child(2) { width: 13px; transform: translateX(-1px) rotate(1.5deg); }
-.menu3 i:nth-child(3) { width: 16px; transform: rotate(-1deg); }
+.menu3::before { content: ''; position: absolute; inset: 0; clip-path: var(--hex); background: linear-gradient(150deg, #f6f1e6 0 50%, #e2d8c2 50% 100%); z-index: -1; }
+.menu3 { isolation: isolate; }
+.menu3 i { display: block; height: 2px; background: var(--ink); opacity: .85; }
+.menu3 i:nth-child(1) { width: 17px; } .menu3 i:nth-child(2) { width: 13px; } .menu3 i:nth-child(3) { width: 17px; }
 
 /* meters: painted washes stacked beside the menu button, then the status line */
 .hud3 { position: absolute; left: calc(62px + env(safe-area-inset-left)); top: calc(8px + env(safe-area-inset-top)); display: flex; flex-direction: column; gap: 0;
@@ -35,45 +37,45 @@ small { display: block; font-size: 12.5px; font-style: italic; color: var(--ink2
 .hud3.quiet .meters { opacity: 0; transition: opacity 3s; }
 .meters { display: flex; flex-direction: column; transition: opacity 1.2s; }
 .m3 { display: block; }
-.alt { margin: 2px 0 0 15px; font-style: italic; opacity: .8; text-shadow: 0 0 6px rgba(244, 238, 225, .9); white-space: nowrap; }
+.alt { margin: 3px 0 0 15px; padding: 1px 8px; align-self: flex-start; font-style: italic; background: rgba(241, 236, 224, .7); clip-path: polygon(4px 0, 100% 0, calc(100% - 4px) 100%, 0 100%); white-space: nowrap; }
 
 /* the top right corner: the day dial, and the frame rate under it when asked */
 .corner3 { position: absolute; right: calc(12px + env(safe-area-inset-right)); top: calc(6px + env(safe-area-inset-top)); display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
 .dial { width: 104px; display: flex; flex-direction: column; align-items: center; color: var(--ink); }
 .dial svg { width: 104px; height: 56px; display: block; overflow: visible; }
-.dial .arc { fill: none; stroke: rgba(58, 36, 24, .55); stroke-width: 1.1; }
-.dial .tick { fill: none; stroke: rgba(58, 36, 24, .55); stroke-width: 1; }
-.dial .sky { opacity: .72; }
-.dial .sky.night { opacity: .8; }
-.dial .flown { fill: none; stroke: rgba(79, 111, 158, .45); stroke-width: 8; stroke-linecap: round; }
-.dial .flown.night { stroke: rgba(236, 230, 212, .4); }
-.dial .sun { fill: #e9b94a; stroke: rgba(184, 134, 47, .8); stroke-width: 1; }
-.dial .sun.moon { fill: #ece6d4; stroke: rgba(58, 36, 24, .45); }
-.dial .label { margin-top: -4px; font-size: 11px; font-style: italic; line-height: 1.2; white-space: nowrap; text-shadow: 0 0 6px rgba(244, 238, 225, .9); }
-.dial .score { margin-top: 2px; font-size: 12px; display: flex; align-items: center; gap: 5px; text-shadow: 0 0 6px rgba(244, 238, 225, .9); }
-.dial .score::before { content: ''; width: 9px; height: 9px; border-radius: 50%; border: 2px solid var(--ochre); }
-.fps3 { font: 12px ui-monospace, monospace; background: rgba(246, 241, 230, .75); padding: 3px 6px; border-radius: 4px; }
+.dial svg { filter: drop-shadow(2px 2px 0 rgba(30, 18, 10, .18)); }
+.dial .arc { fill: none; stroke: rgba(43, 26, 16, .6); stroke-width: 1.1; stroke-linejoin: round; }
+.dial .flown polygon { fill: rgba(43, 26, 16, 0); transition: fill .4s; }
+.dial .flown polygon.on { fill: rgba(43, 26, 16, .16); }
+.dial.night .flown polygon.on { fill: rgba(241, 236, 224, .22); }
+.dial .sun { fill: #e2a93a; stroke: #a8741c; stroke-width: 1; }
+.dial .sun.moon { fill: #f1ece0; stroke: rgba(43, 26, 16, .45); }
+.dial .label { margin-top: -2px; padding: 0 6px; font-size: 11px; font-style: italic; line-height: 1.3; white-space: nowrap; background: rgba(241, 236, 224, .72); clip-path: polygon(4px 0, 100% 0, calc(100% - 4px) 100%, 0 100%); }
+.dial .score { margin-top: 3px; font-size: 12px; display: flex; align-items: center; gap: 5px; padding: 0 6px; background: rgba(241, 236, 224, .72); clip-path: polygon(4px 0, 100% 0, calc(100% - 4px) 100%, 0 100%); }
+.dial .score::before { content: ''; width: 10px; height: 9px; clip-path: var(--hex); background: linear-gradient(150deg, #f0c060 0 50%, #c98f26 50%); }
+.fps3 { font: 12px ui-monospace, monospace; background: rgba(246, 241, 230, .8); padding: 3px 8px; clip-path: var(--cut); }
 
-/* thumb pads: faint rings at the corners until a thumb lands, then where it landed */
-.pad3 { position: absolute; width: 90px; height: 90px; border-radius: 50%; border: 1.5px dashed rgba(58, 36, 24, .28); opacity: .6; transition: opacity .3s; }
+/* thumb pads: faint hexagons at the corners until a thumb lands, then where it landed */
+.pad3 { position: absolute; width: 90px; height: 90px; opacity: .55; transition: opacity .3s;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 90 90'%3E%3Cpolygon points='24,6 66,6 87,45 66,84 24,84 3,45' fill='rgba(241,236,224,.18)' stroke='rgba(43,26,16,.35)' stroke-width='1.5' stroke-dasharray='5 4'/%3E%3C/svg%3E") center / contain no-repeat; }
 .pad3.L { left: calc(40px + env(safe-area-inset-left)); bottom: 40px; }
 .pad3.R { right: calc(40px + env(safe-area-inset-right)); bottom: 40px; }
-.pad3 i { position: absolute; left: 30px; top: 30px; width: 30px; height: 30px; border-radius: 50%; background: rgba(58, 36, 24, .18); border: 1.5px solid rgba(58, 36, 24, .45); }
-.pad3.on { opacity: .9; border-style: solid; transition: none; }
+.pad3 i { position: absolute; left: 29px; top: 30px; width: 32px; height: 30px; clip-path: var(--hex); background: linear-gradient(150deg, rgba(241, 236, 224, .75) 0 50%, rgba(143, 133, 119, .6) 50%); }
+.pad3.on { opacity: .95; transition: none; }
 
 /* a hint or a toast: one italic line on a pale wash, underlined in pencil */
 .hint3, .toast3 { position: absolute; left: 50%; transform: translateX(-50%); margin: 0; max-width: min(560px, 70vw); text-align: center; font-size: 15px; line-height: 1.35;
-  padding: 7px 16px 6px; border-radius: 18px; background: rgba(244, 238, 225, .88); opacity: 0; transition: opacity .6s; }
-.hint3::after, .toast3::after { content: ''; display: block; height: 1px; margin: 5px 10px 0; background: rgba(58, 36, 24, .3); }
+  padding: 7px 18px 8px; clip-path: var(--cut); background: linear-gradient(170deg, rgba(246, 241, 230, .94) 0 55%, rgba(234, 226, 210, .94) 55%); opacity: 0; transition: opacity .6s; }
+.hint3::after, .toast3::after { content: ''; display: block; height: 2px; margin: 5px 14px 0; background: var(--ochre); opacity: .7; clip-path: polygon(0 0, 100% 0, calc(100% - 2px) 100%, 2px 100%); }
 .hint3 { bottom: calc(22px + env(safe-area-inset-bottom)); font-style: italic; }
 .toast3 { top: calc(56px + env(safe-area-inset-top)); }
 .hint3.show, .toast3.show { opacity: 1; }
-#ui3.menu-open .menu3, #ui3.menu-open .corner3, #ui3.menu-open .hint3 { display: none; }
+#ui3.menu-open .menu3, #ui3.menu-open .corner3, #ui3.menu-open .hint3, #ui3.menu-open .hud3, #ui3.menu-open .pad3 { display: none; }
 #ui3.bare3 > :not(.photo3):not(.toast3) { display: none !important; }
 
 /* a plain card (no WebGL, goodbye) */
 .card3 { pointer-events: auto; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(560px, 92vw); max-height: 90vh; overflow: auto;
-  background: var(--card); padding: 20px 26px 22px; box-shadow: 0 6px 30px rgba(58, 36, 24, .25); }
+  background: var(--card); padding: 20px 26px 22px; box-shadow: 6px 8px 0 rgba(30, 18, 10, .25); }
 .card3 h1 { font-family: var(--title); font-style: italic; font-weight: 600; font-size: 38px; margin: 0; line-height: 1; cursor: default; }
 .card3 h2, .card3 h3 { font-family: var(--title); font-style: italic; font-weight: 600; font-size: 23px; margin: 14px 0 2px; }
 .card3 p { line-height: 1.45; }
@@ -81,18 +83,18 @@ small { display: block; font-size: 12.5px; font-style: italic; color: var(--ink2
 /* rows are ruled lines, not boxes; a plain row carries a dot of pigment */
 .card3 .btn, .card3 .sw { display: flex; gap: 10px; width: 100%; align-items: center; text-align: left; font-size: 17px; color: var(--ink); min-height: 46px;
   background: none; border: 0; border-bottom: 1px solid var(--rule); padding: 8px 0; cursor: pointer; text-decoration: none; }
-.card3 .btn::before { content: ''; flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--dot, var(--stone)); opacity: .8; }
+.card3 .btn::before { content: ''; flex: none; width: 10px; height: 10px; transform: rotate(45deg) scale(.85); background: linear-gradient(90deg, var(--dot, var(--stone)) 50%, rgba(43, 26, 16, .25) 50%), var(--dot, var(--stone)); background-blend-mode: multiply; }
 .card3 .btn em { margin-left: auto; font-size: 15px; color: var(--ink2); font-style: italic; }
 .card3 .sw > span { flex: 1; }
-.card3 .sw > i { flex: none; position: relative; width: 40px; height: 22px; border-radius: 11px; border: 1.2px solid rgba(58, 36, 24, .45); background: rgba(255, 255, 255, .25); transition: background .2s, border-color .2s; }
-.card3 .sw > i::after { content: ''; position: absolute; left: 3px; top: 50%; width: 14px; height: 14px; margin-top: -7px; border-radius: 50%;
-  background: radial-gradient(circle at 35% 35%, rgba(255, 255, 255, .5), transparent 60%), var(--stone); transition: transform .2s, background-color .2s; }
-.card3 .sw.on > i { background: rgba(79, 127, 166, .28); border-color: rgba(79, 127, 166, .75); }
-.card3 .sw.on > i::after { transform: translateX(18px); background-color: rgb(79, 127, 166); }
+.card3 .sw > i { flex: none; position: relative; width: 42px; height: 22px; clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%); background: rgba(43, 26, 16, .16); transition: background .2s; }
+.card3 .sw > i::after { content: ''; position: absolute; left: 5px; top: 50%; width: 16px; height: 15px; margin-top: -7.5px; clip-path: var(--hex);
+  background: linear-gradient(150deg, rgba(255, 255, 255, .35) 0 50%, transparent 50%), var(--stone); transition: transform .2s, background-color .2s; }
+.card3 .sw.on > i { background: rgba(79, 127, 166, .32); }
+.card3 .sw.on > i::after { transform: translateX(16px); background-color: rgb(79, 127, 166); }
 .card3 .sw small { font-size: 13px; }
 .card3 .quiet3 { display: block; font: inherit; font-size: 15px; font-style: italic; color: var(--ink2); background: none; border: 0; min-height: 40px; padding: 8px 0; margin-top: 4px; cursor: pointer; text-align: left; text-decoration: none; }
-.card3 .main3 { display: flex; justify-content: center; align-items: center; width: 100%; min-height: 46px; border: 0; border-radius: 23px; cursor: pointer;
-  color: var(--card); font: inherit; font-size: 17px; background: var(--indigo-wash); box-shadow: inset 0 0 0 1.2px rgba(47, 74, 116, .55); }
+.card3 .main3 { display: flex; justify-content: center; align-items: center; width: 100%; min-height: 46px; border: 0; clip-path: var(--cut); cursor: pointer;
+  color: var(--card); font: inherit; font-size: 17px; background: var(--indigo-wash); }
 
 /* the pause menu as a letter: sections down the left margin beside the page, so the page gets the
    whole height of a phone held sideways */
@@ -129,19 +131,18 @@ small { display: block; font-size: 12.5px; font-style: italic; color: var(--ink2
 .card3 b { font-weight: inherit; border-bottom: 1px solid rgba(58, 36, 24, .4); }   /* only the regular weight is bundled */
 .ctl3 { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); column-gap: 18px; }
 .ctl3 figure { display: flex; gap: 12px; align-items: center; margin: 0; padding: 8px 0; border-bottom: 1px solid var(--rule); }
-.ctl3 svg { flex: none; width: 76px; height: 50px; border-radius: 6px; background: radial-gradient(circle at 40% 35%, rgba(255, 252, 244, .9), rgba(232, 222, 200, .55)); box-shadow: inset 0 0 0 1px rgba(58, 36, 24, .12); }
+.ctl3 svg { flex: none; width: 76px; height: 50px; clip-path: var(--cut); background: linear-gradient(155deg, rgba(255, 252, 244, .95) 0 50%, rgba(226, 216, 194, .8) 50%); }
 .ctl3 figcaption { display: flex; flex-direction: column; gap: 2px; line-height: 1.35; font-size: 15px; }
 .ctl3 figcaption > span:first-child { font-family: var(--title); font-style: italic; font-weight: 600; font-size: 19px; }
 
 /* the journal: the map, landmarks, the field guide and the album */
-.map3 { display: block; width: 100%; height: auto; margin: 6px 0; border-radius: 3px; }
+.map3 { display: block; width: 100%; height: auto; margin: 6px 0; clip-path: var(--cut); }
 .list3 { list-style: none; padding: 0; margin: 2px 0 10px; }
 .list3 li { padding: 6px 0; border-bottom: 1px solid var(--rule); font-size: 16px; }
 .list3 .none, .album3 .none { font-style: italic; color: var(--ink2); }
 .guide3 { list-style: none; padding: 0; margin: 4px 0 12px; display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 4px 18px; }
 .guide3 li { display: flex; gap: 12px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--rule); }
-.guide3 .pic { flex: none; width: 64px; height: 64px; border-radius: 50%; border: 1px dashed rgba(58, 36, 24, .3); overflow: hidden; }
-.guide3 li.seen .pic { border: 0; }
+.guide3 .pic { flex: none; width: 66px; height: 60px; clip-path: var(--hex); background: rgba(43, 26, 16, .1); overflow: hidden; }
 .guide3 img { width: 100%; height: 100%; display: block; mix-blend-mode: multiply; }
 .guide3 b { display: block; font-family: var(--title); font-style: italic; font-weight: 600; font-size: 19px; line-height: 1.1; }
 .guide3 li:not(.seen) b { color: var(--ink2); opacity: .7; }
@@ -149,16 +150,16 @@ small { display: block; font-size: 12.5px; font-style: italic; color: var(--ink2
 .count3 { font-family: var(--text); font-size: 14px; font-weight: 400; font-style: italic; color: var(--ink2); margin-left: 8px; }
 .album3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin: 4px 0 10px; }
 .album3 figure { margin: 0; cursor: pointer; }
-.album3 img { display: block; width: 100%; border: 1px solid rgba(58, 36, 24, .25); box-shadow: 2px 2px 0 rgba(58, 36, 24, .08); }
+.album3 img { display: block; width: 100%; border: 3px solid #fbf8f0; box-shadow: 3px 4px 0 rgba(30, 18, 10, .2); }
 .album3 figcaption { font-size: 11.5px; font-style: italic; color: var(--ink2); line-height: 1.25; margin-top: 3px; }
 .album3 figure.card { grid-column: span 2; }
-.album3 figure.card img { border: 0; box-shadow: 1px 2px 6px rgba(58, 36, 24, .25); }
+.album3 figure.card img { border: 0; box-shadow: 3px 4px 0 rgba(30, 18, 10, .22); }
 .album3 figure.big { grid-column: 1 / -1; }
 .album3 .none { grid-column: 1 / -1; }
 
 /* photo mode: one bar at the bottom */
 .photo3 { pointer-events: auto; position: absolute; left: 50%; bottom: calc(14px + env(safe-area-inset-bottom)); transform: translateX(-50%); display: flex; gap: 10px; align-items: center;
-  padding: 6px 8px 6px 18px; border-radius: 26px; background: rgba(244, 238, 225, .92); box-shadow: 0 2px 12px rgba(58, 36, 24, .2); white-space: nowrap; }
+  padding: 6px 8px 6px 18px; clip-path: var(--cut); background: rgba(244, 238, 225, .94); white-space: nowrap; }
 .photo3 span { font-style: italic; color: var(--ink2); font-size: 15px; }
-.photo3 button { font: inherit; font-size: 15px; min-height: 38px; padding: 0 16px; border-radius: 19px; border: 1px solid rgba(58, 36, 24, .35); background: none; color: var(--ink); cursor: pointer; }
-.photo3 button.main3 { border: 0; color: var(--card); background: var(--indigo-wash); box-shadow: inset 0 0 0 1.2px rgba(47, 74, 116, .55); }
+.photo3 button { font: inherit; font-size: 15px; min-height: 38px; padding: 0 16px; clip-path: var(--cut); border: 0; background: rgba(43, 26, 16, .1); color: var(--ink); cursor: pointer; }
+.photo3 button.main3 { color: var(--card); background: var(--indigo-wash); }

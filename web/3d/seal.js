@@ -1,113 +1,65 @@
-// Aloft's mark: a wax seal. A pool of berry-red wax with a pressed disc in it: a beaded border,
-// ALOFT round the top, two sprigs of leaves round the bottom and a red-tail soaring in the middle,
-// seen from below. Every impression is cut into the wax and lit from the upper left, so its
-// lower-right wall catches the light and its upper-left wall sits in shadow. Small seals leave
-// out the finer marks so the hawk stays readable. Drawn on demand (menu, icons), never per frame.
-import { wash } from './paper.js';
+// Aloft's mark: a wax seal, cut as a low-poly gem. A many-sided pool of berry-red wax, each facet
+// lit by the way it leans; a pressed recess inside it; ALOFT round the top and a ring of leaf
+// facets round the bottom; and a red-tail soaring in the middle, seen from below, its slotted
+// wingtips as sharp points. Lit from the upper left. Small seals leave out the lettering and
+// leaves so the hawk stays readable. Drawn on demand (menu, icons), never per frame.
+import { PIG, C, shade, poly, gem, ngon, seedR, rnd } from './facet.js';
 
-const TAU = Math.PI * 2;
-// a red-tail from below, in a 200-unit box centred on (100, 61): broad wings with slotted
-// primaries, a short wide fan of a tail
-const HAWK = new Path2D('M100 22 C104 22 106 26 106 31 C118 30 134 26 152 27 C166 28 178 32 186 37 L196 40 L186 43 L197 47 L185 49 L194 54 L182 54 L188 59 L174 58 ' +
-  'C160 64 140 70 118 66 L124 88 Q100 102 76 88 L82 66 C60 70 40 64 26 58 L12 59 L18 54 L6 54 L15 49 L3 47 L14 43 L4 40 L14 37 ' +
-  'C22 32 34 28 48 27 C66 26 82 30 94 31 C94 26 96 22 100 22 Z');
-const WAX = [168, 64, 46], DEEP = [126, 38, 26];
+// a red-tail from below, in a 200-unit box centred on (100, 61)
+const HAWK = [[100, 22], [106, 31], [152, 27], [186, 37], [196, 40], [186, 43], [197, 47], [185, 49], [194, 54], [182, 54], [188, 59], [174, 58], [118, 66],
+  [124, 88], [100, 97], [76, 88], [82, 66], [26, 58], [12, 59], [18, 54], [6, 54], [15, 49], [3, 47], [14, 43], [4, 40], [14, 37], [48, 27], [94, 31]];
 
-let rs = 1;
-const rnd = () => { rs = (rs * 16807) % 2147483647; return rs / 2147483647; };
-
-// cx, cy, r in the context's units; the wax spreads a little past r
 export function drawSeal(x, cx, cy, r, { seed = 9, shadow = true } = {}) {
-  const fine = r >= 40, k = Math.max(.6, r / 60);   // k: depth of the impressions
-  rs = seed * 7919 + 13;
-  // the poured wax: round, with a few lobes where it ran before it set
-  const blob = [], lobes = [0, 1, 2].map(() => [rnd() * TAU, .03 + rnd() * .05]), p3 = rnd() * TAU, p5 = rnd() * TAU;
-  for (let i = 0; i < 72; i++) {
-    const a = i / 72 * TAU;
-    let d = 1 + .018 * Math.sin(3 * a + p3) + .012 * Math.sin(5 * a + p5) + (rnd() - .5) * .008;
-    for (const [la, lh] of lobes) d += lh * Math.max(0, Math.cos(a - la)) ** 6;
-    blob.push([cx + Math.cos(a) * r * d, cy + Math.sin(a) * r * d]);
+  const fine = r >= 40, wax = PIG.wax, k = Math.max(.7, r / 50);
+  seedR(seed);
+  // the poured wax: an irregular polygon, a little lumpy where it ran
+  const n = fine ? 18 : 12, rim = ngon(cx, cy, r, n, -.2).map(([px, py]) => { const s = 1 + (rnd() - .5) * .07; return [cx + (px - cx) * s, cy + (py - cy) * s]; });
+  if (shadow) poly(x, rim.map(([px, py]) => [px + r * .05, py + r * .08]), 'rgba(50,14,8,.32)');
+  for (let i = 0; i < n; i++) {
+    const p = rim[i], q = rim[(i + 1) % n], mid = Math.atan2((p[1] + q[1]) / 2 - cy, (p[0] + q[0]) / 2 - cx);
+    const f = -(Math.cos(mid) * -.6 + Math.sin(mid) * -.8);
+    const pin = [cx + (p[0] - cx) * .84, cy + (p[1] - cy) * .84], qin = [cx + (q[0] - cx) * .84, cy + (q[1] - cy) * .84];
+    poly(x, [p, q, qin, pin], C(shade(wax, 1 + f * .22)));
   }
-  const path = () => { x.beginPath(); blob.forEach(([px, py], i) => i ? x.lineTo(px, py) : x.moveTo(px, py)); x.closePath(); };
-  x.save();
-  if (shadow) { x.shadowColor = 'rgba(50,14,8,.4)'; x.shadowBlur = r * .14; x.shadowOffsetY = r * .06; }
-  const g = x.createRadialGradient(cx - r * .35, cy - r * .4, r * .05, cx, cy, r * 1.15);
-  g.addColorStop(0, 'rgb(200,98,74)'); g.addColorStop(.45, `rgb(${WAX})`); g.addColorStop(1, `rgb(${DEEP})`);
-  x.fillStyle = g; path(); x.fill();
-  x.restore();
-  // pigment mottling and a darker rim where the wax thinned and set first
-  wash(x, blob, [150, 46, 34], .3, { passes: 2, amp: r * .03, seed, rim: .9, rimW: Math.max(1, r * .03) });
+  // the pressed recess: its facets lean the other way, so the light falls on its far wall
+  gem(x, cx, cy, r * .84, n, shade(wax, .86), { rot: -.2, depth: -.5, inner: .9 });
+  poly(x, ngon(cx, cy, r * .84 * .9, n, -.2), C(shade(wax, .9)));
 
-  // the pressed disc: a shallow recess with a raised lip
+  // a cut into the wax: a light edge below-right, a dark one above-left, then the floor
+  const cut = (draw, d) => {
+    x.save(); x.translate(d, d); x.fillStyle = 'rgba(255,196,170,.55)'; draw(); x.restore();
+    x.save(); x.translate(-d * .7, -d * .7); x.fillStyle = 'rgba(48,8,4,.8)'; draw(); x.restore();
+    x.fillStyle = C(shade(wax, .66)); draw();
+  };
   const R = r * .84;
-  x.save(); x.lineWidth = Math.max(1, r * .035);
-  ring(x, cx, cy, R, k * 1.4);
-  x.fillStyle = 'rgba(96,22,14,.16)'; x.beginPath(); x.arc(cx, cy, R, 0, TAU); x.fill();
-  x.restore();
-
-  // a beaded border inside the lip
   if (fine) {
-    const n = 44, br = R * .9;
-    for (let i = 0; i < n; i++) {
-      const a = i / n * TAU, px = cx + Math.cos(a) * br, py = cy + Math.sin(a) * br;
-      raised(x, () => { x.beginPath(); x.arc(px, py, r * .022, 0, TAU); x.fill(); }, k * .7);
-    }
-    x.save(); x.lineWidth = Math.max(.8, r * .012);
-    ring(x, cx, cy, R * .8, k * .6);
-    x.restore();
-  }
-
-  // ALOFT round the top, in upright serif capitals
-  if (fine) {
-    const size = r * .25, rad = R * .64;
+    // ALOFT round the top, in upright capitals
+    const size = r * .24, rad = R * .66;
     x.save(); x.font = `${size}px Spectral, Georgia, serif`; x.textAlign = 'center'; x.textBaseline = 'middle';
     const word = 'ALOFT', gap = size * .2, ws = [...word].map(c => x.measureText(c).width);
     const tot = (ws.reduce((s, w) => s + w, 0) + gap * (word.length - 1)) / rad;
     let a = -Math.PI / 2 - tot / 2;
     [...word].forEach((c, i) => {
       const am = a + ws[i] / 2 / rad;
-      cut(x, () => { x.save(); x.translate(cx + Math.cos(am) * rad, cy + Math.sin(am) * rad); x.rotate(am + Math.PI / 2); x.fillText(c, 0, 0); x.restore(); }, k);
+      cut(() => { x.save(); x.translate(cx + Math.cos(am) * rad, cy + Math.sin(am) * rad); x.rotate(am + Math.PI / 2); x.fillText(c, 0, 0); x.restore(); }, k * .8);
       a += (ws[i] + gap) / rad;
     });
     x.restore();
-    // two sprigs of leaves round the bottom, meeting at a berry
-    const sr = R * .66;
-    for (const s of [1, -1]) {
-      const a0 = Math.PI / 2 + s * .14, a1 = Math.PI / 2 + s * 1.0;
-      cut(x, () => {
-        x.save(); x.lineWidth = r * .018; x.lineCap = 'round'; x.strokeStyle = x.fillStyle;
-        x.beginPath(); x.arc(cx, cy, sr, Math.min(a0, a1), Math.max(a0, a1)); x.stroke(); x.restore();
-        for (let j = 0; j < 7; j++) {
-          const a = a0 + (a1 - a0) * (j + .4) / 7, out = j % 2 ? 1 : -1, len = r * .055 * (1 - j * .06);
-          const dir = a + s * Math.PI / 2 - s * out * .65, sx = cx + Math.cos(a) * sr, sy = cy + Math.sin(a) * sr;
-          x.beginPath(); x.ellipse(sx + Math.cos(dir) * len, sy + Math.sin(dir) * len, len, len * .38, dir, 0, TAU); x.fill();
-        }
-      }, k * .8);
+    // leaves: little diamonds round the bottom, meeting at a berry
+    for (let j = 0; j < 9; j++) for (const s of [1, -1]) {
+      const a = Math.PI / 2 + s * (.2 + j * .1), px = cx + Math.cos(a) * R * .7, py = cy + Math.sin(a) * R * .7, l = r * .05 * (1 - j * .05), d = a + s * (j % 2 ? .9 : -.9);
+      cut(() => poly(x, [[px - Math.cos(d) * l, py - Math.sin(d) * l], [px - Math.sin(d) * l * .35, py + Math.cos(d) * l * .35], [px + Math.cos(d) * l, py + Math.sin(d) * l], [px + Math.sin(d) * l * .35, py - Math.cos(d) * l * .35]]), k * .5);
     }
-    cut(x, () => { x.beginPath(); x.arc(cx, cy + sr, r * .03, 0, TAU); x.fill(); }, k * .8);
+    cut(() => poly(x, ngon(cx, cy + R * .7, r * .035, 6)), k * .5);
   }
-
-  // the hawk, as large as the inner ring allows
-  const span = fine ? R * 1.18 : R * 1.75, sc = span / 194, sy = sc;
-  const hawk = p => () => { x.save(); x.translate(cx - 100 * sc, cy - 61 * sy + (fine ? -R * .03 : 0)); x.scale(sc, sy); x.fill(p); x.restore(); };
-  cut(x, hawk(HAWK), k * 1.2);
-}
-
-// a ring cut into the wax: shadow above-left, light below-right
-function ring(x, cx, cy, R, d) {
-  x.strokeStyle = 'rgba(70,14,8,.55)'; x.beginPath(); x.arc(cx - d * .5, cy - d * .5, R, 0, TAU); x.stroke();
-  x.strokeStyle = 'rgba(255,196,176,.45)'; x.beginPath(); x.arc(cx + d * .5, cy + d * .5, R, 0, TAU); x.stroke();
-  x.strokeStyle = 'rgba(110,28,18,.5)'; x.beginPath(); x.arc(cx, cy, R, 0, TAU); x.stroke();
-}
-// an impression pressed into the wax (draw fills the shape with the current fillStyle)
-function cut(x, draw, d) {
-  x.save(); x.translate(d, d); x.fillStyle = 'rgba(255,200,180,.6)'; draw(); x.restore();
-  x.save(); x.translate(-d * .7, -d * .7); x.fillStyle = 'rgba(48,8,4,.85)'; draw(); x.restore();
-  x.save(); x.fillStyle = 'rgb(108,28,18)'; draw(); x.restore();
-}
-// a bead standing proud of the wax: lit above-left, shadowed below-right
-function raised(x, draw, d) {
-  x.save(); x.translate(d, d); x.fillStyle = 'rgba(70,14,8,.6)'; draw(); x.restore();
-  x.save(); x.translate(-d * .6, -d * .6); x.fillStyle = 'rgba(255,200,180,.6)'; draw(); x.restore();
-  x.save(); x.fillStyle = `rgb(${WAX})`; draw(); x.restore();
+  // the hawk, as large as the recess allows
+  const span = fine ? R * 1.2 : R * 1.7, sc = span / 194, oy = fine ? -R * .03 : 0;
+  const pts = HAWK.map(([px, py]) => [cx + (px - 100) * sc, cy + (py - 61) * sc + oy]);
+  cut(() => poly(x, pts), k * 1.1);
+  // facets on the bird: each wing and the tail shaded apart, as the world's hawk is
+  const hc = shade(wax, .66);
+  poly(x, [pts[0], pts[1], pts[12], pts[16], pts[27]], C(shade(hc, 1.08)));
+  poly(x, [pts[1], pts[2], pts[3], pts[11], pts[12]], C(shade(hc, 1.14)));
+  poly(x, [pts[27], pts[26], pts[25], pts[17], pts[16]], C(shade(hc, .9)));
+  poly(x, [pts[12], pts[13], pts[14], pts[15], pts[16]], C(shade(hc, .98)));
 }

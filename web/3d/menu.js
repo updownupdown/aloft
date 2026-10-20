@@ -1,4 +1,4 @@
-// The pause menu: a letter on handmade paper, its sections down the left margin (letter.js
+// The pause menu: a low-poly letter, its sections down the left margin (letter.js
 // paints it). Systems add their own tab with G.menu.tab(id, title) (it returns the pane element)
 // and rows with G.menu.toggle() / G.menu.button(). G.menu.onOpen(fn) refreshes a pane each time
 // the menu opens; G.menu.subtitle(fn) writes the line opposite the title.

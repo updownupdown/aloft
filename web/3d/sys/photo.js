@@ -4,7 +4,7 @@
 // the day and the place. Finding a landmark puts a postcard of that moment in the album too.
 import { height, WATER } from '../world.js';
 import { afterDraw, project, thumb, glCanvas } from '../shot.js';
-import { handmadeTex } from '../paper.js';
+import { PIG, facets, hardShadow } from '../facet.js';
 import { journal, esc } from '../journal.js';
 import { clamp } from '../util.js';
 import { inSentence } from './journey.js';
@@ -89,24 +89,21 @@ export function photoSystem(G) {
   G.menu.button('play', { label: 'Photo mode', sub: 'hold the world still and take a picture', onClick: begin }).style.setProperty('--dot', 'var(--water)');
 
   // ---- postcards -----------------------------------------------------------------------------
-  // the view of the moment a landmark was found, framed with a white border on a card of
-  // handmade paper, with a greeting and the date
-  let tex = null;
+  // the view of the moment a landmark was found, framed with a white border on a card of faceted
+  // paper, with a greeting and the date
   function postcard(canvas, name, date, at) {
     const W = 400, H = 250, c = document.createElement('canvas'); c.width = W; c.height = H;
     const x = c.getContext('2d');
-    x.fillStyle = '#efe6d2'; x.fillRect(0, 0, W, H);
+    facets(x, 0, 0, W, H, 70, cx => { const t = cx / W; return [PIG.paper[0] - 2 - t * 6, PIG.paper[1] - 4 - t * 9, PIG.paper[2] - 8 - t * 16]; }, { seed: date.length + name.length, relief: .4 });
     const pw = 300, ph = 150, py = 18, cw = canvas.width, ch = canvas.height;
     const sw = Math.min(cw, ch * 2), sh = sw / 2;
     const sx = clamp(at[0] - sw / 2, 0, cw - sw), sy = clamp(at[1] - sh * .6, 0, ch - sh);
     x.save(); x.translate(W / 2, py + ph / 2 + 6); x.rotate(-.025);
-    x.shadowColor = 'rgba(40,25,12,.35)'; x.shadowBlur = 8; x.shadowOffsetY = 3;
+    const frame = [[-pw / 2 - 8, -ph / 2 - 8], [pw / 2 + 8, -ph / 2 - 8], [pw / 2 + 8, ph / 2 + 8], [-pw / 2 - 8, ph / 2 + 8]];
+    hardShadow(x, frame, 4, 5, .3);
     x.fillStyle = '#fbf8f0'; x.fillRect(-pw / 2 - 8, -ph / 2 - 8, pw + 16, ph + 16);
-    x.shadowColor = 'transparent';
     x.drawImage(canvas, sx, sy, sw, sh, -pw / 2, -ph / 2, pw, ph);
     x.restore();
-    tex ||= handmadeTex(W, H, .6);
-    x.save(); x.globalCompositeOperation = 'multiply'; x.globalAlpha = .55; x.drawImage(tex, 0, 0); x.restore();
     const ty = py + ph + 44;
     x.fillStyle = '#2b1a10'; x.textAlign = 'center';
     x.font = 'italic 600 26px "Cormorant Garamond", Georgia, serif'; x.fillText(`Greetings from ${inSentence(name)}`, W / 2, ty, W - 30);

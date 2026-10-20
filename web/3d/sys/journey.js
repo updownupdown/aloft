@@ -6,7 +6,7 @@
 import * as W from '../world.js';
 import { SEASON_DAYS } from '../sky.js';
 import { journal, esc } from '../journal.js';
-import { handmadeTex, C, wash, circP, inkLine } from '../paper.js';
+import { PIG, C, shade, poly, facets } from '../facet.js';
 import { clamp } from '../util.js';
 import { hourName } from '../dial.js';
 
@@ -110,9 +110,10 @@ export function journeySystem(G) {
   G.menu.subtitle(() => { const h = hourName(G.tod); return `${h[0].toUpperCase()}${h.slice(1)} on day ${G.day}, ${G.season.name}.`; });
   G.on('menuTab', id => { if (id === 'journal') requestAnimationFrame(() => drawMap(mapCv)); });
 
-  // the map: north up, the land washed in its colours from a grid of heights, softened as wet
-  // paint softens, on handmade paper
-  let landKey = '', land = null, tex = null;
+  // the map: north up, the land in low poly as the world is, a mesh of triangles over the real
+  // heights, each coloured by what grows there and lit by its slope; land far from anywhere
+  // flown stays pale
+  let landKey = '', land = null;
   function drawMap(cv) {
     const cssW = cv.clientWidth || 600, cssH = Math.round(cssW * .5), dpr = Math.min(devicePixelRatio || 1, 2);
     cv.width = Math.round(cssW * dpr); cv.height = Math.round(cssH * dpr); cv.style.height = cssH + 'px';
@@ -123,82 +124,84 @@ export function journeySystem(G) {
     const pad = Math.max(x1 - x0, z1 - z0) * .08 + 120; x0 -= pad; x1 += pad; z0 -= pad; z1 += pad;
     const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, sc = Math.max((x1 - x0) / cssW, (z1 - z0) / cssH);
     const X = wx => (wx - cx) / sc + cssW / 2, Z = wz => (wz - cz) / sc + cssH / 2;
-    const key = [cssW, Math.round(cx / 50), Math.round(cz / 50), Math.round(sc * 10)].join();
-    if (key !== landKey) { landKey = key; land = paintLand(cssW, cssH, cx, cz, sc); tex = handmadeTex(cv.width, cv.height, dpr * .8); }
+    const key = [cssW, Math.round(cx / 50), Math.round(cz / 50), Math.round(sc * 10), J.route.length >> 4].join();
+    if (key !== landKey) { landKey = key; land = paintLand(cssW, cssH, cx, cz, sc, dpr); }
     x.clearRect(0, 0, cssW, cssH);
-    x.fillStyle = '#efe6d2'; x.fillRect(0, 0, cssW, cssH);
-    // the land, softened as wet paint softens, then a second sharper pass so the edges pool
-    x.save(); x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high'; x.filter = 'blur(2px)'; x.globalAlpha = .9; x.drawImage(land, 0, 0, cssW, cssH);
-    x.filter = 'none'; x.globalCompositeOperation = 'multiply'; x.globalAlpha = .25; x.drawImage(land, 0, 0, cssW, cssH); x.restore();
-    x.save(); x.setTransform(1, 0, 0, 1, 0, 0); x.globalCompositeOperation = 'multiply'; x.globalAlpha = .7; x.drawImage(tex, 0, 0); x.restore();
+    x.drawImage(land, 0, 0, cssW, cssH);
     route(x, X, Z);
     x.font = 'italic 14px Spectral, Georgia, serif'; x.textAlign = 'left';
-    const label = (px, py, text, col = 'rgba(43,26,16,.8)') => { x.fillStyle = col; x.fillText(text, clamp(px, 6, cssW - x.measureText(text).width - 6), clamp(py, 16, cssH - 6)); };
+    // labels sit on a cut tab of paper so they read over any ground
+    const label = (px, py, text, col = 'rgba(43,26,16,.85)') => {
+      const w = x.measureText(text).width, lx = clamp(px, 6, cssW - w - 10), ly = clamp(py, 16, cssH - 6);
+      poly(x, [[lx - 4, ly - 13], [lx + w + 6, ly - 13], [lx + w + 2, ly + 4], [lx - 8, ly + 4]], 'rgba(241,236,224,.78)');
+      x.fillStyle = col; x.fillText(text, lx, ly);
+    };
     // home, the marsh (or which way it lies), landmarks, the nest, and you
-    dot(x, X(0), Z(HOME_Z), [111, 138, 74]); label(X(0) + 8, Z(HOME_Z) + 4, 'Home, the forest edge');
-    if (Z(MARSH_Z) < cssH - 10) { x.strokeStyle = 'rgba(58,36,24,.35)'; x.setLineDash([4, 5]); x.beginPath(); x.moveTo(0, Z(MARSH_Z)); x.lineTo(cssW, Z(MARSH_Z)); x.stroke(); x.setLineDash([]); label(8, Z(MARSH_Z) + 16, 'The wintering marsh'); }
+    mark(x, X(0), Z(HOME_Z), PIG.wood); label(X(0) + 9, Z(HOME_Z) + 4, 'Home, the forest edge');
+    if (Z(MARSH_Z) < cssH - 10) { x.fillStyle = 'rgba(43,26,16,.4)'; for (let i = 0; i < cssW; i += 9) x.fillRect(i, Z(MARSH_Z), 5, 1.4); label(8, Z(MARSH_Z) + 18, 'The wintering marsh'); }
     else {
-      const km = ((MARSH_Z - b.p[2]) / 1000).toFixed(1);
-      inkLine(x, [[cssW / 2, cssH - 34], [cssW / 2, cssH - 10], [cssW / 2 - 6, cssH - 17], [cssW / 2, cssH - 10], [cssW / 2 + 6, cssH - 17]], .7, 1.4);
-      x.textAlign = 'center'; x.fillStyle = 'rgba(43,26,16,.8)'; x.fillText(`The wintering marsh, ${km} km south`, cssW / 2, cssH - 40); x.textAlign = 'left';
+      const km = ((MARSH_Z - b.p[2]) / 1000).toFixed(1), ax = cssW / 2, ay = cssH - 10;
+      poly(x, [[ax - 7, ay - 12], [ax + 7, ay - 12], [ax, ay]], C(PIG.ink, .75));
+      x.fillStyle = C(PIG.ink, .75); x.fillRect(ax - 1, ay - 26, 2, 14);
+      x.textAlign = 'center'; const t = `The wintering marsh, ${km} km south`; x.textAlign = 'left'; label(ax - x.measureText(t).width / 2, ay - 31, t);
     }
-    for (const l of Object.values(J.found)) { dot(x, X(l.x), Z(l.z), [200, 120, 58]); label(X(l.x) + 7, Z(l.z) - 5, l.name); }
+    for (const l of Object.values(J.found)) { mark(x, X(l.x), Z(l.z), PIG.ring); label(X(l.x) + 8, Z(l.z) - 6, l.name); }
     const n = G.nest;
-    if (n) { x.strokeStyle = 'rgba(109,74,54,.9)'; x.lineWidth = 2.5; x.beginPath(); x.arc(X(n.x), Z(n.z) - 2, 5, 0, Math.PI); x.stroke(); x.lineWidth = 1; label(X(n.x) + 8, Z(n.z) + 12, 'your nest', 'rgba(109,74,54,.9)'); }
-    // you: a little hawk in ink, pointing the way you face
+    if (n) { poly(x, [[X(n.x) - 6, Z(n.z) - 3], [X(n.x) + 6, Z(n.z) - 3], [X(n.x) + 3, Z(n.z) + 2], [X(n.x) - 3, Z(n.z) + 2]], C(PIG.bark)); label(X(n.x) + 9, Z(n.z) + 13, 'your nest', C(PIG.bark)); }
+    // you: a little faceted hawk, pointing the way you face
     x.save(); x.translate(X(b.p[0]), Z(b.p[2])); x.rotate(b.yaw);
-    x.strokeStyle = 'rgba(43,26,16,.92)'; x.lineWidth = 2.2; x.lineCap = 'round'; x.beginPath();
-    x.moveTo(-10, 3); x.quadraticCurveTo(-4, -3, 0, -3); x.quadraticCurveTo(4, -3, 10, 3); x.moveTo(0, -6); x.lineTo(0, 5); x.stroke(); x.restore();
+    poly(x, [[0, -7], [11, 1], [3, 0], [2, 6], [-2, 6], [-3, 0], [-11, 1]], C(PIG.ink, .92));
+    poly(x, [[0, -7], [-11, 1], [-3, 0]], C(PIG.ink2, .9));
+    x.restore();
     // a compass mark
-    x.fillStyle = 'rgba(43,26,16,.7)'; x.textAlign = 'center'; x.fillText('N', cssW - 16, 18);
-    inkLine(x, [[cssW - 16, 34], [cssW - 16, 22]], .7, 1);
+    poly(x, [[cssW - 16, 20], [cssW - 11, 34], [cssW - 16, 31], [cssW - 21, 34]], C(PIG.ink, .7));
+    x.fillStyle = C(PIG.ink, .75); x.textAlign = 'center'; x.fillText('N', cssW - 16, 49); x.textAlign = 'left';
   }
-  const dot = (x, px, py, col) => wash(x, circP(px, py, 4, 9), col, .9, { passes: 2, amp: .5, seed: px | 0, rim: .5 });
+  // a place on the map: a little faceted diamond
+  const mark = (x, px, py, col) => { const P = [[px, py - 5.5], [px + 4.5, py], [px, py + 5.5], [px - 4.5, py]]; poly(x, P, C(shade(col, .85))); poly(x, [P[0], P[2], P[3]], C(shade(col, 1.15))); };
 
-  // the land as a small picture: water, meadow, wood, rock and snow by height, shaded by slope,
-  // the parts never flown over left pale
-  function paintLand(w, h, cx, cz, sc) {
-    const k = 4, gw = Math.ceil(w / k), gh = Math.ceil(h / k), c = document.createElement('canvas');
-    c.width = gw; c.height = gh;
-    const x = c.getContext('2d'), img = x.createImageData(gw, gh), d = img.data;
-    // how near the route each cell is: land far from anywhere flown stays pale
+  function paintLand(w, h, cx, cz, sc, dpr) {
+    const c = document.createElement('canvas'); c.width = Math.round(w * dpr); c.height = Math.round(h * dpr);
+    const x = c.getContext('2d'); x.setTransform(dpr, 0, 0, dpr, 0, 0);
     const pts = J.route.length ? J.route : [[b.p[0], b.p[2]]];
-    for (let j = 0; j < gh; j++) for (let i = 0; i < gw; i++) {
-      const wx = cx + (i * k - w / 2) * sc, wz = cz + (j * k - h / 2) * sc, y = W.height(wx, wz);
+    const wx = px => cx + (px - w / 2) * sc, wz = py => cz + (py - h / 2) * sc;
+    const ground = (px, py) => {
+      const X0 = wx(px), Z0 = wz(py), y = W.height(X0, Z0);
       let col;
-      if (y < W.WATER + .3) col = [120, 160, 196];
-      else if (y > 150) col = [238, 232, 220];
-      else if (y > 85) col = [160, 148, 130];
-      else col = W.forest(wx, wz) > .15 ? [104, 136, 84] : y < 3 ? [214, 196, 150] : [160, 180, 112];
-      const sl = clamp(.92 + (W.height(wx - sc * k, wz - sc * k) - y) * .02, .75, 1.1);
+      if (y < W.WATER + .3) col = PIG.water;
+      else if (y > 150) col = PIG.paper;
+      else if (y > 85) col = PIG.rock;
+      else col = W.forest(X0, Z0) > .15 ? PIG.wood : y < 3 ? PIG.sand : PIG.meadow;
       let near = 1e9;
-      for (let q = 0; q < pts.length; q += 2) { const d = Math.abs(pts[q][0] - wx) + Math.abs(pts[q][1] - wz); if (d < near) near = d; }
+      for (let q = 0; q < pts.length; q += 2) { const d = Math.abs(pts[q][0] - X0) + Math.abs(pts[q][1] - Z0); if (d < near) near = d; }
       const fade = .35 + .65 * clamp((900 - near) / 500, 0, 1);
-      const o = (j * gw + i) * 4;
-      for (let q = 0; q < 3; q++) d[o + q] = 239 + (col[q] * sl - 239) * fade;
-      d[o + 3] = 255;
-    }
-    x.putImageData(img, 0, 0);
+      return col.map((v, i) => PIG.paper[i] + (v - PIG.paper[i]) * fade);
+    };
+    // the real heights, in pixels, give each triangle its slope (water lies flat)
+    facets(x, 0, 0, w, h, 14, (px, py, t) => {
+      for (const v of t) v[2] = Math.max(W.height(wx(v[0]), wz(v[1])), 0) / sc;
+      return ground(px, py);
+    }, { seed: 5, relief: 1.6 });
     return c;
   }
 
-  // the route as a brush stroke in indigo: thick where the hawk soared high, thin near the
+  // the route as a crisp ribbon in indigo: broad where the hawk soared high, thin near the
   // ground, a dotted trail where it walked
   function route(x, X, Z) {
     const r = J.route; if (r.length < 2) return;
-    x.save(); x.globalCompositeOperation = 'multiply'; x.lineCap = 'round'; x.lineJoin = 'round';
-    for (let pass = 0; pass < 2; pass++) for (let i = 1; i < r.length; i++) {
+    x.save(); x.lineCap = 'butt'; x.lineJoin = 'miter';
+    for (let i = 1; i < r.length; i++) {
       const p = r[i - 1], q = r[i];
       if (Math.hypot(q[0] - p[0], q[1] - p[1]) > 600) continue;   // a jump (a reload, a new journey): no line across it
-      const j = pass ? .8 : 0;
       if (p[2] <= 0 && q[2] <= 0) {
-        if (pass || i % 3) continue;
-        x.fillStyle = 'rgba(79,111,158,.7)'; x.beginPath(); x.arc((X(p[0]) + X(q[0])) / 2, (Z(p[1]) + Z(q[1])) / 2, 1.3, 0, 7); x.fill();
+        if (i % 3) continue;
+        const mx = (X(p[0]) + X(q[0])) / 2, my = (Z(p[1]) + Z(q[1])) / 2;
+        poly(x, [[mx, my - 1.6], [mx + 1.6, my], [mx, my + 1.6], [mx - 1.6, my]], C(PIG.water, .85));
         continue;
       }
       const hi = clamp((p[2] + q[2]) / 2 / 80, 0, 1);
-      x.strokeStyle = C([79, 111, 158], pass ? .3 : .55); x.lineWidth = (1 + hi * 4) * (pass ? .6 : 1);
-      x.beginPath(); x.moveTo(X(p[0]) + j, Z(p[1]) - j); x.lineTo(X(q[0]) - j, Z(q[1]) + j); x.stroke();
+      x.strokeStyle = C([79, 111, 158], .75); x.lineWidth = 1.2 + hi * 3.5;
+      x.beginPath(); x.moveTo(X(p[0]), Z(p[1])); x.lineTo(X(q[0]), Z(q[1])); x.stroke();
     }
     x.restore();
   }

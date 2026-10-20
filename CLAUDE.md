@@ -35,9 +35,9 @@ web/3d/hawk.js          the hawk mesh, rebuilt per frame from a pose
 web/3d/sky.js           clock (G.tod, G.day, G.season) and light (G.light)
 web/3d/hud.js           G.hud: meter() (washed bars), tip()/did(), toast() (queued), status, counter (under the dial), hide(), quiet meters, thumb pads
 web/3d/menu.js          G.menu: tab(), toggle(), button(), onOpen(), subtitle(), set(); tab order/titles in ORDER/TITLES
-web/3d/letter.js        the menu's look (handmade sheet, margin rule, tab brush stroke, wax seal); swap it to restyle
-web/3d/paper.js         paper and paint helpers for the UI (handmadeTex, wash, deckle, brush, inkLine)
-web/3d/seal.js          Aloft's wax seal (menu Resume, app icons via tools/icon.html)
+web/3d/letter.js        the menu's look in low poly (faceted sheet, margin rule, tab ribbon, wax seal); swap it to restyle
+web/3d/facet.js         low-poly helpers for the UI (PIG colours, poly, facets, gem, chamfer, hardShadow, lit)
+web/3d/seal.js          Aloft's wax seal, cut as a faceted gem (menu Resume, app icons via tools/icon.html)
 web/3d/dial.js          the day dial, top right
 web/3d/journal.js       the Journal tab: journal(G).section(order, title); shot.js: project(), afterDraw(), portraits
 web/3d/app.js           Update, Full screen, Quiet meters and Quit rows
