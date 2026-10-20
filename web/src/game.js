@@ -142,6 +142,7 @@ export function start(canvas) {
       guide: () => guidePages(store),
       // a new journey flies a shared world if a link named one, else a fresh one of its own
       quit,
+      update,
       fullscreen: on => { G.settings.full = on; store.set('full', on); if (on) goFull(); else if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {}); },
       newGame: () => { store.set('save', null); store.set('seed', G.sharedSeed ?? 1 + Math.floor(Math.random() * 99999)); G.noSave = true; location.reload(); },
       gfx: k => { if (k === 'res' || k === 'style') { res = 0; resLock = false; perf.prev = 0; perf.fails = 0; resize(); } redraw = true; },
@@ -154,11 +155,11 @@ export function start(canvas) {
   const stayAwake = async () => { if (wakeLock || !navigator.wakeLock) return; try { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => { wakeLock = null; }); } catch { /* denied, or low battery */ } };
   input.onAny = () => { audio.unlock(); stayAwake(); };
   canvas.addEventListener('pointerup', () => { if (G.settings.full) goFull(); });   // a touch's lift is what lets a page go full screen
-  // full screen in the browser hides the phone's buttons, so stray thumbs reach them less
-  // (an installed app is already full screen)
+  // full screen hides the phone's status bar and buttons, so stray thumbs reach them less. The
+  // installed app opens with them showing, so the Full screen switch can bring them back
+  // (an app installed when it opened full screen has no bars to bring back)
   function goFull() {
-    const standalone = matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches;
-    if (standalone || document.fullscreenElement || !document.fullscreenEnabled || G.photo) return;
+    if (matchMedia('(display-mode: fullscreen)').matches || document.fullscreenElement || !document.fullscreenEnabled || G.photo) return;
     document.documentElement.requestFullscreen?.({ navigationUI: 'hide' }).then(() => screen.orientation?.lock?.('landscape').catch(() => {})).catch(() => {});
   }
   // quitting saves, then closes the app if the system lets a page do that; if not, it says the
@@ -168,6 +169,25 @@ export function start(canvas) {
     if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
     try { window.close(); } catch { /* not allowed */ }
     setTimeout(() => ui.goodbye(), 250);
+  }
+  // Update: save, fetch the newest version of every file past every cache, and start again on it,
+  // so a new version shows in one go instead of after two reloads
+  async function update() {
+    persist();
+    ui.toast('Fetching the latest Aloft…', 6);
+    try {
+      const reg = await navigator.serviceWorker?.getRegistration();
+      if (reg) {
+        await Promise.race([reg.update().catch(() => {}), new Promise(ok => setTimeout(ok, 6000))]);
+        const w = reg.installing || reg.waiting;
+        if (w) await new Promise(ok => { const done = () => (w.state === 'activated' || w.state === 'redundant') && ok(); w.addEventListener('statechange', done); done(); setTimeout(ok, 8000); });
+      }
+      for (const k of await caches.keys()) {
+        const c = await caches.open(k);
+        await Promise.all((await c.keys()).map(async q => { const r = await fetch(q.url, { cache: 'reload' }); if (r.ok) await c.put(q, r); }));
+      }
+      G.noSave = true; location.reload();
+    } catch { ui.toast('Could not reach the internet to update. Try again with a connection.', 5); }
   }
   input.onKey = k => {
     if (G.photo) { if (k === 'Escape') photo.end(); return; }

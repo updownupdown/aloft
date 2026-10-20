@@ -40,9 +40,10 @@ export function createUI({ audio, G, store, species, onPause, playSong, haptics,
           <button data-act="quiet" class="sw" role="switch"><span>Quiet meters <small>hide when full</small></span><i></i></button>
           <button data-act="lefty" class="sw" role="switch"><span>Left-handed</span><i></i></button>
           <button data-act="saver" class="sw" role="switch"><span>Battery saver</span><i></i></button>
-          <button data-act="full" class="sw hidden" role="switch"><span>Full screen</span><i></i></button>
+          <button data-act="full" class="sw hidden" role="switch"><span>Full screen <small>off shows the phone's bars and buttons</small></span><i></i></button>
           <button data-act="install" class="row-btn hidden">Install on this phone</button>
-          <button data-act="quit" class="row-btn hidden">Quit</button>
+          <button data-act="update" class="row-btn hidden">Update <em>fetch the latest version and reload</em></button>
+          <button data-act="quit" class="row-btn hidden">Quit <em>saves your journey, then closes</em></button>
           <button data-act="newgame" class="quiet hidden">Start a new journey</button>
         </section>
         <section class="pane" data-pane="journal">
@@ -126,8 +127,9 @@ export function createUI({ audio, G, store, species, onPause, playSong, haptics,
   }
   if (hooks.newGame) q('[data-act=newgame]').classList.remove('hidden');
   if (hooks.quit) q('[data-act=quit]').classList.remove('hidden');
+  if (hooks.update && 'serviceWorker' in navigator && 'caches' in window) q('[data-act=update]').classList.remove('hidden');
   const fullBtn = q('[data-act=full]');
-  if (hooks.fullscreen && document.fullscreenEnabled && !matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches) fullBtn.classList.remove('hidden');
+  if (hooks.fullscreen && document.fullscreenEnabled && !matchMedia('(display-mode: fullscreen)').matches) fullBtn.classList.remove('hidden');
 
   // the tuning page is hidden: tap the title five times
   let titleTaps = 0, titleT = 0;
@@ -229,6 +231,7 @@ export function createUI({ audio, G, store, species, onPause, playSong, haptics,
     if (act === 'haptics' && haptics) { haptics.setOn(!haptics.on); if (haptics.on) haptics.land(false); refresh(); }
     if (act === 'full') { hooks.fullscreen(!G.settings.full); refresh(); }
     if (act === 'quit') { close(); hooks.quit(); }
+    if (act === 'update') { close(); hooks.update(); }
     if (act === 'saver') { G.settings.saver = !G.settings.saver; store.set('saver', G.settings.saver); refresh(); }
     if (act === 'lefty') { G.settings.lefty = !G.settings.lefty; store.set('lefty', G.settings.lefty); root.classList.toggle('lefty', G.settings.lefty); refresh(); }
     if (act === 'share') {
