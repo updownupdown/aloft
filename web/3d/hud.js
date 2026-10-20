@@ -91,7 +91,9 @@ export function createHud(G, ui, input) {
     hud.classList.toggle('quiet', quiet);
     dial.update(G.tod, G.day, false, G.season);
     for (const [el, P] of [[padL, input.L], [padR, input.R]]) {
-      const on = P.id !== null;
+      // perched or standing, a drag turns the bird: no sticks then
+      const fly = G.b.state === 'fly', on = P.id !== null && fly;
+      el.style.display = fly ? '' : 'none';
       el.classList.toggle('on', on);
       if (on) {
         el.style.left = (P.x0 - 45) + 'px'; el.style.top = (P.y0 - 45) + 'px'; el.style.right = el.style.bottom = 'auto';

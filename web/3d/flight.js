@@ -28,6 +28,9 @@ export function step(b, c, dt, E) {
   b.tuck += (Math.max(0, -c.spread) - b.tuck) * Math.min(1, dt * 6);
   b.flare += (Math.max(0, c.spread) - b.flare) * Math.min(1, dt * 6);
   if (b.state !== 'fly') return still(b, c, dt, E);
+  // how fast the hawk is gaining speed (smoothed): no perching while it is
+  b.acc = (b.acc || 0) + ((b.s - (b.sPrev ?? b.s)) / Math.max(dt, 1e-3) - (b.acc || 0)) * Math.min(1, dt * 4);
+  b.sPrev = b.s;
 
   // flaps
   if (c.flap) {
@@ -102,9 +105,13 @@ const stallness = (b, sStall = FLY.stall) => Math.max(0, Math.min(1, (sStall - b
 function still(b, c, dt, E) {
   b.s = 0; b.vy = 0; b.gamma = 0; b.roll *= .8; b.lift = 0;
   b.settle = Math.max(0, b.settle - dt);
+  if (b.settle <= 0) b.hop = 0;
+  else if (b.hop > 0 && b.flapL > .42) b.flapL = b.flapR = 0;   // keep beating across a hop
   b.stamina = Math.min(1, b.stamina + dt * .2 * (b.recover ?? 1));
-  // turn on the spot to choose a way out; on the ground a push forward walks
-  b.yaw += c.roll * dt * 1.6;
+  // turn on the spot to choose a way out: drag sideways (the bird turns against the swipe, as if
+  // you were turning the view) or A/D; on the ground a push forward walks
+  b.yaw += (c.keyRoll ?? 0) * dt * 1.6 - (c.dragX ?? 0) * 3.4;
+  b.sPrev = 0; b.acc = 0;
   if (b.state === 'ground' && Math.abs(c.pitch) > .3) {
     const sp = c.pitch * 1.4 * dt; b.p[0] += Math.sin(b.yaw) * sp; b.p[2] -= Math.cos(b.yaw) * sp;
     b.p[1] = Math.max(height(b.p[0], b.p[2]), WATER) + .35;
@@ -112,7 +119,7 @@ function still(b, c, dt, E) {
   if (b.state === 'swim') b.p[1] = WATER + .12 + Math.sin(b.t * 2) * .03;
   if (b.wantOff > 0) b.wantOff -= dt;
   if ((c.flap && b.settle <= 0) || (b.wantOff > 0 && b.settle < .2 && !(b.eating > .3))) {
-    b.wantOff = 0; b.noPerch = .9; b.settle = 0;
+    b.wantOff = 0; b.noPerch = 1.6; b.settle = 0; b.hop = 0;
     // take off: a strong stroke forward and up
     const wet = b.state === 'swim';
     b.state = 'fly'; b.perch = null; b.tree = null;
@@ -149,7 +156,7 @@ function avoid(b, dt) {
 function trees(b, dt, E) {
   b.canopy = Math.max(0, b.canopy - dt * 2);
   if (b.noPerch > 0) b.noPerch -= dt;
-  const mayPerch = !(b.noPerch > 0);
+  const mayPerch = canPerch(b);
   for (const t of treesNear(b.p[0], b.p[2], 14)) {
     const dx = b.p[0] - t.x, dz = b.p[2] - t.z, hd = Math.hypot(dx, dz), y = b.p[1] - t.y;
     // the trunk is hard
@@ -171,21 +178,24 @@ function trees(b, dt, E) {
       b.s *= 1 - Math.min(.9, dt * (1.6 + b.s * .05));
       if (b.canopy < .2) E.leaves(b.p, b.s);
       b.canopy = 1;
-      // settle on the nearest limb; the crown's top only if you came in over it
-      const ps = perchesOf(t), limbs = ps.filter(p => !p.top), over = y > t.s * (t.kind ? .8 : TREE.crownY + TREE.crownR * .45);
-      if (b.s < 6 && mayPerch) { settleOn(b, nearestPerch(over || !limbs.length ? ps : limbs, b.p), t, E); return; }
+      // settle on the nearest limb (never the crown's top: coming in over it you sink through)
+      const limbs = perchesOf(t).filter(p => !p.top), over = y > t.s * (t.kind ? .8 : TREE.crownY + TREE.crownR * .45);
+      if (b.s < 6 && mayPerch && !over && limbs.length) { settleOn(b, nearestPerch(limbs, b.p), t, E); return; }
     }
     // a perch close by while slow: land on it
-    if (mayPerch && b.s < FLY.landS && b.vy < 3) for (const p of perchesOf(t)) {
+    if (mayPerch && b.s < FLY.landS && b.vy < 3) for (const p of perchesOf(t)) if (!p.top) {
       if (Math.hypot(p.x - b.p[0], p.y + PERCH_Y - b.p[1], p.z - b.p[2]) < FLY.perchR + b.flare * .8) { settleOn(b, p, t, E); return; }
     }
   }
 }
 // towers, standing stones and cairns: hard sides, a perch on top
+// not right after taking off, nor while speeding up or tucked in a dive
+const canPerch = b => !(b.noPerch > 0) && !(b.acc > 1.2) && b.tuck < .4;
 function solids(b, E) {
+  const mayPerch = canPerch(b);
   for (const o of solidsNear(b.p[0], b.p[2], 10)) {
     const dx = b.p[0] - o.x, dz = b.p[2] - o.z, hd = Math.hypot(dx, dz);
-    if (!(b.noPerch > 0) && b.s < FLY.landS && b.vy < 3 && Math.hypot(o.perch.x - b.p[0], o.perch.y + PERCH_Y - b.p[1], o.perch.z - b.p[2]) < FLY.perchR + o.r * .5 + b.flare * .8) { settleOn(b, o.perch, null, E); return; }
+    if (mayPerch && b.s < FLY.landS && b.vy < 3 && Math.hypot(o.perch.x - b.p[0], o.perch.y + PERCH_Y - b.p[1], o.perch.z - b.p[2]) < FLY.perchR + o.r * .5 + b.flare * .8) { settleOn(b, o.perch, null, E); return; }
     const tr = o.r + .35;
     if (hd >= tr || b.p[1] < o.y0 || b.p[1] > o.top + .3) continue;
     // over the top edge: hop up onto it; otherwise the side is hard
@@ -197,8 +207,8 @@ function solids(b, E) {
 // how high the hawk's centre sits above a perch point (the top of the limb), feet on it
 const PERCH_Y = .14;
 const nearestPerch = (ps, q) => ps.reduce((a, p) => (Math.hypot(p.x - q[0], p.y - q[1], p.z - q[2]) < Math.hypot(a.x - q[0], a.y - q[1], a.z - q[2]) ? p : a));
-function settleOn(b, p, t, E) {
-  b.state = 'perch'; b.perch = p; b.tree = t; b.settle = .45; b.s = 0; b.vy = 0;
+function settleOn(b, p, t, E, dur = .45) {
+  b.state = 'perch'; b.perch = p; b.tree = t; b.settle = b.settleT = dur; b.s = 0; b.vy = 0;
   b.from = [b.p[0], b.p[1], b.p[2]];
   b.p = [p.x, p.y + PERCH_Y, p.z];
   // sit across a limb, facing whichever way along it is nearer the way you came in
@@ -206,14 +216,37 @@ function settleOn(b, p, t, E) {
   E.land('perch');
 }
 
+// perches a short hop away from where the hawk sits or stands, nearest first (limbs and stone
+// tops, never treetops)
+export const HOP = 14;
+export function hopPerches(b, n = 3) {
+  if (b.state === 'fly' || b.state === 'swim') return [];
+  const out = [], add = (p, t) => {
+    const d = Math.hypot(p.x - b.p[0], p.y - b.p[1], p.z - b.p[2]);
+    if (p !== b.perch && d > 1.2 && d < HOP && p.y - b.p[1] < 9 && !(b.perch && Math.hypot(p.x - b.perch.x, p.y - b.perch.y, p.z - b.perch.z) < .3)) out.push({ p, t, d });
+  };
+  for (const t of treesNear(b.p[0], b.p[2], HOP + 4)) for (const p of perchesOf(t)) if (!p.top) add(p, t);
+  for (const o of solidsNear(b.p[0], b.p[2], HOP + 4)) add(o.perch, null);
+  return out.sort((a, q) => a.d - q.d).slice(0, n);
+}
+// a hop: a few wing beats across to another perch, in a low arc
+export function hopTo(b, h, E) {
+  if (b.settle > 0 || b.eating > 0) return false;
+  b.yaw = Math.atan2(h.p.x - b.p[0], -(h.p.z - b.p[2]));
+  b.flapL = b.flapR = 0; b.ampL = b.ampR = 1; b.hop = Math.min(2.2, .4 + h.d * .12);
+  settleOn(b, h.p, h.t, E, .35 + h.d * .045);
+  E.flap(.6, 0);
+  return true;
+}
+
 // the closest perch within reach, for the landing mark
 export function perchAhead(b) {
   if (b.state !== 'fly' || b.s > 14) return null;
   const f = fwd(b); let best = null, bd = 1e9;
-  for (const t of treesNear(b.p[0], b.p[2], 30)) for (const p of perchesOf(t)) {
+  for (const t of treesNear(b.p[0], b.p[2], 30)) for (const p of perchesOf(t)) if (!p.top) {
     const dx = p.x - b.p[0], dy = p.y - b.p[1], dz = p.z - b.p[2], d = Math.hypot(dx, dy, dz);
     if (d > 28 || d < 1 || (dx * f[0] + dy * f[1] + dz * f[2]) / d < .75) continue;
-    if (d + (p.top ? 5 : 0) < bd) { bd = d + (p.top ? 5 : 0); best = p; }   // limbs before treetops
+    if (d < bd) { bd = d; best = p; }
   }
   for (const o of solidsNear(b.p[0], b.p[2], 30)) {
     const p = o.perch, dx = p.x - b.p[0], dy = p.y - b.p[1], dz = p.z - b.p[2], d = Math.hypot(dx, dy, dz);
