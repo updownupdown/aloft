@@ -49,7 +49,7 @@ export function broadleaf() {
   seed = 7; const B = builder();
   prism(B, 0, 0, TREE.trunkR[0], TREE.trunkR[0] * .6, -.05, TREE.trunkH[0] + .1, 5, PAL.bark);
   // the limbs (perches under the canopy, see TREE.limbs), each with a tuft at its tip
-  for (const [o, y, l] of TREE.limbs[0]) limb(B, o, y, l, .018, PAL.leaf, PAL.leaf2);
+  for (const [o, y, l] of TREE.limbs[0]) limb(B, o, y, l, TREE.limbR[0], PAL.leaf, PAL.leaf2);
   const R = TREE.crownR;
   blob(B, 0, TREE.crownY, 0, R, PAL.leaf, PAL.leaf2);
   blob(B, R * .55, TREE.crownY - .08, R * .3, R * .62, PAL.leaf2, PAL.leaf);
@@ -70,7 +70,7 @@ function limb(B, o, y, l, r, leaf, leaf2) {
 export function pine() {
   seed = 11; const B = builder();
   prism(B, 0, 0, TREE.trunkR[1], TREE.trunkR[1] * .5, -.05, .5, 5, PAL.bark);
-  for (const [o, y, l] of TREE.limbs[1]) limb(B, o, y + .03, l, .012);   // bare limbs poking out of the needles
+  for (const [o, y, l] of TREE.limbs[1]) limb(B, o, y, l, TREE.limbR[1]);   // bare limbs reaching out past the needles
   cone(B, .18, .62, .26, 7, PAL.pine, 0);
   cone(B, .42, .82, .2, 7, PAL.pine2, .4);
   cone(B, .64, 1.0, .13, 6, PAL.pine, .8);

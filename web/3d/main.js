@@ -75,7 +75,7 @@ export function start(canvas, ui) {
     Object.assign(b, { p: S0.p, yaw: S0.yaw, state: 'ground', stamina: S0.stamina ?? 1 });
     b.p[1] = Math.max(height(b.p[0], b.p[2]), WATER) + .35;
     G.clock = S0.clock || 0;
-    if (S0.perch) { const t = treesNear(b.p[0], b.p[2], 3)[0]; if (t) { b.state = 'perch'; b.perch = perchesOf(t)[0]; b.p = [b.perch.x, b.perch.y + .25, b.perch.z]; } }
+    if (S0.perch) { const t = treesNear(b.p[0], b.p[2], 3)[0]; if (t) { b.state = 'perch'; b.perch = perchesOf(t).sort((a, q) => Math.hypot(a.x - b.p[0], a.y - b.p[1], a.z - b.p[2]) - Math.hypot(q.x - b.p[0], q.y - b.p[1], q.z - b.p[2]))[0]; b.p = [b.perch.x, b.perch.y + .14, b.perch.z]; } }
     for (const s of systems) if (s.load && S0.sys?.[s.id]) s.load(S0.sys[s.id]);
   }
   function persist() {
@@ -104,8 +104,8 @@ export function start(canvas, ui) {
     .takeoff3.gone{opacity:0;pointer-events:none}.menu-open .takeoff3,.bare3 .takeoff3{display:none}</style>
     <button class="takeoff3 gone" aria-label="Take off">Take off</button>`);
   const takeoffBtn = ui.querySelector('.takeoff3');
-  const takeoff = e => { e.preventDefault(); e.stopPropagation(); audio.unlock?.(); input.taps.push({ side: 0, t: performance.now() / 1000 - 1 }); };
-  takeoffBtn.addEventListener('touchstart', takeoff, { passive: false }); takeoffBtn.addEventListener('click', takeoff);
+  const takeoff = e => { e.preventDefault(); e.stopPropagation(); audio.unlock?.(); b.wantOff = .6; };   // flight.js takes off as soon as it can
+  takeoffBtn.addEventListener('pointerdown', takeoff);
   const E = {
     get sun() { return G.light.daylight; },
     flap: (q, side) => { audio.flap(); H.did('flap'); G.emit('flap', q, side); },
@@ -202,7 +202,6 @@ export function start(canvas, ui) {
     // the scene: light, camera and hawk, then whatever each system adds
     const S = { ...G.light, time: G.t, wind: G.windK ?? .3, fogDen: .0042, autumnCol: [.8, .5, .22], props: {}, motes: [] };
     camera.update(dt, S);
-    if (G.perchMark) (S.props.ring ||= []).push(G.perchMark.x, G.perchMark.y + .35, G.perchMark.z, .45, G.t * 1.5, .7, 0, 0);
     for (const s of systems) s.scene?.(S);
     for (const q of G.parts) S.motes.push(...q.p, ...q.col, q.size * Math.min(1, q.life / q.max * 2));
     R.updateChunks(S.cam, 3);
