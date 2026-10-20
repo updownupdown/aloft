@@ -125,7 +125,11 @@ function still(b, c, dt, E) {
   }
   if (b.state === 'swim') b.p[1] = WATER + .12 + Math.sin(b.t * 2) * .03;
   if (b.wantOff > 0) b.wantOff -= dt;
-  if ((c.flap && b.settle <= 0) || (b.wantOff > 0 && b.settle < .2 && !(b.eating > .3))) {
+  // perched or standing, only Take off takes off; a tap on the ground is a hop (to a worm close by,
+  // or forward); on the water a tap still lifts off
+  if (c.flap && b.settle <= 0 && b.state === 'ground' && !(b.eating > 0) && !b.asleep) return groundHop(b, E);
+  if ((c.flap && b.settle <= 0 && b.state === 'swim') || (b.wantOff > 0 && b.settle < .2 && !(b.eating > .3))) {
+    b.asleep = false;
     b.wantOff = 0; b.noPerch = 1.6; b.settle = 0; b.hop = 0;
     // take off: a strong stroke forward and up
     const wet = b.state === 'swim';
@@ -134,6 +138,17 @@ function still(b, c, dt, E) {
     b.stamina = Math.max(0, b.stamina - FLY.flapCost);
     E.flap(1, 0); E.takeoff();
   }
+}
+
+// a hop along the ground: to b.hopAim (a worm, set by food.js) if it is close, else a step forward
+function groundHop(b, E) {
+  const a = b.hopAim, d = a ? Math.hypot(a[0] - b.p[0], a[2] - b.p[2]) : 0;
+  if (a && d > .2) b.yaw = Math.atan2(a[0] - b.p[0], -(a[2] - b.p[2]));
+  const step = a ? Math.min(d, 2.5) : 1.4, nx = b.p[0] + Math.sin(b.yaw) * step, nz = b.p[2] - Math.cos(b.yaw) * step;
+  if (height(nx, nz) < WATER) return;
+  b.from = [...b.p]; b.p = [nx, height(nx, nz) + .35, nz];
+  b.settle = b.settleT = .32; b.hop = .35; b.flapL = b.flapR = 0; b.ampL = b.ampR = .6;
+  E.flap(.4, 0); E.hopped?.();
 }
 
 function avoid(b, dt) {

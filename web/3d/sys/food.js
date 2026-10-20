@@ -1,4 +1,5 @@
-// Hunger and thirst, mice in the meadows, and drinking at the water's edge.
+// Hunger and thirst, mice in the meadows, worms after rain, and drinking at the water's edge.
+// Running low on either lowers how full the wings can get (G.maxStamina, marked on the wings bar).
 // Mice live in 48 m cells of open grass; only those near the hawk are simulated. A caught
 // mouse's cell refills after a while. Grass twitches over each mouse, a cue seen from high up.
 // Catching is forgiving: come down low over one and the feet reach for it; dive with wings
@@ -8,11 +9,22 @@ import { builder, blob, reseed } from '../shapes.js';
 import { clamp } from '../util.js';
 
 export const FOOD = {
-  hungerTime: 600, thirstTime: 840,          // seconds from full to empty (twice the 2D times)
-  mouse: .45, drink: .3,                     // how much a mouse fills, how fast water refills
+  hungerTime: 1200, thirstTime: 1680,        // seconds from full to empty (four times the 2D times)
+  mouse: .45, mouseWet: .1, drink: .3,       // how much a mouse fills (and quenches), how fast water refills
+  worm: .08, wet: 300, worms: 3,             // a worm's fill, seconds the ground stays wet after rain, worms at once
+  lowAt: .35, lowMax: .3,                    // below lowAt, hunger and thirst each take up to lowMax off max stamina
   cell: 48, near: 170, respawn: 150,         // mouse cells, simulated radius, seconds to refill
   catchR: 1.5, catchDive: 1.6, catchH: 2.6,  // reach, extra reach diving, how low to be
 };
+
+function wormShape() {
+  reseed(9); const B = builder(), pink = [.78, .5, .5], dark = [.62, .38, .4];
+  for (let i = 0; i < 6; i++) {
+    const x = (i - 2.5) * .028, w = .011 - Math.abs(i - 2.5) * .0012, z = Math.sin(i * 1.3) * .012;
+    blob(B, x, .012, z, w, i % 2 ? pink : dark, dark, [1.6, 1, 1]);
+  }
+  return B.out();
+}
 
 function mouseShape() {
   reseed(5); const B = builder(), fur = [.55, .46, .38], belly = [.72, .64, .55];
@@ -25,7 +37,9 @@ function mouseShape() {
 
 export function foodSystem(G) {
   const b = G.b, mice = new Map(), caught = new Map();   // id -> mouse; id -> G.clock caught
-  G.R.shape('mouse', mouseShape());
+  G.R.shape('mouse', mouseShape()); G.R.shape('worm', wormShape());
+  const worms = []; let wormT = 0; G.wet = 0;
+  G.hud.tip('worms', () => b.state === 'ground' && worms.length > 0, 'After rain, worms come up. Tap to hop to the nearest one and eat it.');
   G.hunger = 1; G.thirst = 1;
   const setHunger = G.hud.meter('hunger', { label: 'food', colour: 'linear-gradient(90deg,#a8483a,#c96a4e)' });
   const setThirst = G.hud.meter('thirst', { label: 'water', colour: 'linear-gradient(90deg,#3f6f9a,#6c9ac0)' });
@@ -74,10 +88,48 @@ export function foodSystem(G) {
   function eat(m) {
     caught.set(m.id, G.clock); mice.delete(m.id);
     b.state = 'ground'; b.from = [...b.p]; b.p = [m.x, Math.max(m.y, WATER) + .35, m.z]; b.settle = .45; b.s = 0;
-    b.eating = 2.4; G.hunger = Math.min(1, G.hunger + FOOD.mouse);
-    G.audio.thump(.3); G.audio.eat(); setTimeout(() => G.audio.eat(), 600); setTimeout(() => G.audio.eat(), 1300);
+    b.eating = 2.4; G.hunger = Math.min(1, G.hunger + FOOD.mouse); G.thirst = Math.min(1, G.thirst + FOOD.mouseWet);
+    // make it plain: a strike and a squeak, a puff of grass, a rising glint, then the meal
+    const A = G.audio;
+    A.thump(.6); A.rustle(1.2); A.tone?.({ f: 2400, f2: 3100, dur: .07, vol: .07, delay: .05 }); A.tone?.({ f: 2600, f2: 2100, dur: .06, vol: .05, delay: .16 });
+    setTimeout(() => A.feather(), 350); setTimeout(() => A.eat(), 800); setTimeout(() => A.eat(), 1400); setTimeout(() => A.eat(), 2000);
+    for (let i = 0; i < 18; i++) { const a = i / 18 * 6.283; G.part([m.x, m.y + .15, m.z], [Math.cos(a) * 2.6, 1.2 + Math.random() * 1.5, Math.sin(a) * 2.6], .8, i % 3 ? [.6, .7, .34] : [.55, .44, .3], .1); }
+    for (let i = 0; i < 8; i++) G.part([m.x + (Math.random() - .5) * .6, m.y + .5, m.z + (Math.random() - .5) * .6], [0, 1.6 + Math.random(), 0], 1.4, [1, .86, .45], .14);
+    G.hud.toast('Caught a mouse', 2);
     G.hud.did('hunt'); G.emit('catch', { kind: 'mouse', x: m.x, z: m.z });
     if (!G.flags.firstMouse) { G.flags.firstMouse = 1; G.hud.toast('Caught! A mouse fills you up a good way.'); }
+  }
+
+  // ---- worms: after rain they come up near you, only while you are on the ground --------------
+  function worms_(dt) {
+    G.wet = (G.rain || 0) > .3 ? 1 : Math.max(0, G.wet - dt / FOOD.wet);
+    const here = b.state === 'ground' && G.wet > .05;
+    for (let i = worms.length - 1; i >= 0; i--) {
+      const w = worms[i], d = Math.hypot(w.x - b.p[0], w.z - b.p[2]);
+      w.t += dt;
+      if (d > 14 || (!here && b.state !== 'ground')) { worms.splice(i, 1); continue; }
+      if (b.state === 'ground' && d < .55 && b.settle <= 0) {   // landed on it: eat
+        worms.splice(i, 1); b.eating = .9;
+        G.hunger = Math.min(1, G.hunger + FOOD.worm); G.thirst = Math.min(1, G.thirst + FOOD.worm * .3);
+        G.audio.eat(); setTimeout(() => G.audio.eat(), 300); G.hud.did('worms');
+        for (let k = 0; k < 6; k++) G.part([w.x, w.y + .1, w.z], [(Math.random() - .5) * 1.4, 1 + Math.random(), (Math.random() - .5) * 1.4], .6, [.45, .36, .26], .08);
+        G.emit('catch', { kind: 'worm', x: w.x, z: w.z });
+      }
+    }
+    if (here && worms.length < FOOD.worms && (wormT -= dt) <= 0) {
+      wormT = worms.length ? 1.5 + Math.random() * 2.5 : .3;
+      for (let tr = 0; tr < 10; tr++) {
+        const a = Math.random() * 6.283, r = 1.5 + Math.random() * 3.5, x = b.p[0] + Math.sin(a) * r, z = b.p[2] - Math.cos(a) * r, y = height(x, z);
+        if (y < WATER + .3 || forest(x, z) > .6 || normalAt(x, z)[1] < .8) continue;
+        worms.push({ x, y, z, yaw: Math.random() * 6.283, t: 0 });
+        for (let k = 0; k < 4; k++) G.part([x, y + .05, z], [(Math.random() - .5) * .6, .6 + Math.random() * .5, (Math.random() - .5) * .6], .5, [.4, .32, .24], .06);
+        break;
+      }
+    }
+    // a hop goes to the nearest worm close by
+    let best = null, bd = 6;
+    for (const w of worms) { const d = Math.hypot(w.x - b.p[0], w.z - b.p[2]); if (d < bd) { bd = d; best = w; } }
+    b.hopAim = best ? [best.x, best.y, best.z] : null;
   }
 
   return {
@@ -109,7 +161,12 @@ export function foodSystem(G) {
       void g;
       // empty meters slow how fast the wings recover (the meters flash when low: no message)
       b.recover = (G.hunger > 0 ? 1 : .5) * (G.thirst > 0 ? 1 : .5);
+      // low food or water: the wings can't fill all the way
+      const low = v => Math.max(0, FOOD.lowAt - v) / FOOD.lowAt * FOOD.lowMax;
+      G.maxStamina = b.maxStamina = 1 - low(G.hunger) - low(G.thirst);
+      b.stamina = Math.min(b.stamina, b.maxStamina);
       setHunger(G.hunger); setThirst(G.thirst);
+      worms_(dt);
       // grass twitches over mice: little green flecks, easy to spot from the air
       if ((rustleT -= dt) <= 0) {
         rustleT = .25;
@@ -117,6 +174,8 @@ export function foodSystem(G) {
       }
     },
     scene(S) {
+      const wp = S.props.worm ||= [];
+      for (const w of worms) { const up = Math.min(1, w.t * 1.5); wp.push(w.x, w.y - .03 + up * .03, w.z, 2.2 * up, w.yaw + Math.sin(G.t * 5 + w.x) * .35, .5, 0, 0); }
       const d = S.props.mouse ||= [];
       // at night a mouse's eyes catch the moon; an owl's song (known, or its gift) makes them easy to find
       const owl = Math.min(1, (G.learned?.has(6) ? .45 : 0) + (G.gifts?.night > 0 ? 1 : 0)), eye = (S.night || 0) * (.35 + owl * .65);

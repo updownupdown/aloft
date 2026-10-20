@@ -5,6 +5,8 @@
 const SHORT = {
   flap: ['up', 'Tap both thumbs to flap'],
   hop: ['dot', 'Tap a green ring to hop there'],
+  worms: ['dot', 'Worms! Tap to hop to one'],
+  sleep: ['dot', 'Night: tap Sleep to rest till dawn'],
   bank: ['bank', 'One thumb up, one down: turn'],
   climb: ['updown', 'Both up to climb, both down to dive'],
   tuck: ['tuck', 'Thumbs together: stoop'],
