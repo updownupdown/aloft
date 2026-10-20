@@ -8,6 +8,7 @@
 // snowline (env.snow) follows the season and the ground is repainted when it moves.
 import { height, WATER, env, bands, WIND, ih, fbm } from '../world.js';
 import { builder, blob, reseed } from '../shapes.js';
+import { DAY } from '../sky.js';
 import { clamp, lerp, mix3, smooth, norm } from '../util.js';
 
 export const WEATHER = {
@@ -64,11 +65,25 @@ export function weatherSystem(G) {
   const note = text => { if (!G.skyNotes.includes(text)) { G.skyNotes.push(text); if (G.skyNotes.length > 20) G.skyNotes.shift(); G.emit('skyNote', text); } };
   const dayHash = (s) => ih(G.day, s, 91);
 
-  function pick() {
+  // the spells to come, rolled ahead so the day dial can show a forecast (G.forecast)
+  let queue = [];
+  function roll() {
     const r = Math.random(), o = WEATHER.odds, winter = G.season?.winter || 0;
-    const next = r < o.clear - winter * .12 ? 'clear' : r < o.clear + o.cloudy ? 'cloudy' : r < o.clear + o.cloudy + o.rain ? 'rain' : 'storm';
-    setSpell(next);
+    const kind = r < o.clear - winter * .12 ? 'clear' : r < o.clear + o.cloudy ? 'cloudy' : r < o.clear + o.cloudy + o.rain ? 'rain' : 'storm';
+    return { kind, secs: WEATHER.minT + Math.random() * (WEATHER.maxT - WEATHER.minT) };
   }
+  const fill = () => { let t = 0; for (const q of queue) t += q.secs; while (queue.length < 2 || t < 600) { const q = roll(); queue.push(q); t += q.secs; } };
+  function pick() { fill(); const q = queue.shift(); setSpell(q.kind, q.secs); fill(); }
+  // what the weather will be `ahead` seconds from now: 'clear', 'cloud', 'rain', 'storm', 'fog' or 'snow'
+  G.forecast = ahead => {
+    fill();
+    let kind = spell, t = spellT;
+    for (const q of queue) { if (ahead < t) break; kind = q.kind; t += q.secs; }
+    const tod = (G.tod + ahead / DAY) % 1, winter = G.season?.winter || 0;
+    if ((kind === 'rain' || kind === 'storm') && winter > .5) return 'snow';
+    if (kind !== 'storm' && dayHash(1) < .55 && tod > .19 && tod < .38 && kind !== 'rain') return 'fog';
+    return kind === 'cloudy' ? 'cloud' : kind;
+  };
   function setSpell(s, secs) {
     spell = s; spellT = secs ?? WEATHER.minT + Math.random() * (WEATHER.maxT - WEATHER.minT);
     if (s === 'storm') {
@@ -264,9 +279,9 @@ export function weatherSystem(G) {
         if (cam[1] > top + 10) once('seacloud', 'A sea of cloud fills the valleys below, and the peaks stand out of it like islands.', 6);
       }
     },
-    save: () => ({ spell, spellT, cell, rainbowT, notes: G.skyNotes.slice(-20) }),
+    save: () => ({ spell, spellT, queue, cell, rainbowT, notes: G.skyNotes.slice(-20) }),
     load(o) {
-      spell = o.spell || 'clear'; spellT = o.spellT || 90; cell = o.cell || null; rainbowT = o.rainbowT || 0; G.skyNotes = o.notes || [];
+      spell = o.spell || 'clear'; spellT = o.spellT || 90; queue = Array.isArray(o.queue) ? o.queue : []; cell = o.cell || null; rainbowT = o.rainbowT || 0; G.skyNotes = o.notes || [];
       const t = { clear: [0, 0, 0], cloudy: [.7, 0, 0], rain: [.85, .8, .1], storm: [1, 1, 1] }[spell] || [0, 0, 0];
       [G.overcast, G.rain, G.storm] = t;
     },
