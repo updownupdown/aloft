@@ -33,9 +33,8 @@ web/src/skyfx.js        paints those: aurora, rainbow, golden rays, meteors, fog
 web/src/paint.js        watercolour toolkit: wash, bloom, softWash, lift, paper textures
 web/src/palette.js      day / dusk / night palettes blended by time of day, greyed by weather
 web/src/input.js        keyboard (arrows/WASD, flap keys) and hands touches to gestures.js
-web/src/gestures.js     touch gestures drawn on the screen: taps (counted), strokes (line, hook, circle); their quiet feedback
-web/src/joystick.js     the one watercolour stick (flying only) that trims the line: up hover, forward glide, down dive, back brake
-web/src/controls.js     what each gesture does per state (flap, perch, prey, turn, glide, land, hover, ride, flip, aim), latched modes
+web/src/gestures.js     touch gestures: taps (counted), holds (by time, then leaned), strokes (line, hook, circle); the sign above the hawk
+web/src/controls.js     what each gesture does per state (flap, perch, food, prey, turn, glide, ride, flip, held leans), latched modes
 web/src/songs.js        songbird species: songs, where and when they sing, the gift each song brings
 web/src/life.js         mice, fish, flocks (boids), visiting songbirds, companion hawk and fledgling
 web/src/journey.js      migration, landmarks found, nest and chick, journal + map (with the route flown), save/resume
@@ -90,7 +89,7 @@ add colours there rather than inline.
 
 - Flight: `bird.js` constants (gravity, drag, relax angle, stall, flap) and `world.js`
   `lift()` for thermal strength. Ridge lift: `world.js` `ridgeLift()` and `TUNE.ridge`; wave lift and kettles: top of `air.js`. A tap flaps; `flap(b, power, G, sync)`
-  scales cost and thrust by sync. Gesture timing and sizes: top of `gestures.js`; what they do: `controls.js`; the stick: `joystick.js`.
+  scales cost and thrust by sync. Gesture timing and sizes: top of `gestures.js`; what they do: `controls.js`.
 - Camera zoom (`ZOOM` default, `ZOOM_OUT` high and fast) and the two-tap take-off window: top of
   `game.js`. `G.view` is the zoomed world view; `G.view.scr` is screen space (sky, far hills,
   weather, HUD), sized as the art was first drawn; world sprites paint at the fixed `G.view.spx`.
