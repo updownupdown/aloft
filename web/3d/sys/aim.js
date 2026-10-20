@@ -41,14 +41,16 @@ export function aimSystem(G) {
           if (d > 90 || d < 1) continue;
           const nearImpact = A.impact ? Math.hypot(m.x - A.impact[0], m.z - A.impact[2]) : 1e9;
           const cone = (dx * f[0] + dy * f[1] + dz * f[2]) / d;
-          const score = nearImpact < 7 + A.focus * 6 ? nearImpact : cone > .93 - A.focus * .05 ? 20 + (1 - cone) * 100 : 1e9;
+          const score = nearImpact < 8 + A.focus * 10 ? nearImpact : cone > .92 - A.focus * .14 ? 20 + (1 - cone) * 100 : 1e9;
           if (score < bd) { bd = score; best = m; }
         }
-        A.target = best;
-        // a gentle pull toward the mouse while diving at it
-        if (best && A.focus > .25) {
+        // keep a mouse you are already diving at, unless it gets well away from the line
+        if (A.lock && mice.has(A.lock.id) && A.focus > .25 && (!best || bd > 6)) best = A.lock;
+        A.target = best; A.lock = A.focus > .25 ? best : null;
+        // a pull toward the mouse while diving at it, firmer the tighter the tuck
+        if (best && A.focus > .2) {
           const want = Math.atan2(best.x - b.p[0], -(best.z - b.p[2])), dy = Math.atan2(best.y + .3 - b.p[1], Math.hypot(best.x - b.p[0], best.z - b.p[2]));
-          const k = A.focus * dt * 2.2;
+          const k = Math.min(1, A.focus * dt * 3.4);
           b.yaw += Math.atan2(Math.sin(want - b.yaw), Math.cos(want - b.yaw)) * k;
           b.gamma += (Math.max(-1.3, dy) - b.gamma) * k;
         }

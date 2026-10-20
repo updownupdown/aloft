@@ -2,7 +2,7 @@
 // the thumb lands. Read together:
 //   both up / both down          climb / dive (pitch)
 //   one up, the other down       bank toward the lower wing
-//   thumbs slide together        tuck the wings: a fast stoop
+//   thumbs slide together        tuck the wings: a fast stoop (then slide both left/right to steer it)
 //   thumbs slide apart           spread and flare: slow, hover, land
 //   tap both at once             a full flap; one thumb alone flaps one wing (a weak flap and a nudge)
 // A single held thumb works as a small stick on its own (up/down pitch, left/right bank).
@@ -59,8 +59,9 @@ export function createInput(el) {
     const k = I.invert ? -1 : 1;
     if (l && rr) {
       pitch = -(L.dy + R.dy) / 2 * k;
-      roll = (R.dy - L.dy) / 2;
       spread = (R.dx - L.dx) / 2;
+      // bank: one wing up, one down; in a tuck, both thumbs shifted to one side steer too
+      roll = clampU((R.dy - L.dy) / 2 + (L.dx + R.dx) / 2 * Math.max(0, -spread) * 1.6);
     } else if (l || rr) {
       const P = l ? L : R; pitch = -P.dy * k; roll = P.dx;
     }

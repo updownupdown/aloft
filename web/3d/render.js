@@ -5,39 +5,21 @@ import { program, mesh, perspective, lookAt, mul, basis, IDENT } from './gl.js';
 import { CHUNK, chunkMesh, treesNear, ringsNear, height, normalAt, thermalsNear, thermalCentre, TREE, perchesOf } from './world.js';
 import { broadleaf, pine, ring, cloud } from './shapes.js';
 import { buildHawk, HAWK_SCALE } from './hawk.js';
-import { createPost, STYLE_ID } from './post.js';
 
 const COMMON_FS = `
 uniform vec3 uCam, uSun, uSunCol, uSkyAmb, uGndAmb, uFogCol, uFocus;
 uniform float uFogDen, uDither;
-uniform highp int uStyle;   // 0 plain, 1 watercolour, 2 ink, 3 cel, 4 layers, 5 woodblock, 6 gouache (see post.js)
 in vec3 vPos, vNrm, vCol, vColB;
 out vec4 frag;
 float h21(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
 vec3 shade(vec3 col, vec3 n) {
   float d = dot(n, uSun), wrap = max((d + .3) / 1.3, 0.);
   vec3 amb = mix(uGndAmb, uSkyAmb, n.y * .5 + .5);
-  if (uStyle == 3) {   // cel: three hard bands and a rim of light
-    float band = d > .4 ? 1.05 : d > -.1 ? .62 : .32;
-    vec3 v = normalize(uCam - vPos); float rim = pow(1. - max(dot(v, n), 0.), 3.) * step(.0, d);
-    return col * (amb * .75 + uSunCol * band) + uSunCol * rim * .25;
-  }
-  if (uStyle == 1) wrap = mix(wrap, floor(wrap * 3. + .5) / 3., .45);   // washes: soft steps
-  if (uStyle == 4) return col * (amb * .55 + uSunCol * (.45 + wrap * .2));   // layers: nearly flat
-  if (uStyle == 5) wrap = d > .15 ? 1. : .38;                                  // woodblock: lit or shaded, no between
-  if (uStyle == 6) wrap = smoothstep(-.2, .7, d) * .85 + .1;                   // gouache: broad, soft-edged light
   return col * (amb + uSunCol * wrap);
 }
 vec3 haze(vec3 c) {
   float d = length(vPos - uCam);
   float f = 1. - exp(-pow(d * uFogDen, 1.6));
-  if (uStyle == 4) {   // layers: the land in flat bands of distance, darkest near
-    float q = floor(min(f * 1.4, 1.) * 5.) / 5.;
-    vec3 sil = mix(c, uFogCol * vec3(.55, .6, .75), .55) * .62;
-    return mix(sil, uFogCol, q * .95);
-  }
-  if (uStyle == 2) f = min(1., f * 1.25);
-  if (uStyle == 5) f = floor(f * 4. + .3) / 4.;   // woodblock: distance in printed steps
   return mix(c, uFogCol, f);
 }
 float grain() { return .965 + .05 * h21(floor(gl_FragCoord.xy)); }
@@ -47,10 +29,11 @@ precision highp float;
 ${COMMON_FS}
 void main() {
   if (uDither > .5) {
-    // see-through near the camera and on the line to the hawk, so leaves never hide it
+    // see-through near the camera, on a wide line to the hawk and round the hawk itself, so
+    // leaves never hide it and you can see the gaps you are flying into
     vec3 ab = uFocus - uCam, ap = vPos - uCam; float t = clamp(dot(ap, ab) / dot(ab, ab), 0., 1.);
-    float dl = length(ap - ab * t), dc = length(ap);
-    float k = min(smoothstep(1.2, 2.6, dl) + step(.98, t), smoothstep(3., 7., dc));
+    float dl = length(ap - ab * t), dc = length(ap), dh = length(vPos - uFocus);
+    float k = min(min(smoothstep(2.2, 5.5, dl) + step(.98, t), smoothstep(4., 10., dc)), mix(.2, 1., smoothstep(2., 9., dh)));
     if (k < .99) {
       // an ordered 4x4 dither reads as a soft screen rather than noise
       ivec2 q = ivec2(gl_FragCoord.xy) & 3;
@@ -68,7 +51,6 @@ void main() {
 const LIT_VS = `#version 300 es
 layout(location=0) in vec3 aPos; layout(location=1) in vec3 aNrm; layout(location=2) in vec3 aCol; layout(location=3) in vec3 aColB;
 uniform mat4 uVP, uModel;
-uniform int uStyle;
 out vec3 vPos, vNrm, vCol, vColB;
 void main() {
   vec4 w = uModel * vec4(aPos, 1.);
@@ -79,7 +61,6 @@ const INST_VS = `#version 300 es
 layout(location=0) in vec3 aPos; layout(location=1) in vec3 aNrm; layout(location=2) in vec3 aCol; layout(location=3) in vec3 aColB;
 layout(location=4) in vec4 iA; layout(location=5) in vec4 iB;
 uniform mat4 uVP; uniform float uTime, uSway; uniform vec3 uAutumn;
-uniform int uStyle;
 
 out vec3 vPos, vNrm, vCol, vColB;
 void main() {
@@ -103,7 +84,7 @@ void main() { vP = aP; gl_Position = vec4(aP, .9999, 1.); }`;
 const SKY_FS = `#version 300 es
 precision highp float;
 in vec2 vP; out vec4 frag;
-uniform mat4 uInvVP; uniform vec3 uZenith, uHorizon, uSun, uSunCol, uCloud; uniform float uNight, uTime; uniform highp int uStyle;
+uniform mat4 uInvVP; uniform vec3 uZenith, uHorizon, uSun, uSunCol, uCloud; uniform float uNight, uTime;
 float h21(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
 float vn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f);
   return mix(mix(h21(i), h21(i + vec2(1, 0)), f.x), mix(h21(i + vec2(0, 1)), h21(i + vec2(1, 1)), f.x), f.y); }
@@ -112,14 +93,12 @@ void main() {
   vec3 d = normalize(b.xyz / b.w - a.xyz / a.w);
   float up = max(d.y, 0.);
   vec3 c = mix(uHorizon, uZenith, pow(up, .55));
-  if (uStyle == 4) c = mix(uHorizon, uZenith, floor(pow(up, .45) * 7.) / 7.);   // banded sky
   float sd = max(dot(d, uSun), 0.);
   c += uSunCol * (pow(sd, 12.) * .25 + pow(sd, 900.) * 1.2) * (1. - uNight * .6);
   if (d.y > .02) {
     vec2 q = d.xz / (d.y + .08) * 1.6 + vec2(uTime * .004, 0.);
     float n = vn(q) * .6 + vn(q * 2.3 + 7.) * .3 + vn(q * 5.1 + 3.) * .1;
     float cl = smoothstep(.52, .78, n) * smoothstep(.02, .25, d.y);
-    if (uStyle == 3 || uStyle == 4) cl = step(.6, n) * smoothstep(.02, .25, d.y);
     c = mix(c, uCloud, cl * .75);
     if (uNight > 0.) { vec2 g = floor(d.xz / (d.y + .3) * 140.); float st = step(.996, h21(g)) * (1. - cl) * smoothstep(.05, .3, d.y);
       c += vec3(st) * uNight * (.6 + .4 * sin(uTime * 2. + h21(g + 3.) * 40.)); }
@@ -129,12 +108,11 @@ void main() {
 }`;
 const WATER_VS = `#version 300 es
 layout(location=0) in vec2 aP; uniform mat4 uVP; uniform vec3 uCam; out vec3 vPos;
-uniform int uStyle;
 void main() { vPos = vec3(aP.x * 900. + uCam.x, 0., aP.y * 900. + uCam.z); gl_Position = uVP * vec4(vPos, 1.); }`;
 const WATER_FS = `#version 300 es
 precision highp float;
 in vec3 vPos; out vec4 frag;
-uniform vec3 uCam, uZenith, uHorizon, uSun, uSunCol, uFogCol, uSkyAmb; uniform float uFogDen, uTime; uniform highp int uStyle;
+uniform vec3 uCam, uZenith, uHorizon, uSun, uSunCol, uFogCol, uSkyAmb; uniform float uFogDen, uTime;
 float h21(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
 float vn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f);
   return mix(mix(h21(i), h21(i + vec2(1, 0)), f.x), mix(h21(i + vec2(0, 1)), h21(i + vec2(1, 1)), f.x), f.y); }
@@ -145,7 +123,6 @@ void main() {
   vec3 nrm = normalize(vec3(n0 - vn(q + vec2(e, 0) + t) - vn((q + vec2(e, 0)) * 2.1 - t), 1.6, n0 - vn(q + vec2(0, e) + t) - vn((q + vec2(0, e)) * 2.1 - t)));
   vec3 v = normalize(uCam - vPos);
   float fr = .25 + .75 * pow(1. - max(dot(v, nrm), 0.), 3.);
-  if (uStyle == 3 || uStyle == 4) fr = floor(fr * 3.) / 3.;
   vec3 r = reflect(-v, nrm);
   vec3 sky = mix(uHorizon, uZenith, pow(max(r.y, 0.), .55));
   vec3 deep = vec3(.18, .34, .4) * (uSkyAmb + uSunCol * .6);
@@ -200,8 +177,8 @@ export function createRenderer(gl) {
   shape('ring', ring()); shape('cloud', cloud());
   const hawk = mesh(gl, new Float32Array(12), LAYOUT, { dynamic: true });
   const fx = mesh(gl, new Float32Array(7), [[0, 3], [1, 4]], { dynamic: true });
-  const chunks = new Map(), post = createPost(gl);
-  const R = { style: 'plain', chunks, view: 520, treeView: 360, nearTrees: 110, stats: { chunks: 0, trees: 0, tris: 0 }, treeAt: null };
+  const chunks = new Map();
+  const R = { chunks, view: 520, treeView: 360, nearTrees: 110, stats: { chunks: 0, trees: 0, tris: 0 }, treeAt: null };
   gl.disable(gl.CULL_FACE);
 
   function updateChunks(cam, budget = 2) {
@@ -250,12 +227,8 @@ export function createRenderer(gl) {
   }
 
   R.draw = (S, W, cw, ch) => {
-    // a look other than plain draws into a texture and finishes it in post.js
-    const styled = R.style !== 'plain', sid = STYLE_ID[R.style] || 0;
-    let w = cw, h = ch;
-    if (styled) [w, h] = post.begin(cw, ch, R.style);
+    const w = cw, h = ch;
     gl.viewport(0, 0, w, h);
-    for (const P of [lit, inst, sky, water]) { gl.useProgram(P.p); gl.uniform1i(P.u.uStyle, sid); }
     const proj = perspective(S.fov, w / h, .15, 1400), view = lookAt(S.cam, S.look, S.camUp);
     const vp = mul(proj, view);
     R.vp = vp;
@@ -328,7 +301,6 @@ export function createRenderer(gl) {
       gl.bindVertexArray(fx.vao); gl.drawArrays(gl.POINTS, 0, md.length / 7);
     }
     gl.depthMask(true); gl.disable(gl.BLEND);
-    if (styled) post.end(cw, ch, R.style, .15, 1400, cw / innerWidth);
     R.stats.tris = tris | 0;
   };
 
