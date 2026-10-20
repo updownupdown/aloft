@@ -53,10 +53,12 @@ export function pushBird(S, sp, x, y, z, heading, flying = false, beat = 0) {
   (S.props[`sb${sp.id}${w}`] ||= []).push(x, y, z, 1.7, heading - Math.PI / 2, .5, 0, 0);
 }
 
-// habitat, in the 2D game's biome names (a ridge counts as mountains; coast birds are the marsh's)
+// habitat, in the 2D game's biome names (a ridge counts as mountains; coast birds are the marsh's;
+// canyon birds are the cliffs', and the dunes and moors share the meadow's)
+const HABITAT = { ridge: 'mountains', coast: 'marsh', canyon: 'cliffs', desert: 'meadow', moor: 'meadow' };
 export function habitat(x, z) {
   const n = biomeAt(x, z).name;
-  return n === 'ridge' ? 'mountains' : n === 'coast' ? 'marsh' : n;
+  return HABITAT[n] || n;
 }
 
 // which trees near (x, z) hold a songbird, and where it sits: the end of a broadleaf's low

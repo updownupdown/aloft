@@ -2,7 +2,7 @@
 // cairns, a ruined tower, the lighthouse on the sea cliffs (its lamp turns at night), and
 // waterfalls spilling over the cliffs with mist at their feet. The giant oaks and willows are
 // trees (world.js treesIn). Finding them, postcards and the journal belong to journey.js.
-import { landmarksNear, height, WATER } from '../world.js';
+import { landmarksNear, rocksNear, height, WATER, PAL } from '../world.js';
 import { mix3 } from '../util.js';
 import { builder, blob, prism, reseed } from '../shapes.js';
 
@@ -63,16 +63,37 @@ function fallsMesh(l) {
   return { tris: B.out(), top: yTop, foot: [l.x + l.dx * pts[pts.length - 1][0], l.z + l.dz * pts[pts.length - 1][0]] };
 }
 
+// rocks of the open country (world.js rocksNear), all unit height: a granite tor of stacked
+// slabs, a red hoodoo (a stepped pillar with a pale cap stone), a lumpy boulder
+function tor() {
+  reseed(65); const B = builder(), g = PAL.granite, g2 = [.52, .51, .5];
+  prism(B, 0, 0, .75, .66, -.1, .3, 6, g); prism(B, .05, .02, .62, .55, .3, .55, 6, g2);
+  prism(B, -.04, .03, .5, .42, .55, .78, 5, g); prism(B, .02, -.02, .36, .3, .78, 1, 5, g2);
+  return B.out();
+}
+function hoodoo() {
+  reseed(66); const B = builder(), r = PAL.redrock, o = PAL.ochre;
+  prism(B, 0, 0, .3, .2, -.05, .35, 6, r); prism(B, 0, 0, .2, .14, .35, .62, 6, o); prism(B, 0, 0, .15, .12, .62, .88, 6, r);
+  prism(B, .02, 0, .28, .22, .88, 1, 6, PAL.buff);
+  return B.out();
+}
+function boulder() {
+  reseed(67); const B = builder();
+  blob(B, 0, .3, 0, .5, PAL.granite, [.55, .55, .53], [1.1, .9, .9]);
+  return B.out();
+}
+
 export function landsSystem(G) {
   const R = G.R;
   R.shape('lm_stones', stones()); R.shape('lm_cairn', cairn()); R.shape('lm_tower', tower()); R.shape('lm_lighthouse', lighthouse());
+  R.shape('rock_tor', tor()); R.shape('rock_hoodoo', hoodoo()); R.shape('rock_boulder', boulder());
   const fallsOf = new Map();   // landmark id -> { shape, top, foot }
   const fall = l => { let f = fallsOf.get(l.id); if (!f) { f = fallsMesh(l); f.shape = 'lm_falls_' + l.id; R.shape(f.shape, f.tris); fallsOf.set(l.id, f); } return f; };
-  let near = [], nearT = 0;
+  let near = [], rocks = [], nearT = 0;
   return {
     id: 'lands',
     update(dt) {
-      if ((nearT -= dt) <= 0) { nearT = 1; near = landmarksNear(G.b.p[0], G.b.p[2], 700); }
+      if ((nearT -= dt) <= 0) { nearT = 1; near = landmarksNear(G.b.p[0], G.b.p[2], 700); rocks = rocksNear(G.b.p[0], G.b.p[2], 520); }
       // spray and mist at the foot of each waterfall close by
       for (const l of near) if (l.kind === 'falls' && Math.hypot(l.x - G.b.p[0], l.z - G.b.p[2]) < 220 && Math.random() < dt * 14) {
         const [bx, bz] = fall(l).foot, by = Math.max(height(bx, bz), WATER) + .4;
@@ -81,6 +102,7 @@ export function landsSystem(G) {
     },
     scene(S) {
       const cam = S.cam, L = G.light;
+      for (const o of rocks) if (Math.abs(o.x - cam[0]) < 480 && Math.abs(o.z - cam[2]) < 480) (S.props['rock_' + o.kind] ||= []).push(o.x, o.y - .3, o.z, o.s, o.yaw, .5, 0, 0);
       for (const l of near) {
         if (Math.hypot(l.x - cam[0], l.z - cam[2]) > 600) continue;
         if (l.kind === 'stones') (S.props.lm_stones ||= []).push(l.x, l.y, l.z, 1, l.yaw, .5, 0, 0);

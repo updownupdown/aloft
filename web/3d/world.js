@@ -45,8 +45,17 @@ export function bands(x, z) {
   const coast = smooth(J.coast - 1100, J.coast - 700, w) * (1 - smooth(J.coast + 700, J.coast + 1100, w));
   const marsh = smooth(J.marsh - 500, J.marsh + 150, w);
   const lakes = 1 - smooth(800, 1700, w);
-  return { w, ridge, high, coast, marsh, lakes };
+  // regions that come and go across the bands, east to west as well as north to south: dry
+  // country (desert dunes in the lowlands, canyons and mesas in the high country) and moors
+  const open = (1 - lakes) * (1 - marsh) * (1 - coast) * (1 - ridge) * smooth(1200, 1900, w);
+  // (the way south always crosses dunes before the ridge, canyons after it, and a moor near the end)
+  const near = (cx, cz, r) => Math.exp(-((x - cx) ** 2 + (w - cz) ** 2) / (r * r));
+  const dry = Math.min(1, smooth(.12, .38, fbm(x / 2600 + 7.3, z / 2600, 72, 2)) + near(-150, 2450, 750) + near(250, 5000, 650)) * open;
+  const moor = Math.min(1, smooth(.18, .42, fbm(x / 2100, z / 2100 + 4.1, 74, 2)) + near(0, 7500, 700)) * open * (1 - dry);
+  return { w, ridge, high, coast, marsh, lakes, dry, moor };
 }
+// a river winding through the dry country, cut deep into it as a canyon
+const canyonLine = (x, z) => Math.abs(fbm(x / 950, z / 950, 73, 2) + fbm(x / 230, z / 230, 75, 1) * .08);
 // where the bay's sea is: 0 inland, 1 open water (an ellipse with a wobbly shore)
 export function bayAt(x, z, k = bands(x, z)) {
   if (k.coast < .01) return { d: 9, sea: 0 };
@@ -56,7 +65,8 @@ export function bayAt(x, z, k = bands(x, z)) {
 }
 export function biomeAt(x, z) {
   const k = bands(x, z), bay = bayAt(x, z, k);
-  const name = k.marsh > .5 ? 'marsh' : bay.d < 1.35 ? 'coast' : k.ridge > .45 ? 'ridge' : k.high > .5 ? (cliffy(x, z) > .5 ? 'cliffs' : 'mountains')
+  const name = k.marsh > .5 ? 'marsh' : bay.d < 1.35 ? 'coast' : k.ridge > .45 ? 'ridge' : k.dry > .5 ? (k.high > .35 || canyonLine(x, z) < .09 ? 'canyon' : 'desert')
+    : k.moor > .5 ? 'moor' : k.high > .5 ? (cliffy(x, z) > .5 ? 'cliffs' : 'mountains')
     : forest(x, z) > .2 ? 'forest' : k.lakes > .5 ? 'lakeland' : 'meadow';
   return { name, k };
 }
@@ -64,7 +74,7 @@ const cliffy = (x, z) => smooth(-.2, .12, fbm(x / 650, z / 650, 64, 2));
 export function placeName(x, z) {
   const l = landmarksNear(x, z, 700).sort((a, b) => Math.hypot(a.x - x, a.z - z) - Math.hypot(b.x - x, b.z - z))[0];
   if (l && Math.hypot(l.x - x, l.z - z) < 400) return l.name;
-  return { marsh: 'the wintering marsh', coast: 'the coast', ridge: 'the Great Ridge', cliffs: 'the cliffs', mountains: 'the high country', forest: 'the woods', lakeland: 'the lakelands', meadow: 'the meadows' }[biomeAt(x, z).name];
+  return { canyon: 'the canyonlands', desert: 'the dunes', moor: 'the moors', marsh: 'the wintering marsh', coast: 'the coast', ridge: 'the Great Ridge', cliffs: 'the cliffs', mountains: 'the high country', forest: 'the woods', lakeland: 'the lakelands', meadow: 'the meadows' }[biomeAt(x, z).name];
 }
 
 // ---- terrain -----------------------------------------------------------------------------
@@ -87,6 +97,20 @@ export function height(x, z) {
     const c = cliffy(x, z) * k.high * .85;
     if (c > .01) { const t = Math.max(0, h) / 24, f = t - Math.floor(t); h += c * ((Math.floor(t) + smooth(.78, .96, f)) * 24 - h); }
   }
+  // dry country: low ground drifts into dunes; high ground stands as flat-topped mesas in
+  // bands of red rock, and a river has cut a canyon down through it to the water
+  if (k.dry > .01) {
+    const hi = k.high, along = x * .8 + z * .6 + fbm(x / 400, z / 400, 76, 2) * 60;
+    const dunes = 14 + big * 10 + (1 - Math.abs(Math.sin(along / 34))) ** 1.5 * 7 + Math.sin(along / 11 + mid * 4) * .8;
+    const mesa = 30 + hi * 45 + big * 30 + mid * 10, t = mesa / 16, f = t - Math.floor(t);
+    const stepped = (Math.floor(t) + smooth(.7, .9, f)) * 16;
+    const land = dunes * (1 - hi) + stepped * hi + (1 - hi) * smooth(.35, .6, fbm(x / 700, z / 700, 77, 2)) * (stepped - dunes) * .8;
+    h += k.dry * (land - h);
+    const cl = canyonLine(x, z), cut = smooth(.11, .035, cl);
+    if (cut > 0) { const floor = -1.5 + smooth(.035, 0, cl) * -1, wall = smooth(.11, .06, cl); h += k.dry * cut * ((floor - h) * wall + (floor - h) * (1 - wall) * .45); }
+  }
+  // moors: rolling, open and bare, the hilltops crowned with granite tors (rocksNear, drawn in sys/lands.js)
+  if (k.moor > .01) h += k.moor * (big * 8 + 6 - Math.abs(mid) * 6);
   // the coast: raised land behind the shore, falling sheer into a bay (sandy coves in places)
   if (k.coast > .01) {
     const bay = bayAt(x, z, k), cove = smooth(.1, .4, fbm(x / 300, z / 300, 67, 1));
@@ -108,7 +132,7 @@ export function normalAt(x, z) {
 // open meadow vs woodland: where trees grow
 export const forest = (x, z) => {
   const k = bands(x, z);
-  return fbm(x / 220, z / 220, 9, 2) - .35 * Math.max(0, 1 - Math.hypot(x, z + 60) / 200) - k.coast * .25 - k.marsh * .3 - k.ridge * .15;
+  return fbm(x / 220, z / 220, 9, 2) - .35 * Math.max(0, 1 - Math.hypot(x, z + 60) / 200) - k.coast * .25 - k.marsh * .3 - k.ridge * .15 - k.dry * .7 - k.moor * .45;
 };
 
 // ---- colours (Aloft's pigments, rgb 0..1) --------------------------------------------------
@@ -118,6 +142,8 @@ export const PAL = {
   rock: hex('#8f8577'), rock2: hex('#a79c8a'), snow: hex('#f1ece0'), mud: hex('#7d6a4c'),
   bark: hex('#5c4632'), leaf: hex('#5f8a45'), leaf2: hex('#7a9a48'), leafA: hex('#c08a34'), pine: hex('#3e6446'), pine2: hex('#4f7556'),
   ring: hex('#e2a93a'), reed: hex('#b3a35e'), reed2: hex('#8f9a55'), heath: hex('#9a8a62'), heather: hex('#8c6f78'),
+  dune: hex('#e2c48c'), dune2: hex('#d4a86c'), redrock: hex('#b4643e'), ochre: hex('#cf9152'), buff: hex('#dcb882'), scrub: hex('#a39a5c'),
+  moor: hex('#8e8a5a'), heather2: hex('#9a6d82'), granite: hex('#9a9690'),
 };
 const mixc = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 
@@ -128,13 +154,20 @@ function groundColour(x, y, z, ny) {
   c = mixc(c, PAL.wood, smooth(-.1, .4, forest(x, z)) * .7);
   if (k.marsh > .01) c = mixc(c, mixc(PAL.reed, PAL.reed2, smooth(-.3, .3, fbm(x / 18, z / 18, 13, 2))), k.marsh * .85);
   if (k.coast > .01) c = mixc(c, mixc(PAL.heath, PAL.heather, smooth(.1, .5, fbm(x / 40, z / 40, 14, 2))), k.coast * .5);
+  if (k.moor > .01) c = mixc(c, mixc(PAL.moor, PAL.heather2, smooth(0, .4, fbm(x / 30, z / 30, 15, 2))), k.moor * .8);
+  if (k.dry > .01) {
+    // sand and scrub on the flat, bands of red and buff rock in the walls
+    const flat = mixc(mixc(PAL.dune, PAL.dune2, smooth(-.3, .3, fbm(x / 60, z / 60, 16, 2))), PAL.scrub, smooth(.2, .5, fbm(x / 25, z / 25, 17, 2)) * .5);
+    const strata = [PAL.redrock, PAL.ochre, PAL.buff, PAL.redrock, PAL.dune2][Math.floor((y + fbm(x / 90, z / 90, 18, 1) * 3) / 4.5) & 3];
+    c = mixc(c, mixc(flat, strata, smooth(.12, .3, steep)), k.dry);
+  }
   if (k.high + k.ridge > .01) c = mixc(c, PAL.heath, Math.min(1, k.high + k.ridge) * smooth(40, 110, y) * .5);
   if (y < 1.8) c = mixc(PAL.sand, c, smooth(.4, 1.8, y) * (k.marsh > .5 ? .6 : 1) + (k.marsh > .5 ? .4 : 0));
   if (y < 0) c = mixc(PAL.mud, PAL.sand, clamp(1 + y / 6, 0, 1));
-  c = mixc(c, mixc(PAL.rock, PAL.rock2, ih(x | 0, z | 0, 3)), smooth(.22, .42, steep));
+  c = mixc(c, mixc(PAL.rock, PAL.rock2, ih(x | 0, z | 0, 3)), smooth(.22, .42, steep) * (1 - k.dry));
   // snow on the heights, and in winter right down to the meadows (not on cliffs, not below water)
   const line = 185 - env.snow * 200;
-  c = mixc(c, PAL.snow, smooth(line - 5, line + 25, y + fbm(x / 40, z / 40, 7, 2) * 12) * smooth(.45, .25, steep) * (y > .3 ? 1 : 0));
+  c = mixc(c, PAL.snow, smooth(line - 5, line + 25, y + fbm(x / 40, z / 40, 7, 2) * 12) * smooth(.45, .25, steep) * (y > .3 ? 1 : 0) * (1 - k.dry * .85));
   const j = .92 + ih(Math.floor(x * 7), Math.floor(z * 7), 5) * .14;   // a little pigment variation per facet
   return [c[0] * j, c[1] * j, c[2] * j];
 }
@@ -311,10 +344,37 @@ export function landmarksNear(x, z, r) {
   return out;
 }
 
+// Rocks in the open country, one maybe per 64 m cell: granite tors crowning the moors,
+// red hoodoos (tall pillars with a cap stone) in the dry country, boulders in the high
+// country. { x, y, z, kind, s (height in m), yaw, id }. Solid, and a hawk can stand on top.
+export const ROCK_CELL = 64;
+const rockCache = new Map();
+function rockAt(gx, gz) {
+  const key = gx + ',' + gz; if (rockCache.has(key)) return rockCache.get(key);
+  let o = null;
+  const x = (gx + .2 + ih(gx, gz, 151) * .6) * ROCK_CELL, z = (gz + .2 + ih(gx, gz, 152) * .6) * ROCK_CELL, k = bands(x, z), p = ih(gx, gz, 153);
+  const kind = p < k.moor * .35 ? 'tor' : p < k.dry * .3 ? 'hoodoo' : p < (k.high + k.ridge * .5) * .18 * (1 - k.dry) ? 'boulder' : null;
+  if (kind) {
+    const y = height(x, z);
+    if (y > 1 && normalAt(x, z)[1] > .7) o = { x, y, z, kind, s: { tor: 5, hoodoo: 14, boulder: 2.4 }[kind] * (.7 + ih(gx, gz, 154) * .7), yaw: ih(gx, gz, 155) * 6.283, id: gx * 9973 + gz };
+  }
+  rockCache.set(key, o); if (rockCache.size > 4000) rockCache.delete(rockCache.keys().next().value);
+  return o;
+}
+export function rocksNear(x, z, r) {
+  const out = [], a = Math.floor((x - r) / ROCK_CELL), b = Math.floor((x + r) / ROCK_CELL), c = Math.floor((z - r) / ROCK_CELL), d = Math.floor((z + r) / ROCK_CELL);
+  for (let gz = c; gz <= d; gz++) for (let gx = a; gx <= b; gx++) { const o = rockAt(gx, gz); if (o) out.push(o); }
+  return out;
+}
+
 // solid landmarks as upright cylinders { x, z, r, y0, top } (towers, the lighthouse, stones,
 // cairns), and where a hawk could stand on them, for flight to bump into and perch on
 export function solidsNear(x, z, r) {
   const out = [];
+  for (const o of rocksNear(x, z, r + 10)) {
+    const rad = { tor: .7, hoodoo: .16, boulder: .45 }[o.kind] * o.s, top = o.y + o.s * (o.kind === 'boulder' ? .75 : 1);
+    out.push({ x: o.x, z: o.z, r: rad, y0: o.y - 1, top, perch: { x: o.x, y: top + .1, z: o.z, top: true } });
+  }
   for (const l of landmarksNear(x, z, r + 20)) {
     if (l.kind === 'tower' || l.kind === 'lighthouse') out.push({ x: l.x, z: l.z, r: l.kind === 'tower' ? 4 : 3.2, y0: l.y - 1, top: l.y + (l.kind === 'tower' ? 20 : 24), perch: { x: l.x, y: l.y + (l.kind === 'tower' ? 20.5 : 24.6), z: l.z, top: true } });
     if (l.kind === 'cairn') out.push({ x: l.x, z: l.z, r: .9, y0: l.y - 1, top: l.y + 2.6, perch: { x: l.x, y: l.y + 2.7, z: l.z, top: true } });
@@ -363,15 +423,36 @@ export function airLift(x, y, z, sun) {
   return w;
 }
 
-// Rings: one maybe per 170 m cell, floating 25 to 80 m above the ground.
-export const RING_CELL = 170;
+// Rings come in small loops: one maybe per 1100 m cell, five to eight rings round a circle
+// 70 to 130 m across, all at one height (70 to 120 m above the highest ground under the loop),
+// each facing along the loop so the boost from one carries the hawk on to the next.
+export const RING_CELL = 1100, RING_GAP = 85;
+const loopCache = new Map();
+export function ringLoop(gx, gz) {
+  const key = gx + ',' + gz; if (loopCache.has(key)) return loopCache.get(key);
+  let L = null;
+  if (ih(gx, gz, 51) < .3) {
+    const cx = (gx + .25 + ih(gx, gz, 52) * .5) * RING_CELL, cz = (gz + .25 + ih(gx, gz, 53) * .5) * RING_CELL;
+    const R = 70 + ih(gx, gz, 54) * 60, n = Math.max(5, Math.min(8, Math.round(2 * Math.PI * R / RING_GAP))), dir = ih(gx, gz, 56) < .5 ? 1 : -1;
+    let top = WATER;
+    for (let k = 0; k < 12; k++) { const a = k / 12 * 6.283; top = Math.max(top, height(cx + Math.cos(a) * R, cz + Math.sin(a) * R)); }
+    const y = top + 70 + ih(gx, gz, 55) * 50, id = gx * 7907 + gz * 31, a0 = ih(gx, gz, 57) * 6.283;
+    L = { id, x: cx, z: cz, y, R, n, rings: [] };
+    for (let k = 0; k < n; k++) {
+      const a = a0 + dir * k / n * 6.283;
+      // the ring's plane faces along the loop: its normal (-sin yaw, cos yaw) is the tangent
+      const tx = -Math.sin(a) * dir, tz = Math.cos(a) * dir;
+      L.rings.push({ x: cx + Math.cos(a) * R, y: y + Math.sin(k * 2.1) * 3, z: cz + Math.sin(a) * R, yaw: Math.atan2(-tx, tz), r: 5, id: id * 16 + k, circuit: id, k });
+    }
+  }
+  loopCache.set(key, L); if (loopCache.size > 400) loopCache.delete(loopCache.keys().next().value);
+  return L;
+}
 export function ringsNear(x, z, r) {
-  const out = [], a = Math.floor((x - r) / RING_CELL), b = Math.floor((x + r) / RING_CELL), c = Math.floor((z - r) / RING_CELL), d = Math.floor((z + r) / RING_CELL);
+  const out = [], a = Math.floor((x - r - 150) / RING_CELL), b = Math.floor((x + r + 150) / RING_CELL), c = Math.floor((z - r - 150) / RING_CELL), d = Math.floor((z + r + 150) / RING_CELL);
   for (let gz = c; gz <= d; gz++) for (let gx = a; gx <= b; gx++) {
-    if (ih(gx, gz, 51) > .55) continue;
-    const rx = (gx + .2 + ih(gx, gz, 52) * .6) * RING_CELL, rz = (gz + .2 + ih(gx, gz, 53) * .6) * RING_CELL;
-    const ry = Math.max(height(rx, rz), WATER) + 22 + ih(gx, gz, 54) * 55;
-    out.push({ x: rx, y: ry, z: rz, yaw: ih(gx, gz, 55) * 6.283, r: 4.5, id: gx * 7907 + gz * 31 });
+    const L = ringLoop(gx, gz); if (!L) continue;
+    for (const q of L.rings) if (Math.abs(q.x - x) < r && Math.abs(q.z - z) < r) out.push(q);
   }
   return out;
 }
