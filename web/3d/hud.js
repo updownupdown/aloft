@@ -1,22 +1,12 @@
 // The heads-up layer: meters, a status line, the day dial, toasts, one tip at a time, and the
 // thumb pads. Systems add meters with G.hud.meter() and tips with G.hud.tip(); they call
-// G.hud.toast(). Meters are rows of slanted facets in the world's colours (low poly, like the
-// world), each painted on its own small canvas and only when its value changes.
+// G.hud.toast(). Meters are small rings in one glass pill with the menu button, touched only when
+// their value changes.
 import { store } from './util.js';
-import { C, shade, poly, hexRGB, ngon } from './facet.js';
 import { createDial } from './dial.js';
 import { tipBar } from './tips.js';
 
-const BAR = 64, MH = 13;   // bar length and meter height, in CSS pixels
-// a little icon before each meter: a flat gem in its colour, lit on its upper left facet
-const two = (x, pts, split, col) => { poly(x, pts, C(col)); poly(x, split, C(shade(col, 1.22))); };
-const ICONS = {
-  thirst: (x, cx, cy, col) => two(x, [[cx, cy - 5], [cx + 3.4, cy + .6], [cx, cy + 3.6], [cx - 3.4, cy + .6]], [[cx, cy - 5], [cx, cy + 3.6], [cx - 3.4, cy + .6]], col),
-  hunger: (x, cx, cy, col) => { for (const [ox, oy] of [[-1.7, 1], [2, -.4]]) { const P = ngon(cx + ox, cy + oy, 2.5, 6, .5); two(x, P, [P[2], P[3], P[4], [cx + ox, cy + oy]], col); } },
-  wings: (x, cx, cy, col) => two(x, [[cx - 3.4, cy + 4], [cx + 1.6, cy - 4.2], [cx + 3.6, cy - 3.2], [cx - 1, cy + 4]], [[cx - 3.4, cy + 4], [cx + 1.6, cy - 4.2], [cx + .3, cy + 1]], col),
-  dot: (x, cx, cy, col) => { const P = ngon(cx, cy, 3, 6, .5); two(x, P, [P[2], P[3], P[4], [cx, cy]], col); },
-};
-const TICKS = { thirst: 3, hunger: 6 };
+const R = 9, LEN = 2 * Math.PI * R;   // each meter is a ring this size, in a 24-unit box
 
 export function createHud(G, ui, input) {
   ui.insertAdjacentHTML('beforeend', `
@@ -34,37 +24,21 @@ export function createHud(G, ui, input) {
   let toastT = 0, tipNow = null, tipT = 0, wake = -9, blink = false;
   const queue = [];
 
-  // a meter: a row of slanted facets, one for each meal or sip that would fill it (or eight),
-  // lit as far as it is full, flashing berry-red when low
-  H.meter = (id, { label, colour, low = .2, icon, ticks }) => {
-    const pig = hexRGB((colour.match(/#[0-9a-f]{6}/gi) || ['#8a7a6a']).pop());
-    const cv = document.createElement('canvas'); cv.className = 'm3'; cv.title = label; cv.dataset.m = id;
-    meters.append(cv);
-    const draw = ICONS[icon || id] || ICONS.dot, n = ticks ?? TICKS[id] ?? 8, m = { v: 1, low };
+  // a meter: a ring that empties as the need grows, its name beside it, red and blinking when low
+  H.meter = (id, { label, colour, low = .2 }) => {
+    const col = (colour.match(/#[0-9a-f]{6}/gi) || ['#8a7a6a']).pop();
+    meters.insertAdjacentHTML('beforeend', `<span class="m3" data-m="${id}" title="${label}" style="--m:${col}"><svg viewBox="0 0 24 24" aria-hidden="true"><circle class="bg" cx="12" cy="12" r="${R}"/><circle class="fg" cx="12" cy="12" r="${R}" stroke-dasharray="${LEN.toFixed(2)}"/></svg><span>${label[0].toUpperCase() + label.slice(1)}</span></span>`);
+    const el = meters.lastElementChild, fg = el.querySelector('.fg'), m = { v: 1, low };
     all.push(m);
     let key = '';
     return v => {
       v = Math.max(0, Math.min(1, v)); m.v = v;
-      const flash = v < low && blink, dpr = Math.min(devicePixelRatio || 1, 2), k = `${Math.round(v * 64)},${flash},${dpr}`;
+      const lo = v < low, k = `${Math.round(v * 60)},${lo},${lo && blink}`;
       if (k === key) return; key = k;
-      const W = BAR + 18, sc = 1.2 * dpr;
-      if (cv.width !== Math.ceil(W * sc)) { cv.width = Math.ceil(W * sc); cv.height = Math.ceil(MH * sc); cv.style.width = W * 1.2 + 'px'; cv.style.height = MH * 1.2 + 'px'; }
-      const x = cv.getContext('2d');
-      x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, cv.width, cv.height); x.setTransform(sc, 0, 0, sc, 0, 0);
-      const y = MH / 2, col = flash ? [196, 72, 52] : pig, sw = BAR / n, sl = 2.2, hh = 3.2;
-      draw(x, 5, y, pig);
-      for (let i = 0; i < n; i++) {
-        const x0 = 13 + i * sw, x1 = x0 + sw - 1.4, fill = Math.max(0, Math.min(1, v * n - i));
-        const seg = [[x0 + sl, y - hh], [x1 + sl, y - hh], [x1 - sl, y + hh], [x0 - sl, y + hh]];
-        poly(x, seg, 'rgba(43,26,16,.16)');
-        if (fill <= 0) continue;
-        const xf = x0 + (x1 - x0) * fill;
-        poly(x, [[x0 + sl, y - hh], [xf + sl, y - hh], [xf - sl, y + hh], [x0 - sl, y + hh]], C(col));
-        poly(x, [[x0 + sl, y - hh], [xf + sl, y - hh], [x0 - sl, y + hh]], C(shade(col, 1.18)));
-      }
+      fg.style.strokeDashoffset = (LEN * (1 - v)).toFixed(2);
+      el.classList.toggle('low', lo); el.classList.toggle('blink', lo && blink);
     };
   };
-  // one toast at a time; later ones wait their turn so a message is never cut short
   H.toast = (msg, secs = 4) => {
     if (toastT > 0) { if (toastEl.textContent !== msg && !queue.some(m => m[0] === msg)) queue.push([msg, secs]); return; }
     toastEl.textContent = msg; toastEl.classList.add('show'); toastT = secs;

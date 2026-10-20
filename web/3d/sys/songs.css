@@ -1,72 +1,75 @@
-/* Song controls (songs system): the pitch strip, the syllable kinds, the Songs list, the score,
-   the cheer line and the Call button. Colours: --note on each band and score glyph, --breast
-   and --cap on each bird. Everything here can be restyled without touching singui.js. */
+/* Song controls (songs system), in frosted glass like the rest of the UI: the pitch strip, the
+   syllable kinds, the Songs list, the score, the cheer line and the Call button. Colours: --note on
+   each band and score glyph, --breast and --cap on each bird. Everything here can be restyled
+   without touching singui.js. */
 .sing3 { position: absolute; inset: 0; pointer-events: none; --side: calc(14px + env(safe-area-inset-left)); --side2: calc(14px + env(safe-area-inset-right));
-  --card: rgba(246, 241, 230, .9); --edge: rgba(58, 36, 24, .22); --shadow: 0 2px 10px rgba(58, 36, 24, .18); }
+  --pane: rgba(255, 255, 255, .5); --edge: rgba(255, 255, 255, .66); --shadow: 0 4px 16px rgba(20, 40, 50, .14); }
 .sing3 button { font-family: var(--text); color: var(--ink); touch-action: none; }
+.kinds3 button, .bookbtn3, .birds3, .score3, .cheer3, .call3 { -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); }
 
-/* the pitch strip: five bands, high at the top */
-.strip3 { pointer-events: auto; position: absolute; right: var(--side2); bottom: calc(22px + env(safe-area-inset-bottom)); top: max(34%, calc(162px + env(safe-area-inset-top))); width: 104px;
-  display: flex; flex-direction: column; gap: 4px; touch-action: none; }
-.strip3 i { flex: 1; border-radius: 10px; background: color-mix(in srgb, var(--note) 78%, #fff); opacity: .82; box-shadow: var(--shadow);
-  border: 1px solid color-mix(in srgb, var(--note) 70%, #000); transition: opacity .2s, transform .2s; }
+/* the pitch strip: five bands of glass tinted by their note, high at the top */
+.strip3 { pointer-events: auto; position: absolute; right: var(--side2); bottom: calc(22px + env(safe-area-inset-bottom)); top: max(34%, calc(162px + env(safe-area-inset-top))); width: 100px;
+  display: flex; flex-direction: column; gap: 5px; touch-action: none; }
+.strip3 i { flex: 1; border-radius: 14px; background: color-mix(in srgb, var(--note) 55%, rgba(255, 255, 255, .6)); opacity: .85; box-shadow: var(--shadow);
+  border: 1px solid rgba(255, 255, 255, .7); transition: opacity .2s, transform .2s; }
 .strip3 i.hit { animation: hit3 .3s ease-out; }
 .strip3 i.glow { animation: glow3 .6s ease-out; }
-@keyframes hit3 { 0% { opacity: 1; transform: scaleX(1.08); filter: brightness(1.25); } 100% { transform: none; } }
-@keyframes glow3 { 0% { filter: brightness(1.5); opacity: 1; } 100% { filter: none; } }
+@keyframes hit3 { 0% { opacity: 1; transform: scaleX(1.08); filter: brightness(1.2); } 100% { transform: none; } }
+@keyframes glow3 { 0% { filter: brightness(1.4); opacity: 1; } 100% { filter: none; } }
 
 /* the kinds of syllable */
 .kinds3 { pointer-events: auto; position: absolute; left: var(--side); bottom: calc(22px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 6px; }
-.kinds3 button { display: flex; align-items: center; gap: 6px; width: 104px; height: 40px; padding: 0 8px; border: 1px solid var(--edge); border-radius: 10px;
-  background: var(--card); box-shadow: var(--shadow); font-size: 13px; cursor: pointer; }
-.kinds3 svg { width: 34px; height: 17px; stroke: var(--ink); flex: none; }
-.kinds3 button.on { background: var(--ink); color: var(--paper); }
-.kinds3 button.on svg { stroke: var(--paper); }
+.kinds3 button { display: flex; align-items: center; gap: 6px; width: 108px; height: 40px; padding: 0 10px; border: 1px solid var(--edge); border-radius: 20px;
+  background: var(--pane); box-shadow: var(--shadow); font-size: 12.5px; font-weight: 600; cursor: pointer; }
+.kinds3 svg { width: 32px; height: 16px; stroke: var(--ink); flex: none; }
+.kinds3 button.on { background: var(--ink); color: #fff; border-color: transparent; }
+.kinds3 button.on svg { stroke: #fff; }
 
-/* Songs: a button that unfolds the birds you know */
+/* Songs: a pill that unfolds the birds you know */
 .book3 { pointer-events: auto; position: absolute; left: var(--side); bottom: calc(22px + 4 * 46px + 10px + env(safe-area-inset-bottom)); }
-.bookbtn3 { display: flex; flex-direction: column; align-items: flex-start; width: 104px; padding: 5px 10px; border: 1px solid var(--edge); border-radius: 10px;
-  background: var(--card); box-shadow: var(--shadow); cursor: pointer; }
-.bookbtn3 span { font-family: var(--title); font-style: italic; font-size: 18px; line-height: 1.1; }
-.bookbtn3 em { font-size: 11.5px; opacity: .75; }
-.bookbtn3.on { border-color: #a8483a; box-shadow: 0 0 0 2px rgba(168, 72, 58, .35), var(--shadow); }
-.birds3 { position: absolute; left: 112px; bottom: 0; width: 210px; max-height: 62vh; overflow: auto; padding: 6px; border-radius: 12px;
-  background: var(--card); box-shadow: 0 4px 18px rgba(58, 36, 24, .25); border: 1px solid var(--edge); }
-.birds3 button { display: flex; align-items: center; gap: 8px; width: 100%; padding: 7px 8px; border: 0; border-radius: 8px; background: none; font-size: 14px; text-align: left; cursor: pointer; }
+.bookbtn3 { display: flex; flex-direction: column; align-items: flex-start; width: 108px; padding: 6px 14px; border: 1px solid var(--edge); border-radius: 18px;
+  background: var(--pane); box-shadow: var(--shadow); cursor: pointer; }
+.bookbtn3 span { font-weight: 700; font-size: 14px; line-height: 1.2; }
+.bookbtn3 em { font-style: normal; font-size: 11px; color: var(--ink2); }
+.bookbtn3.on { background: var(--ink); border-color: transparent; }
+.bookbtn3.on span, .bookbtn3.on em { color: #fff; }
+.birds3 { position: absolute; left: 116px; bottom: 0; width: 220px; max-height: 62vh; overflow: auto; padding: 6px; border-radius: 18px;
+  background: rgba(255, 255, 255, .66); box-shadow: 0 8px 24px rgba(20, 40, 50, .2); border: 1px solid var(--edge); }
+.birds3 button { display: flex; align-items: center; gap: 9px; width: 100%; padding: 8px 10px; border: 0; border-radius: 12px; background: none; font-size: 13px; font-weight: 600; text-align: left; cursor: pointer; }
 .birds3 button i { width: 16px; height: 16px; border-radius: 50%; background: var(--breast); box-shadow: inset -5px -5px 0 var(--cap); flex: none; }
-.birds3 button.heard { opacity: .6; }
-.birds3 button.on { background: rgba(168, 72, 58, .12); }
-.birds3 button.stop { font-style: italic; color: var(--ink2); }
-.birds3 small { font-size: 11px; font-style: italic; }
-.birds3 p { margin: 6px; font-size: 13px; font-style: italic; }
+.birds3 button.heard { opacity: .55; }
+.birds3 button.on { background: rgba(29, 43, 54, .1); }
+.birds3 button.stop { font-weight: 500; color: var(--ink2); }
+.birds3 small { font-size: 11px; font-weight: 500; }
+.birds3 p { margin: 6px 8px; font-size: 12.5px; color: var(--ink2); }
 
 /* the score: glyphs at their pitch, the next one underlined; low in the middle, clear of the
    toasts and Take off at the top and above the tips at the bottom */
-.score3 { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(74px + env(safe-area-inset-bottom)); padding: 5px 14px 8px; border-radius: 12px;
-  background: var(--card); box-shadow: var(--shadow); border: 1px solid var(--edge); text-align: center; max-width: 70vw; }
-.score3 b { display: block; font-family: var(--title); font-style: italic; font-weight: 500; font-size: 15px; }
+.score3 { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(74px + env(safe-area-inset-bottom)); padding: 6px 16px 8px; border-radius: 18px;
+  background: var(--pane); box-shadow: var(--shadow); border: 1px solid var(--edge); text-align: center; max-width: 70vw; }
+.score3 b { display: block; font-weight: 700; font-size: 12.5px; }
 .score3 div { display: flex; gap: 3px; justify-content: center; align-items: flex-end; }
 .score3 div:not(:empty) { height: 46px; }
 .score3 span { width: 36px; height: 18px; margin-bottom: calc(var(--lane) * 7px); opacity: .45; border-bottom: 2px solid transparent; }
 .score3 svg { width: 36px; height: 18px; stroke: var(--note); }
 .score3 span.done { opacity: 1; }
 .score3 span.wrong { opacity: 1; filter: saturate(0) brightness(.6); }
-.score3 span.next { opacity: 1; border-bottom-color: #a8483a; animation: next3 1s ease-in-out infinite alternate; }
+.score3 span.next { opacity: 1; border-bottom-color: var(--ink); animation: next3 1s ease-in-out infinite alternate; }
 .score3 span.bird { opacity: .7; filter: saturate(.3); }
 @keyframes next3 { to { transform: translateY(-2px); } }
 
 /* left-handed: the sides swap */
 .sing3.lefty .strip3 { right: auto; left: var(--side); }
 .sing3.lefty .kinds3, .sing3.lefty .book3 { left: auto; right: var(--side2); }
-.sing3.lefty .birds3 { left: auto; right: 112px; }
+.sing3.lefty .birds3 { left: auto; right: 116px; }
 
-.cheer3 { position: absolute; left: 50%; top: calc(140px + env(safe-area-inset-top)); transform: translateX(-50%); margin: 0; padding: 4px 14px;
-  font-family: var(--title); font-style: italic; font-size: 21px; color: var(--ink); background: rgba(246, 241, 230, .88); border-radius: 10px;
-  opacity: 0; transition: opacity .6s; pointer-events: none; white-space: nowrap; }
+.cheer3 { position: absolute; left: 50%; top: calc(140px + env(safe-area-inset-top)); transform: translateX(-50%); margin: 0; padding: 7px 18px;
+  font-weight: 700; font-size: 15px; color: var(--ink); background: rgba(255, 255, 255, .6); border: 1px solid rgba(255, 255, 255, .66); border-radius: 20px;
+  box-shadow: 0 4px 16px rgba(20, 40, 50, .14); opacity: 0; transition: opacity .6s; pointer-events: none; white-space: nowrap; }
 .cheer3.show { opacity: 1; }
 .call3 { pointer-events: auto; position: absolute; right: calc(12px + env(safe-area-inset-right)); top: calc(100px + env(safe-area-inset-top));
-  width: 52px; height: 52px; border-radius: 50%; border: 1px solid rgba(58, 36, 24, .3); cursor: pointer; touch-action: none; box-shadow: 0 2px 10px rgba(58, 36, 24, .18);
-  font-family: var(--title); font-style: italic; font-size: 17px; color: var(--ink);
-  background: radial-gradient(circle at 35% 30%, rgba(240, 190, 170, .95), rgba(201, 106, 78, .85)); }
+  width: 54px; height: 54px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .66); cursor: pointer; touch-action: none; box-shadow: 0 4px 16px rgba(20, 40, 50, .14);
+  font-family: var(--text); font-weight: 700; font-size: 12.5px; color: var(--ink); background: rgba(255, 255, 255, .5); }
+.call3:active { background: var(--ink); color: #fff; }
 .call3.rest { opacity: .4; }
 .menu-open .sing3, .menu-open .cheer3, .menu-open .call3, .bare3 .call3, .bare3 .sing3, .bare3 .cheer3 { display: none; }

@@ -105,9 +105,9 @@ export function photoSystem(G) {
     x.drawImage(canvas, sx, sy, sw, sh, -pw / 2, -ph / 2, pw, ph);
     x.restore();
     const ty = py + ph + 44;
-    x.fillStyle = '#2b1a10'; x.textAlign = 'center';
-    x.font = 'italic 600 26px "Cormorant Garamond", Georgia, serif'; x.fillText(`Greetings from ${inSentence(name)}`, W / 2, ty, W - 30);
-    x.fillStyle = '#5a3a26'; x.font = 'italic 14px Spectral, Georgia, serif'; x.fillText(date, W / 2, ty + 22, W - 30);
+    x.fillStyle = '#1d2b36'; x.textAlign = 'center';
+    x.font = '700 22px Manrope, system-ui, sans-serif'; x.fillText(`Greetings from ${inSentence(name)}`, W / 2, ty, W - 30);
+    x.fillStyle = '#43535f'; x.font = '500 13px Manrope, system-ui, sans-serif'; x.fillText(date, W / 2, ty + 22, W - 30);
     return c.toDataURL('image/jpeg', .72);
   }
   let card = null;
