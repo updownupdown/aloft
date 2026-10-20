@@ -58,13 +58,13 @@ export function speciesSystem(G) {
   };
   const box = G.menu.group('bird');
   box.insertAdjacentHTML('beforeend', `<div class="birdpick3"><button class="arr3" data-step="-1" aria-label="The bird before">‹</button>
-    <div class="birdcard3"><canvas aria-hidden="true"></canvas><span class="pic"></span><b></b><small></small><span class="more3"></span><span class="dots3">${CHOICES.map(() => '<i></i>').join('')}</span></div>
+    <div class="birdcard3"><canvas aria-hidden="true"></canvas><span class="pic"></span><b></b><small></small><span class="birdmore3"></span><span class="dots3">${CHOICES.map(() => '<i></i>').join('')}</span></div>
     <button class="arr3" data-step="1" aria-label="The next bird">›</button></div>${tried ? `<p><small>Flying as ${nameOf(tried).toLowerCase()} for now, a study bird from the link.</small></p>` : ''}`);
   const card = box.querySelector('.birdcard3'), pic = card.querySelector('.pic'), dots = [...card.querySelectorAll('.dots3 i')];
   const show = () => {
     const id = tried || BIRD, i = CHOICES.indexOf(BIRD);
     pic.dataset.bird = id; card.querySelector('b').textContent = nameOf(id); card.querySelector('small').textContent = tried ? 'A study bird' : BLURB[id] || '';
-    card.querySelector('.more3').innerHTML = traits(id);
+    card.querySelector('.birdmore3').innerHTML = traits(id);
     dots.forEach((d, k) => d.classList.toggle('on', k === i));
   };
   show();

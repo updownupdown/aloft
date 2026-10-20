@@ -35,16 +35,19 @@ export function createHud(G, ui, input) {
   // nearly empty (that is the whole warning: no message gets in the way)
   H.meter = (id, { label, colour, low = .2 }) => {
     const col = (colour.match(/#[0-9a-f]{6}/gi) || ['#8a7a6a']).pop();
-    meters.insertAdjacentHTML('beforeend', `<span class="m3" data-m="${id}" title="${label}" style="--m:${col}"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="${ICONS[id] || 'M8 8h.01'}"/></svg><span class="bar"><i></i></span><span class="nm">${label[0].toUpperCase() + label.slice(1)}</span></span>`);
-    const el = meters.lastElementChild, fill = el.querySelector('.bar i'), m = { v: 1, low };
+    meters.insertAdjacentHTML('beforeend', `<span class="m3" data-m="${id}" title="${label}" style="--m:${col}"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="${ICONS[id] || 'M8 8h.01'}"/></svg><span class="bar"><i></i><b></b></span><span class="nm">${label[0].toUpperCase() + label.slice(1)}</span></span>`);
+    const el = meters.lastElementChild, fill = el.querySelector('.bar i'), cap = el.querySelector('.bar b'), m = { v: 1, low };
     all.push(m);
     let key = '';
-    // glow: a colour for a soft halo round the bar (say, how clean the last wing beat was), or none
-    return (v, glow = '') => {
-      v = Math.max(0, Math.min(1, v)); m.v = v;
-      const lo = v < low, k = `${Math.round(v * 100)},${lo},${v < low * .6},${glow}`;
+    // glow: a colour for a soft halo round the bar (say, how clean the last wing beat was), or none;
+    // max: how far the bar can fill just now (stamina held down by hunger and thirst), the rest
+    // of the bar hatched off behind a small white mark
+    return (v, glow = '', max = 1) => {
+      max = Math.max(0, Math.min(1, max)); v = Math.max(0, Math.min(max, v)); m.v = v;
+      const lo = v < low, k = `${Math.round(v * 100)},${lo},${v < low * .6},${glow},${Math.round(max * 100)}`;
       if (k === key) return; key = k;
       fill.style.transform = `scaleX(${v.toFixed(3)})`;
+      cap.style.left = `${(max * 100).toFixed(1)}%`; el.classList.toggle('capped', max < .99);
       el.classList.toggle('glow', !!glow); if (glow) el.style.setProperty('--glow', glow);
       el.classList.toggle('low', lo); el.classList.toggle('urgent', v < low * .6);
     };
@@ -70,6 +73,8 @@ export function createHud(G, ui, input) {
   hud.addEventListener('pointerdown', () => { wake = G.t; });
   hud.style.pointerEvents = 'auto';
 
+  // until the weather can say what is coming: the weather now, for the next minute or so
+  const nowOnly = s => s > 60 ? null : G.storm > .5 ? 'storm' : G.snowing > .3 ? 'snow' : G.rain > .3 ? 'rain' : G.fog > .4 ? 'fog' : G.overcast > .4 ? 'cloud' : 'clear';
   H.update = dt => {
     toastT -= dt;
     if (toastT <= 0 && toastEl.classList.contains('show')) toastEl.classList.remove('show');
@@ -91,7 +96,7 @@ export function createHud(G, ui, input) {
     // quiet meters: fade while every meter is well filled, back as soon as one runs lower
     const lowest = Math.min(...all.map(m => m.v)), quiet = H.quiet && G.t - wake > 4 && lowest > (hud.classList.contains('quiet') ? .5 : .7);
     hud.classList.toggle('quiet', quiet);
-    dial.update(G.tod, G.day, false, G.season);
+    dial.update(G.tod, G.day, false, G.season, G.forecast || nowOnly);
     for (const [el, P] of [[padL, input.L], [padR, input.R]]) {
       // perched or standing, a drag turns the bird: no sticks then
       const fly = G.b.state === 'fly', on = P.id !== null && fly;
