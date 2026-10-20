@@ -33,8 +33,8 @@ web/src/skyfx.js        paints those: aurora, rainbow, golden rays, meteors, fog
 web/src/paint.js        watercolour toolkit: wash, bloom, softWash, lift, paper textures
 web/src/palette.js      day / dusk / night palettes blended by time of day, greyed by weather
 web/src/input.js        keyboard (arrows/WASD, flap keys) and hands touches to gestures.js
-web/src/gestures.js     touch gestures: taps (counted), holds (by time, then leaned), strokes (line, hook, circle); the sign above the hawk
-web/src/controls.js     what each gesture does per state (flap, perch, food, prey, turn, glide, ride, flip, held leans), latched modes
+web/src/gestures.js     touch gestures: taps (counted), holds (by time; report where the finger is), strokes (line, hook, circle); the sign above the hawk
+web/src/controls.js     what each gesture does per state: tap or hold where the hawk should go (hover above, slow above-behind, turn far behind, ride in a thermal), double-tap targets, strokes; latched modes
 web/src/songs.js        songbird species: songs, where and when they sing, the gift each song brings
 web/src/life.js         mice, fish, flocks (boids), visiting songbirds, companion hawk and fledgling
 web/src/journey.js      migration, landmarks found, nest and chick, journal + map (with the route flown), save/resume

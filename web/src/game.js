@@ -805,7 +805,7 @@ export function start(canvas) {
     G.perchT = b.state === 'perch' ? G.perchT + dt : 0;
     if (G.pendingEat && b.state === 'ground' && b.walkTo === null) { if (Math.abs(G.pendingEat.x - b.x) < 14) eat(G.pendingEat); G.pendingEat = null; }
     if (b.state !== 'ground') G.pendingEat = null;
-    if (b.circling) once('thermal', 'A thermal: warm rising air. Swipe forward then back to ride it up; the hawk circles inside on its own.');
+    if (b.circling) once('thermal', 'A thermal: warm rising air. Hold a finger inside it and the hawk circles up it.');
     // entering rising air: a pulse in the hand, and a thermal counted for the day's intention
     const inLift = b.state === 'fly' && b.air > 12;
     if (inLift && !G.wasLift) { haptics.lift(); if (b.air > 20 && G.t - (G.liftAt || -99) > 6) { G.liftAt = G.t; intentions.note('thermals'); } }
@@ -967,7 +967,7 @@ export function start(canvas) {
   }
   requestAnimationFrame(frame);
   const seen = store.get('seen', null), away = seen ? (Date.now() - seen.t) / 1000 : 0;
-  ui.toast(saved && away > AWAY_S ? welcome(seen.doing) : saved ? `Welcome back. Day ${G.day}, ${seasonName(G)}.` : 'Tap anywhere to flap. Swipe back to turn, up to hover, down to land. Hold a finger down and lean it to hover, glide or land. The menu shows every gesture.', saved ? 3 : 7);
+  ui.toast(saved && away > AWAY_S ? welcome(seen.doing) : saved ? `Welcome back. Day ${G.day}, ${seasonName(G)}.` : 'Hold a finger where you want the hawk to go. Tap to flap toward it. Double tap to set a target. The menu shows every gesture.', saved ? 3 : 7);
   if (G.sharedSeed !== null) ui.toast(`A friend shared world ${G.sharedSeed}. "Start a new journey" in the menu flies it (your songs are kept).`, 6);
   else if (!saved && G.seed) ui.toast(`World ${G.seed}: new hills, new ponds. The journal has a link to share it.`, 5);
   if (innerHeight > innerWidth) ui.toast('Turn your phone sideways for a wider view.', 4);
