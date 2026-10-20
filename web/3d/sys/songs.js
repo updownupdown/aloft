@@ -350,10 +350,10 @@ export function songsSystem(G) {
       const known = SPECIES.filter(q => G.heard.has(q.id) || G.learned.has(q.id));
       let sc = null;
       if (target) {
-        const off = S.duet ? Math.ceil(target.notes.length / 2) : 0, words = target.words.split(':')[0];
-        const title = !G.learned.has(target.id) ? `Learn the ${target.name}: ${words}` : S.duet ? `Duet with the ${target.name}` : `${target.name}: ${words}`;
+        const off = S.duet ? Math.ceil(target.notes.length / 2) : 0;
+        const title = !G.learned.has(target.id) ? `Learn the ${target.name}` : S.duet ? `Duet with the ${target.name}` : target.name;
         sc = { sp: target, title, done: off + S.tries.length, bird: off, state: S.wrongT > 0 ? 'wrong' : S.doneT > 0 ? 'done' : '' };
-      } else if (picked) sc = { sp: picked, hidden: true, title: `Listen to a ${picked.name.toLowerCase()} sing nearby to learn its song` };
+      } else if (picked) sc = { sp: picked, hidden: true, title: picked.name, note: 'Listen for one nearby to learn its song' };
       ui.update({ available, known, learned: G.learned, picked, sc, lefty: lefty(), resting: callT > 0 });
 
       // gifts that run for a while
