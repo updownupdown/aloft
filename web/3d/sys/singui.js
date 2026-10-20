@@ -2,12 +2,13 @@
 // songbird), the song controls open:
 //   right edge  a pitch strip, five bands from low (bottom) to high, each its own colour: touch a
 //               band to sing a syllable at that pitch; slide and each band you cross sings
-//   left edge   the four kinds of syllable (whistle, chip, trill, buzz) in a column: press and
-//               hold, and slide up and down to shift between them; the dark pill follows the
-//               thumb and snaps to each kind as you cross into it. Above, Songs opens the birds
-//               you know
-//   bottom      one line of news at a time: the score of the song you are copying (each
-//               syllable's kind and pitch, the next one marked), or a moment's cheer over it
+//   left edge   the four kinds of syllable (whistle, chip, trill, buzz) in a column of icons:
+//               press and hold, and slide up and down to shift between them; the dark pill
+//               follows the thumb and snaps to each kind as you cross into it, and the names
+//               show while you slide
+//   bottom left beside it, the song box: the bird you imitate and its score (each syllable's
+//               kind and pitch, the next one marked), or a moment's cheer in its name line.
+//               Tap it to open Imitate a bird, the birds you know with their songs in words
 // Pick a bird from Songs and you sing in its voice, imitating it: play its score through and a
 // bird of that kind answers (once you have learned it). Left-handed, the sides swap. Everything
 // sits above the canvas, so a thumb on it never reaches the wings; the look is all in
@@ -35,15 +36,15 @@ export function createSingUI(ui, { audio, voice, onSyll, onPick, onCall }) {
   ui.insertAdjacentHTML('beforeend', `<div class="sing3 hidden">
       <div class="strip3">${NOTE_COLS.map((c, i) => `<i data-lane="${i}" style="--note:${c}"></i>`).reverse().join('')}</div>
       <div class="kinds3"><b class="puck3"></b>${KINDS.map(([k, name]) => `<div data-kind="${k}" aria-label="${name}">${glyph(k)}<span>${name}</span></div>`).join('')}</div>
-      <div class="book3"><button class="bookbtn3"><span>Songs</span><em></em></button><div class="birds3 hidden"></div></div>
-      <div class="score3 hidden"><b></b><div></div></div>
+      <button class="rec3"><span class="pic3"></span><span class="txt3"><b></b><span class="score3"></span></span></button>
+      <div class="birds3 hidden"></div>
     </div>
-    <p class="cheer3"></p><button class="call3" aria-label="Hawk call">Call</button>`);
+    <button class="call3" aria-label="Hawk call">Call</button>`);
   const q = s => ui.querySelector(s);
-  const root = q('.sing3'), strip = q('.strip3'), kinds = q('.kinds3'), bookBtn = q('.bookbtn3'), birds = q('.birds3'), score = q('.score3');
-  const cheer = q('.cheer3'), callBtn = q('.call3');
+  const root = q('.sing3'), strip = q('.strip3'), kinds = q('.kinds3'), rec = q('.rec3'), birds = q('.birds3'), score = q('.score3');
+  const recName = rec.querySelector('b'), recPic = q('.pic3'), callBtn = q('.call3');
   const bands = [...strip.children].sort((a, b) => a.dataset.lane - b.dataset.lane);
-  const S = { open: false, kind: 'w', finger: null, slide: null, species: '', score: '' };
+  const S = { open: false, kind: 'w', finger: null, slide: null, species: '', score: '', name: '', cheer: '' };
   let cheerTimer = 0;
   const flash = (el, cls = 'hit') => { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); };
 
@@ -94,12 +95,12 @@ export function createSingUI(ui, { audio, voice, onSyll, onPick, onCall }) {
   const settle = e => { if (S.slide !== e.pointerId) return; S.slide = null; kinds.classList.remove('slide'); place(); };
   kinds.addEventListener('pointerup', settle); kinds.addEventListener('pointercancel', settle);
 
-  // Songs: the birds you know, folded away until you want one
-  bookBtn.addEventListener('click', () => { audio.unlock(); birds.classList.toggle('hidden'); });
+  // the song box opens the birds you know, folded away until you want one
+  rec.addEventListener('click', () => { audio.unlock(); birds.classList.toggle('hidden'); rec.classList.toggle('on', !birds.classList.contains('hidden')); });
   birds.addEventListener('click', e => {
-    if (e.target.closest('[data-close]')) { birds.classList.add('hidden'); return; }
+    if (e.target.closest('[data-close]')) { birds.classList.add('hidden'); rec.classList.remove('on'); return; }
     const b = e.target.closest('[data-sp]'); if (!b) return;
-    audio.unlock(); birds.classList.add('hidden'); onPick(b.dataset.sp === 'none' ? null : +b.dataset.sp);
+    audio.unlock(); birds.classList.add('hidden'); rec.classList.remove('on'); onPick(b.dataset.sp === 'none' ? null : +b.dataset.sp);
   });
   for (const el of [root, callBtn]) el.addEventListener('contextmenu', e => e.preventDefault());
 
@@ -108,20 +109,22 @@ export function createSingUI(ui, { audio, voice, onSyll, onPick, onCall }) {
     if (key === S.species) return;
     S.species = key;
     birds.innerHTML = `<header><span>Imitate a bird</span><button data-close aria-label="Close">✕</button></header><div class="cards3">`
-      + list.map(sp => `<button data-sp="${sp.id}" class="${learned.has(sp.id) ? '' : 'heard'}${picked === sp ? ' on' : ''}" style="--breast:${rgb(sp.cols.breast)};--cap:${rgb(sp.cols.cap)}"><img src="${songbirdPic(sp, 64)}" alt=""><span>${sp.name}</span>${learned.has(sp.id) ? '' : '<small>heard, not learned</small>'}</button>`).join('')
+      + list.map(sp => `<button data-sp="${sp.id}" class="${learned.has(sp.id) ? '' : 'heard'}${picked === sp ? ' on' : ''}" style="--breast:${rgb(sp.cols.breast)};--cap:${rgb(sp.cols.cap)}"><img src="${songbirdPic(sp, 64)}" alt=""><span>${sp.name}</span><small>${learned.has(sp.id) ? sp.words.split(':')[0] : 'heard, not learned'}</small></button>`).join('')
       + (picked ? '<button data-sp="none" class="stop"><span>Sing as yourself</span></button>' : '') + '</div>'
       + (list.length ? '' : '<p>No songs yet. Perch near a singing bird and listen.</p>');
-    bookBtn.querySelector('em').textContent = picked ? picked.name : list.length ? `${learned.size} known` : '';
-    bookBtn.classList.toggle('on', !!picked);
+    S.idle = list.length ? `${learned.size} known` : 'Listen to the birds';
   }
-  // the score: one glyph per syllable at its pitch; the bird's own half of a duet is hollow
+  // the song box: the bird, its name (or a cheer for a moment), and the score, one glyph per
+  // syllable at its pitch; the bird's own half of a duet is dimmed. With no bird, an invitation.
+  const setName = () => { recName.textContent = S.cheer || S.name; rec.classList.toggle('cheer', !!S.cheer); };
   function setScore(sc) {
-    const key = sc ? [sc.sp.id, sc.title, sc.done, sc.bird, sc.state, sc.hidden].join() : '';
+    const key = sc ? [sc.sp.id, sc.title, sc.done, sc.bird, sc.state, sc.hidden].join() : S.idle;
     if (key === S.score) return;
-    S.score = key; score.classList.toggle('hidden', !sc);
-    if (!sc) return;
-    score.querySelector('b').textContent = sc.title;
-    score.querySelector('div').innerHTML = sc.hidden ? '' : sc.sp.notes.map((n, i) => {
+    S.score = key; rec.classList.toggle('idle', !sc);
+    S.name = sc ? sc.title : 'Imitate a bird'; setName();
+    recPic.innerHTML = sc ? `<img src="${songbirdPic(sc.sp, 64)}" alt="">` : glyph('w');
+    if (!sc || sc.hidden) { score.innerHTML = `<small>${sc ? sc.note : S.idle}</small>`; return; }
+    score.innerHTML = sc.sp.notes.map((n, i) => {
       const st = i < sc.bird ? 'bird' : i < sc.done ? 'done' : i === sc.done ? (sc.state === 'wrong' ? 'next wrong' : 'next') : '';
       return `<span class="${st}" style="--note:${NOTE_COLS[n]};--lane:${n}">${glyph(sc.sp.kinds[i])}</span>`;
     }).join('');
@@ -162,9 +165,9 @@ export function createSingUI(ui, { audio, voice, onSyll, onPick, onCall }) {
     },
     glow(lane) { if (S.open) flash(bands[lane], 'glow'); },
     cheer(text) {
-      // in the score's place for a moment: one line of news at a time
-      cheer.textContent = text; cheer.classList.remove('show'); void cheer.offsetWidth; cheer.classList.add('show'); score.classList.add('hush');
-      clearTimeout(cheerTimer); cheerTimer = setTimeout(() => { cheer.classList.remove('show'); score.classList.remove('hush'); }, 2600);
+      // in the song box's name line for a moment: one line of news at a time
+      S.cheer = text; setName(); flash(rec, 'pop');
+      clearTimeout(cheerTimer); cheerTimer = setTimeout(() => { S.cheer = ''; setName(); }, 2600);
     },
     // where a control sits on screen (for test scripts)
     lanePt(lane) { const r = bands[lane].getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; },
