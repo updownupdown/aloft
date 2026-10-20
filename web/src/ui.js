@@ -34,6 +34,7 @@ export function createUI({ audio, G, store, species, onPause, playSong, haptics,
           <button data-act="music" class="sw hidden" role="switch"><span>Music</span><i></i></button>
           <button data-act="musicmode" class="row-btn hidden">Music style <em></em></button>
           <a class="row-btn" href="musiclab.html">Music lab <em>tune Valley</em></a>
+          <a class="row-btn" href="3d.html">3D mode <em>a prototype to try</em></a>
           <button data-act="haptics" class="sw" role="switch"><span>Vibration</span><i></i></button>
           <button data-act="glide" class="sw" role="switch"><span>Glide line</span><i></i></button>
           <button data-act="quiet" class="sw" role="switch"><span>Quiet meters <small>hide when full</small></span><i></i></button>

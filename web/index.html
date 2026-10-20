@@ -22,7 +22,11 @@
 <div id="ui"></div>
 <script type="module">
   import { start } from './src/game.js';
-  start(document.getElementById('game'));
+  // the 3D prototype is a separate page; the mode last played opens next time (?mode=2d comes back)
+  let mode = new URLSearchParams(location.search).get('mode');
+  try { if (mode) localStorage.setItem('aloft.mode', JSON.stringify(mode)); else mode = JSON.parse(localStorage.getItem('aloft.mode')); } catch { /* private mode */ }
+  if (mode === '3d') location.replace('3d.html');
+  else start(document.getElementById('game'));
   if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js');
 </script>
 </body>
