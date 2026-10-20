@@ -1,6 +1,6 @@
-// How to play: the controls map (a flat drawing of the two thumbs for each move, beside its
+// How to play: the controls map (a line drawing of the two thumbs for each move, beside its
 // words), then the ways of the world. Keep the map in step with input.js and flight.js.
-const INK = '#3a2418';
+const INK = '#1d2b36';
 const PIG = { water: '#4f7fa6', berry: '#a8483a', ochre: '#b8862f', leaf: '#6f8a4a', indigo: '#4f6f9e', stone: '#8a7a6a' };
 
 // a phone held sideways with a thumb on each side; marks: 'tap', 'up', 'down', 'in', 'out', 'hold',
@@ -19,10 +19,9 @@ function thumbs(left, right, col) {
       return `<path d="M${c - 17} ${yy} L${c + 17} ${yy} M${c - 13} ${yy - 3.5} L${c - 17} ${yy} L${c - 13} ${yy + 3.5} M${c + 13} ${yy - 3.5} L${c + 17} ${yy} L${c + 13} ${yy + 3.5}"/>`; }
     return '';
   };
-  const hex = (x, y) => Array.from({ length: 6 }, (_, i) => { const a = i / 6 * Math.PI * 2 + Math.PI / 6; return `${(x + Math.cos(a) * 6).toFixed(1)},${(y + Math.sin(a) * 6).toFixed(1)}`; }).join(' ');
-  const thumb = (x, y, m) => `<polygon points="${hex(x, y)}" fill="${m ? col : 'none'}" fill-opacity=".32" stroke="${INK}" stroke-opacity="${m ? .8 : .35}" stroke-linejoin="miter"/>` +
+  const thumb = (x, y, m) => `<circle cx="${x}" cy="${y}" r="6" fill="${m ? col : 'none'}" fill-opacity=".32" stroke="${INK}" stroke-opacity="${m ? .8 : .35}"/>` +
     `<g stroke="${col}" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round">${mark(m, x, y, x < 38 ? 1 : -1)}</g>`;
-  return `<svg viewBox="0 0 76 50" aria-hidden="true"><polygon points="9,5 67,5 73,11 73,39 67,45 9,45 3,39 3,11" fill="none" stroke="${INK}" stroke-opacity=".35" stroke-width="1"/>${thumb(left === 'side' ? 31 : 18, left === 'side' ? 22 : 28, left)}${thumb(right === 'side' ? 45 : 58, right === 'side' ? 22 : 28, right)}</svg>`;
+  return `<svg viewBox="0 0 76 50" aria-hidden="true"><rect x="3" y="5" width="70" height="40" rx="8" fill="none" stroke="${INK}" stroke-opacity=".35" stroke-width="1"/>${thumb(left === 'side' ? 31 : 18, left === 'side' ? 22 : 28, left)}${thumb(right === 'side' ? 45 : 58, right === 'side' ? 22 : 28, right)}</svg>`;
 }
 
 const MOVES = [

@@ -12,7 +12,7 @@ import { esc } from '../journal.js';
 const CELL = 100;                        // fog cells, metres
 const SEE = [160, 2.2, 520];             // clearing radius: base, per metre of height, most
 const ZOOM = [1.2, 24], ZOOM0 = 5;       // metres per CSS pixel: closest, farthest, at first
-const FOG = [233, 226, 210];
+const FOG = [228, 235, 239];
 const key = (i, j) => i + ',' + j;
 
 export function mapView(G, J, { HOME_Z, MARSH_Z }) {
@@ -125,11 +125,11 @@ export function mapView(G, J, { HOME_Z, MARSH_Z }) {
     x.drawImage(cache.c, (cache.ox - vx0) / V.sc, (cache.oz - vz0) / V.sc, cache.w, cache.h);
     route(x);
     // the marsh: a dashed line across the map where it lies, or which way it is
-    x.font = 'italic 13px Spectral, Georgia, serif';
+    x.font = '600 12px Manrope, system-ui, sans-serif';
     const label = (px, py, text) => {
       const w = x.measureText(text).width, lx = clamp(px, 6, V.w - w - 10), ly = clamp(py, 16, V.h - 6);
-      x.fillStyle = 'rgba(246,241,230,.85)'; x.fillRect(lx - 5, ly - 13, w + 10, 18);
-      x.fillStyle = C(PIG.ink, .88); x.fillText(text, lx, ly);
+      x.fillStyle = 'rgba(255,255,255,.82)'; x.beginPath(); x.roundRect(lx - 6, ly - 13, w + 12, 18, 9); x.fill();
+      x.fillStyle = '#1d2b36'; x.fillText(text, lx, ly);
     };
     const mz = sz(MARSH_Z);
     if (mz > 0 && mz < V.h) { x.fillStyle = C(PIG.ink, .45); for (let i = 0; i < V.w; i += 10) x.fillRect(i, mz, 6, 1.5); label(10, mz + 18, 'The wintering marsh'); }
