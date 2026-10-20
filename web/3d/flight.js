@@ -7,7 +7,7 @@ import { height, WATER, treesNear, TREE, perchesOf, airLift, thermalsNear, therm
 const g = 9.8;
 export const FLY = {
   best: 12, maxS: 46, cd: .0058, cdTuck: .0024, cdFlare: .03, stall: 7.5, stallFlare: 3.6,
-  climb: .55, dive: .9, roll: 1.0, flapS: 3.0, flapUp: 1.3, flapHover: 3.2, flapCost: .065,
+  climb: .55, dive: .9, roll: 1.0, yaw: 1.2, flapS: 3.0, flapUp: 1.3, flapHover: 3.2, flapCost: .065,
   perchR: 1.6, landS: 10.5,
 };
 
@@ -30,12 +30,13 @@ export function step(b, c, dt, E) {
   if (b.state !== 'fly') return still(b, c, dt, E);
   // how fast the hawk is gaining speed (smoothed): no perching while it is
   b.acc = (b.acc || 0) + ((b.s - (b.sPrev ?? b.s)) / Math.max(dt, 1e-3) - (b.acc || 0)) * Math.min(1, dt * 4);
-  b.sPrev = b.s;
+  b.sPrev = b.s; b.view = null;
 
   // flaps
   if (c.flap) {
     const weak = b.stamina < .08 ? .3 : 1, q = c.flap.q * weak;
-    b.stamina = Math.max(0, b.stamina - FLY.flapCost * (c.flap.side ? .6 : 1));
+    // two wings together tire you less: a perfectly paired tap costs about half a ragged one
+    b.stamina = Math.max(0, b.stamina - FLY.flapCost * (c.flap.side ? .6 : 1.2 - .6 * (c.flap.sync ?? 0)));
     const stall = stallness(b);
     b.s = Math.min(FLY.maxS, b.s + FLY.flapS * q * (.35 + .65 * (1 - b.flare)));
     b.vy += (FLY.flapUp + FLY.flapHover * b.flare + 1.6 * stall) * q;
@@ -43,7 +44,7 @@ export function step(b, c, dt, E) {
     // a bird never beats one wing alone: the other follows, more lightly
     b.flapL = b.flapR = 0;
     b.ampL = c.flap.side > 0 ? .35 : 1; b.ampR = c.flap.side < 0 ? .35 : 1;
-    E.flap(q, c.flap.side);
+    E.flap(q, c.flap.side, c.flap.sync);
     if (weak < 1) E.tired();
   }
 
@@ -58,7 +59,7 @@ export function step(b, c, dt, E) {
   b.s = Math.max(0, Math.min(FLY.maxS, b.s));
 
   // bank and turn; inside a thermal a held thumb with no bank asked for circles the core
-  let rT = c.roll * FLY.roll;
+  let rT = c.roll * FLY.roll + (c.yaw || 0) * .2;
   b.inThermal = null; b.ride = false;
   b.lift = airLift(b.p[0], b.p[1], b.p[2], E.sun);
   if (b.lift > .8) {
@@ -79,7 +80,7 @@ export function step(b, c, dt, E) {
   // in a stoop the tail and half-closed wings still steer: the turn doesn't fade with speed as a glide's does
   const sTurn = Math.max(5, b.s * (1 - .65 * b.tuck));
   const yawRate = Math.max(-1.9, Math.min(1.9, g * Math.tan(b.roll) / sTurn * (1 + b.flare * .3)));
-  b.yaw += yawRate * dt;
+  b.yaw += (yawRate + (c.yaw || 0) * FLY.yaw) * dt;   // both thumbs slid one way: a flat yaw on top
 
   // stall sink and flap lift live in vy, which settles back to zero
   const st = stallness(b, sStall);
@@ -109,8 +110,14 @@ function still(b, c, dt, E) {
   else if (b.hop > 0 && b.flapL > .42) b.flapL = b.flapR = 0;   // keep beating across a hop
   b.stamina = Math.min(1, b.stamina + dt * .2 * (b.recover ?? 1));
   // turn on the spot to choose a way out: drag sideways (the bird turns against the swipe, as if
-  // you were turning the view) or A/D; on the ground a push forward walks
-  b.yaw += (c.keyRoll ?? 0) * dt * 1.6 - (c.dragX ?? 0) * 3.4;
+  // you were turning the view) or A/D; on the ground the drag turns the view and the bird only
+  // follows it slowly round, so it mostly faces away from you; a push forward walks
+  const turn = (c.keyRoll ?? 0) * dt * 1.6 - (c.dragX ?? 0) * 3.4;
+  if (b.state === 'ground') {
+    if (b.view == null) b.view = b.yaw;
+    b.view += turn;
+    b.yaw += Math.atan2(Math.sin(b.view - b.yaw), Math.cos(b.view - b.yaw)) * Math.min(1, dt * .9) + turn * .1;
+  } else { b.yaw += turn; b.view = null; }
   b.sPrev = 0; b.acc = 0;
   if (b.state === 'ground' && Math.abs(c.pitch) > .3) {
     const sp = c.pitch * 1.4 * dt; b.p[0] += Math.sin(b.yaw) * sp; b.p[2] -= Math.cos(b.yaw) * sp;
@@ -122,7 +129,7 @@ function still(b, c, dt, E) {
     b.wantOff = 0; b.noPerch = 1.6; b.settle = 0; b.hop = 0;
     // take off: a strong stroke forward and up
     const wet = b.state === 'swim';
-    b.state = 'fly'; b.perch = null; b.tree = null;
+    b.state = 'fly'; b.perch = null; b.tree = null; b.view = null;
     b.s = 8; b.gamma = .35; b.vy = wet ? 3.5 : 4.5; b.flapL = b.flapR = 0; b.ampL = b.ampR = 1;
     b.stamina = Math.max(0, b.stamina - FLY.flapCost);
     E.flap(1, 0); E.takeoff();

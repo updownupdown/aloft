@@ -23,11 +23,13 @@ export function createCamera(G) {
       const tg = G.aim?.target;
       if (tg && fo > .1) { const k = .45 * fo; look = [look[0] + (tg.x - look[0]) * k, look[1] + (tg.y - look[1]) * k, look[2] + (tg.z - look[2]) * k]; }
     } else {
-      C.yaw += angleTo(C.yaw, b.yaw + Math.sin(G.t * .15) * .5) * Math.min(1, dt * .8);
+      // on the ground a drag turns the view itself (b.view), quickly; otherwise it drifts round the bird
+      if (b.state === 'ground' && b.view != null) C.yaw += angleTo(C.yaw, b.view) * Math.min(1, dt * 8);
+      else C.yaw += angleTo(C.yaw, b.yaw + Math.sin(G.t * .15) * .3) * Math.min(1, dt * .8);
       C.pitch = 0;
       const d = [Math.sin(C.yaw), 0, -Math.cos(C.yaw)];
       // a little above and behind, the hawk just under the middle of the view (clear of the song box)
-      want = [p[0] - d[0] * 3, p[1] + .9, p[2] - d[2] * 3];
+      want = [p[0] - d[0] * 2.6, p[1] + .9, p[2] - d[2] * 2.6];
       look = [p[0] + d[0] * 1.5, p[1] + .05, p[2] + d[2] * 1.5];
     }
     if (!C.cam) C.cam = want.slice();

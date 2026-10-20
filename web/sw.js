@@ -1,7 +1,7 @@
 // Offline support. Stale-while-revalidate: the game opens instantly from cache and any
 // update deployed since is fetched in the background, showing on the next launch. A new
 // version installs past the browser's own cache, and Update in the menu fetches everything afresh.
-const CACHE = 'aloft-v72';
+const CACHE = 'aloft-v73';
 const FILES = ['./', 'index.html', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/apple-touch-icon.png', 'icons/favicon-32.png',
   '3d/3d.css', '3d/main.js', '3d/gl.js', '3d/util.js', '3d/world.js', '3d/shapes.js', '3d/hawk.js', '3d/render.js', '3d/input.js', '3d/flight.js',
   '3d/sky.js', '3d/hud.js', '3d/menu.js', '3d/camera.js', '3d/app.js', '3d/sys/air.js', '3d/sys/rings.js', '3d/sys/food.js', '3d/sys/aim.js', '3d/sys/flora.js', '3d/sys/songs.js', '3d/sys/songbirds.js', '3d/sys/singui.js', '3d/sys/songs.css',
