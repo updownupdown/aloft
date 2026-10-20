@@ -34,9 +34,13 @@ import { storySystem } from './sys/story.js';
 import { photoSystem } from './sys/photo.js';
 import { howtoSystem } from './sys/howto.js';
 import { STYLES } from './post.js';
+import { weatherSystem } from './sys/weather.js';
+import { faunaSystem } from './sys/fauna.js';
+import { landsSystem } from './sys/lands.js';
+import { windsSystem } from './sys/winds.js';
 
-const SYSTEMS = [clockSystem, airSystem, ringsSystem, foodSystem, aimSystem, songsSystem,
-  guideSystem, journeySystem, nestSystem, storySystem, photoSystem, howtoSystem];
+const SYSTEMS = [clockSystem, weatherSystem, windsSystem, airSystem, ringsSystem, foodSystem, aimSystem, songsSystem,
+  guideSystem, journeySystem, nestSystem, storySystem, photoSystem, howtoSystem, faunaSystem, landsSystem];
 
 export function start(canvas, ui) {
   const gl = createGL(canvas);
