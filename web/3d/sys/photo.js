@@ -86,7 +86,7 @@ export function photoSystem(G) {
   }
   bar.addEventListener('click', e => { const p = e.target.closest('[data-p]')?.dataset.p; if (p === 'snap') snap(); if (p === 'done') end(); });
   addEventListener('keydown', e => { if (G.photo && e.code === 'Escape') end(); });
-  G.menu.button('play', { label: 'Photo mode', sub: 'hold the world still and take a picture', onClick: begin }).style.setProperty('--dot', 'var(--water)');
+  G.menu.button('play', { label: 'Photo mode', sub: 'hold the world still and take a picture', group: 'play', main: true, onClick: begin });
 
   // ---- postcards -----------------------------------------------------------------------------
   // the view of the moment a landmark was found, framed with a white border on a card of faceted

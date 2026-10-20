@@ -4,11 +4,11 @@ import { program, perspective, lookAt, mul, basis } from './gl.js';
 import { buildHawk, HAWK_SCALE } from './hawk.js';
 import { BIRDS, buildBird } from './birds.js';
 
-const VS = `#version 300 es
+export const VS = `#version 300 es
 layout(location=0) in vec3 aPos; layout(location=1) in vec3 aNrm; layout(location=2) in vec3 aCol; layout(location=3) in vec3 aColB;
 uniform mat4 uVP, uModel; out vec3 vNrm, vCol, vColB;
 void main() { vNrm = mat3(uModel) * aNrm; vCol = aCol; vColB = aColB; gl_Position = uVP * uModel * vec4(aPos, 1.); }`;
-const FS = `#version 300 es
+export const FS = `#version 300 es
 precision highp float; in vec3 vNrm, vCol, vColB; out vec4 frag;
 uniform vec3 uSun;
 void main() {
@@ -64,12 +64,19 @@ export function poseAt(mode, t) {
     return { pose: { ...base, flapL: f, flapR: f, handL: h, handR: h }, roll: 0, pitch: .1 };
   }
   if (mode === 'bank') return { pose: { ...base, tail: .55 }, roll: -.7 + Math.sin(t * .8) * .15, pitch: 0 };
+  // the moves How to play shows: climb, dive, one wing leading, steering a stoop, circling in lift
+  if (mode === 'climb') return { pose: { ...base, tail: .5, tailPitch: .2 }, roll: 0, pitch: .45 + Math.sin(t * .9) * .05 };
+  if (mode === 'dive') return { pose: { ...base, flapL: glide - .06, flapR: glide - .06, fold: .3 }, roll: 0, pitch: -.45 };
+  if (mode === 'lead') { const [f, h] = beat((t % 1.1), glide); return { pose: { ...base, flapL: f, handL: h, flapR: glide + (f - glide) * .35 }, roll: -.25, pitch: .05 }; }
+  if (mode === 'steer') return { pose: { ...base, flapL: glide - .12, flapR: glide - .12, fold: .75 }, roll: Math.sin(t * 1.6) * .5, pitch: -.7 };
+  if (mode === 'circle') return { pose: { ...base, tail: .8 }, roll: -.4, pitch: .05, spin: t * .7 };
   if (mode === 'stoop') return { pose: { ...base, flapL: glide - .12, flapR: glide - .12, fold: .75 }, roll: 0, pitch: -.7 };
   if (mode === 'flare') return { pose: { ...base, flapL: .35, flapR: .35, flare: 1, legs: .9, tail: 1, tailPitch: .3 }, roll: 0, pitch: .45 };
   return { pose: { ...base, flapL: .05, flapR: .05, fold: 1, flare: 0, legs: 1, tail: .05 }, roll: 0, pitch: .4, still: true };
 }
 
-export function startLab(canvas, cells, getMode) {
+// getMode(cell) names each cell's mode; active() false skips drawing (a menu that is shut)
+export function startLab(canvas, cells, getMode, { active = () => true, eye = [0, .8, 1.75] } = {}) {
   const gl = canvas.getContext('webgl2', { antialias: true, alpha: true, premultipliedAlpha: true });
   if (!gl) return false;
   gl.enable(gl.DEPTH_TEST); gl.enable(gl.SCISSOR_TEST);
@@ -84,9 +91,10 @@ export function startLab(canvas, cells, getMode) {
   const t0 = performance.now();
 
   function frame() {
+    if (!active()) { requestAnimationFrame(frame); return; }
     const dpr = Math.min(2, devicePixelRatio || 1), W = canvas.clientWidth, H = canvas.clientHeight;
     if (canvas.width !== Math.round(W * dpr) || canvas.height !== Math.round(H * dpr)) { canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr); }
-    const cr = canvas.getBoundingClientRect(), t = (performance.now() - t0) / 1000, mode = getMode();
+    const cr = canvas.getBoundingClientRect(), t = (performance.now() - t0) / 1000;
     gl.scissor(0, 0, canvas.width, canvas.height); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     cells.forEach((el, i) => {
       const r = el.getBoundingClientRect();
@@ -96,15 +104,15 @@ export function startLab(canvas, cells, getMode) {
       gl.useProgram(B.p); gl.uniform1f(B.u.uSeed, i * 5.3); gl.uniform1f(B.u.uShift, t * .15);
       gl.bindVertexArray(bgVao); gl.disable(gl.DEPTH_TEST); gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4); gl.enable(gl.DEPTH_TEST);
 
-      const id = el.dataset.bird, { pose, roll, pitch, still } = poseAt(mode, t + i * .37);
+      const id = el.dataset.bird || 'hawk', { pose, roll, pitch, still, spin = 0 } = poseAt(getMode(el), t + i * .37);
       const tris = id === 'hawk' ? buildHawk(pose) : buildBird(id, pose);
       // the bird faces a three-quarter view and the camera drifts round it
-      const yaw = 2.1 + Math.sin(t * .25 + i) * .45, f = [Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), -Math.cos(yaw) * Math.cos(pitch)];
+      const yaw = 2.1 + Math.sin(t * .25 + i) * .45 + spin, f = [Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), -Math.cos(yaw) * Math.cos(pitch)];
       const r0 = [Math.cos(yaw), 0, Math.sin(yaw)], u0 = [r0[1] * f[2] - r0[2] * f[1], r0[2] * f[0] - r0[0] * f[2], r0[0] * f[1] - r0[1] * f[0]];
       const c = Math.cos(roll), s = Math.sin(roll);
       const rr = [r0[0] * c - u0[0] * s, r0[1] * c - u0[1] * s, r0[2] * c - u0[2] * s], uu = [u0[0] * c + r0[0] * s, u0[1] * c + r0[1] * s, u0[2] * c + r0[2] * s];
       const bob = still ? 0 : Math.sin(t * 1.3 + i) * .03, model = basis([0, bob, 0], [-rr[0], -rr[1], -rr[2]], uu, f, HAWK_SCALE);
-      const view = lookAt([0, .8, 1.75], [0, -.04, 0], [0, 1, 0]), vp = mul(perspective(.75, w / h, .05, 50), view);
+      const view = lookAt(eye, [0, -.04, 0], [0, 1, 0]), vp = mul(perspective(.75, w / h, .05, 50), view);
       gl.useProgram(P.p); gl.uniformMatrix4fv(P.u.uVP, false, vp); gl.uniformMatrix4fv(P.u.uModel, false, model); gl.uniform3fv(P.u.uSun, sun);
       gl.bindVertexArray(vao); gl.bindBuffer(gl.ARRAY_BUFFER, vbuf); gl.bufferData(gl.ARRAY_BUFFER, tris, gl.DYNAMIC_DRAW);
       gl.drawArrays(gl.TRIANGLES, 0, tris.length / 12);

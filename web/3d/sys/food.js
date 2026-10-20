@@ -31,7 +31,7 @@ export function foodSystem(G) {
   const setThirst = G.hud.meter('thirst', { label: 'water', colour: 'linear-gradient(90deg,#3f6f9a,#6c9ac0)' });
   G.hud.tip('hunt', () => G.hunger < .7 && b.state === 'fly' && G.aim?.target, 'A mouse in the grass! Tuck your wings (thumbs together) and dive at it. Come in low and your feet reach.');
   G.hud.tip('drink', () => G.thirst < .6 && b.state !== 'fly', 'Thirsty? Land at the water’s edge, or on the water, to drink.');
-  let warnT = 0, sipT = 0, rustleT = 0;
+  let sipT = 0, rustleT = 0;
 
   // which mice live in a cell (fixed by hash), where their burrow is
   function cellMice(cx, cz) {
@@ -107,9 +107,8 @@ export function foodSystem(G) {
         G.hud.did('drink');
       }
       void g;
-      // empty meters slow how fast the wings recover; a gentle warning, now and then
+      // empty meters slow how fast the wings recover (the meters flash when low: no message)
       b.recover = (G.hunger > 0 ? 1 : .5) * (G.thirst > 0 ? 1 : .5);
-      if ((warnT -= dt) <= 0 && (G.hunger < .12 || G.thirst < .12)) { warnT = 40; G.hud.toast(G.hunger < G.thirst ? 'Hungry. Look for mice twitching in the open grass.' : 'Thirsty. Find a pond or a lake to drink from.'); }
       setHunger(G.hunger); setThirst(G.thirst);
       // grass twitches over mice: little green flecks, easy to spot from the air
       if ((rustleT -= dt) <= 0) {

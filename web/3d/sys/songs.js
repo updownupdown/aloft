@@ -19,6 +19,8 @@ import { height, WATER, treesNear, perchesOf, thermalsNear } from '../world.js';
 import { clamp, dist3 } from '../util.js';
 import { registerSongbirds, pushBird, songTreesNear, habitat } from './songbirds.js';
 import { createSingUI, NOTE_COLS, KINDS } from './singui.js';
+import { journal } from '../journal.js';
+import { songbirdPic } from '../pics.js';
 
 export const SONG = {
   hearR: 90,        // a songbird is heard (and joins the left pools) within this
@@ -265,26 +267,27 @@ export function songsSystem(G) {
   // (after the core's own tabs, which main.js adds once the systems are made)
   queueMicrotask(songsTab);
   function songsTab() {
-    const pane = G.menu.tab('songs', 'Songs');
+    const pane = journal(G).page('songs');
     pane.insertAdjacentHTML('beforeend', '<div class="songbook3"></div>');
     const book = pane.querySelector('.songbook3');
     G.menu.onOpen(() => {
-      const row = sp => {
+      // a card for each songbird: its picture, its name and what its song gives
+      const card = sp => {
         const k = G.learned.has(sp.id) ? 'learned' : G.heard.has(sp.id) ? 'heard' : 'unknown';
-        const dot = `<i style="display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:7px;background:rgb(${sp.cols.breast});box-shadow:inset -3px -3px 0 rgb(${sp.cols.cap})${k === 'learned' ? '' : ';opacity:.45'}"></i>`;
-        if (k === 'unknown') return `<li>${dot}<b>?</b> <small>${sp.hint}</small></li>`;
-        const what = k === 'learned' ? `${GIFT_TEXT[sp.powerKey] || sp.power}. <small>${songLog[sp.id] || 'Learned.'}</small>` : `<small>Heard, not yet learned. ${sp.hint}.</small>`;
-        return `<li>${dot}<b>${sp.name}</b> ${what}</li>`;
+        const pic = `<img alt="" src="${songbirdPic(sp, 128)}">`;
+        if (k === 'unknown') return `<li class="unknown"><div class="pic">${pic}</div><div><b>Not yet heard</b><small>${sp.hint}</small></div></li>`;
+        const gift = GIFT_TEXT[sp.powerKey] || sp.power, what = k === 'learned' ? `${gift[0].toUpperCase()}${gift.slice(1)}. ${songLog[sp.id] || 'Learned.'}` : `Heard, not yet learned. ${sp.hint}.`;
+        return `<li class="${k} seen"><div class="pic">${pic}</div><div><b>${sp.name}</b><small>${what}</small></div></li>`;
       };
-      book.innerHTML = `<p class="sub">${G.learned.size} of ${SPECIES.length} songs learned. Perch near a singing bird to learn its song.</p><ul class="how" style="list-style:none;padding-left:0">${SPECIES.map(row).join('')}</ul>`;
+      book.innerHTML = `<p class="sub">${G.learned.size} of ${SPECIES.length} songs learned. Perch near a singing bird to learn its song.</p><ul class="guide3 songs3">${SPECIES.map(card).join('')}</ul>`;
     });
-    G.menu.toggle('songs', { label: 'Left-handed singing', sub: 'notes on the left, birds on the right', get: lefty, set: v => store.set('lefty', v) });
+    G.menu.toggle('play', { label: 'Left-handed singing', sub: 'notes on the left, birds on the right', get: lefty, set: v => store.set('lefty', v) });
     const styleName = () => (MUSIC_MODES.find(m => m[0] === G.music.mode) || MUSIC_MODES[0])[1];
-    G.menu.button('songs', { label: 'Music style', sub: styleName(), onClick: el => {
+    G.menu.button('play', { label: 'Music style', sub: styleName(), group: 'sound', onClick: el => {
       const i = MUSIC_MODES.findIndex(m => m[0] === G.music.mode), next = MUSIC_MODES[(i + 1) % MUSIC_MODES.length][0];
       G.music.setMode(next); store.set('musicMode', next); el.querySelector('em').textContent = styleName();
     } });
-    G.menu.button('songs', { label: 'Bird song lab', sub: 'choose the songbirds’ voice', href: 'lab.html' });
+    G.menu.button('play', { label: 'Bird song lab', sub: 'choose the songbirds’ voice', href: 'lab.html', group: 'sound' });
   }
 
   // ---- each frame --------------------------------------------------------------------------------

@@ -34,15 +34,17 @@ web/3d/shapes.js        low-poly builders (builder, blob, prism, cone) and tree/
 web/3d/hawk.js          the hawk mesh, rebuilt per frame from a pose
 web/3d/birds.js         other birds: Settings > Bird picks red-tail, osprey, barn owl or raven (sys/species.js, aloft.bird); ?bird=swift|heron|mallard tries the rest
 web/3d/sky.js           clock (G.tod, G.day, G.season) and light (G.light)
-web/3d/hud.js           G.hud: meter() (rings), tip()/did(), toast() (queued), status, counter (under the dial), hide(), quiet meters, thumb pads
-web/3d/menu.js          G.menu: tab(), toggle(), button(), onOpen(), subtitle(), set(); tab order/titles in ORDER/TITLES
+web/3d/hud.js           G.hud: meter() (bars that flash when low), tip()/did(), toast() (queued), flight/status, counter (under the dial), hide(), quiet meters, thumb pads
+web/3d/compass.js       the linear compass, top middle (N/E/S/W, nest, the way south or home, landmarks found)
+web/3d/menu.js          G.menu: tab(), page() (sub-tabs), group() (Settings columns), toggle(), button({ group, main }), onOpen(), subtitle(), set(on, tab, page); ORDER/TITLES/ICONS/GROUPS
 web/3d/letter.js        the menu's frame (frosted glass, .glass3 in 3d.css); swap it to restyle
 web/3d/facet.js         low-poly helpers (map land, postcards) (PIG colours, poly, facets, gem, chamfer, hardShadow, lit)
 web/3d/logo.js          Aloft's mark, a hawk over the hills (menu title, app icons via tools/icon.html)
 web/3d/dial.js          the day dial, top right
 web/3d/tips.js          tips as a short line and an icon (SHORT, keyed by tip id), swipe to dismiss, i to pause and read more
-web/3d/journal.js       the Journal tab: journal(G).section(order, title); shot.js: project(), afterDraw(), portraits
-web/3d/app.js           Update, Full screen, Quiet meters and Quit rows
+web/3d/journal.js       the Journal tab and its pages (Log, Songs, Landmarks, Field guide, Album): journal(G).section(order, title), .page(id); shot.js: project(), afterDraw(), portraits
+web/3d/pics.js          still pictures of the game's own meshes (songbirdPic(sp, px)), cached data URLs
+web/3d/app.js           Update, Quiet meters and Quit rows; asks for full screen on each touch while not full screen
 web/src/                audio.js (Web Audio synth), music.js (four styles), birdvoice.js, songs.js (songbird species)
 web/birds.html          bird lab: every species side by side (3d/birdlab.js)
 web/lab.html            bird song lab; web/musiclab.html music lab (both share lab.css)
