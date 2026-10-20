@@ -95,6 +95,16 @@ export function start(canvas, ui) {
 
   // ---- flight events -------------------------------------------------------------------------
   const H = G.hud;
+  // one button to take off, top centre, whenever the hawk is perched, on the ground or on the water
+  // (the menu thread styles it with the rest of the UI; it hides with the menu and in photo mode)
+  ui.insertAdjacentHTML('beforeend', `<style>.takeoff3{position:absolute;top:calc(10px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);
+    font:italic 600 20px 'Cormorant Garamond',serif;color:#3a2418;background:rgba(244,238,225,.88);border:1px solid rgba(58,36,24,.35);
+    border-radius:22px;padding:7px 22px;pointer-events:auto;touch-action:manipulation;transition:opacity .25s}
+    .takeoff3.gone{opacity:0;pointer-events:none}.menu-open .takeoff3,.bare3 .takeoff3{display:none}</style>
+    <button class="takeoff3 gone" aria-label="Take off">Take off</button>`);
+  const takeoffBtn = ui.querySelector('.takeoff3');
+  const takeoff = e => { e.preventDefault(); e.stopPropagation(); audio.unlock?.(); input.taps.push({ side: 0, t: performance.now() / 1000 - 1 }); };
+  takeoffBtn.addEventListener('touchstart', takeoff, { passive: false }); takeoffBtn.addEventListener('click', takeoff);
   const E = {
     get sun() { return G.light.daylight; },
     flap: (q, side) => { audio.flap(); H.did('flap'); G.emit('flap', q, side); },
@@ -115,7 +125,7 @@ export function start(canvas, ui) {
 
   // ---- HUD and menu rows for the core -----------------------------------------------------
   const setWings = H.meter('wings', { label: 'wings', colour: 'linear-gradient(90deg,#8a6240,#b8862f)' });
-  H.tip('flap', () => b.state !== 'fly', 'Tap both thumbs together to flap and take off.');
+  H.tip('flap', () => b.state !== 'fly', 'Tap Take off (top), or both thumbs at once, to fly.');
   H.tip('bank', () => b.state === 'fly', 'Two thumbs, two wings: tip one up and the other down to bank and turn.');
   H.tip('climb', () => b.state === 'fly', 'Push both thumbs up to climb, both down to dive.');
   H.tip('tuck', () => b.state === 'fly' && b.p[1] - height(b.p[0], b.p[2]) > 30, 'Slide your thumbs together to tuck your wings and stoop.');
@@ -206,6 +216,7 @@ export function start(canvas, ui) {
     setWings(b.stamina);
     H.status = b.state === 'fly' ? `${above.toFixed(0)} m · ${(b.s * 3.6).toFixed(0)} km/h${b.ride ? ' · riding the thermal' : b.lift > .8 ? ' · rising air' : ''}`
       : b.eating > 0 ? 'eating' : b.state === 'perch' ? 'perched' : b.state === 'swim' ? 'on the water' : 'on the ground';
+    takeoffBtn.classList.toggle('gone', b.state === 'fly' || b.settle > 0 || b.eating > 0);
     H.update(dt);
     saveT += dt; if (saveT > 5) { saveT = 0; persist(); }
   }

@@ -33,7 +33,7 @@ void main() {
     // leaves never hide it and you can see the gaps you are flying into
     vec3 ab = uFocus - uCam, ap = vPos - uCam; float t = clamp(dot(ap, ab) / dot(ab, ab), 0., 1.);
     float dl = length(ap - ab * t), dc = length(ap), dh = length(vPos - uFocus);
-    float k = min(min(smoothstep(2.2, 5.5, dl) + step(.98, t), smoothstep(4., 10., dc)), mix(.2, 1., smoothstep(2., 9., dh)));
+    float k = min(min(smoothstep(3.5, 10., dl) + step(.98, t), smoothstep(6., 18., dc)), mix(.12, 1., smoothstep(3., 15., dh)));
     if (k < .99) {
       // an ordered 4x4 dither reads as a soft screen rather than noise
       ivec2 q = ivec2(gl_FragCoord.xy) & 3;
