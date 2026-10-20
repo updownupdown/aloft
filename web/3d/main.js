@@ -38,9 +38,10 @@ import { faunaSystem } from './sys/fauna.js';
 import { landsSystem } from './sys/lands.js';
 import { windsSystem } from './sys/winds.js';
 import { floraSystem } from './sys/flora.js';
+import { sleepSystem } from './sys/sleep.js';
 import { speciesSystem } from './sys/species.js';
 
-const SYSTEMS = [speciesSystem, clockSystem, weatherSystem, windsSystem, floraSystem, airSystem, ringsSystem, foodSystem, aimSystem, songsSystem,
+const SYSTEMS = [speciesSystem, clockSystem, weatherSystem, windsSystem, floraSystem, airSystem, ringsSystem, foodSystem, aimSystem, sleepSystem, songsSystem,
   guideSystem, journeySystem, nestSystem, storySystem, photoSystem, howtoSystem, faunaSystem, landsSystem];
 
 export function start(canvas, ui) {
@@ -100,7 +101,7 @@ export function start(canvas, ui) {
   // one button to take off, top centre, whenever the hawk is perched, on the ground or on the water
   // (3d.css styles it with the rest of the UI; it hides with the menu and in photo mode)
   ui.insertAdjacentHTML('beforeend', `<button class="takeoff3 gone" aria-label="Take off">Take off</button>`);
-  const takeoffBtn = ui.querySelector('.takeoff3');
+  const takeoffBtn = ui.querySelector('.takeoff3:not(.sleep3)');
   const takeoff = e => { e.preventDefault(); e.stopPropagation(); audio.unlock?.(); b.wantOff = .6; };   // flight.js takes off as soon as it can
   takeoffBtn.addEventListener('pointerdown', takeoff);
   const E = {
@@ -127,7 +128,7 @@ export function start(canvas, ui) {
   // how well paired the last two-thumb flap was: the wings bar glows green, blue, orange or red a moment
   let glow = '', glowT = 0;
   function wingGlow(sync) { glow = sync > .8 ? '#5fd17a' : sync > .55 ? '#5aa9ff' : sync > .3 ? '#ffa64a' : '#ff5a4a'; glowT = .7; }
-  H.tip('flap', () => b.state !== 'fly', 'Tap Take off (top), or both thumbs at once, to fly.');
+  H.tip('flap', () => b.state !== 'fly', 'Tap Take off (top) to fly. Then tap both thumbs at once to flap.');
   H.tip('bank', () => b.state === 'fly', 'Two thumbs, two wings: tip one up and the other down to bank and turn.');
   H.tip('climb', () => b.state === 'fly', 'Push both thumbs up to climb, both down to dive.');
   H.tip('tuck', () => b.state === 'fly' && b.p[1] - height(b.p[0], b.p[2]) > 30, 'Slide your thumbs together to tuck your wings and stoop.');
@@ -215,7 +216,7 @@ export function start(canvas, ui) {
     audio.ambience(Math.min(1, b.s / 30 + (G.storm || 0) * .3), G.rain || 0, { height: above * 2, stoop: clamp((b.s - 25) / 18, 0, 1), night: L.night, frogs: L.night * (height(b.p[0], b.p[2]) < 3 ? 1 : 0) });
     music.update(dt, { night: L.night, storm: G.storm || 0, learned: G.learned || new Set(), species: G.species || [], speed: b.s * 4, wind: G.windK ?? .3, height: above * 2 });
 
-    glowT -= dt; setWings(b.stamina, glowT > 0 ? glow : '', b.staminaMax ?? 1);
+    glowT -= dt; setWings(b.stamina, glowT > 0 ? glow : '', b.maxStamina ?? 1);
     H.flight = b.state === 'fly' ? { m: above.toFixed(0), kmh: (b.s * 3.6).toFixed(0), lift: b.ride ? 'ride' : b.lift > .8 ? 'rise' : '' } : null;
     H.status = b.state === 'fly' ? '' : b.eating > 0 ? 'eating' : b.state === 'perch' ? 'perched' : b.state === 'swim' ? 'on the water' : 'on the ground';
     takeoffBtn.classList.toggle('gone', b.state === 'fly' || b.settle > 0 || b.eating > 0);

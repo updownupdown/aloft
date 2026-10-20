@@ -6,10 +6,12 @@ import { CHUNK, chunkMesh, treesNear, ringsNear, height, normalAt, thermalsNear,
 import { ring, cloud, TREE_LOOKS } from './shapes.js';
 import { buildHawk, HAWK_SCALE } from './hawk.js';
 
+// instanced shapes that are cloud: see-through when the camera is close or inside
+const CLOUDY = new Set(['cloud', 'storm', 'puff', 'lens']);
 const COMMON_FS = `
 uniform vec3 uCam, uSun, uSunCol, uSkyAmb, uGndAmb, uFogCol, uFocus;
 uniform float uFogDen, uDither;
-in vec3 vPos, vNrm, vCol, vColB;
+in vec3 vPos, vNrm, vCol, vColB; in float vLeaf;
 out vec4 frag;
 float h21(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
 vec3 shade(vec3 col, vec3 n) {
@@ -28,14 +30,20 @@ const LIT_FS = `#version 300 es
 precision highp float;
 ${COMMON_FS}
 void main() {
-  if (uDither > .5) {
+  if (uDither > 1.5) {
+    // clouds: thin to a screen as the camera nears them, almost gone inside one
+    float k = mix(.08, 1., smoothstep(10., 90., length(vPos - uCam)));
+    ivec2 q = ivec2(gl_FragCoord.xy) & 3; int i = q.x + q.y * 4;
+    float bayer[16] = float[16](0., 8., 2., 10., 12., 4., 14., 6., 3., 11., 1., 9., 15., 7., 13., 5.);
+    if (k < .99 && (bayer[i] + .5) / 16. > k) discard;
+  } else if (uDither > .5) {
     // see-through near the camera, on a wide line to the hawk and round the hawk itself, so
     // leaves never hide it and you can see the gaps you are flying into
     vec3 ab = uFocus - uCam, ap = vPos - uCam; float t = clamp(dot(ap, ab) / dot(ab, ab), 0., 1.);
     float dl = length(ap - ab * t), dc = length(ap), dh = length(vPos - uFocus);
     float k = min(min(smoothstep(3.5, 10., dl) + step(.98, t), smoothstep(6., 18., dc)), mix(.12, 1., smoothstep(3., 15., dh)));
     // only leaves go see-through: trunks and limbs stay solid so you can see what to land on
-    if (k < .99 && vCol.g > vCol.r * 1.05) {
+    if (k < .99 && vLeaf > .5) {   // leaves, marked by the vertex shader before the autumn turn
       // an ordered 4x4 dither reads as a soft screen rather than noise
       ivec2 q = ivec2(gl_FragCoord.xy) & 3;
       int i = q.x + q.y * 4;
@@ -52,10 +60,10 @@ void main() {
 const LIT_VS = `#version 300 es
 layout(location=0) in vec3 aPos; layout(location=1) in vec3 aNrm; layout(location=2) in vec3 aCol; layout(location=3) in vec3 aColB;
 uniform mat4 uVP, uModel;
-out vec3 vPos, vNrm, vCol, vColB;
+out vec3 vPos, vNrm, vCol, vColB; out float vLeaf;
 void main() {
   vec4 w = uModel * vec4(aPos, 1.);
-  vPos = w.xyz; vNrm = mat3(uModel) * aNrm; vCol = aCol; vColB = aColB;
+  vPos = w.xyz; vNrm = mat3(uModel) * aNrm; vCol = aCol; vColB = aColB; vLeaf = 0.;
   gl_Position = uVP * w;
 }`;
 const INST_VS = `#version 300 es
@@ -63,7 +71,7 @@ layout(location=0) in vec3 aPos; layout(location=1) in vec3 aNrm; layout(locatio
 layout(location=4) in vec4 iA; layout(location=5) in vec4 iB;
 uniform mat4 uVP; uniform float uTime, uSway; uniform vec3 uAutumn;
 
-out vec3 vPos, vNrm, vCol, vColB;
+out vec3 vPos, vNrm, vCol, vColB; out float vLeaf;
 void main() {
   float c = cos(iB.x), s = sin(iB.x);
   vec3 p = aPos * iA.w;
@@ -76,7 +84,7 @@ void main() {
   float leafy = step(aCol.r * 1.05, aCol.g);
   vec3 col = aCol * (.88 + iB.y * .24);
   col = mix(col, uAutumn * (.85 + iB.y * .3), leafy * clamp(iB.z, 0., 1.));
-  vCol = col; vColB = col;
+  vCol = col; vColB = col; vLeaf = leafy;
   gl_Position = uVP * vec4(vPos, 1.);
 }`;
 const SKY_VS = `#version 300 es
@@ -272,10 +280,12 @@ export function createRenderer(gl) {
     // props: anything instanced that a system adds (rings, clouds, mice, marks...)
     for (const key in S.props) {
       const d = S.props[key], m = shapes.get(key); if (!m || !d.length) continue;
+      gl.uniform1f(inst.u.uDither, CLOUDY.has(key) ? 2 : 0);
       gl.bindBuffer(gl.ARRAY_BUFFER, m.ibuf); gl.bufferData(gl.ARRAY_BUFFER, d instanceof Float32Array ? d : new Float32Array(d), gl.DYNAMIC_DRAW);
       gl.bindVertexArray(m.vao); gl.drawArraysInstanced(gl.TRIANGLES, 0, m.count, d.length / 8); tris += m.count / 3 * d.length / 8;
     }
 
+    gl.uniform1f(inst.u.uDither, 0);
     // see-through bits: shadow, water, motes
     gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA); gl.depthMask(false);
     gl.useProgram(flat.p); gl.uniformMatrix4fv(flat.u.uVP, false, vp); gl.uniform1f(flat.u.uPx, h * .9);
