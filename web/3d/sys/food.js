@@ -8,7 +8,7 @@ import { builder, blob, reseed } from '../shapes.js';
 import { clamp } from '../util.js';
 
 export const FOOD = {
-  hungerTime: 300, thirstTime: 420,          // seconds from full to empty, as in 2D
+  hungerTime: 600, thirstTime: 840,          // seconds from full to empty (twice the 2D times)
   mouse: .45, drink: .3,                     // how much a mouse fills, how fast water refills
   cell: 48, near: 170, respawn: 150,         // mouse cells, simulated radius, seconds to refill
   catchR: 1.5, catchDive: 1.6, catchH: 2.6,  // reach, extra reach diving, how low to be

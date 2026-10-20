@@ -13,6 +13,22 @@ import { clamp, smooth } from '../util.js';
 const T = 2.6, STEPS = 16, g = 9.8;
 const COL = { near: [.9, .9, .84], prey: [.8, .24, .16], perch: [.28, .64, .34], soft: [.36, .52, .3], fast: [.72, .52, .18], ink: [.2, .18, .16] };
 
+// a flat ring lying level (or, with y null, draped on the ground), drawn into the ribbon. With
+// tilt it leans up toward the camera so that from level with it, it still reads as a ring
+function flatRing(S, x, y, z, r, w, col, a, tilt = 0, N = 28) {
+  const R = S.ribbon ||= [], c = S.cam, dh = Math.hypot(c[0] - x, c[2] - z) || 1;
+  const tx = (c[0] - x) / dh, tz = (c[2] - z) / dh, ct = Math.cos(tilt), st = Math.sin(tilt);
+  const at = (rr, i) => {
+    const t = i / N * 6.283, u = Math.cos(t) * rr, v = Math.sin(t) * rr;   // u across the view, v toward the camera
+    const px = x + tz * u + tx * v * ct, pz = z - tx * u + tz * v * ct;
+    return [px, y == null ? Math.max(height(px, pz), WATER) + .12 : y + v * st, pz, ...col, a];
+  };
+  for (let i = 0; i < N; i++) {
+    const o0 = at(r + w / 2, i), o1 = at(r + w / 2, i + 1), i0 = at(r - w / 2, i), i1 = at(r - w / 2, i + 1);
+    R.push(...o0, ...o1, ...i1, ...o0, ...i1, ...i0);
+  }
+}
+
 export function aimSystem(G) {
   const b = G.b;
   G.aim = { focus: 0, target: null, impact: null, path: [], perches: [], perch: null, mode: 'ink' };
@@ -110,13 +126,7 @@ export function aimSystem(G) {
       const A = G.aim, cam = S.cam, f = A.focus;
       // rings on the nearest perches ahead, green on the one you are lined up with; perched, green
       // rings on the perches a hop away
-      const ring = (q, on, col, k = 1) => {
-        const d = Math.hypot(q.x - cam[0], q.y - cam[1], q.z - cam[2]), N = on ? 12 : 8, r = (on ? .55 : .4) * k;
-        for (let i = 0; i < N; i++) {
-          const a = i / N * 6.283 + G.t * (on ? 1.6 : .4);
-          S.motes.push(q.x + Math.cos(a) * r, q.y + .12, q.z + Math.sin(a) * r, ...col, d * (on ? .0036 : .0022) * k);
-        }
-      };
+      const ring = (q, on, col, k = 1) => flatRing(S, q.x, q.y + .1, q.z, (on ? .55 : .4) * k * (1 + Math.sin(G.t * 4) * (on ? .06 : 0)), (on ? .14 : .1) * k, col, on ? .95 : .55, .7);
       for (const q of A.perches || []) ring(q, q === A.perch && A.mode === 'perch', q === A.perch && A.mode === 'perch' ? COL.perch : COL.near);
       for (const h of A.hops || []) ring(h.p, true, COL.perch, 1.6);   // bigger: they are to be tapped
       if (A.path.length < 2) return;
@@ -139,11 +149,8 @@ export function aimSystem(G) {
       let c = A.impact;
       if (A.mode === 'prey') c = [A.target.x, A.target.y, A.target.z];
       if (A.mode === 'perch' || !c) return;
-      const d = Math.hypot(c[0] - cam[0], c[1] - cam[1], c[2] - cam[2]), r = (A.mode === 'prey' ? .9 : 2.2) * (1 - f * .55), N = 16;
-      for (let i = 0; i < N; i++) {
-        const a = i / N * 6.283 + G.t * (A.mode === 'prey' ? 1.5 : .3), x = c[0] + Math.cos(a) * r, z = c[2] + Math.sin(a) * r;
-        S.motes.push(x, Math.max(height(x, z), WATER) + .15, z, ...col, d * (.003 + f * .003) * (A.mode === 'prey' ? 1.3 : .8));
-      }
+      const prey = A.mode === 'prey', r = (prey ? 1.1 : 2.2) * (1 - f * .55) * (prey ? 1 + Math.sin(G.t * 6) * .08 : 1);
+      flatRing(S, c[0], prey ? c[1] + .12 : null, c[2], r, prey ? .22 : .12 + f * .1, col, prey ? .9 : .5 + f * .3);
     },
   };
 }

@@ -4,7 +4,9 @@
 //   one up, the other down       bank toward the lower wing
 //   thumbs slide together        tuck the wings: a fast stoop (then slide both left/right to steer it)
 //   thumbs slide apart           spread and flare: slow, hover, land
-//   tap both at once             a full flap; one thumb alone flaps one wing (a weak flap and a nudge)
+//   both slide left / right      yaw: the tail swings the bird round without much bank
+//   tap both at once             a full flap; one thumb alone flaps one wing (a weak flap and a nudge);
+//                                the closer together the two taps, the less the flap tires you (sync)
 // A single held thumb works as a small stick on its own (up/down pitch, left/right bank).
 // Keyboard for desktop: W/S or Up/Down pitch, A/D or Left/Right bank, Shift or Q tuck,
 // E flare, Space flap.
@@ -59,13 +61,14 @@ export function createInput(el) {
       P.dx = clampU((P.x - P.x0) / r); P.dy = clampU((P.y - P.y0) / r);
     }
     const L = I.L, R = I.R, l = L.id !== null, rr = R.id !== null;
-    let pitch = 0, roll = 0, spread = 0, keyRoll = 0;
+    let pitch = 0, roll = 0, spread = 0, keyRoll = 0, yaw = 0;
     const k = I.invert ? -1 : 1;
     if (l && rr) {
       pitch = -(L.dy + R.dy) / 2 * k;
       spread = (R.dx - L.dx) / 2;
       // bank: one wing up, one down; in a tuck, both thumbs shifted to one side steer too
       roll = clampU((R.dy - L.dy) / 2 + (L.dx + R.dx) / 2 * Math.max(0, -spread) * 1.6);
+      yaw = clampU((L.dx + R.dx) / 2);
     } else if (l || rr) {
       const P = l ? L : R; pitch = -P.dy * k; roll = P.dx;
     }
@@ -78,14 +81,14 @@ export function createInput(el) {
     I.taps.sort((a, b) => a.t - b.t);
     while (I.taps.length) {
       const a = I.taps[0];
-      if (a.side === 0) { I.taps.shift(); flap = { q: 1, side: 0 }; break; }
+      if (a.side === 0) { I.taps.shift(); flap = { q: 1, side: 0, sync: .8 }; break; }
       const b = I.taps.find(t => t !== a && t.side !== a.side && Math.abs(t.t - a.t) < PAIR);
-      if (b) { I.taps.splice(I.taps.indexOf(b), 1); I.taps.shift(); flap = { q: 1, side: 0 }; break; }
+      if (b) { I.taps.splice(I.taps.indexOf(b), 1); I.taps.shift(); flap = { q: 1, side: 0, sync: 1 - Math.abs(b.t - a.t) / PAIR }; break; }
       if (now - a.t > PAIR + TAP_TIME) { I.taps.shift(); flap = { q: .55, side: a.side }; break; }
       break;
     }
     const dragX = I.drag / size(); I.drag = 0;
-    return { pitch: clampU(pitch), roll: clampU(roll), keyRoll, dragX, spread: clampU(spread), flap, held: l || rr || K.size > 0, both: l && rr };
+    return { pitch: clampU(pitch), roll: clampU(roll), yaw, keyRoll, dragX, spread: clampU(spread), flap, held: l || rr || K.size > 0, both: l && rr };
   };
   return I;
 }
