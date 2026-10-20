@@ -2,29 +2,42 @@
 // small ring where that path meets the ground. The line takes the colour of what it is lined up
 // with: red for a mouse you are diving at, green for a perch you would land on, faint ink for
 // anything else. Tucking the wings to dive focuses it: the line reaches further and darkens.
-// Perches ahead are marked with small green rings so you can aim for them; mice are marked red
-// only while you dive at one. Aiming is forgiving: a dive leans toward its mouse, and a slow
+// The three nearest limbs ahead get small pale rings, green on the one you are lined up with;
+// mice are marked red only while you dive at one. Perched or standing, the perches a hop away
+// get green rings: tap one to hop across. Aiming is forgiving: a dive leans toward its mouse, and a slow
 // approach lined up with a perch is drawn onto it.
 import { height, WATER, treesNear, perchesOf, solidsNear } from '../world.js';
-import { FLY, fwd } from '../flight.js';
+import { FLY, fwd, hopPerches, hopTo } from '../flight.js';
 import { clamp, smooth } from '../util.js';
 
 const T = 2.6, STEPS = 16, g = 9.8;
-const COL = { prey: [.8, .24, .16], perch: [.28, .64, .34], soft: [.36, .52, .3], fast: [.72, .52, .18], ink: [.2, .18, .16] };
+const COL = { near: [.9, .9, .84], prey: [.8, .24, .16], perch: [.28, .64, .34], soft: [.36, .52, .3], fast: [.72, .52, .18], ink: [.2, .18, .16] };
 
 export function aimSystem(G) {
   const b = G.b;
   G.aim = { focus: 0, target: null, impact: null, path: [], perches: [], perch: null, mode: 'ink' };
   G.hud.tip('aim', () => b.state === 'fly' && G.t > 20, 'The line shows where you are headed: red on a mouse you dive at, green on a perch. Tuck your wings to dive and it focuses.');
-  // perches in front of the hawk, nearest first (limbs before treetops)
+  // tap a hop ring (on screen, within a thumb's width) to hop to it
+  G.input.onTap = (x, y) => {
+    const hs = G.aim.hops; if (!hs?.length || !G.R.vp || G.menu?.open) return false;
+    const m = G.R.vp, W = innerWidth, H = innerHeight; let best = null, bd = Math.min(W, H) * .09;
+    for (const h of hs) {
+      const p = h.p, X = m[0] * p.x + m[4] * (p.y + .12) + m[8] * p.z + m[12], Y = m[1] * p.x + m[5] * (p.y + .12) + m[9] * p.z + m[13], w = m[3] * p.x + m[7] * (p.y + .12) + m[11] * p.z + m[15];
+      if (w < .3) continue;
+      const d = Math.hypot((X / w * .5 + .5) * W - x, (.5 - Y / w * .5) * H - y);
+      if (d < bd) { bd = d; best = h; }
+    }
+    return !!best && hopTo(b, best, G.E);
+  };
+  // perches in front of the hawk, nearest first (limbs and stone tops, never treetops)
   function perchesAhead() {
     const out = [], f = fwd(b);
     const add = p => {
       const dx = p.x - b.p[0], dy = p.y - b.p[1], dz = p.z - b.p[2], d = Math.hypot(dx, dy, dz);
       if (d < 2 || d > 45 || (dx * f[0] + dz * f[2]) / Math.hypot(dx, dz) < .55 || dy > 6) return;
-      out.push({ p, d: d + (p.top ? 4 : 0) });
+      out.push({ p, d });
     };
-    for (const t of treesNear(b.p[0], b.p[2], 46)) for (const p of perchesOf(t)) add(p);
+    for (const t of treesNear(b.p[0], b.p[2], 46)) for (const p of perchesOf(t)) if (!p.top) add(p);
     for (const o of solidsNear(b.p[0], b.p[2], 46)) add(o.perch);
     return out.sort((a, q) => a.d - q.d).slice(0, 8).map(o => o.p);
   }
@@ -34,6 +47,7 @@ export function aimSystem(G) {
       const A = G.aim;
       A.focus += ((b.state === 'fly' ? b.tuck : 0) - A.focus) * Math.min(1, dt * 5);
       A.path = []; A.impact = null; A.target = null; A.perch = null; A.mode = 'ink';
+      A.hops = b.state !== 'fly' && b.settle <= 0 && !(b.eating > 0) && !G.menu?.open ? hopPerches(b) : [];
       if (b.state !== 'fly' || b.s < 3) { A.perches = []; return; }
       // fly the path ahead with today's bank and pitch held
       const yawRate = clamp(g * Math.tan(b.roll) / Math.max(b.s * (1 - .65 * b.tuck), 5), -1.9, 1.9);
@@ -48,10 +62,10 @@ export function aimSystem(G) {
         if (p[1] <= gy + .3) { A.impact = [p[0], gy, p[2]]; A.path.push([p[0], gy + .3, p[2]]); break; }
         A.path.push(p);
       }
-      // perches: lined up if the path passes close to one
-      A.perches = b.s < 22 ? perchesAhead() : [];
+      // perches: lined up if the path passes close to one (of the nearest few, the three ringed)
+      const ahead = b.s < 22 ? perchesAhead() : [];
       let bestP = null, bpd = 1e9;
-      for (const q of A.perches) for (const s of A.path) {
+      for (const q of ahead) for (const s of A.path) {
         const d = Math.hypot(s[0] - q.x, s[1] - q.y - .2, s[2] - q.z);
         if (d < 4.5 && d < bpd) { bpd = d; bestP = q; }
       }
@@ -78,6 +92,8 @@ export function aimSystem(G) {
           b.gamma += (Math.max(-1.3, dy) - b.gamma) * k;
         }
       }
+      A.perches = ahead.slice(0, 3);
+      if (bestP && !A.perches.includes(bestP)) A.perches[2] = bestP;
       if (A.target && A.focus > .25) A.mode = 'prey';
       else if (bestP) {
         A.mode = 'perch'; A.perch = bestP;
@@ -92,14 +108,17 @@ export function aimSystem(G) {
     },
     scene(S) {
       const A = G.aim, cam = S.cam, f = A.focus;
-      // green rings on the perches ahead; the one you are lined up with is brighter
-      for (const q of A.perches || []) {
-        const on = q === A.perch, d = Math.hypot(q.x - cam[0], q.y - cam[1], q.z - cam[2]), N = on ? 12 : 8, r = on ? .55 : .4;
+      // rings on the nearest perches ahead, green on the one you are lined up with; perched, green
+      // rings on the perches a hop away
+      const ring = (q, on, col, k = 1) => {
+        const d = Math.hypot(q.x - cam[0], q.y - cam[1], q.z - cam[2]), N = on ? 12 : 8, r = (on ? .55 : .4) * k;
         for (let i = 0; i < N; i++) {
           const a = i / N * 6.283 + G.t * (on ? 1.6 : .4);
-          S.motes.push(q.x + Math.cos(a) * r, q.y + .12, q.z + Math.sin(a) * r, ...COL.perch, d * (on ? .0036 : .0022));
+          S.motes.push(q.x + Math.cos(a) * r, q.y + .12, q.z + Math.sin(a) * r, ...col, d * (on ? .0036 : .0022) * k);
         }
-      }
+      };
+      for (const q of A.perches || []) ring(q, q === A.perch && A.mode === 'perch', q === A.perch && A.mode === 'perch' ? COL.perch : COL.near);
+      for (const h of A.hops || []) ring(h.p, true, COL.perch, 1.6);   // bigger: they are to be tapped
       if (A.path.length < 2) return;
       // the line: a thin ribbon facing the camera, fading in near the hawk and out at the far end
       const col = COL[A.mode], P = A.path, R = S.ribbon ||= [];

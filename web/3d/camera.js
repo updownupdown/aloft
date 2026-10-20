@@ -26,8 +26,9 @@ export function createCamera(G) {
       C.yaw += angleTo(C.yaw, b.yaw + Math.sin(G.t * .15) * .5) * Math.min(1, dt * .8);
       C.pitch = 0;
       const d = [Math.sin(C.yaw), 0, -Math.cos(C.yaw)];
-      want = [p[0] - d[0] * 3, p[1] + 1.1, p[2] - d[2] * 3];
-      look = [p[0] + d[0] * 1.5, p[1] + .4, p[2] + d[2] * 1.5];
+      // a little above and behind, the hawk just under the middle of the view (clear of the song box)
+      want = [p[0] - d[0] * 3, p[1] + .9, p[2] - d[2] * 3];
+      look = [p[0] + d[0] * 1.5, p[1] + .05, p[2] + d[2] * 1.5];
     }
     if (!C.cam) C.cam = want.slice();
     const k = b.state === 'fly' && !C.still ? 1 : Math.min(1, dt * 2);
@@ -45,7 +46,10 @@ export function createCamera(G) {
     const r = [r0[0] * cr - u0[0] * sr, r0[1] * cr - u0[1] * sr, r0[2] * cr - u0[2] * sr];
     const u = [u0[0] * cr + r0[0] * sr, u0[1] * cr + r0[1] * sr, u0[2] * cr + r0[2] * sr];
     let hp = p;
-    if (b.settle > 0 && b.from) { const t = smooth(0, 1, 1 - b.settle / .45); hp = mix3(b.from, p, t); }
+    if (b.settle > 0 && b.from) {
+      const t = smooth(0, 1, 1 - b.settle / (b.settleT || .45)); hp = mix3(b.from, p, t);
+      if (b.hop > 0) hp = [hp[0], hp[1] + Math.sin(t * Math.PI) * b.hop, hp[2]];   // a hop arcs over
+    }
     if (b.state === 'fly' && b.settle <= 0) b.from = null;
 
     const aspect = innerWidth / innerHeight;
@@ -70,7 +74,7 @@ export function createCamera(G) {
       return [glide + (fa - glide) * amp, hand * amp];
     };
     const [fl, hl] = beat(b.flapL, b.ampL ?? 1), [fr, hr] = beat(b.flapR, b.ampR ?? 1);
-    const settled = b.state !== 'fly', pm = G.perchMark, p = b.p;
+    const settled = b.state !== 'fly' && !(b.hop > 0 && b.settle > .08), pm = G.perchMark, p = b.p;
     if (b.eating > 0) {   // mantling over the catch: wings half open, hunched, tail spread
       const m = Math.min(1, b.eating), bob = Math.sin(G.t * 9) * .05;
       return { flapL: .25 + bob, flapR: .25 + bob, handL: -.2, handR: -.2, fold: .35 * m + (1 - m), flare: .6 * m, legs: 1, tail: .6 * m, tailPitch: .2, t: G.t, tailRed: G.tailRed ?? 1 };

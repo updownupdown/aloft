@@ -75,7 +75,7 @@ export function start(canvas, ui) {
     Object.assign(b, { p: S0.p, yaw: S0.yaw, state: 'ground', stamina: S0.stamina ?? 1 });
     b.p[1] = Math.max(height(b.p[0], b.p[2]), WATER) + .35;
     G.clock = S0.clock || 0;
-    if (S0.perch) { const t = treesNear(b.p[0], b.p[2], 3)[0]; if (t) { b.state = 'perch'; b.perch = perchesOf(t).sort((a, q) => Math.hypot(a.x - b.p[0], a.y - b.p[1], a.z - b.p[2]) - Math.hypot(q.x - b.p[0], q.y - b.p[1], q.z - b.p[2]))[0]; b.p = [b.perch.x, b.perch.y + .14, b.perch.z]; } }
+    if (S0.perch) { const t = treesNear(b.p[0], b.p[2], 3)[0]; if (t) { b.state = 'perch'; b.perch = perchesOf(t).filter(p => !p.top).sort((a, q) => Math.hypot(a.x - b.p[0], a.y - b.p[1], a.z - b.p[2]) - Math.hypot(q.x - b.p[0], q.y - b.p[1], q.z - b.p[2]))[0]; b.p = [b.perch.x, b.perch.y + .14, b.perch.z]; } }
     for (const s of systems) if (s.load && S0.sys?.[s.id]) s.load(S0.sys[s.id]);
   }
   function persist() {
@@ -119,6 +119,7 @@ export function start(canvas, ui) {
     leaves: (p, s) => { audio.rustle(.5 + Math.min(.5, s / 20)); for (let i = 0; i < 8; i++) G.part(p, [(Math.random() - .5) * 4, Math.random() * 2, (Math.random() - .5) * 4], 1.2, [.4, .55, .25], .07); G.emit('leaves'); },
     splash: (p, s) => { audio.splash(s > 15); for (let i = 0; i < 10; i++) G.part([p[0], WATER, p[2]], [(Math.random() - .5) * 3, 2 + Math.random() * 3, (Math.random() - .5) * 3], .9, [.85, .92, .95], .06); G.emit('splash'); },
   };
+  G.E = E;
 
   // ---- HUD and menu rows for the core -----------------------------------------------------
   const setWings = H.meter('wings', { label: 'wings', colour: 'linear-gradient(90deg,#8a6240,#b8862f)' });
@@ -127,6 +128,7 @@ export function start(canvas, ui) {
   H.tip('climb', () => b.state === 'fly', 'Push both thumbs up to climb, both down to dive.');
   H.tip('tuck', () => b.state === 'fly' && b.p[1] - height(b.p[0], b.p[2]) > 30, 'Slide your thumbs together to tuck your wings and stoop.');
   H.tip('flare', () => !!G.perchMark, 'A perch ahead. Slide your thumbs apart to flare, and glide onto it slowly.');
+  H.tip('hop', () => b.state === 'perch' && G.aim?.hops?.length > 0, 'Tap a green ring to hop to that branch. Drag sideways to turn round.');
   const play = 'play';
   G.menu.tab(play, 'Play');
   G.menu.toggle(play, { label: 'Sound', get: () => G.settings.sound, set: v => { G.settings.sound = v; audio.setOn(v); store.set('sound', v); } });

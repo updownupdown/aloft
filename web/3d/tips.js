@@ -4,6 +4,7 @@
 // here, keyed by id (a tip not listed shows its full text with a plain dot).
 const SHORT = {
   flap: ['up', 'Tap both thumbs to flap'],
+  hop: ['dot', 'Tap a green ring to hop there'],
   bank: ['bank', 'One thumb up, one down: turn'],
   climb: ['updown', 'Both up to climb, both down to dive'],
   tuck: ['tuck', 'Thumbs together: stoop'],
