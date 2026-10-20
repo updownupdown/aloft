@@ -2,7 +2,7 @@
 // diving speeds you up), drag depends on the wing shape (tucked, gliding, flared), banking
 // turns, and below stall speed the nose drops. Rising air (thermals, ridges) lifts the whole
 // air mass, so it never changes airspeed. With no input the hawk trims to its best glide.
-import { height, WATER, treesNear, TREE, perchesOf, airLift, thermalsNear, thermalCentre, ringsNear } from './world.js';
+import { height, WATER, treesNear, TREE, perchesOf, airLift, thermalsNear, thermalCentre } from './world.js';
 
 const g = 9.8;
 export const FLY = {
@@ -16,7 +16,7 @@ export function createHawk(x, z) {
   return {
     p: [x, Math.max(y, WATER) + 0.35, z], yaw: 0, gamma: 0, s: 0, roll: 0, vy: 0, lift: 0,
     state: 'ground', stamina: 1, tuck: 0, flare: 0, flapL: 9, flapR: 9, perch: null, settle: 0,
-    tree: null, canopy: 0, inThermal: null, ride: false, rings: 0, lastHit: 0, t: 0,
+    tree: null, canopy: 0, inThermal: null, ride: false, lastHit: 0, t: 0, ampL: 1, ampR: 1, prev: null,
   };
 }
 
@@ -36,8 +36,10 @@ export function step(b, c, dt, E) {
     const stall = stallness(b);
     b.s = Math.min(FLY.maxS, b.s + FLY.flapS * q * (.35 + .65 * (1 - b.flare)));
     b.vy += (FLY.flapUp + FLY.flapHover * b.flare + 1.6 * stall) * q;
-    if (c.flap.side) b.yaw += -c.flap.side * .14;      // one wing alone pushes you round
-    if (c.flap.side <= 0) b.flapL = 0; if (c.flap.side >= 0) b.flapR = 0;
+    if (c.flap.side) b.yaw += -c.flap.side * .12;      // one wing leading pushes you round
+    // a bird never beats one wing alone: the other follows, more lightly
+    b.flapL = b.flapR = 0;
+    b.ampL = c.flap.side > 0 ? .35 : 1; b.ampR = c.flap.side < 0 ? .35 : 1;
     E.flap(q, c.flap.side);
     if (weak < 1) E.tired();
   }
@@ -82,13 +84,12 @@ export function step(b, c, dt, E) {
   avoid(b, dt);
 
   const f = fwd(b);
-  const prev = [b.p[0], b.p[1], b.p[2]];
+  b.prev = [b.p[0], b.p[1], b.p[2]];
   b.p[0] += f[0] * b.s * dt; b.p[2] += f[2] * b.s * dt;
   b.p[1] += (f[1] * b.s + b.vy + b.lift) * dt;
   b.p[1] = Math.min(b.p[1], 700);
-  b.stamina = Math.min(1, b.stamina + dt * (b.lift > .5 ? .06 : .035));
+  b.stamina = Math.min(1, b.stamina + dt * (b.lift > .5 ? .06 : .035) * (b.recover ?? 1));
 
-  rings(b, prev, E);
   trees(b, dt, E);
   ground(b, E);
 }
@@ -98,7 +99,7 @@ const stallness = (b, sStall = FLY.stall) => Math.max(0, Math.min(1, (sStall - b
 function still(b, c, dt, E) {
   b.s = 0; b.vy = 0; b.gamma = 0; b.roll *= .8; b.lift = 0;
   b.settle = Math.max(0, b.settle - dt);
-  b.stamina = Math.min(1, b.stamina + dt * .2);
+  b.stamina = Math.min(1, b.stamina + dt * .2 * (b.recover ?? 1));
   // turn on the spot to choose a way out; on the ground a push forward walks
   b.yaw += c.roll * dt * 1.6;
   if (b.state === 'ground' && Math.abs(c.pitch) > .3) {
@@ -110,7 +111,7 @@ function still(b, c, dt, E) {
     // take off: a strong stroke forward and up
     const wet = b.state === 'swim';
     b.state = 'fly'; b.perch = null; b.tree = null;
-    b.s = 6.5; b.gamma = .3; b.vy = wet ? 3 : 4; b.flapL = b.flapR = 0;
+    b.s = 6.5; b.gamma = .3; b.vy = wet ? 3 : 4; b.flapL = b.flapR = 0; b.ampL = b.ampR = 1;
     b.stamina = Math.max(0, b.stamina - FLY.flapCost);
     E.flap(1, 0); E.takeoff();
   }
@@ -196,15 +197,4 @@ function ground(b, E) {
   if (b.s < FLY.landS && down < 6) { b.state = 'ground'; b.settle = .4; E.land('ground'); return; }
   if (b.t - b.lastHit > .4) { b.lastHit = b.t; b.stamina = Math.max(0, b.stamina - .1); E.bump(b.p, 'ground'); }
   b.gamma = Math.max(b.gamma, .25); b.s *= .6; b.vy = Math.max(b.vy, 1.5);
-}
-
-function rings(b, prev, E) {
-  for (const r of ringsNear(b.p[0], b.p[2], 30)) {
-    if (E.collected.has(r.id)) continue;
-    const n = [-Math.sin(r.yaw), 0, Math.cos(r.yaw)];
-    const d0 = (prev[0] - r.x) * n[0] + (prev[2] - r.z) * n[2], d1 = (b.p[0] - r.x) * n[0] + (b.p[2] - r.z) * n[2];
-    if (Math.sign(d0) === Math.sign(d1)) continue;
-    const rad = Math.hypot(b.p[0] - r.x - n[0] * d1, b.p[1] - r.y, b.p[2] - r.z - n[2] * d1);
-    if (rad < r.r) { b.s = Math.min(FLY.maxS, b.s + 4); b.rings++; E.ring(r); }
-  }
 }
