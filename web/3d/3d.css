@@ -1,14 +1,14 @@
 /* Aloft 3D UI in frosted glass (James's pick, 2026-10-20): translucent white panels that blur the
-   world behind them, pill shapes, slate text in Manrope, one dark slate pill for the main action,
+   world behind them, pill shapes, slate text in Outfit, one dark slate pill for the main action,
    and the world's colours (world.js PAL) as small accents. The UI keeps out of the game's way.
    The menu's frame is letter.js, the meters hud.js, the dial dial.js, tips tips.js. */
-@font-face { font-family: 'Manrope'; font-style: normal; font-weight: 200 800; font-display: swap; src: url(../fonts/manrope.woff2) format('woff2'); }
+@font-face { font-family: 'Outfit'; font-style: normal; font-weight: 100 900; font-display: swap; src: url(../fonts/outfit.woff2) format('woff2'); }
 :root {
   --ink: #1d2b36; --ink2: #43535f; --rule: rgba(29, 43, 54, .1); --paper: #eef2f4; --card: #f4f7f8;
   --glass: rgba(255, 255, 255, .44); --glass2: rgba(255, 255, 255, .62); --edge: rgba(255, 255, 255, .66);
   --blur: blur(14px) saturate(1.15); --shadow: 0 4px 16px rgba(20, 40, 50, .14);
   --indigo: #4f6f9e; --water: #3f78a8; --berry: #c0533f; --ochre: #b0791f; --leaf: #7f9a4e; --wood: #6f8f4e; --stone: #8f8577;
-  --title: 'Manrope', system-ui, sans-serif; --text: 'Manrope', system-ui, sans-serif;
+  --title: 'Outfit', system-ui, sans-serif; --text: 'Outfit', system-ui, sans-serif;
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; overflow: hidden; background: var(--paper); overscroll-behavior: none; }
@@ -19,7 +19,7 @@ button { font-family: inherit; color: inherit; }
 .hidden { display: none !important; }
 small { display: block; font-size: 12.5px; color: var(--ink2); }
 /* one pane of glass */
-.glass, .hud3, .dial, #ui3 .takeoff3, .toast3, .hint3, .tipmore3, .photo3 {
+.glass, #ui3 .takeoff3, .hint3, .tipmore3, .photo3 {
   background: var(--glass); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); border: 1px solid var(--edge); box-shadow: var(--shadow); }
 
 /* top left: one pill holding the menu button, the meters (short bars stacked) and the height over
@@ -30,64 +30,64 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .menu3 i { display: block; width: 16px; height: 1.8px; border-radius: 1px; background: var(--ink); }
 .menu3 i:nth-child(2) { display: none; }
 .hud3 { position: absolute; left: calc(10px + env(safe-area-inset-left)); top: calc(10px + env(safe-area-inset-top)); display: flex; align-items: center; gap: 14px;
-  min-height: 52px; padding: 7px 16px 7px 58px; border-radius: 26px; font-size: 11.5px; transition: opacity 1.6s ease; }
+  min-height: 52px; padding: 7px 16px 7px 58px; font-size: 11.5px; color: #fff; transition: opacity 1.6s ease; }
+/* no panes behind the HUD: white ink with a soft dark halo reads on sky, land and water alike */
+.hud3, .dial, .compass3, .toast3 { --halo: drop-shadow(0 1px 1.5px rgba(10, 20, 28, .55)) drop-shadow(0 0 6px rgba(10, 20, 28, .25)); }
 .hud3.quiet .meters { opacity: 0; transition: opacity 3s; }
 .meters { display: flex; flex-direction: column; gap: 4px; transition: opacity 1.2s; }
 .m3 { display: flex; align-items: center; gap: 6px; height: 12px; }
-.m3 svg { width: 12px; height: 12px; flex: none; fill: none; stroke: var(--m); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
-.m3 .bar { position: relative; width: 74px; height: 6px; border-radius: 3px; overflow: hidden; background: rgba(29, 43, 54, .14); }
+.m3 svg { width: 12px; height: 12px; flex: none; fill: none; stroke: #fff; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; filter: var(--halo); }
+.m3 .bar { position: relative; width: 74px; height: 6px; border-radius: 3px; overflow: hidden; background: rgba(20, 32, 40, .32); box-shadow: 0 0 0 1px rgba(255, 255, 255, .55), 0 1px 4px rgba(10, 20, 28, .3); }
 .m3 .bar i { position: absolute; inset: 0; border-radius: 3px; background: var(--m); transform-origin: left; transition: transform .4s; }
 .m3 .nm { display: none; }
-.m3.low svg { stroke: #d2462e; }
-.m3.low .bar i { background: #d2462e; }
+.m3.low svg { stroke: #ff8a6e; }
+.m3.low .bar i { background: #ff6a4a; }
 .m3.low { animation: flash3 1.1s ease-in-out infinite; }
 .m3.urgent { animation-duration: .55s; }
 @keyframes flash3 { 50% { opacity: .35; } }
 .alt { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; min-width: 52px; font-variant-numeric: tabular-nums; }
-.alt b { font-size: 15px; font-weight: 700; line-height: 1.1; white-space: nowrap; }
-.alt b small { display: inline; margin-left: 2px; font-size: 10.5px; font-weight: 600; color: var(--ink2); }
-.alt b.k { font-size: 12.5px; color: var(--ink2); }
+.alt b { font-size: 16px; font-weight: 600; line-height: 1.1; white-space: nowrap; filter: var(--halo); }
+.alt b small { display: inline; margin-left: 2px; font-size: 11px; font-weight: 500; color: inherit; opacity: .85; }
+.alt b.k { font-size: 13px; }
 .alt b.k:empty { display: none; }
-.alt b.m:not(:has(small)) { font-size: 12.5px; font-weight: 600; color: var(--ink2); }
-.alt b.rise, .alt b.ride { color: #2f7a52; }
+.alt b.m:not(:has(small)) { font-size: 13px; font-weight: 500; }
+.alt b.rise, .alt b.ride { color: #c9f5b0; }
 .alt b.rise::before, .alt b.ride::before { content: '↑'; margin-right: 3px; font-size: 12px; }
 .alt b.ride::before { content: '⟳'; }
 
-/* top middle: the compass, a strip of the sky ahead on a thin pane of glass */
-.compass3 { position: absolute; left: 50%; top: calc(12px + env(safe-area-inset-top)); transform: translateX(-50%); width: min(320px, 38vw); height: 32px; border-radius: 16px; overflow: hidden;
-  background: var(--glass); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); border: 1px solid var(--edge);
-  -webkit-mask: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent); mask: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent); }
-.compass3 .strip { position: absolute; inset: 0; }
+/* top middle: the compass, a strip of the sky ahead, its edges fading out */
+.compass3 { position: absolute; left: 50%; top: calc(12px + env(safe-area-inset-top)); transform: translateX(-50%); width: min(320px, 38vw); height: 34px;
+  -webkit-mask: linear-gradient(90deg, transparent, #000 16%, #000 84%, transparent); mask: linear-gradient(90deg, transparent, #000 16%, #000 84%, transparent); }
+.compass3 .strip { position: absolute; inset: 0; filter: var(--halo); }
 .compass3 .strip > * { position: absolute; left: 50%; top: 0; will-change: transform; }
-.compass3 .tick { width: 1.5px; height: 6px; margin-left: -.75px; top: 13px; background: rgba(29, 43, 54, .35); }
-.compass3 .pt { width: 24px; margin-left: -12px; top: 9px; text-align: center; font-size: 10px; font-weight: 700; color: var(--ink2); }
-.compass3 .pt.main { font-size: 13.5px; top: 7px; color: var(--ink); }
-.compass3 .mk { width: 22px; height: 22px; margin-left: -11px; top: 4px; border-radius: 50%; background: var(--ink); display: flex; align-items: center; justify-content: center; }
+.compass3 .tick { width: 1.5px; height: 6px; margin-left: -.75px; top: 14px; background: rgba(255, 255, 255, .8); }
+.compass3 .pt { width: 24px; margin-left: -12px; top: 10px; text-align: center; font-size: 10.5px; font-weight: 600; color: rgba(255, 255, 255, .85); }
+.compass3 .pt.main { font-size: 15px; top: 7px; color: #fff; }
+.compass3 .mk { width: 22px; height: 22px; margin-left: -11px; top: 5px; border-radius: 50%; background: var(--ink); display: flex; align-items: center; justify-content: center; }
 .compass3 .mk svg { width: 14px; height: 14px; fill: none; stroke: #fff; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .compass3 .mk.nest { background: #8a5a32; }
 .compass3 .mk.place { background: #b0791f; }
 .compass3 .mk.south, .compass3 .mk.home { background: var(--water); }
-.compass3 .mid { position: absolute; left: 50%; top: 0; width: 2px; height: 5px; margin-left: -1px; border-radius: 1px; background: var(--berry); }
+.compass3 .mid { position: absolute; left: 50%; top: 0; width: 2px; height: 6px; margin-left: -1px; border-radius: 1px; background: #fff; box-shadow: 0 0 3px rgba(10, 20, 28, .5); }
 
 /* top right: the day dial, and the frame rate under it when asked */
-.corner3 { position: absolute; right: calc(10px + env(safe-area-inset-right)); top: calc(10px + env(safe-area-inset-top)); display: flex; flex-direction: row-reverse; align-items: flex-start; gap: 6px; }
-.dial { width: 128px; padding: 8px 10px 7px; border-radius: 18px; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.corner3 { position: absolute; right: calc(10px + env(safe-area-inset-right)); top: calc(10px + env(safe-area-inset-top)); }
+.dial { width: 128px; padding: 4px 6px; display: flex; flex-direction: column; align-items: center; gap: 2px; color: #fff; }
+.dial svg { filter: drop-shadow(0 1px 3px rgba(10, 20, 28, .35)); }
 .dial svg { width: 88px; height: 46px; display: block; overflow: visible; }
 .dial .nightw, .dial.night .dayw { display: none; }
 .dial.night .nightw { display: inline; }
-.dial .shade { fill: rgba(255, 255, 255, .55); }
-.dial .rim { fill: none; stroke: rgba(29, 43, 54, .28); stroke-width: 1.2; }
-.dial .base { stroke: rgba(29, 43, 54, .35); stroke-width: 1.4; stroke-linecap: round; }
+.dial .shade { fill: rgba(255, 255, 255, .5); }
+.dial .rim { fill: none; stroke: rgba(255, 255, 255, .85); stroke-width: 1.2; }
+.dial .base { stroke: rgba(255, 255, 255, .9); stroke-width: 1.4; stroke-linecap: round; }
 .dial .sun { fill: #f2bc4a; stroke: #fff; stroke-width: 1.5; }
 .dial .sun.moon { fill: #f4f7f8; stroke: rgba(29, 43, 54, .45); stroke-width: 1; }
-.dial .label { font-size: 11.5px; font-weight: 700; white-space: nowrap; margin-top: 2px; }
-.dial .season { font-size: 10.5px; font-weight: 600; color: var(--ink2); white-space: nowrap; display: flex; align-items: center; gap: 5px; }
+.dial .label { display: none; }
+.dial .season { margin-top: 3px; font-size: 13px; font-weight: 600; white-space: nowrap; display: flex; align-items: center; gap: 6px; filter: var(--halo); }
 .dial .season::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--sc, var(--leaf)); }
 .dial .season.summer { --sc: #8fae4c; } .dial .season.autumn { --sc: #c9782f; } .dial .season.winter { --sc: #9cb6cf; } .dial .season.spring { --sc: #e39bb4; }
-.dial .score { font-size: 11px; display: flex; align-items: center; gap: 5px; color: var(--ink2); }
-.dial .score::before { content: ''; width: 8px; height: 8px; border-radius: 50%; border: 2px solid #d9a33a; }
-#ui3 .fps3 { font: 700 15px var(--text); font-variant-numeric: tabular-nums; color: #fff; text-shadow: 0 1px 3px rgba(0, 0, 0, .55); padding: 0 6px;
-  background: none; border: 0; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+/* the frame rate, under Call (songs.css puts Call left of the dial) */
+#ui3 .fps3 { position: absolute; right: 140px; top: 62px; width: 54px; text-align: center; font: 600 15px var(--text); font-variant-numeric: tabular-nums; color: #fff; text-shadow: 0 1px 3px rgba(0, 0, 0, .55); }
 
 /* Take off, top centre under the compass (the button is main.js's) */
 #ui3 .takeoff3 { pointer-events: auto; position: absolute; left: 50%; top: calc(50px + env(safe-area-inset-top)); transform: translateX(-50%);
@@ -112,9 +112,9 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .pad3 i { position: absolute; left: 29px; top: 29px; width: 30px; height: 30px; border-radius: 50%; background: rgba(255, 255, 255, .7); box-shadow: 0 2px 8px rgba(20, 40, 50, .18); }
 .pad3.on { opacity: .9; transition: none; }
 
-/* a toast: one line on a glass pill below the top row */
-.toast3 { position: absolute; left: 50%; top: calc(104px + env(safe-area-inset-top)); transform: translateX(-50%); margin: 0; max-width: min(560px, 72vw);
-  padding: 9px 18px; border-radius: 20px; text-align: center; font-size: 14px; font-weight: 500; line-height: 1.4; opacity: 0; transition: opacity .6s; background: var(--glass2); }
+/* a toast: a few lines of white text, bottom left above the thumb pad, no pane behind it */
+.toast3 { position: absolute; left: calc(22px + env(safe-area-inset-left)); bottom: calc(150px + env(safe-area-inset-bottom)); margin: 0; max-width: min(380px, 44vw);
+  text-align: left; font-size: 15px; font-weight: 500; line-height: 1.4; color: #fff; filter: var(--halo); opacity: 0; transition: opacity .6s; }
 .toast3.show { opacity: 1; }
 /* a tip: an icon, a few words and an i, on a pill that swipes away */
 .hint3 { position: absolute; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom)); transform: translateX(-50%); display: flex; align-items: center; gap: 12px;
@@ -166,42 +166,51 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .veil3 { pointer-events: auto; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
   background: rgba(20, 34, 44, .12); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
 .glass3 { position: relative; left: auto; top: auto; transform: none; overflow: hidden;
-  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-rows: auto minmax(0, 1fr); grid-template-areas: "title tabs foot" "panes panes panes";
+  display: grid; grid-template-columns: 196px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); grid-template-areas: "side panes";
   width: min(1040px, calc(100vw - 28px)); height: min(520px, calc(100vh - 24px)); max-height: none; padding: 0; color: var(--ink); }
-.glass3 h1 { grid-area: title; align-self: center; display: flex; align-items: center; gap: 10px; padding: 0 18px 0 16px; }
+.glass3 .side3 { grid-area: side; display: flex; flex-direction: column; gap: 6px; min-height: 0; padding: 12px 10px 12px 12px; border-right: 1px solid var(--rule); }
+.glass3 .head3 { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 2px 0 8px 4px; }
+.glass3 h1 { display: flex; align-items: center; gap: 9px; font-size: 21px; }
 .logo3 { width: 30px; height: 30px; flex: none; border-radius: 7px; box-shadow: 0 1px 4px rgba(20, 40, 50, .2); }
-.glass3 .tabs3 { grid-area: tabs; display: flex; gap: 2px; align-self: stretch; align-items: stretch; overflow-x: auto; scrollbar-width: none; border-bottom: 1px solid var(--rule); }
+.glass3 .tabs3 { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 2px; overflow-y: auto; scrollbar-width: none; }
 .glass3 .tabs3::-webkit-scrollbar { display: none; }
-.glass3 .tabs3 button { flex: none; display: flex; align-items: center; gap: 7px; min-height: 54px; padding: 0 14px; border: 0; border-bottom: 2.5px solid transparent; background: none; cursor: pointer;
-  font-family: var(--text); font-size: 14px; font-weight: 600; color: var(--ink2); transition: color .2s, border-color .2s; }
-.glass3 .tabs3 svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
-.glass3 .tabs3 button.on { color: var(--ink); border-bottom-color: var(--ink); }
-.glass3 .foot3 { grid-area: foot; align-self: stretch; display: flex; align-items: center; gap: 6px; padding: 0 12px 0 10px; border-bottom: 1px solid var(--rule); }
-.glass3 .resume3 { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 18px 0 15px; border: 0; border-radius: 20px; cursor: pointer;
-  background: var(--ink); color: #fff; font-family: var(--text); font-weight: 700; font-size: 13.5px; }
+.glass3 .tabs3 button { flex: none; display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 12px; border: 0; border-radius: 14px; background: none; cursor: pointer;
+  font-family: var(--text); font-size: 15px; font-weight: 500; color: var(--ink2); text-align: left; transition: background .2s, color .2s; }
+.glass3 .tabs3 svg { flex: none; width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.glass3 .tabs3 button.on { color: var(--ink); font-weight: 600; background: rgba(255, 255, 255, .7); box-shadow: 0 1px 4px rgba(20, 40, 50, .1); }
+.glass3 .resume3 { flex: none; display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 46px; padding: 0 18px; border: 0; border-radius: 23px; cursor: pointer;
+  background: var(--ink); color: #fff; font-family: var(--text); font-weight: 600; font-size: 15px; }
 .glass3 .resume3::before { content: ''; width: 10px; height: 11px; background: #fff; clip-path: polygon(0 0, 100% 50%, 0 100%); }
-.glass3 .quit3 { width: 40px; height: 40px; border: 0; border-radius: 50%; background: rgba(29, 43, 54, .08); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; }
-.glass3 .quit3 svg { width: 19px; height: 19px; fill: none; stroke: var(--ink); stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
-.glass3 .panes3 { grid-area: panes; min-height: 0; overflow-y: auto; padding: 6px 22px 16px; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: rgba(29, 43, 54, .3) transparent; }
+.glass3 .quit3 { flex: none; width: 36px; height: 36px; border: 0; border-radius: 50%; background: rgba(29, 43, 54, .08); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; }
+.glass3 .quit3 svg { width: 18px; height: 18px; fill: none; stroke: var(--ink); stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.glass3 .panes3 { grid-area: panes; min-height: 0; overflow-y: auto; padding: 8px 22px 16px; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: rgba(29, 43, 54, .3) transparent; }
 .glass3 .panes3.flush3 { padding: 0; overflow: hidden; }
 .glass3 p { font-size: 14.5px; margin: 8px 0; }
 .glass3 small { font-size: 12.5px; color: var(--ink2); }
+/* a short screen (a phone on its side): the column keeps to icons and the Resume pill */
+@media (max-height: 460px) and (min-width: 621px) {
+  .glass3 { grid-template-columns: 168px minmax(0, 1fr); }
+  .glass3 .tabs3 button { min-height: 40px; font-size: 14px; }
+}
 /* pages inside a tab: small tabs on a pale track */
 .pagetabs3 { position: sticky; top: 0; z-index: 2; display: flex; gap: 4px; flex-wrap: wrap; margin: 4px 0 10px; padding: 4px; border-radius: 18px; width: fit-content; max-width: 100%;
   background: rgba(255, 255, 255, .55); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); }
 .pagetabs3 button { min-height: 32px; padding: 0 14px; border: 0; border-radius: 16px; background: none; cursor: pointer; font: inherit; font-size: 13px; font-weight: 600; color: var(--ink2); }
 .pagetabs3 button.on { background: #fff; color: var(--ink); box-shadow: 0 1px 4px rgba(20, 40, 50, .14); }
 @media (max-width: 620px) {
-  .glass3 { grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto minmax(0, 1fr); grid-template-areas: "title foot" "tabs tabs" "panes panes"; height: min(680px, calc(100vh - 24px)); }
-  .glass3 h1 { padding: 14px 18px 8px; }
-  .glass3 .foot3 { border: 0; }
-  .glass3 .tabs3 { padding: 0 8px; }
-  .glass3 .tabs3 button { min-height: 46px; padding: 0 10px; }
+  .glass3 { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); grid-template-areas: "side" "panes"; height: min(720px, calc(100vh - 24px)); }
+  .glass3 .side3 { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "head head" "tabs resume"; align-items: center; border-right: 0; border-bottom: 1px solid var(--rule); padding: 10px 12px; }
+  .glass3 .head3 { grid-area: head; }
+  .glass3 .tabs3 { grid-area: tabs; flex-direction: row; overflow-x: auto; }
+  .glass3 .tabs3 button { padding: 0 10px; min-height: 40px; }
+  .glass3 .tabs3 button span { display: none; }
+  .glass3 .tabs3 button.on span { display: inline; }
+  .glass3 .resume3 { grid-area: resume; min-height: 40px; }
   .glass3 .panes3 { padding: 6px 16px 14px; }
 }
 
 /* Settings: the switches in a narrow column on the left, the groups of buttons beside them */
-.settings3 { display: grid; grid-template-columns: minmax(220px, .8fr) minmax(0, 1.2fr) minmax(0, 1fr); gap: 4px 26px; align-items: start; }
+.settings3 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 4px 26px; align-items: start; }
 .settings3 h3 { margin: 10px 0 4px; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--ink2); }
 .settings3 .group3 + .group3 { margin-top: 10px; }
 .settings3 .sw { min-height: 46px; font-size: 14px; }
@@ -210,17 +219,20 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .settings3 .group3 .main3::before { content: ''; width: 18px; height: 14px; background: #fff;
   clip-path: polygon(0 22%, 28% 22%, 36% 0, 64% 0, 72% 22%, 100% 22%, 100% 100%, 0 100%); }
 .settings3 .group3 .main3 em { display: none; }
-@media (max-width: 860px) { .settings3 { grid-template-columns: minmax(200px, .9fr) minmax(0, 1.1fr); } .settings3 [data-col="2"] { grid-column: 2; } }
-@media (max-width: 620px) { .settings3 { grid-template-columns: 1fr; } .settings3 [data-col="2"] { grid-column: auto; } }
-/* Your bird: four cards, each bird flying through its poses (one canvas under all four) */
-.birdpick3 { position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 4px 0; }
-.birdpick3 canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
-.birdcard3 { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 6px 6px 8px; border: 2px solid transparent; border-radius: 16px; cursor: pointer;
-  background: rgba(255, 255, 255, .45); text-align: left; font: inherit; color: var(--ink); }
-.birdcard3 .pic { display: block; width: 100%; aspect-ratio: 16 / 10; border-radius: 11px; margin-bottom: 5px; background: linear-gradient(#cfe0ea, #e8ede6); }
-.birdcard3 b { font-size: 13.5px; padding: 0 4px; }
-.birdcard3 small { font-size: 11.5px; line-height: 1.3; padding: 0 4px; }
-.birdcard3.on { border-color: var(--ink); background: rgba(255, 255, 255, .75); }
+@media (max-width: 620px) { .settings3 { grid-template-columns: 1fr; } }
+/* Your bird: one card, the bird flying through its poses, arrows either side */
+.birdpick3 { display: flex; align-items: center; gap: 6px; margin: 4px 0; }
+.birdcard3 { position: relative; flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 6px 6px 8px; border-radius: 18px;
+  background: rgba(255, 255, 255, .55); text-align: center; }
+.birdcard3 canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
+.birdcard3 .pic { display: block; width: 100%; aspect-ratio: 16 / 9; border-radius: 13px; margin-bottom: 6px; background: linear-gradient(#cfe0ea, #e8ede6); }
+.birdcard3 b { font-size: 16px; font-weight: 600; }
+.birdcard3 small { font-size: 12.5px; }
+.dots3 { display: flex; gap: 5px; margin-top: 6px; }
+.dots3 i { width: 6px; height: 6px; border-radius: 50%; background: rgba(29, 43, 54, .2); }
+.dots3 i.on { background: var(--ink); }
+.arr3 { flex: none; width: 38px; height: 38px; border: 0; border-radius: 50%; background: rgba(255, 255, 255, .7); box-shadow: 0 1px 4px rgba(20, 40, 50, .12); cursor: pointer;
+  font: 500 24px/1 var(--text); color: var(--ink); padding: 0 0 3px; }
 
 /* How to play: the moves, each as the thumbs beside the hawk doing it */
 .how { margin: 6px 0 12px; padding-left: 18px; font-size: 14px; line-height: 1.55; }
@@ -330,10 +342,14 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .photo3 span { color: var(--ink2); font-size: 13px; font-weight: 500; }
 .photo3 button { font: inherit; font-size: 14px; font-weight: 600; min-height: 40px; padding: 0 16px; border-radius: 20px; border: 0; background: rgba(29, 43, 54, .08); cursor: pointer; }
 .photo3 button.main3 { color: #fff; background: var(--ink); }
-@media (max-width: 620px) { .toast3 { top: calc(228px + env(safe-area-inset-top)); max-width: 86vw; } }
+@media (max-width: 620px) { .toast3 { max-width: 72vw; } }
 /* Journal > Songs: a card for each songbird with its picture */
 .songs3 .pic { width: 72px; height: 54px; background: linear-gradient(#d3e3ec, #eef1ea); }
 .songs3 img { object-fit: contain; }
 .songs3 li.unknown img { filter: brightness(0) opacity(.18); }
 .songs3 li.heard img { opacity: .7; }
 .songs3 li.unknown b { color: var(--ink2); opacity: .7; }
+/* singing: the sound kinds take the left edge and the score the bottom middle (songs.css), so
+   notes move up clear of them and tips wait */
+#ui3.singing3 .toast3 { bottom: auto; top: calc(96px + env(safe-area-inset-top)); }
+#ui3.singing3 .hint3, #ui3.singing3 .tipmore3 { display: none; }

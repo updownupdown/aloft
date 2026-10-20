@@ -1,9 +1,10 @@
-// The pause menu: a sheet of frosted glass (letter.js) with the sections as tabs along the top,
-// each with its icon. Systems add their own tab with G.menu.tab(id, title) (it returns the pane
-// element), pages inside a tab with G.menu.page(tab, id, title) (sub-tabs), and rows with
-// G.menu.toggle() / G.menu.button(). In Settings, switches gather in a narrow column on the left
-// and buttons in the group they name (G.menu.group). G.menu.onOpen(fn) refreshes a pane each time
-// the menu opens; G.menu.subtitle(fn) gives the date line that the Map shows.
+// The pause menu: a sheet of frosted glass (letter.js), the sections as tabs with icons in a column
+// on the left (Quit at its top, Resume always at its foot) and the open section on the right.
+// Systems add their own tab with G.menu.tab(id, title) (it returns the pane element), pages inside
+// a tab with G.menu.page(tab, id, title) (sub-tabs), and rows with G.menu.toggle() /
+// G.menu.button(). Settings has two columns: switches gather under their own heading, buttons in
+// the group they name (G.menu.group). G.menu.onOpen(fn) refreshes a pane each time the menu opens;
+// G.menu.subtitle(fn) gives the date line that the Map shows.
 import { letter } from './letter.js';
 import { store } from './util.js';
 
@@ -18,17 +19,19 @@ const ICONS = {
   how: 'M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM7.6 7.6a2.5 2.5 0 1 1 3.4 2.3c-.6.3-1 .8-1 1.5v.6M10 14.5h.01',
 };
 // Settings' columns: the switches, then the named groups in this order
-const GROUPS = { bird: [1, 'Your bird'], play: [2, 'Play'], sound: [2, 'Sound and music'], app: [2, 'The app'] };
+const GROUPS = { bird: [1, 'Your bird'], play: [1, 'Play'], sound: [2, 'Sound and music'], app: [2, 'The app'] };
 
 export function createMenu(G, ui) {
   ui.insertAdjacentHTML('beforeend', `
     <button class="menu3" aria-label="Menu"><i></i><i></i><i></i></button>
     <div class="veil3 hidden">
       <div class="card3" role="dialog" aria-label="Paused">
-        <h1 data-act="title">Aloft</h1>
-        <nav class="tabs3" role="tablist"></nav>
+        <aside class="side3">
+          <div class="head3"><h1 data-act="title">Aloft</h1><button data-act="quit" class="quit3" aria-label="Quit" title="Quit (saves your journey)"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M8 4H4.5v12H8M12 6.5L15.5 10 12 13.5M15.5 10H8"/></svg></button></div>
+          <nav class="tabs3" role="tablist" aria-orientation="vertical"></nav>
+          <button data-act="resume" class="resume3">Resume</button>
+        </aside>
         <div class="panes3"></div>
-        <footer class="foot3"><button data-act="resume" class="resume3">Resume</button><button data-act="quit" class="quit3" aria-label="Quit" title="Quit (saves your journey)"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M8 4H4.5v12H8M12 6.5L15.5 10 12 13.5M15.5 10H8"/></svg></button></footer>
       </div>
     </div>`);
   const veil = ui.querySelector('.veil3'), card = veil.querySelector('.card3'), nav = card.querySelector('.tabs3'), panes = card.querySelector('.panes3');
@@ -58,7 +61,7 @@ export function createMenu(G, ui) {
     nav.insertBefore(btn, [...nav.children].find(b => +b.dataset.rank > rank) || null);
     panes.insertAdjacentHTML('beforeend', `<section class="pane3 hidden" data-pane="${id}"></section>`);
     pane = panes.querySelector(`[data-pane=${id}]`);
-    if (id === 'play') pane.innerHTML = '<div class="settings3"><div class="col3 sw3"><h3>Switches</h3></div><div class="col3" data-col="1"></div><div class="col3" data-col="2"></div></div>';
+    if (id === 'play') pane.innerHTML = '<div class="settings3"><div class="col3" data-col="1"></div><div class="col3" data-col="2"><div class="sw3"><h3>Switches</h3></div></div></div>';
     return pane;
   };
   // a page inside a tab, with its own small tab; pages sit in the order given
