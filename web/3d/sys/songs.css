@@ -39,8 +39,17 @@
 /* the song box, bottom left beside the kinds: the bird, its name (or a cheer), its score; tap
    it to open Imitate a bird just above */
 .rec3 { pointer-events: auto; position: absolute; left: var(--rec); bottom: var(--bot); display: flex; align-items: center; gap: 8px; max-width: min(46vw, 420px);
-  padding: 5px 12px 5px 6px; border: 1px solid var(--edge); border-radius: 18px; background: rgba(255, 255, 255, .82); box-shadow: var(--shadow); cursor: pointer; text-align: left; }
-.sing3 .rec3 { touch-action: manipulation; }
+  padding: 5px 30px 5px 6px; touch-action: none; user-select: none; -webkit-user-select: none; border: 1px solid var(--edge); border-radius: 18px; background: rgba(255, 255, 255, .82); box-shadow: var(--shadow); cursor: pointer; text-align: left; }
+.x3 { position: absolute; top: 3px; right: 3px; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 12px; background: rgba(29, 43, 54, .07);
+  font-size: 11px; line-height: 24px; color: var(--ink2); cursor: pointer; }
+.txt3 i { font-size: 11px; font-weight: 500; color: var(--ink2); line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.txt3 i:empty { display: none; }
+/* the song box tucked away: a round button in its place that opens Imitate a bird */
+.open3 { pointer-events: auto; position: absolute; left: var(--rec); bottom: var(--bot); width: 52px; height: 52px; padding: 0; display: grid; place-items: center;
+  border: 1px solid var(--edge); border-radius: 26px; background: rgba(255, 255, 255, .82); box-shadow: var(--shadow); cursor: pointer;
+  -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); }
+.open3 img { width: 44px; height: 33px; }
+.open3 svg { width: 28px; height: 14px; stroke: var(--ink); }
 .rec3.on { background: #fff; border-color: rgba(29, 43, 54, .3); }
 .rec3.pop { animation: pop3 .4s ease-out; }
 @keyframes pop3 { 40% { transform: scale(1.04); } }
@@ -61,27 +70,28 @@
 .score3 span.bird { opacity: .7; filter: saturate(.3); }
 @keyframes next3 { to { transform: translateY(-2px); } }
 
-/* Imitate a bird: the birds you know, each with its song in words, just above the song box */
-.birds3 { pointer-events: auto; position: fixed; left: var(--side); bottom: calc(var(--bot) + 58px); z-index: 3; width: min(600px, 78vw);
-  max-height: calc(100vh - 58px - 90px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); display: flex; flex-direction: column; padding: 6px 8px 8px; border-radius: 18px;
-  background: rgba(255, 255, 255, .82); box-shadow: 0 8px 24px rgba(20, 40, 50, .2); border: 1px solid var(--edge); }
-.birds3 header { display: flex; align-items: center; justify-content: space-between; padding: 2px 4px 6px; font-weight: 700; font-size: 13px; }
-.birds3 header button { width: 30px; height: 30px; border: 0; border-radius: 15px; background: rgba(29, 43, 54, .08); font-size: 13px; cursor: pointer; }
-.cards3 { overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 6px; }
+/* Imitate a bird: every bird you know at once, in compact cards, from the bottom of the screen
+   up over the song box; a sound-wave mark on any bird singing nearby */
+.birds3 { pointer-events: auto; position: fixed; left: var(--side); bottom: var(--bot); z-index: 3; width: min(860px, calc(100vw - 2 * var(--side) - 120px));
+  max-height: calc(100vh - 70px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); box-sizing: border-box; display: flex; flex-direction: column; padding: 4px 6px 6px; border-radius: 18px;
+  background: rgba(255, 255, 255, .86); box-shadow: 0 8px 24px rgba(20, 40, 50, .2); border: 1px solid var(--edge); }
+.birds3 header { display: flex; align-items: center; justify-content: space-between; padding: 0 2px 4px 6px; font-weight: 700; font-size: 13px; }
+.birds3 header button { width: 28px; height: 28px; border: 0; border-radius: 14px; background: rgba(29, 43, 54, .08); font-size: 12px; cursor: pointer; }
+.cards3 { overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 4px; }
 .sing3 .cards3 button { touch-action: pan-y; }
-.cards3 button { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 6px 6px 8px; border: 1px solid transparent; border-radius: 14px;
-  background: rgba(255, 255, 255, .6); font-size: 12.5px; font-weight: 600; text-align: center; cursor: pointer; }
-.cards3 img { width: 64px; height: 48px; }
-.cards3 button.heard { opacity: .55; }
+.cards3 button { position: relative; display: flex; flex-direction: column; align-items: center; gap: 0; padding: 3px 2px 5px; border: 1px solid transparent; border-radius: 12px;
+  background: rgba(255, 255, 255, .6); font-size: 11.5px; font-weight: 600; text-align: center; cursor: pointer; line-height: 1.15; }
+.cards3 img { width: 52px; height: 39px; }
+.cards3 button.heard { opacity: .5; }
 .cards3 button.on { background: rgba(29, 43, 54, .12); border-color: rgba(29, 43, 54, .3); }
 .cards3 button.stop { justify-content: center; font-weight: 500; color: var(--ink2); }
-.cards3 small { font-size: 10.5px; font-weight: 500; font-style: italic; color: var(--ink2); line-height: 1.25; }
+.near3 { position: absolute; top: 4px; right: 5px; width: 15px; height: 15px; stroke: #2f7a4a; fill: #2f7a4a; }
 .birds3 p { margin: 6px 8px; font-size: 12.5px; color: var(--ink2); }
 
 /* left-handed: the sides swap */
 .sing3.lefty .strip3 { right: auto; left: var(--side); }
 .sing3.lefty .kinds3 { left: auto; right: var(--side2); }
-.sing3.lefty .rec3 { left: auto; right: calc(var(--side2) + var(--kw) + 10px); }
+.sing3.lefty .rec3, .sing3.lefty .open3 { left: auto; right: calc(var(--side2) + var(--kw) + 10px); }
 .sing3.lefty .birds3 { left: auto; right: var(--side2); }
 
 /* Call sits left of the day dial (128px wide, 12px in) */

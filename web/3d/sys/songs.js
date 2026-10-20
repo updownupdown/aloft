@@ -245,7 +245,9 @@ export function songsSystem(G) {
     if (callT > 0) return;
     callT = SONG.callCD;
     const e = echo(); if (e) e.vol *= .4 + .6 * k;
-    A.call(BIRD, false, e, .3 + .7 * k);   // in the voice of the bird you fly as
+    // in the voice of the bird you fly as, and off high ground it comes back a moment later
+    A.call(BIRD, false, null, .3 + .7 * k);
+    if (e) A.call(BIRD, false, e, .3 + .7 * k);
     if (Math.random() < .6) A.call(BIRD, true);   // one of your kind far off answers
     // mice freeze where they stand for a few seconds
     for (const m of G.systems.food?.mice?.values() || []) { m.go = 0; m.flee = 0; m.wait = Math.max(m.wait, 5); }
@@ -310,7 +312,7 @@ export function songsSystem(G) {
 
       // songbirds near the hawk: each sings now and then in its hours
       if ((refreshT -= dt) <= 0) { refreshT = .5; near = songTreesNear(b.p[0], b.p[2], SONG.simR); }
-      let close = null, cd = SONG.nearR;
+      let close = null, cd = SONG.nearR; const nearby = new Set();   // kinds singing within earshot
       for (const s of near) {
         let st = birds.get(s.id);
         if (!st) { st = { next: 1 + Math.random() * 6, out: false }; birds.set(s.id, st); }
@@ -326,6 +328,7 @@ export function songsSystem(G) {
           st.next = (chorus ? 2.5 + Math.random() * 3 : 7 + Math.random() * 5) * (morning ? 2 : 1); sing(s, duet);
         }
         const d = dist3([s.x, s.y, s.z], b.p);
+        if (d < SONG.hearR) nearby.add(s.sp.id);
         if (d < cd && b.state !== 'fly') { cd = d; close = s; }
       }
       if (birds.size > 800) for (const id of [...birds.keys()].slice(0, 200)) birds.delete(id);
@@ -352,9 +355,10 @@ export function songsSystem(G) {
       if (target) {
         const off = S.duet ? Math.ceil(target.notes.length / 2) : 0;
         const title = !G.learned.has(target.id) ? `Learn the ${target.name}` : S.duet ? `Duet with the ${target.name}` : target.name;
-        sc = { sp: target, title, done: off + S.tries.length, bird: off, state: S.wrongT > 0 ? 'wrong' : S.doneT > 0 ? 'done' : '' };
+        const words = target.words.split(':')[0];
+        sc = { sp: target, title, words, done: off + S.tries.length, bird: off, state: S.wrongT > 0 ? 'wrong' : S.doneT > 0 ? 'done' : '' };
       } else if (picked) sc = { sp: picked, hidden: true, title: picked.name, note: 'Listen for one nearby to learn its song' };
-      ui.update({ available, known, learned: G.learned, picked, sc, lefty: lefty(), resting: callT > 0 });
+      ui.update({ available, known, learned: G.learned, picked, sc, nearby, lefty: lefty(), resting: callT > 0 });
 
       // gifts that run for a while
       const g = G.gifts;
