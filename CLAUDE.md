@@ -79,6 +79,7 @@ web/3d/sky.js           clock (G.tod, G.day, G.season) and light (G.light)
 web/3d/hud.js           G.hud: meter(), tip()/did(), toast(), status, counter, thumb pads
 web/3d/menu.js          G.menu: tab(), toggle(), button(), onOpen(), set()
 web/3d/app.js           Update and Full screen rows
+web/3d/post.js          looks (R.style): plain, wash, ink, cel, layers, retro; one full-screen pass after the scene
 web/3d/sys/*.js         systems: air (thermal clouds/motes), rings, food (hunger, thirst, mice), aim
 ```
 
