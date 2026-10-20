@@ -24,20 +24,24 @@ const water = y => line(`M6 ${y} q6 -3 13 0 t13 0 t13 0 t13 0`, WATER, 1.8);
 const berries = (x, y) => dot(x, y, 3.4, BERRY) + dot(x + 6, y + 2, 3.4, BERRY) + dot(x + 2, y + 6, 3.4, BERRY);
 const up = (x, y0 = 54, y1 = 14) => dot(x, y0) + line(`M${x} ${y0} V${y1}`) + head(x, y1, -90);
 const down = (x, y0 = 12, y1 = 50) => dot(x, y0) + line(`M${x} ${y0} V${y1}`) + head(x, y1, 90);
+const held = () => dot(32, 34, 4.5) + ring(32, 34, 8, INK, .7) + ring(32, 34, 12, INK, .35);
+const lean = (a, o = 1) => { const r = a * Math.PI / 180, c = Math.cos(r), s = Math.sin(r), x = 32 + c * 25, y = 34 + s * 25;
+  return `<g opacity="${o}">${line(`M${32 + c * 15} ${34 + s * 15} L${x} ${y}`, INK, 2)}${head(x, y, a, INK, 4.5)}</g>`; };
 const three = (x, y) => dot(x, y - 12, 3) + dot(x, y, 3) + dot(x, y + 12, 3);
 
 const DRAW = {
   flap: () => tap(32, 34),
-  stick: () => `<circle cx="32" cy="34" r="20" fill="rgba(104,132,168,.22)" stroke="rgba(74,92,122,.45)" stroke-width="1.4"/>` + dot(32, 28, 7, 'rgba(58,76,112,.8)')
-    + head(32, 7, -90, INK, 5) + head(58, 34, 0, INK, 5) + head(32, 61, 90, INK, 5) + head(6, 34, 180, INK, 5),
+  // a finger held down, and the ways it can lean from there (down and back lands too)
+  hold: () => held() + [-90, -45, 0, 45, 90, 180].map(a => lean(a)).join(''),
+  leanUp: () => held() + lean(-90), leanUpFwd: () => held() + lean(-45), leanFwd: () => held() + lean(0),
+  leanDownFwd: () => held() + lean(45), leanDown: () => held() + lean(90) + lean(135, .45), leanBack: () => held() + lean(180),
   glide: () => dot(12, 36) + line('M12 36 H52') + head(52, 36, 0),
   turn: () => dot(52, 36) + line('M52 36 H12') + head(12, 36, 180) + head(20, 36, 180),
-  hover: () => up(32),
-  land: () => down(32, 14, 52),
   thermal: () => dot(14, 40, 4, OCHRE) + line('M14 40 H44 Q54 40 54 32 Q54 24 44 24 H18', OCHRE) + head(18, 24, 180, OCHRE),
   flip: () => dot(32, 54) + line('M32 54 C10 54 10 18 32 18 C54 18 54 46 38 50') + head(38, 50, 165),
   hunt: () => dot(12, 14) + line('M12 14 L44 44', RED) + head(44, 44, 45, RED)
     + `<ellipse cx="50" cy="52" rx="6" ry="3.6" fill="${RED}" opacity=".75"/>`,
+  food: () => line('M6 54 H58', FAINT, 1.6) + berries(28, 38) + ring(31, 41, 11, RED, .6) + ring(31, 41, 17, RED, .4),
   perch: () => line('M6 44 Q30 38 58 42', GREEN, 3) + line('M40 41 L48 32', GREEN, 2) + tap(30, 33, 2, GREEN),
   hop: () => branch(44) + sitting(32, 35) + tap(12, 34) + tap(52, 34),
   drop: () => branch(22, 4, 40) + branch(52, 24, 60) + down(30, 12, 44),
@@ -53,15 +57,20 @@ const DRAW = {
 // [where it works, the gesture, what it does, its drawing]
 export const CONTROLS = [
   ['air', 'Tap anywhere', 'Flap. Flapping keeps a glide, a ride, a perch or a hunt going, but ends a hover or a landing.', 'flap'],
-  ['air', 'The stick, bottom left', 'Trims the line of flight: up toward a hover (kiting, into the wind), forward for a long straight glide, down to dive or far down to stoop, back to brake. It never turns the hawk; let go to fly hands off. Left-handed, it sits bottom right.', 'stick'],
-  ['air', 'Swipe forward', 'Trim for a long glide.', 'glide'],
-  ['air', 'Swipe back', 'Turn round. Only a clean swipe turns; a small double arrow by the hawk shows it.', 'turn'],
-  ['air', 'Swipe up', 'Hover in place to look around. It tires the wings.', 'hover'],
-  ['air', 'Swipe down', 'Settle softly and land, right where you are.', 'land'],
-  ['air', 'Swipe forward, then back', 'Ride the thermal you are in, or head for the nearest one and ride it up. Its mark shows in ochre.', 'thermal'],
+  ['air', 'Hold, then lean', 'Keep a finger down a moment (it may move first; it still counts), then lean it from where it came down. The further the lean, the stronger. Holding never turns the hawk.', 'hold'],
+  ['air', 'Lean up', 'Hover, kiting into the wind.', 'leanUp'],
+  ['air', 'Lean up and forward', 'Glide up, trading speed for height.', 'leanUpFwd'],
+  ['air', 'Lean forward', 'The longest glide.', 'leanFwd'],
+  ['air', 'Lean down and forward', 'Glide down, gaining speed.', 'leanDownFwd'],
+  ['air', 'Lean down, or down and back', 'Settle down and land.', 'leanDown'],
+  ['air', 'Lean back', 'Slow down, then hover once slowed.', 'leanBack'],
+  ['air', 'Swipe forward', 'A long glide.', 'glide'],
+  ['air', 'Swipe back', 'Turn round. Only a clean swipe turns.', 'turn'],
+  ['air', 'Swipe forward, then back', 'Ride the thermal you are in, or head for the nearest one and ride it up.', 'thermal'],
   ['air', 'Draw a circle', 'A flip, drawn the way the nose goes: over the top for a loop, under for a front flip. Draw it through a cloud ring nearby and the hawk loops through the ring.', 'flip'],
-  ['air', 'Draw a line to a mouse or fish', 'Stoop on it. The line and its mark show in red.', 'hunt'],
-  ['air', 'Double tap a branch', 'Fly to it and perch. The branch is marked in green.', 'perch'],
+  ['air', 'Draw a line to a mouse or fish', 'Stoop on it.', 'hunt'],
+  ['air', 'Double tap a branch', 'Fly to it and perch.', 'perch'],
+  ['air', 'Double tap berries, a worm or a twig', 'Fly down, land and eat it (or pick up the twig).', 'food'],
   ['branch', 'Tap beside the hawk', 'Hop along the branch that way.', 'hop'],
   ['branch', 'Swipe down', 'Drop to the branch below.', 'drop'],
   ['branch', 'Swipe up, or three quick taps', 'Take off. Double tap another branch to fly straight there, or draw a line to prey to go after it.', 'takeoff'],
@@ -80,7 +89,7 @@ export function controlMap() {
   // one wobble for every line, so the ink looks brushed rather than ruled
   let html = '<svg width="0" height="0" style="position:absolute"><filter id="ctl-ink"><feTurbulence type="fractalNoise" baseFrequency=".09" numOctaves="2" seed="3"/>'
     + '<feDisplacementMap in="SourceGraphic" scale="2.6"/></filter></svg>';
-  html += '<p class="ctl-note">Drawn as if the hawk is flying right; flying left, every gesture mirrors. A new gesture replaces the last one, unless the two can work together.</p>';
+  html += '<p class="ctl-note">Drawn as if the hawk is flying right; flying left, every gesture mirrors. A new gesture replaces the last one, unless the two can work together. A small sign above the hawk confirms each one, and stays while a hold, a ride or a target lasts.</p>';
   for (const [g, name] of Object.entries(GROUPS)) {
     html += `<h3>${name}</h3><div class="ctl-map">`;
     for (const [grp, title, text, d] of CONTROLS) {
