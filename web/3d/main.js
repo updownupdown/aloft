@@ -25,10 +25,11 @@ import { airSystem } from './sys/air.js';
 import { ringsSystem } from './sys/rings.js';
 import { foodSystem } from './sys/food.js';
 import { aimSystem } from './sys/aim.js';
+import { songsSystem } from './sys/songs.js';
 import { appRows } from './app.js';
 import { STYLES } from './post.js';
 
-const SYSTEMS = [clockSystem, airSystem, ringsSystem, foodSystem, aimSystem];
+const SYSTEMS = [clockSystem, airSystem, ringsSystem, foodSystem, aimSystem, songsSystem];
 
 export function start(canvas, ui) {
   const gl = createGL(canvas);
