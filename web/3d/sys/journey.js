@@ -12,6 +12,8 @@ import { hourName } from '../dial.js';
 
 const BANDS = W.JOURNEY || { home: 0, marsh: 9000 };
 export const HOME_Z = BANDS.home ?? 0, MARSH_Z = BANDS.marsh ?? 9000;
+// a name inside a sentence: 'You found the Ridge Pass'
+export const inSentence = n => String(n).replace(/^The /, 'the ');
 const FIND_R = 150, ROUTE_STEP = 60, ROUTE_MAX = 900;
 
 // a place in words, from the world's own names when it has them
@@ -33,7 +35,7 @@ export function journeySystem(G) {
   G.placeNote = (x = b.p[0], z = b.p[2]) => {
     let lm = null, ld = 1500;
     for (const id in J.found) { const l = J.found[id], d = Math.hypot(l.x - x, l.z - z); if (d < ld) { ld = d; lm = l.name; } }
-    return `Day ${G.day}, ${G.season.name}, over ${placeName(x, z)}${lm ? ` near ${lm}` : ''}.`;
+    return `Day ${G.day}, ${G.season.name}, over ${inSentence(placeName(x, z))}${lm ? ` near ${inSentence(lm)}` : ''}.`;
   };
   // how far along: 0 at home, 1 at the marsh
   const along = () => clamp((b.p[2] - HOME_Z) / (MARSH_Z - HOME_Z), 0, 1);
@@ -54,8 +56,8 @@ export function journeySystem(G) {
   function landmarks() {
     for (const l of W.landmarksNear?.(b.p[0], b.p[2], FIND_R + 400) || []) {
       if (J.found[l.id] || Math.hypot(l.x - b.p[0], l.z - b.p[2]) > FIND_R + (l.r || 0)) continue;
-      J.found[l.id] = { name: l.name, x: Math.round(l.x), z: Math.round(l.z), note: `Found on day ${G.day}, in ${G.season.name}, in ${placeName(l.x, l.z)}.` };
-      G.hud.toast(`You found ${l.name}.`, 3.5); G.audio.learned?.();
+      J.found[l.id] = { name: l.name, x: Math.round(l.x), z: Math.round(l.z), note: `Found on day ${G.day}, in ${G.season.name}, in ${inSentence(placeName(l.x, l.z))}.` };
+      G.hud.toast(`You found ${inSentence(l.name)}.`, 3.5); G.audio.learned?.();
       G.emit('landmark', l);
     }
   }
@@ -90,7 +92,7 @@ export function journeySystem(G) {
   const COUNT = ['no chicks', 'one chick', 'two chicks', 'three chicks'];
   const chicks = n => COUNT[n] ?? `${n} chicks`;
   const head = journal(G).section(10), mapSec = journal(G).section(20), lmSec = journal(G).section(50, 'Landmarks');
-  head.body.innerHTML = '<p class="j-trip"></p><p class="j-family"></p>';
+  head.body.innerHTML = '<p class="j-trip"></p><p class="j-family"></p><p class="j-sky"></p>';
   mapSec.body.innerHTML = '<canvas class="map3"></canvas>';
   lmSec.body.innerHTML = '<ul class="list3"></ul>';
   const mapCv = mapSec.body.firstChild;
@@ -100,6 +102,8 @@ export function journeySystem(G) {
     head.body.querySelector('.j-trip').textContent = `${G.placeNote()} ${trip}${J.journeys ? ` Journeys completed: ${J.journeys}.` : ''}`;
     const years = J.family.map(y => `Year ${y.year}: you${y.mate ? ' and your mate' : ''}, ${chicks(y.chicks)} fledged.`);
     head.body.querySelector('.j-family').textContent = years.length || J.yearChicks ? `${years.join(' ')} Now year ${J.year}${J.yearChicks ? `, ${chicks(J.yearChicks)} fledged so far` : ''}.` : '';
+    // the weather's notes on what the sky has shown lately (sys/weather.js)
+    head.body.querySelector('.j-sky').textContent = (G.skyNotes || []).slice(-3).join(' ');
     const lms = Object.values(J.found).sort((a, c) => a.z - c.z);
     lmSec.body.firstChild.innerHTML = lms.length ? lms.map(l => `<li>${esc(l.name)} <small>${esc(l.note)}</small></li>`).join('') : '<li class="none">None found yet. Rare sights wait along the way south.</li>';
   });

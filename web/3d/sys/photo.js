@@ -7,6 +7,7 @@ import { afterDraw, project, thumb, glCanvas } from '../shot.js';
 import { handmadeTex } from '../paper.js';
 import { journal, esc } from '../journal.js';
 import { clamp } from '../util.js';
+import { inSentence } from './journey.js';
 
 const ALBUM_MAX = 16;
 
@@ -108,7 +109,7 @@ export function photoSystem(G) {
     x.save(); x.globalCompositeOperation = 'multiply'; x.globalAlpha = .55; x.drawImage(tex, 0, 0); x.restore();
     const ty = py + ph + 44;
     x.fillStyle = '#2b1a10'; x.textAlign = 'center';
-    x.font = 'italic 600 26px "Cormorant Garamond", Georgia, serif'; x.fillText(`Greetings from ${name}`, W / 2, ty, W - 30);
+    x.font = 'italic 600 26px "Cormorant Garamond", Georgia, serif'; x.fillText(`Greetings from ${inSentence(name)}`, W / 2, ty, W - 30);
     x.fillStyle = '#5a3a26'; x.font = 'italic 14px Spectral, Georgia, serif'; x.fillText(date, W / 2, ty + 22, W - 30);
     return c.toDataURL('image/jpeg', .72);
   }
