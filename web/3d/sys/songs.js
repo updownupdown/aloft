@@ -12,7 +12,7 @@
 // (the music and courtship read it). Gifts that other systems can make real (calm weather,
 // berries, fish, a companion) are announced on the bus as G.emit('gift', ev): set ev.handled
 // and this system skips its own stand-in. G.gifts holds each running gift's seconds left.
-import { SPECIES, active } from '../../src/songs.js';
+import { SPECIES, active, timeOfDay } from '../../src/songs.js';
 import { MUSIC_MODES } from '../../src/music.js';
 import { period, DAY } from '../sky.js';
 import { height, WATER, treesNear, perchesOf, thermalsNear } from '../world.js';
@@ -318,7 +318,11 @@ export function songsSystem(G) {
         st.next -= dt;
         // in a duet the bird waits while you are still answering
         if (S.duet && S.bird === s && S.tries.length && G.t - S.lastTry < 4) st.next = Math.max(st.next, 1);
-        if (st.next <= 0) { st.next = chorus ? 2.5 + Math.random() * 3 : 7 + Math.random() * 5; sing(s, S.duet && S.bird === s); }
+        // mornings are busy, so each bird sings half as often then (all but the one you duet with)
+        if (st.next <= 0) {
+          const duet = S.duet && S.bird === s, morning = !duet && (chorus || timeOfDay(G.tod) === 'dawn');
+          st.next = (chorus ? 2.5 + Math.random() * 3 : 7 + Math.random() * 5) * (morning ? 2 : 1); sing(s, duet);
+        }
         const d = dist3([s.x, s.y, s.z], b.p);
         if (d < cd && b.state !== 'fly') { cd = d; close = s; }
       }

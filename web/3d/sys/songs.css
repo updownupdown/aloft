@@ -56,14 +56,14 @@
 
 /* the score: glyphs at their pitch, the next one underlined; at the bottom in the middle, and
    hushed (.hush) while a cheer line has the spot */
-.score3 { position: absolute; left: 50%; transform: translateX(-50%); bottom: var(--bot); transition: opacity .3s; padding: 6px 16px 8px; border-radius: 18px;
-  background: var(--pane); box-shadow: var(--shadow); border: 1px solid var(--edge); text-align: center; max-width: 70vw; }
+.score3 { position: absolute; left: 50%; transform: translateX(-50%); bottom: var(--bot); transition: opacity .3s; padding: 3px 10px 4px; border-radius: 14px;
+  background: rgba(255, 255, 255, .16); border: 1px solid rgba(255, 255, 255, .3); text-align: center; max-width: 70vw; text-shadow: 0 0 6px rgba(255, 255, 255, .9); }
 .score3.hush { opacity: 0; }
-.score3 b { display: block; font-weight: 700; font-size: 12.5px; }
+.score3 b { display: block; font-weight: 700; font-size: 11.5px; line-height: 1.3; }
 .score3 div { display: flex; gap: 3px; justify-content: center; align-items: flex-end; }
-.score3 div:not(:empty) { height: 46px; }
-.score3 span { width: 36px; height: 18px; margin-bottom: calc(var(--lane) * 7px); opacity: .45; border-bottom: 2px solid transparent; }
-.score3 svg { width: 36px; height: 18px; stroke: var(--note); }
+.score3 div:not(:empty) { height: 32px; }
+.score3 span { width: 26px; height: 13px; margin-bottom: calc(var(--lane) * 4.5px); opacity: .45; border-bottom: 2px solid transparent; }
+.score3 svg { width: 26px; height: 13px; stroke: var(--note); filter: drop-shadow(0 0 2px rgba(255, 255, 255, .8)); }
 .score3 span.done { opacity: 1; }
 .score3 span.wrong { opacity: 1; filter: saturate(0) brightness(.6); }
 .score3 span.next { opacity: 1; border-bottom-color: var(--ink); animation: next3 1s ease-in-out infinite alternate; }
@@ -75,9 +75,9 @@
 .sing3.lefty .kinds3, .sing3.lefty .book3 { left: auto; right: var(--side2); }
 .sing3.lefty .birds3 { left: auto; right: var(--side2); }
 
-.cheer3 { position: absolute; left: 50%; bottom: calc(22px + 12px + env(safe-area-inset-bottom)); transform: translateX(-50%); margin: 0; padding: 7px 18px;
-  font-weight: 700; font-size: 15px; color: var(--ink); background: rgba(255, 255, 255, .6); border: 1px solid rgba(255, 255, 255, .66); border-radius: 20px;
-  box-shadow: 0 4px 16px rgba(20, 40, 50, .14); opacity: 0; transition: opacity .6s; pointer-events: none; white-space: nowrap; }
+.cheer3 { position: absolute; left: 50%; bottom: calc(22px + 6px + env(safe-area-inset-bottom)); transform: translateX(-50%); margin: 0; padding: 4px 12px;
+  font-weight: 700; font-size: 13px; color: var(--ink); background: rgba(255, 255, 255, .16); border: 1px solid rgba(255, 255, 255, .3); border-radius: 14px;
+  text-shadow: 0 0 6px rgba(255, 255, 255, .9); opacity: 0; transition: opacity .6s; pointer-events: none; white-space: nowrap; }
 .cheer3.show { opacity: 1; }
 /* Call sits left of the day dial (128px wide, 12px in) */
 .call3 { pointer-events: auto; position: absolute; right: calc(12px + 128px + 10px + env(safe-area-inset-right)); top: calc(12px + env(safe-area-inset-top));
