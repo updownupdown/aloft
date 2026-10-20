@@ -3,7 +3,7 @@
 // A songbird tree is fixed by the tree's id, like everything else in the world; the species
 // is drawn from those native to its habitat.
 import { SPECIES } from '../../src/songs.js';
-import { height, forest, treesNear, perchesOf, ih } from '../world.js';
+import { forest, treesNear, perchesOf, ih, biomeAt } from '../world.js';
 import { builder, blob, reseed } from '../shapes.js';
 
 const c01 = c => c.map(v => v / 255);
@@ -53,15 +53,10 @@ export function pushBird(S, sp, x, y, z, heading, flying = false, beat = 0) {
   (S.props[`sb${sp.id}${w}`] ||= []).push(x, y, z, 1.7, heading - Math.PI / 2, .5, 0, 0);
 }
 
-// habitat, in the 2D game's biome names, from the land itself
+// habitat, in the 2D game's biome names (a ridge counts as mountains; coast birds are the marsh's)
 export function habitat(x, z) {
-  const y = height(x, z);
-  if (y > 70) return 'mountains';
-  if (y > 45) return 'cliffs';
-  let wet = 0;
-  for (let a = 0; a < 6; a++) if (height(x + Math.cos(a) * 30, z + Math.sin(a) * 30) < .3) wet++;
-  if (wet) return forest(x, z) > .1 ? 'lakeland' : 'marsh';
-  return forest(x, z) > .2 ? 'forest' : 'meadow';
+  const n = biomeAt(x, z).name;
+  return n === 'ridge' ? 'mountains' : n === 'coast' ? 'marsh' : n;
 }
 
 // which trees near (x, z) hold a songbird, and where it sits: the end of a broadleaf's low

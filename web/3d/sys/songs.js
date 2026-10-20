@@ -39,7 +39,7 @@ const GIFT_TEXT = {
   calm: 'the air goes calm and gentle for a while',
 };
 const PHRASE = { dawn: 'at dawn', day: 'in the daytime', dusk: 'at dusk', night: 'at night' };
-const PLACE = { forest: 'the woods', meadow: 'a meadow', marsh: 'the marsh', lakeland: 'the lakeland', cliffs: 'the high ground', mountains: 'the mountains' };
+const PLACE = { forest: 'the woods', ridge: 'the great ridge', coast: 'the coast', meadow: 'a meadow', marsh: 'the marsh', lakeland: 'the lakeland', cliffs: 'the high ground', mountains: 'the mountains' };
 const hex01 = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255);
 const NOTE01 = NOTE_COLS.map(hex01);
 const compass = (dx, dz) => ['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west'][Math.round((Math.atan2(dx, -dz) / (Math.PI / 4) + 8)) % 8];
