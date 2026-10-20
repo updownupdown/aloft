@@ -13,7 +13,7 @@ import { hourName } from '../dial.js';
 const CELL = 100;                        // fog cells, metres
 const SEE = [160, 2.2, 520];             // clearing radius: base, per metre of height, most
 const ZOOM = [1.2, 24], ZOOM0 = 5;       // metres per CSS pixel: closest, farthest, at first
-const FOG = [228, 235, 239];
+const FOG = 'rgba(0, 0, 0, .8)';
 const key = (i, j) => i + ',' + j;
 
 export function mapView(G, J, { HOME_Z, MARSH_Z }) {
@@ -29,7 +29,6 @@ export function mapView(G, J, { HOME_Z, MARSH_Z }) {
     }
   }
   const isSeen = (x, z) => seen.has(key(Math.floor(x / CELL), Math.floor(z / CELL)));
-  const nearSeen = (x, z) => { const i = Math.floor(x / CELL), j = Math.floor(z / CELL); for (let v = -1; v <= 1; v++) for (let u = -1; u <= 1; u++) if (seen.has(key(i + u, j + v))) return true; return false; };
   // how much of the way south has been seen: the cells of a band 3 km wide from home to the marsh
   function explored() {
     const i0 = -15, i1 = 15, j0 = Math.floor((HOME_Z - 500) / CELL), j1 = Math.floor((MARSH_Z + 500) / CELL);
@@ -88,16 +87,14 @@ export function mapView(G, J, { HOME_Z, MARSH_Z }) {
     };
     const cell = clamp(14 * Math.sqrt(ZOOM0 / sc), 9, 22);
     facets(x, 0, 0, W3, H3, cell, (px, py, t) => {
-      if (!nearSeen(X(px), Z(py))) return null;
       for (const v of t) v[2] = Math.max(W.height(X(v[0]), Z(v[1])), 0) / sc;
       return ground(px, py);
     }, { seed: 5, relief: 1.6 });
-    // the fog: a sheet of paper with soft holes where the hawk has been
+    // the fog (for play testing, the land shows through it): a veil 80% black with soft holes where
+    // the hawk has been
     const f = document.createElement('canvas'); f.width = c.width; f.height = c.height;
     const fx = f.getContext('2d'); fx.setTransform(V.dpr, 0, 0, V.dpr, 0, 0);
-    fx.fillStyle = C(FOG); fx.fillRect(0, 0, W3, H3);
-    fx.strokeStyle = C(shade(FOG, .94)); fx.lineWidth = 1;
-    for (let y = 6; y < H3; y += 9) { fx.beginPath(); fx.moveTo(0, y); fx.lineTo(W3, y); fx.stroke(); }
+    fx.fillStyle = FOG; fx.fillRect(0, 0, W3, H3);
     fx.globalCompositeOperation = 'destination-out';
     const rr = CELL * 1.05 / sc, i0 = Math.floor(ox / CELL) - 1, i1 = Math.ceil(X(W3) / CELL) + 1, j0 = Math.floor(oz / CELL) - 1, j1 = Math.ceil(Z(H3) / CELL) + 1;
     for (const k of seen) {
@@ -124,11 +121,10 @@ export function mapView(G, J, { HOME_Z, MARSH_Z }) {
     const x = cv.getContext('2d'); x.setTransform(V.dpr, 0, 0, V.dpr, 0, 0);
     const vx0 = wx(0), vz0 = wz(0), vx1 = wx(V.w), vz1 = wz(V.h);
     if (!cache || cache.sc !== V.sc || vx0 < cache.ox || vz0 < cache.oz || vx1 > cache.ox + cache.w * cache.sc || vz1 > cache.oz + cache.h * cache.sc) paintCache();
-    x.fillStyle = C(FOG); x.fillRect(0, 0, V.w, V.h);
+    x.fillStyle = '#2a2f33'; x.fillRect(0, 0, V.w, V.h);
     x.drawImage(cache.c, (cache.ox - vx0) / V.sc, (cache.oz - vz0) / V.sc, cache.w, cache.h);
-    route(x);
     // the marsh: a dashed line across the map where it lies, or which way it is
-    x.font = '600 12px Manrope, system-ui, sans-serif';
+    x.font = '600 12px Outfit, system-ui, sans-serif';
     const label = (px, py, text) => {
       const w = x.measureText(text).width, lx = clamp(px, 6, V.w - w - 10), ly = clamp(py, 16, V.h - 6);
       x.fillStyle = 'rgba(255,255,255,.82)'; x.beginPath(); x.roundRect(lx - 6, ly - 13, w + 12, 18, 9); x.fill();
@@ -150,23 +146,14 @@ export function mapView(G, J, { HOME_Z, MARSH_Z }) {
     x.fillStyle = C(PIG.ink, .75); x.textAlign = 'center'; x.fillText('N', V.w - 18, 40); x.textAlign = 'left';
   }
   const mark = (x, px, py, col) => { const P = [[px, py - 6], [px + 5, py], [px, py + 6], [px - 5, py]]; poly(x, P, C(shade(col, .85))); poly(x, [P[0], P[2], P[3]], C(shade(col, 1.15))); x.strokeStyle = C(PIG.ink, .6); x.lineWidth = 1; x.stroke(); };
-  // the route: broad where the hawk soared high, thin near the ground, dotted where it walked
-  function route(x) {
-    const r = J.route; if (r.length < 2) return;
-    x.save(); x.lineCap = 'round';
-    for (let i = 1; i < r.length; i++) {
-      const p = r[i - 1], q = r[i];
-      if (Math.hypot(q[0] - p[0], q[1] - p[1]) > 600) continue;
-      if (p[2] <= 0 && q[2] <= 0) { if (i % 3 === 0) { x.fillStyle = C(PIG.water, .85); x.fillRect(sx((p[0] + q[0]) / 2) - 1.2, sz((p[1] + q[1]) / 2) - 1.2, 2.4, 2.4); } continue; }
-      x.strokeStyle = C([79, 111, 158], .75); x.lineWidth = 1.2 + clamp((p[2] + q[2]) / 160, 0, 1) * 3;
-      x.beginPath(); x.moveTo(sx(p[0]), sz(p[1])); x.lineTo(sx(q[0]), sz(q[1])); x.stroke();
-    }
-    x.restore();
-  }
-
-  // ---- touch: drag to pan, pinch to zoom, tap a place ----------------------------------------
+  // ---- touch: drag to pan, pinch to zoom, tap a place, double tap to fly there (play testing) ---
   const pts = new Map();
-  let pinch = 0, moved = 0;
+  let pinch = 0, moved = 0, lastTap = null;
+  function teleport(x, z) {
+    const g = Math.max(W.height(x, z), W.WATER);
+    b.p = [x, g + 40, z]; b.state = 'fly'; b.s = 13; b.vy = 0; b.gamma = 0;
+    reveal(); cache = null; G.menu.set(false); G.hud.toast(`Flown to ${G.placeName?.(x, z) || 'there'}.`, 3);
+  }
   const zoomAt = (k, px = V.w / 2, py = V.h / 2) => {
     const sc = clamp(V.sc * k, ZOOM[0], ZOOM[1]); if (sc === V.sc) return;
     const ax = wx(px), az = wz(py); V.sc = sc; V.x = ax - (px - V.w / 2) * sc; V.z = az - (py - V.h / 2) * sc; soon();
@@ -187,6 +174,9 @@ export function mapView(G, J, { HOME_Z, MARSH_Z }) {
   const up = e => {
     const p = pts.get(e.pointerId); pts.delete(e.pointerId); pinch = 0;
     if (!p || moved > 6 || pts.size) return;
+    const now = performance.now();
+    if (lastTap && now - lastTap.t < 350 && Math.hypot(p[0] - lastTap.p[0], p[1] - lastTap.p[1]) < 24) { lastTap = null; teleport(wx(p[0]), wz(p[1])); return; }
+    lastTap = { t: now, p };
     let best = null, bd = 22;
     for (const pl of places()) { const d = Math.hypot(sx(pl.x) - p[0], sz(pl.z) - p[1]); if (d < bd) { bd = d; best = pl; } }
     note.classList.toggle('hidden', !best);

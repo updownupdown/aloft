@@ -89,7 +89,7 @@ export function createHud(G, ui, input) {
     // quiet meters: fade while every meter is well filled, back as soon as one runs lower
     const lowest = Math.min(...all.map(m => m.v)), quiet = H.quiet && G.t - wake > 4 && lowest > (hud.classList.contains('quiet') ? .5 : .7);
     hud.classList.toggle('quiet', quiet);
-    dial.update(G.tod, G.day, false, H.counter, G.season);
+    dial.update(G.tod, G.day, false, G.season);
     for (const [el, P] of [[padL, input.L], [padR, input.R]]) {
       const on = P.id !== null;
       el.classList.toggle('on', on);

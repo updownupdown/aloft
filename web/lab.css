@@ -1,12 +1,10 @@
-@font-face { font-family: 'Cormorant Garamond'; font-style: italic; font-weight: 300 700; font-display: swap; src: url(fonts/cormorant-garamond-italic.woff2) format('woff2'); }
-@font-face { font-family: 'Spectral'; font-style: normal; font-weight: 400; font-display: swap; src: url(fonts/spectral-regular.woff2) format('woff2'); }
-@font-face { font-family: 'Spectral'; font-style: italic; font-weight: 400; font-display: swap; src: url(fonts/spectral-italic.woff2) format('woff2'); }
+@font-face { font-family: 'Outfit'; font-style: normal; font-weight: 100 900; font-display: swap; src: url(fonts/outfit.woff2) format('woff2'); }
 :root { --paper: #f6f1e6; --ink: #3a2418; --ink2: #6a4530; --rule: rgba(58, 36, 24, .18); --indigo: #4f6f9e; --berry: #a8483a; }
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--paper); color: var(--ink); font: 17px/1.45 'Spectral', Georgia, serif; -webkit-tap-highlight-color: transparent; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.45 'Outfit', system-ui, sans-serif; -webkit-tap-highlight-color: transparent; }
 main { max-width: 760px; margin: 0 auto; padding: 18px 16px 48px; }
-h1 { font: italic 600 34px/1.1 'Cormorant Garamond', Georgia, serif; margin: 4px 0 4px; }
-h2 { font: italic 600 23px/1.2 'Cormorant Garamond', Georgia, serif; margin: 22px 0 6px; padding-bottom: 4px; border-bottom: 1px solid var(--rule); }
+h1 { font: 600 34px/1.1 'Outfit', system-ui, sans-serif; margin: 4px 0 4px; }
+h2 { font: 600 23px/1.2 'Outfit', system-ui, sans-serif; margin: 22px 0 6px; padding-bottom: 4px; border-bottom: 1px solid var(--rule); }
 p, small { color: var(--ink2); }
 p { margin: 6px 0 10px; }
 small { display: block; font-style: italic; font-size: 14px; margin-top: 2px; }

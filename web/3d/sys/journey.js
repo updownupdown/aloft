@@ -41,6 +41,7 @@ export function journeySystem(G) {
   G.hud.tip('south', () => b.state === 'fly' && G.t > 60 && J.journeys === 0 && along() < .05, 'Autumn calls the hawks south. Follow the sun at midday to the wintering marsh; the Map shows the way.');
   let gather = 0, findT = 0;
   const map = mapView(G, J, { HOME_Z, MARSH_Z });
+  G.on('ringLoop', () => { J.loops = (J.loops || 0) + 1; });
 
   function trace() {
     const r = J.route, last = r[r.length - 1];
@@ -92,7 +93,7 @@ export function journeySystem(G) {
   const COUNT = ['no chicks', 'one chick', 'two chicks', 'three chicks'];
   const chicks = n => COUNT[n] ?? `${n} chicks`;
   const head = journal(G).section(10), lmSec = journal(G).section(50, 'Landmarks');
-  head.body.innerHTML = '<p class="j-trip"></p><p class="j-family"></p><p class="j-sky"></p>';
+  head.body.innerHTML = '<p class="j-trip"></p><p class="j-family"></p><p class="j-rings"></p><p class="j-sky"></p>';
   lmSec.body.innerHTML = '<ul class="list3"></ul>';
   G.menu.onOpen(() => {
     const pct = Math.round(along() * 100);
@@ -100,6 +101,8 @@ export function journeySystem(G) {
     head.body.querySelector('.j-trip').textContent = `${G.placeNote()} ${trip}${J.journeys ? ` Journeys completed: ${J.journeys}.` : ''}`;
     const years = J.family.map(y => `Year ${y.year}: you${y.mate ? ' and your mate' : ''}, ${chicks(y.chicks)} fledged.`);
     head.body.querySelector('.j-family').textContent = years.length || J.yearChicks ? `${years.join(' ')} Now year ${J.year}${J.yearChicks ? `, ${chicks(J.yearChicks)} fledged so far` : ''}.` : '';
+    // the rings flown (sys/rings.js keeps G.rings) and the loops of them flown in one go
+    head.body.querySelector('.j-rings').textContent = G.rings ? `Rings of cloud flown: ${G.rings}${J.loops ? `, and ${J.loops} whole loop${J.loops > 1 ? 's' : ''} of them in one go` : ''}.` : '';
     // the weather's notes on what the sky has shown lately (sys/weather.js)
     head.body.querySelector('.j-sky').textContent = (G.skyNotes || []).slice(-3).join(' ');
     const lms = Object.values(J.found).sort((a, c) => a.z - c.z);
@@ -113,7 +116,7 @@ export function journeySystem(G) {
       trace(); map.update(dt);
       if ((findT -= dt) <= 0) { findT = .5; landmarks(); arrive(); }
     },
-    save: () => ({ goal: J.goal, journeys: J.journeys, year: J.year, family: J.family, yearChicks: J.yearChicks, found: J.found, route: J.route, box: J.box.map(Math.round), fog: map.save() }),
+    save: () => ({ goal: J.goal, journeys: J.journeys, loops: J.loops || 0, year: J.year, family: J.family, yearChicks: J.yearChicks, found: J.found, route: J.route, box: J.box.map(Math.round), fog: map.save() }),
     load(o) { const { fog, ...rest } = o; Object.assign(J, rest); if (!J.box) J.box = [b.p[0], b.p[2], b.p[0], b.p[2]]; map.load(fog); },
   };
 }
