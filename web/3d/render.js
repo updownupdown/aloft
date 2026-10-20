@@ -3,7 +3,7 @@
 // horizon colour and a paper grain, so it stays in Aloft's palette at very little cost.
 import { program, mesh, perspective, lookAt, mul, basis, IDENT } from './gl.js';
 import { CHUNK, chunkMesh, treesNear, ringsNear, height, normalAt, thermalsNear, thermalCentre, TREE, perchesOf } from './world.js';
-import { broadleaf, pine, ring, cloud } from './shapes.js';
+import { ring, cloud, TREE_LOOKS } from './shapes.js';
 import { buildHawk, HAWK_SCALE } from './hawk.js';
 
 const COMMON_FS = `
@@ -168,10 +168,8 @@ export function createRenderer(gl) {
   const water = program(gl, WATER_VS, WATER_FS), flat = program(gl, FLAT_VS, FLAT_FS);
   const tri = mesh(gl, new Float32Array([-1, -1, 3, -1, -1, 3]), [[0, 2]]);
   const plane = mesh(gl, new Float32Array([-1, -1, 1, -1, 1, 1, -1, -1, 1, 1, -1, 1]), [[0, 2]]);
-  const kinds = [
-    { near: mesh(gl, broadleaf(), LAYOUT, { instLayout: ILAYOUT }), far: mesh(gl, lod(0), LAYOUT, { instLayout: ILAYOUT }) },
-    { near: mesh(gl, pine(), LAYOUT, { instLayout: ILAYOUT }), far: mesh(gl, lod(1), LAYOUT, { instLayout: ILAYOUT }) },
-  ];
+  // one pair of meshes (near, far) per tree look (shapes.js TREE_LOOKS; a tree's look ?? kind)
+  const kinds = TREE_LOOKS.map((L, i) => ({ near: mesh(gl, L.near(), LAYOUT, { instLayout: ILAYOUT }), far: mesh(gl, L.far ? L.far() : lod(i), LAYOUT, { instLayout: ILAYOUT }), autumn: L.autumn }));
   // instanced shapes by name; systems register their own with R.shape(name, triangles)
   const shapes = new Map();
   const shape = (key, data) => { const old = shapes.get(key); if (old) { gl.deleteBuffer(old.buf); gl.deleteBuffer(old.ibuf); gl.deleteVertexArray(old.vao); } shapes.set(key, mesh(gl, data, LAYOUT, { instLayout: ILAYOUT })); };
@@ -208,14 +206,14 @@ export function createRenderer(gl) {
   function updateTrees(p, season) {
     if (treeFrom && Math.hypot(p[0] - treeFrom[0], p[2] - treeFrom[2]) < 20 && treeFrom[3] === season.key) return;
     treeFrom = [p[0], 0, p[2], season.key];
-    const all = treesNear(p[0], p[2], R.treeView), buckets = [[[], []], [[], []]];
+    const all = treesNear(p[0], p[2], R.treeView), buckets = kinds.map(() => [[], []]);
     for (const t of all) {
       const d = Math.hypot(t.x - p[0], t.z - p[2]); if (d > R.treeView) continue;
-      const turn = t.kind ? 0 : season.autumn * (.5 + t.tint);
-      buckets[t.kind][d < R.nearTrees ? 0 : 1].push(t.x, t.y, t.z, t.s, t.yaw, t.tint, turn, t.id % 97);
+      const k = t.look ?? t.kind, turn = season.autumn * (.5 + t.tint) * kinds[k].autumn;
+      buckets[k][d < R.nearTrees ? 0 : 1].push(t.x, t.y, t.z, t.s, t.yaw, t.tint, turn, t.id % 97);
     }
     R.stats.trees = all.length;
-    for (let k = 0; k < 2; k++) for (let l = 0; l < 2; l++) {
+    for (let k = 0; k < kinds.length; k++) for (let l = 0; l < 2; l++) {
       const m = l ? kinds[k].far : kinds[k].near, data = new Float32Array(buckets[k][l]);
       gl.bindBuffer(gl.ARRAY_BUFFER, m.ibuf); gl.bufferData(gl.ARRAY_BUFFER, data, gl.DYNAMIC_DRAW); m.icount = data.length / 8;
     }

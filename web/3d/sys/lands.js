@@ -4,7 +4,7 @@
 // trees (world.js treesIn). Finding them, postcards and the journal belong to journey.js.
 import { landmarksNear, rocksNear, height, WATER, PAL } from '../world.js';
 import { mix3 } from '../util.js';
-import { builder, blob, prism, reseed } from '../shapes.js';
+import { builder, blob, prism, tube, reseed } from '../shapes.js';
 
 const STONE = [.6, .59, .56], STONE2 = [.5, .5, .49], MOSS = [.45, .52, .36];
 
@@ -83,10 +83,34 @@ function boulder() {
   return B.out();
 }
 
+// a lava rock: a dark, sharp lump
+function lava() {
+  reseed(68); const B = builder();
+  blob(B, 0, .3, 0, .5, PAL.lava, PAL.lava2, [1.2, .8, 1]);
+  return B.out();
+}
+// a natural arch (world.js archLegs: legs .42 either side of the middle, the span on top to .85)
+function arch() {
+  reseed(69); const B = builder(), r = PAL.redrock, o = PAL.ochre;
+  for (const k of [-1, 1]) { prism(B, .42 * k, 0, .15, .12, -.1, .3, 6, r); prism(B, .42 * k, 0, .12, .11, .3, .6, 6, o); }
+  const P = t => [Math.cos(t) * .42, .58 + Math.sin(t) * .22, 0];
+  for (let i = 0; i < 9; i++) { const a = Math.PI * i / 9, b = Math.PI * (i + 1) / 9; tube(B, P(a), P(b), .1 - Math.sin(a) * .02, i % 3 ? r : o); }
+  blob(B, 0, .82, 0, .1, PAL.buff, o, [2.4, .5, 1.1]);
+  return B.out();
+}
+// a sea stack: a pillar of rock standing in the water, a cap of turf on top
+function stack() {
+  reseed(70); const B = builder();
+  prism(B, 0, 0, .15, .13, -.05, .5, 6, PAL.rock); prism(B, .01, 0, .13, .11, .5, .96, 6, PAL.granite);
+  prism(B, .01, 0, .112, .09, .96, 1, 6, PAL.moss);
+  return B.out();
+}
+
 export function landsSystem(G) {
   const R = G.R;
   R.shape('lm_stones', stones()); R.shape('lm_cairn', cairn()); R.shape('lm_tower', tower()); R.shape('lm_lighthouse', lighthouse());
   R.shape('rock_tor', tor()); R.shape('rock_hoodoo', hoodoo()); R.shape('rock_boulder', boulder());
+  R.shape('rock_lava', lava()); R.shape('rock_arch', arch()); R.shape('rock_stack', stack());
   const fallsOf = new Map();   // landmark id -> { shape, top, foot }
   const fall = l => { let f = fallsOf.get(l.id); if (!f) { f = fallsMesh(l); f.shape = 'lm_falls_' + l.id; R.shape(f.shape, f.tris); fallsOf.set(l.id, f); } return f; };
   let near = [], rocks = [], nearT = 0;
@@ -94,6 +118,11 @@ export function landsSystem(G) {
     id: 'lands',
     update(dt) {
       if ((nearT -= dt) <= 0) { nearT = 1; near = landmarksNear(G.b.p[0], G.b.p[2], 700); rocks = rocksNear(G.b.p[0], G.b.p[2], 520); }
+      // the fire mountain smokes from its cone
+      for (const l of near) if (l.kind === 'volcano' && Math.hypot(l.x - G.b.p[0], l.z - G.b.p[2]) < 900 && Math.random() < dt * 10) {
+        const a = Math.random() * 6.283, r = Math.random() * 6;
+        G.part([l.x + Math.cos(a) * r, l.y + 1, l.z + Math.sin(a) * r], [(Math.random() - .5) * 2 + 1.5, 4 + Math.random() * 3, (Math.random() - .5) * 2], 6, Math.random() < .3 ? [.45, .42, .4] : [.85, .84, .82], 1.5 + Math.random() * 1.5);
+      }
       // spray and mist at the foot of each waterfall close by
       for (const l of near) if (l.kind === 'falls' && Math.hypot(l.x - G.b.p[0], l.z - G.b.p[2]) < 220 && Math.random() < dt * 14) {
         const [bx, bz] = fall(l).foot, by = Math.max(height(bx, bz), WATER) + .4;
@@ -108,6 +137,7 @@ export function landsSystem(G) {
         if (l.kind === 'stones') (S.props.lm_stones ||= []).push(l.x, l.y, l.z, 1, l.yaw, .5, 0, 0);
         if (l.kind === 'cairn') (S.props.lm_cairn ||= []).push(l.x, l.y - .3, l.z, 1, l.yaw, .5, 0, 0);
         if (l.kind === 'tower') (S.props.lm_tower ||= []).push(l.x, l.y - .5, l.z, 1, l.yaw, .5, 0, 0);
+        if (l.kind === 'arch') (S.props.rock_arch ||= []).push(l.x, l.y - .5, l.z, l.h, l.yaw, .5, 0, 0);
         if (l.kind === 'falls') { const f = fall(l); (S.props[f.shape] ||= []).push(l.x, f.top, l.z, 1, Math.atan2(l.dz, l.dx), .5, 0, 0); }
         if (l.kind === 'lighthouse') {
           (S.props.lm_lighthouse ||= []).push(l.x, l.y - .8, l.z, 1, 0, .5, 0, 0);

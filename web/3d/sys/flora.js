@@ -3,6 +3,7 @@
 // cell, drawn instanced within FLORA.near metres of the camera. They make height and speed
 // readable close to the ground, which the big facets alone don't.
 import { height, normalAt, forest, bands, ih, PAL, WATER, env } from '../world.js';
+import { rollBiome } from '../biomes.js';
 import { builder, blob, reseed } from '../shapes.js';
 
 export const FLORA = { cell: 8, near: 95, cache: 1600 };
@@ -29,6 +30,19 @@ function flower(col) {
   B.tri([-.02, .315, -.02], [.02, .315, -.02], [0, .315, .025], mid);
   return B.out();
 }
+// a sagebrush or desert scrub: low grey-green lumps
+function scrub() {
+  reseed(43); const B = builder(), c1 = [.55, .58, .44], c2 = [.64, .63, .5];
+  blob(B, 0, .18, 0, .3, c1, c2, [1.2, .6, 1]); blob(B, .22, .14, .1, .2, c2, c1, [1, .7, 1]);
+  return B.out();
+}
+// a small barrel cactus
+function barrel() {
+  reseed(47); const B = builder();
+  blob(B, 0, .2, 0, .22, PAL.cactus, PAL.cactus2, [1, 1.1, 1]);
+  B.tri([-.04, .43, 0], [.04, .43, 0], [0, .48, .03], [.9, .45, .45]);
+  return B.out();
+}
 function stone() { reseed(31); const B = builder(); blob(B, 0, .05, 0, .3, PAL.rock, PAL.rock2, [1.2, .55, .9]); return B.out(); }
 function bush() {
   reseed(37); const B = builder();
@@ -47,9 +61,21 @@ function reeds() {
   return B.out();
 }
 
+// what grows on the ground of the drier and barer lands, by a roll r and the slope n
+// ('gold': a tuft of dry golden grass)
+const GROUND = {
+  desert: r => r < .1 ? 'scrub' : r < .14 ? 'barrel' : r < .17 ? 'stone' : null,
+  canyon: (r, n) => n < .8 ? (r < .3 ? 'stone' : null) : r < .15 ? 'scrub' : r < .19 ? 'barrel' : null,
+  badlands: r => r < .05 ? 'stone' : null,
+  saltflat: () => null,
+  savanna: r => r < .55 ? 'gold' : r < .62 ? 'scrub' : r < .65 ? 'stone' : null,
+  moor: r => r < .45 ? 'gold' : r < .55 ? 'stone' : r < .62 ? 'flowerP' : null,
+  volcano: (r, n) => r < .2 ? 'stone' : r < .3 && n > .85 ? 'tuft' : null,
+  alpine: (r, n) => n < .8 || r < .3 ? (r < .6 ? 'stone' : null) : r < .55 ? 'tuft' : r < .62 ? 'flowerW' : null,
+};
 export function floraSystem(G) {
   const R = G.R;
-  R.shape('tuft', tuft()); R.shape('stone', stone()); R.shape('bush', bush()); R.shape('reeds', reeds());
+  R.shape('tuft', tuft()); R.shape('scrub', scrub()); R.shape('barrel', barrel()); R.shape('stone', stone()); R.shape('bush', bush()); R.shape('reeds', reeds());
   for (const k in PETAL) R.shape(k, flower(PETAL[k]));
   const cache = new Map();
   // what grows in one cell: [kind, x, y, z, scale, yaw, tint][]
@@ -57,19 +83,22 @@ export function floraSystem(G) {
     const key = cx * 73856093 ^ cz * 19349663;
     let c = cache.get(key); if (c) return c;
     c = [];
-    const x0 = cx * FLORA.cell, z0 = cz * FLORA.cell, k = bands(x0, z0);
+    const x0 = cx * FLORA.cell, z0 = cz * FLORA.cell, k = bands(x0, z0), bio = rollBiome(k.bl, ih(cx, cz, 270)).name;
+    const ground = GROUND[bio];
     for (let i = 0; i < 7; i++) {
       const x = x0 + ih(cx, cz, 200 + i) * FLORA.cell, z = z0 + ih(cx, cz, 210 + i) * FLORA.cell, y = height(x, z);
       if (y < WATER - .2) continue;
-      const r = ih(cx, cz, 220 + i), n = normalAt(x, z)[1], f = forest(x, z), sc = .8 + ih(cx, cz, 230 + i) * .6, yaw = ih(cx, cz, 240 + i) * 6.283, tint = ih(cx, cz, 250 + i);
+      const r = ih(cx, cz, 220 + i), n = normalAt(x, z)[1], f = forest(x, z), sc = .8 + ih(cx, cz, 230 + i) * .6, yaw = ih(cx, cz, 240 + i) * 6.283;
+      const tint = ih(cx, cz, 250 + i); let gold = 0;
       const snowy = y > 185 - env.snow * 200;
       let kind = null;
       if (y < .9 || (k.marsh > .5 && r < .5)) kind = y > WATER - .2 && (k.marsh > .3 || y < .5) ? 'reeds' : null;   // at the water's edge
+      else if (ground) { kind = ground(r, n); if (kind === 'gold') { kind = 'tuft'; gold = 1; } }                  // the dry and bare lands
       else if (n < .8 || (k.high + k.ridge > .5 && r < .45)) kind = r < .7 ? 'stone' : null;                    // slopes and heights: stones
       else if (f > .05 && f < .35 && r < .1) kind = 'bush';                                                     // wood edges
       else if (f < .25 && !snowy) kind = r < .62 ? 'tuft' : r < .78 && !G.season?.winter ? ['flowerY', 'flowerW', 'flowerP'][(ih(cx, cz, 260) * 3) | 0] : r < .82 ? 'stone' : null;
-      if (kind === 'tuft' && snowy) kind = null;
-      if (kind) c.push([kind, x, y - .05, z, kind === 'stone' ? sc * (.6 + r) : kind === 'tuft' ? sc * 1.7 : sc, yaw, tint]);
+      if ((kind === 'tuft' || kind === 'scrub') && snowy) kind = null;
+      if (kind) c.push([kind, x, y - .05, z, kind === 'stone' ? sc * (.6 + r) : kind === 'tuft' ? sc * 1.7 : sc, yaw, tint, gold]);
     }
     if (cache.size > FLORA.cache) cache.delete(cache.keys().next().value);
     cache.set(key, c);
@@ -87,9 +116,9 @@ export function floraSystem(G) {
         const mx = (cx + .5) * C - cam[0], mz = (cz + .5) * C - cam[2], dd = mx * mx + mz * mz;
         if (dd > N * N) continue;
         const far = dd > (N * .6) ** 2;
-        for (const [kind, x, y, z, sc, yaw, tint] of cell(cx, cz)) {
+        for (const [kind, x, y, z, sc, yaw, tint, gold] of cell(cx, cz)) {
           if (far && kind !== 'bush' && kind !== 'stone') continue;   // small things only close up
-          (S.props[kind] ||= []).push(x, y, z, sc, yaw, tint, kind === 'tuft' || kind === 'bush' ? autumn * .6 : 0, 0);
+          (S.props[kind] ||= []).push(x, y, z, sc, yaw, tint, gold ? .9 : kind === 'tuft' || kind === 'bush' ? autumn * .6 : 0, 0);
         }
       }
     },

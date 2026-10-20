@@ -54,8 +54,12 @@ export function pushBird(S, sp, x, y, z, heading, flying = false, beat = 0) {
 }
 
 // habitat, in the 2D game's biome names (a ridge counts as mountains; coast birds are the marsh's;
-// canyon birds are the cliffs', and the dunes and moors share the meadow's)
-const HABITAT = { ridge: 'mountains', coast: 'marsh', canyon: 'cliffs', desert: 'meadow', moor: 'meadow' };
+// canyon birds are the cliffs', and the open lands share the meadow's; each newer land borrows
+// the nearest of the old ones)
+const HABITAT = {
+  ridge: 'mountains', alpine: 'mountains', coast: 'marsh', swamp: 'marsh', canyon: 'cliffs', badlands: 'cliffs', fjord: 'cliffs', volcano: 'cliffs',
+  desert: 'meadow', moor: 'meadow', savanna: 'meadow', saltflat: 'meadow', birch: 'forest', redwood: 'forest', karst: 'forest',
+};
 export function habitat(x, z) {
   const n = biomeAt(x, z).name;
   return HABITAT[n] || n;
