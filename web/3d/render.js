@@ -169,8 +169,10 @@ export function createRenderer(gl) {
     { near: mesh(gl, broadleaf(), LAYOUT, { instLayout: ILAYOUT }), far: mesh(gl, lod(0), LAYOUT, { instLayout: ILAYOUT }) },
     { near: mesh(gl, pine(), LAYOUT, { instLayout: ILAYOUT }), far: mesh(gl, lod(1), LAYOUT, { instLayout: ILAYOUT }) },
   ];
-  const rings = mesh(gl, ring(), LAYOUT, { instLayout: ILAYOUT });
-  const clouds = mesh(gl, cloud(), LAYOUT, { instLayout: ILAYOUT });
+  // instanced shapes by name; systems register their own with R.shape(name, triangles)
+  const shapes = new Map();
+  const shape = (key, data) => { const old = shapes.get(key); if (old) { gl.deleteBuffer(old.buf); gl.deleteBuffer(old.ibuf); gl.deleteVertexArray(old.vao); } shapes.set(key, mesh(gl, data, LAYOUT, { instLayout: ILAYOUT })); };
+  shape('ring', ring()); shape('cloud', cloud());
   const hawk = mesh(gl, new Float32Array(12), LAYOUT, { dynamic: true });
   const fx = mesh(gl, new Float32Array(7), [[0, 3], [1, 4]], { dynamic: true });
   const chunks = new Map();
@@ -265,18 +267,11 @@ export function createRenderer(gl) {
       gl.bindVertexArray(m.vao); gl.drawArraysInstanced(gl.TRIANGLES, 0, m.count, m.icount); tris += m.count / 3 * m.icount;
     }
     gl.uniform1f(inst.u.uDither, 0); gl.uniform1f(inst.u.uSway, 0);
-    const rd = [];
-    for (const r of S.rings) rd.push(r.x, r.y, r.z, r.r * (r.pulse || 1), r.yaw, .7, 0, 0);
-    if (S.perchMark) rd.push(S.perchMark.x, S.perchMark.y + .35, S.perchMark.z, .45, S.time * 1.5, .7, 0, 0);
-    if (rd.length) {
-      gl.bindBuffer(gl.ARRAY_BUFFER, rings.ibuf); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(rd), gl.DYNAMIC_DRAW);
-      gl.bindVertexArray(rings.vao); gl.drawArraysInstanced(gl.TRIANGLES, 0, rings.count, rd.length / 8);
-    }
-    if (S.clouds.length) {
-      const cd = [];
-      for (const c of S.clouds) cd.push(c.x, c.y, c.z, c.s, c.yaw, .6, 0, 0);
-      gl.bindBuffer(gl.ARRAY_BUFFER, clouds.ibuf); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(cd), gl.DYNAMIC_DRAW);
-      gl.bindVertexArray(clouds.vao); gl.drawArraysInstanced(gl.TRIANGLES, 0, clouds.count, cd.length / 8);
+    // props: anything instanced that a system adds (rings, clouds, mice, marks...)
+    for (const key in S.props) {
+      const d = S.props[key], m = shapes.get(key); if (!m || !d.length) continue;
+      gl.bindBuffer(gl.ARRAY_BUFFER, m.ibuf); gl.bufferData(gl.ARRAY_BUFFER, d instanceof Float32Array ? d : new Float32Array(d), gl.DYNAMIC_DRAW);
+      gl.bindVertexArray(m.vao); gl.drawArraysInstanced(gl.TRIANGLES, 0, m.count, d.length / 8); tris += m.count / 3 * d.length / 8;
     }
 
     // see-through bits: shadow, water, motes
@@ -329,7 +324,7 @@ export function createRenderer(gl) {
     return new Float32Array(out);
   }
 
-  R.updateChunks = updateChunks; R.updateTrees = updateTrees;
+  R.updateChunks = updateChunks; R.updateTrees = updateTrees; R.shape = shape;
   return R;
 }
 

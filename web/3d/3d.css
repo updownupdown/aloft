@@ -19,9 +19,13 @@ button { font-family: inherit; }
 
 .hud3 { position: absolute; left: calc(62px + env(safe-area-inset-left)); top: calc(14px + env(safe-area-inset-top)); display: flex; gap: 14px; align-items: center;
   font-size: 13px; color: var(--ink); padding: 3px 10px; border-radius: 3px; background: rgba(246, 241, 230, .55); }
-.wings { width: 90px; height: 7px; border-radius: 4px; background: rgba(58, 36, 24, .14); overflow: hidden; border: 1px solid rgba(58, 36, 24, .3); }
-.wings b { display: block; height: 100%; background: linear-gradient(90deg, #8a6240, #b8862f); transition: width .2s; }
-.wings.low b { background: var(--berry); }
+.meters { display: flex; gap: 10px; }
+.m3 { display: flex; flex-direction: column; gap: 2px; width: 64px; }
+.m3 em { font-size: 10.5px; line-height: 1; opacity: .7; }
+.m3 > span { display: block; height: 7px; border-radius: 4px; background: rgba(58, 36, 24, .14); border: 1px solid rgba(58, 36, 24, .3); overflow: hidden; }
+.m3 b { display: block; height: 100%; transition: width .3s; }
+.m3.low b { animation: low3 1s ease-in-out infinite alternate; }
+@keyframes low3 { from { opacity: 1; } to { opacity: .35; } }
 .ringc { font-family: var(--title); font-style: italic; font-size: 17px; color: #8a5a12; }
 .alt { opacity: .75; font-style: italic; }
 .fps3 { position: absolute; right: calc(10px + env(safe-area-inset-right)); top: calc(10px + env(safe-area-inset-top)); font: 12px ui-monospace, monospace;
@@ -57,3 +61,8 @@ button { font-family: inherit; }
 .card3 .sw.on i::after { left: 20px; }
 .card3 .how { margin: 0; padding-left: 18px; font-size: 14.5px; line-height: 1.45; }
 .card3 .how li { margin: 4px 0; }
+
+.tabs3 { display: flex; gap: 4px; margin: 4px 0 8px; border-bottom: 1px solid var(--rule); flex-wrap: wrap; }
+.tabs3 button { background: none; border: 0; padding: 6px 10px; font-family: var(--title); font-style: italic; font-size: 19px; color: var(--ink2); cursor: pointer; border-radius: 3px 3px 0 0; }
+.tabs3 button.on { color: var(--ink); background: rgba(79, 111, 158, .16); }
+.card3 .btn em { font-style: italic; font-size: 13px; color: var(--ink2); }

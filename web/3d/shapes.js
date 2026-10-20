@@ -2,7 +2,7 @@
 // the ground: pos, normal, colour, colour. Instances tint and scale them.
 import { PAL, TREE } from './world.js';
 
-function builder() {
+export function builder() {
   const a = [];
   const tri = (p, q, r, col, j = 0) => {
     const ux = q[0] - p[0], uy = q[1] - p[1], uz = q[2] - p[2], vx = r[0] - p[0], vy = r[1] - p[1], vz = r[2] - p[2];
@@ -12,9 +12,9 @@ function builder() {
   };
   return { tri, out: () => new Float32Array(a) };
 }
-let seed = 1; const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+let seed = 1; export const reseed = n => { seed = n; }; const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
 
-function prism(B, x, z, r0, r1, y0, y1, sides, col) {
+export function prism(B, x, z, r0, r1, y0, y1, sides, col) {
   for (let i = 0; i < sides; i++) {
     const a = i / sides * Math.PI * 2, b = (i + 1) / sides * Math.PI * 2;
     const p0 = [x + Math.cos(a) * r0, y0, z + Math.sin(a) * r0], p1 = [x + Math.cos(b) * r0, y0, z + Math.sin(b) * r0];
@@ -22,7 +22,7 @@ function prism(B, x, z, r0, r1, y0, y1, sides, col) {
     B.tri(p0, q1, p1, col, (rnd() - .5) * .08); B.tri(p0, q0, q1, col, (rnd() - .5) * .08);
   }
 }
-function cone(B, y0, y1, r, sides, col, twist = 0) {
+export function cone(B, y0, y1, r, sides, col, twist = 0) {
   for (let i = 0; i < sides; i++) {
     const a = i / sides * Math.PI * 2 + twist, b = (i + 1) / sides * Math.PI * 2 + twist, rr = r * (.85 + rnd() * .3);
     const p0 = [Math.cos(a) * rr, y0 - rnd() * .03, Math.sin(a) * rr], p1 = [Math.cos(b) * r, y0, Math.sin(b) * r];
@@ -31,13 +31,13 @@ function cone(B, y0, y1, r, sides, col, twist = 0) {
   }
 }
 // a lumpy low-poly ball: an octahedron split once, pushed out to a sphere and jittered
-function blob(B, cx, cy, cz, r, col, col2) {
+export function blob(B, cx, cy, cz, r, col, col2, sc = [1, .85, 1]) {
   const V = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
   const F = [[0, 2, 4], [4, 2, 1], [1, 2, 5], [5, 2, 0], [0, 4, 3], [4, 1, 3], [1, 5, 3], [5, 0, 3]];
   const cache = new Map();
   const norm = v => { const l = Math.hypot(...v); return [v[0] / l, v[1] / l, v[2] / l]; };
   const key = v => v.map(x => x.toFixed(3)).join();
-  const pt = v => { const k = key(v); if (!cache.has(k)) { const j = .85 + rnd() * .3; cache.set(k, [cx + v[0] * r * j, cy + v[1] * r * j * .85, cz + v[2] * r * j]); } return cache.get(k); };
+  const pt = v => { const k = key(v); if (!cache.has(k)) { const j = .85 + rnd() * .3; cache.set(k, [cx + v[0] * r * j * sc[0], cy + v[1] * r * j * sc[1], cz + v[2] * r * j * sc[2]]); } return cache.get(k); };
   for (const [i, j, k] of F) {
     const a = V[i], b = V[j], c = V[k];
     const ab = norm([(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2]), bc = norm([(b[0] + c[0]) / 2, (b[1] + c[1]) / 2, (b[2] + c[2]) / 2]), ca = norm([(c[0] + a[0]) / 2, (c[1] + a[1]) / 2, (c[2] + a[2]) / 2]);

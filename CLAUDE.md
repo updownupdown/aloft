@@ -1,6 +1,11 @@
 # Aloft — project conventions
 
-A cozy, zen 2D side-scrolling flight game. You play a hawk (a red-tailed-hawk-like
+**2026-10-20: Aloft is now 3D** (James's decision). The game is `web/index.html` + `web/3d/`.
+The 2D game in `web/src/` is no longer loaded; it stays only as reference while its features
+are ported to 3D, then it is deleted (keep `src/audio.js`, `music.js`, `birdvoice.js`, `songs.js`,
+which 3D and the labs share). See "3D layout" below.
+
+A cozy, zen flight game, first made in 2D (side-scrolling). You play a hawk (a red-tailed-hawk-like
 species) riding thermals over procedurally generated hills, trees and ponds. Painted
 in a loose watercolour style ("Wet Wash"). Android-first as an installable PWA, desktop
 browser for quick testing, iOS later.
@@ -57,6 +62,32 @@ web/fonts/              bundled Cormorant Garamond italic and Spectral (SIL OFL,
 tools/serve.sh          serve web/ on localhost:8000
 tools/make-icons.mjs    regenerate icons from tools/icon.html (needs Playwright)
 ```
+
+## 3D layout (the game)
+
+```
+web/index.html          entry; loads 3d/main.js
+web/3d/main.js          boot, the frame loop, save/resume, the SYSTEMS list, flight events, core menu rows
+web/3d/flight.js        hawk flight model (energy, tuck/flare, flaps, thermal ride, trees, perching, ground, water)
+web/3d/input.js         two thumbs = two wings (floating sticks, paired taps), keyboard
+web/3d/camera.js        chase camera, hawk frame, pose (wing beats with per-wing amplitude)
+web/3d/world.js         terrain height(x,z), colours, trees + perches, thermals, airLift, rings
+web/3d/render.js        WebGL2 renderer: sky, chunks, instanced trees and named shapes, hawk, water, points
+web/3d/shapes.js        low-poly builders (builder, blob, prism, cone) and tree/ring/cloud meshes
+web/3d/hawk.js          the hawk mesh, rebuilt per frame from a pose
+web/3d/sky.js           clock (G.tod, G.day, G.season) and light (G.light)
+web/3d/hud.js           G.hud: meter(), tip()/did(), toast(), status, counter, thumb pads
+web/3d/menu.js          G.menu: tab(), toggle(), button(), onOpen(), set()
+web/3d/app.js           Update and Full screen rows
+web/3d/sys/*.js         systems: air (thermal clouds/motes), rings, food (hunger, thirst, mice), aim
+```
+
+A system is `(G) => ({ id, update?(dt, c), scene?(S), save?(), load?(o) })`, added to `SYSTEMS` in
+main.js. It adds instanced shapes with `G.R.shape(name, tris)` and pushes 8 floats per instance to
+`S.props[name]` (x, y, z, scale, yaw, tint, turn, phase), points to `S.motes` (x, y, z, r, g, b, size),
+particles with `G.part()`, and talks on the bus (`G.on`, `G.emit`). Saves go under `aloft.save3d`
+(per system). 3D coordinates: x east, z south, **y up**, metres, water at y = 0. Debug:
+`window.__aloft3d.dbg` (thermal, forest, mouse, fly).
 
 ## Code style
 
