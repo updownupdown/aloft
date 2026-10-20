@@ -1,27 +1,30 @@
 // Touch controls drawn on the screen itself. Each touch is read as one of:
 //  - a tap, counted with the quick taps before it (a double tap, three fast taps);
-//  - a stroke, read when the finger lifts: a line (which way, and where it ends), a hook (out
-//    one way and back), or a circle (which way round).
-// (Trimming the line of flight is the joystick's, joystick.js.) controls.js decides what each
-// one does. This file also draws the quiet feedback: the faint ink of a stroke as it is drawn,
-// tinted once it is understood, and a small sign by the hawk for whatever it is now doing.
-// Every point the screen reports is kept (coalesced events too), and the shape is read from
-// an evenly spaced, lightly smoothed copy, so a shaky finger still reads true.
+//  - a hold: a touch kept down a moment, whether it moved first or not. Once the finger rests
+//    (or has simply stayed down long enough), it aims: where it points from where it came down,
+//    reported every frame until it lifts, so it can be trimmed as it is held;
+//  - a stroke: a quick line, hook or circle, read when the finger lifts.
+// controls.js decides what each one does. Nothing is drawn under the finger: the feedback is a
+// small sign above the hawk, flashed when a gesture is understood and held faintly while the
+// hawk keeps doing it. Every point the screen reports is kept (coalesced events too), and a
+// stroke's shape is read from an evenly spaced, lightly smoothed copy, so a shaky finger reads true.
 import { TAU, C, clamp } from './util.js';
 import { MARK } from './palette.js';
 
-const TAP_S = .45, TAP_MOVE = 12, QUICK = .32, QUICK_R = 60, MIN_STROKE = 30, STEP = 6;
+// a hold: down HOLD_S and resting (moved under REST px for REST_S), or down HOLD_MAX whatever it does
+const TAP_S = .3, TAP_MOVE = 12, HOLD_S = .26, HOLD_MAX = 1.1, REST = 7, REST_S = .12;
+const QUICK = .32, QUICK_R = 60, AIM_R = 60, MIN_STROKE = 30, STEP = 6;
 const INK = MARK.ink;
-export const TINT = { prey: MARK.mouse, perch: MARK.perch, thermal: MARK.thermal, turn: [26, 20, 16], ink: INK, none: INK };
+export const TINT = { prey: MARK.mouse, perch: MARK.perch, thermal: MARK.thermal, food: MARK.mouse, turn: [26, 20, 16], ink: INK };
 
 export function createGestures(canvas) {
   const tracks = new Map(), now = () => performance.now() / 1000;
-  const S = { events: [], lastTap: null, trails: [], sign: null, mode: null };
+  const S = { events: [], lastTap: null, hold: null, sign: null, mode: null };
   const pos = e => { const r = canvas.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
 
   function down(id, e) {
-    const [x, y] = pos(e);
-    tracks.set(id, { x0: x, y0: y, x, y, t0: now(), pts: [[x, y]], moved: false });
+    const [x, y] = pos(e), t = now();
+    tracks.set(id, { x0: x, y0: y, x, y, t0: t, pts: [[x, y]], moved: false, hold: false, rx: x, ry: y, rt: t });
   }
   function move(id, e) {
     const k = tracks.get(id); if (!k) return;
@@ -31,13 +34,16 @@ export function createGestures(canvas) {
       k.x = x; k.y = y;
     }
     if (!k.moved && Math.hypot(k.x - k.x0, k.y - k.y0) > TAP_MOVE) k.moved = true;
+    // where it last came to rest: a move beyond REST starts the rest over
+    if (Math.hypot(k.x - k.rx, k.y - k.ry) > REST) { k.rx = k.x; k.ry = k.y; k.rt = now(); }
   }
   function up(id) {
     const k = tracks.get(id); if (!k) return;
     tracks.delete(id);
+    if (k.hold) { if (S.hold === k) S.hold = null; S.events.push({ type: 'holdEnd' }); return; }
     const t = now();
     if (!k.moved) {
-      if (t - k.t0 > TAP_S) return;   // a long still press is nothing
+      if (t - k.t0 > TAP_S) return;
       // quick taps close together count up: a double tap, three fast taps
       const L = S.lastTap, n = L && t - L.t < QUICK && Math.hypot(k.x0 - L.x, k.y0 - L.y) < QUICK_R ? L.n + 1 : 1;
       S.lastTap = { t, x: k.x0, y: k.y0, n };
@@ -45,43 +51,40 @@ export function createGestures(canvas) {
       return;
     }
     const g = classify(k.pts);
-    const trail = { pts: k.pts, t, tint: 'none' };
-    S.trails.push(trail); if (S.trails.length > 6) S.trails.shift();
-    if (g) S.events.push({ type: 'stroke', ...g, trail });
+    if (g) S.events.push({ type: 'stroke', ...g, pts: k.pts });
   }
-  const cancel = id => tracks.delete(id);
+  const cancel = id => { const k = tracks.get(id); if (k?.hold && S.hold === k) { S.hold = null; S.events.push({ type: 'holdEnd' }); } tracks.delete(id); };
 
-  // per frame: hand over the events
-  function frame() { const ev = S.events; S.events = []; return { events: ev }; }
+  // per frame: turn a touch that has stayed down into a hold, then hand over the events and,
+  // while a hold lasts, where it aims (x right, y down, within the unit circle)
+  function frame() {
+    const t = now();
+    for (const k of tracks.values()) {
+      if (k.hold || S.hold) continue;
+      const age = t - k.t0;
+      if ((age > HOLD_S && t - k.rt > REST_S) || age > HOLD_MAX) { k.hold = true; S.hold = k; S.events.push({ type: 'holdStart' }); }
+    }
+    let aim = null;
+    const h = S.hold;
+    if (h) { let x = (h.x - h.x0) / AIM_R, y = (h.y - h.y0) / AIM_R; const m = Math.hypot(x, y); if (m > 1) { x /= m; y /= m; } aim = { x, y }; }
+    const ev = S.events; S.events = [];
+    return { events: ev, aim };
+  }
 
-  // a sign by the hawk: flashed when a gesture is understood, then held faintly while the
-  // hawk keeps doing it (mode), so you can always see what it is doing
+  // a sign by the hawk: flashed when a gesture is understood, then held while the hawk keeps
+  // doing it (mode), so you can always see what it is doing
   function sign(kind, mode = null) { S.sign = { kind, t: now() }; S.mode = mode; }
   function setMode(mode) { S.mode = mode; }
 
-  // the feedback, in screen pixels; hawk is the hawk's place on screen, face its heading
+  // the sign, in screen pixels; hawk is the hawk's place on screen, face its heading
   function draw(ctx, hawk, face) {
-    const t = now();
-    ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-    // (through the midpoints, so the ink runs smooth rather than in straight bits)
-    const line = (pts, col, a, w) => {
-      ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]);
-      for (let i = 1; i < pts.length - 1; i++) ctx.quadraticCurveTo(pts[i][0], pts[i][1], (pts[i][0] + pts[i + 1][0]) / 2, (pts[i][1] + pts[i + 1][1]) / 2);
-      const z = pts[pts.length - 1]; ctx.lineTo(z[0], z[1]);
-      ctx.strokeStyle = C(col, a); ctx.lineWidth = w; ctx.stroke();
-    };
-    // strokes being drawn: faint ink under the finger
-    for (const k of tracks.values()) if (k.moved && k.pts.length > 1) line(k.pts, INK, .22, 2);
-    // finished strokes fade, tinted by what they meant
-    S.trails = S.trails.filter(r => t - r.t < .7);
-    for (const r of S.trails) { const f = 1 - (t - r.t) / .7; line(r.pts, TINT[r.tint] || INK, (r.tint === 'none' ? .18 : .45) * f, r.tint === 'none' ? 1.6 : 2.4); }
-    // the sign by the hawk
-    const sg = S.sign, fresh = sg ? clamp(1 - (t - sg.t) / .9, 0, 1) : 0;
+    const t = now(), sg = S.sign, fresh = sg ? clamp(1 - (t - sg.t) / 1.1, 0, 1) : 0;
     const kind = fresh > 0 ? sg.kind : S.mode;
-    if (kind && hawk) {
-      const a = fresh > 0 ? .3 + .5 * fresh : .28;
-      ctx.translate(hawk[0] + face * 4, hawk[1] - 34); drawSign(ctx, kind, face, a, t);
-    }
+    if (!kind || !hawk) return;
+    ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.translate(hawk[0] + face * 4, hawk[1] - 36);
+    if (fresh > 0) { const k = 1 + .25 * Math.max(0, fresh - .8) / .2; ctx.scale(k, k); }   // a small pop as it lands
+    drawSign(ctx, kind, face, fresh > 0 ? .45 + .4 * fresh : .5, t);
     ctx.restore();
   }
 
@@ -145,7 +148,7 @@ function even(pts) {
 // Small signs drawn about the origin, about 20 px across, in ink (turning in near-black,
 // thermals in ochre). face mirrors the ones that point the way the hawk flies.
 function drawSign(ctx, kind, face, a, t) {
-  const col = kind === 'turn' ? TINT.turn : kind === 'ride' ? TINT.thermal : kind === 'perch' ? TINT.perch : kind === 'prey' ? TINT.prey : INK;
+  const col = kind === 'turn' ? TINT.turn : kind === 'ride' ? TINT.thermal : kind === 'perch' ? TINT.perch : kind === 'prey' || kind === 'food' ? TINT.prey : INK;
   ctx.strokeStyle = C(col, a); ctx.fillStyle = C(col, a); ctx.lineWidth = 1.8; ctx.beginPath();
   const chev = (cx, cy, s, dir) => { ctx.moveTo(cx - s, cy - s * dir * .7); ctx.lineTo(cx, cy); ctx.lineTo(cx + s, cy - s * dir * .7); };
   switch (kind) {
@@ -155,6 +158,9 @@ function drawSign(ctx, kind, face, a, t) {
     case 'land': chev(0, 2, 6, 1); ctx.moveTo(-8, 7); ctx.lineTo(8, 7); break;
     case 'hover': ctx.moveTo(-10, 2); ctx.quadraticCurveTo(-5, -7, 0, 0); ctx.quadraticCurveTo(5, -7, 10, 2); ctx.moveTo(0, 3); ctx.lineTo(0, 8); break;
     case 'takeoff': chev(0, -4, 6, -1); chev(0, 3, 6, -1); break;
+    case 'glideup': ctx.moveTo(-10 * face, 6); ctx.lineTo(9 * face, -5); ctx.moveTo(3 * face, -6); ctx.lineTo(9 * face, -5); ctx.lineTo(7 * face, 1); break;
+    case 'glidedown': ctx.moveTo(-10 * face, -6); ctx.lineTo(9 * face, 5); ctx.moveTo(7 * face, -1); ctx.lineTo(9 * face, 5); ctx.lineTo(3 * face, 6); break;
+    case 'food': ctx.arc(-3, 2, 3.2, 0, TAU); ctx.moveTo(6.5, 3); ctx.arc(4, 3, 2.5, 0, TAU); ctx.moveTo(1, -2); ctx.quadraticCurveTo(2, -7, 6, -8); break;
     case 'glide': ctx.moveTo(-10 * face, 1); ctx.lineTo(10 * face, -1); ctx.moveTo(6 * face, -5); ctx.lineTo(10 * face, -1); ctx.lineTo(6 * face, 3); break;
     case 'ride': { const ph = t * 8 % 7; chev(0, 4 - ph, 6, -1); chev(0, 11 - ph, 6, -1); break; }
     case 'dive': ctx.moveTo(-6 * face, -8); ctx.lineTo(6 * face, 6); ctx.moveTo(6 * face, 0); ctx.lineTo(6 * face, 6); ctx.lineTo(0, 6); break;
@@ -165,5 +171,8 @@ function drawSign(ctx, kind, face, a, t) {
     case 'hop': ctx.moveTo(-8 * face, 4); ctx.quadraticCurveTo(0, -8, 8 * face, 4); break;
     case 'eat': ctx.arc(0, 2, 3, 0, TAU); ctx.moveTo(6, 2); ctx.arc(4, 2, 2.5, 0, TAU); break;
   }
+  // (a soft paper halo under the ink, so the sign reads over sky, hills or trees alike)
+  const ink = ctx.strokeStyle; ctx.strokeStyle = C([244, 238, 225], a * .7); ctx.lineWidth = 5; ctx.stroke();
+  ctx.strokeStyle = ink; ctx.lineWidth = 1.8;
   ctx.stroke();
 }

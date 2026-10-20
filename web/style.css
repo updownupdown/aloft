@@ -325,10 +325,3 @@ details > small { margin: 4px 0; }
 .ctl-map figcaption { display: flex; flex-direction: column; gap: 2px; line-height: 1.35; }
 .ctl-map b { font-family: var(--title); font-style: italic; font-weight: 600; font-size: 19px; }
 .ctl-map small { font-size: 14px; color: var(--ink2); }
-
-/* the joystick for trimming the line of flight (joystick.js): painted once, only shown flying */
-.joy { position: absolute; touch-action: none; border-radius: 50%; transition: opacity .3s; }
-.joy::after { content: ''; position: absolute; inset: -18px; border-radius: 50%; }   /* a larger touch target */
-.joy canvas { position: absolute; left: 0; top: 0; pointer-events: none; }
-.joy .knob { transition: transform .08s ease-out; }
-.joy.hidden, #ui.menu-open .joy, #ui.photo .joy { display: none; }

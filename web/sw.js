@@ -1,9 +1,9 @@
 // Offline support. Stale-while-revalidate: the game opens instantly from cache and any
 // update deployed since is fetched in the background, showing on the next launch.
-const CACHE = 'aloft-v35';
+const CACHE = 'aloft-v36';
 const FILES = ['./', 'index.html', 'style.css', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png', 'icons/favicon-32.png',
   'src/game.js', 'src/tune.js', 'src/util.js', 'src/paint.js', 'src/palette.js', 'src/world.js', 'src/bird.js', 'src/input.js', 'src/audio.js', 'src/songs.js', 'src/render.js', 'src/ui.js', 'src/life.js', 'src/journey.js', 'src/music.js', 'src/photo.js', 'src/gfx.js', 'src/singing.js', 'src/dial.js',
-  'src/haptics.js', 'src/intentions.js', 'src/fauna.js', 'src/controls.js', 'src/gestures.js', 'src/joystick.js', 'src/story.js', 'src/birdvoice.js', 'lab.html', 'lab.css', 'musiclab.html', 'src/letter.js', 'src/guide.js', 'src/postcard.js', 'src/encounters.js', 'src/air.js', 'src/airart.js', 'src/ghost.js', 'src/night.js', 'src/skies.js', 'src/atmos.js', 'src/skyfx.js', 'src/ridge.js', 'src/coast.js', 'src/seal.js', 'src/controlmap.js',
+  'src/haptics.js', 'src/intentions.js', 'src/fauna.js', 'src/controls.js', 'src/gestures.js', 'src/story.js', 'src/birdvoice.js', 'lab.html', 'lab.css', 'musiclab.html', 'src/letter.js', 'src/guide.js', 'src/postcard.js', 'src/encounters.js', 'src/air.js', 'src/airart.js', 'src/ghost.js', 'src/night.js', 'src/skies.js', 'src/atmos.js', 'src/skyfx.js', 'src/ridge.js', 'src/coast.js', 'src/seal.js', 'src/controlmap.js',
   'fonts/cormorant-garamond-italic.woff2', 'fonts/spectral-regular.woff2', 'fonts/spectral-italic.woff2'];
 
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES))); self.skipWaiting(); });
