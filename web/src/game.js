@@ -11,6 +11,7 @@ import { createControls } from './controls.js';
 import { createAudio } from './audio.js';
 import { SPECIES, speciesFor, active, timeOfDay } from './songs.js';
 import { render } from './render.js';
+import { renderSimple, PIXEL_ROWS } from './simple.js';
 import { createUI } from './ui.js';
 import { mousePos, fishPos, reveal, rise, updateFlock, callVisitor, updateVisitor, makeHawk, updateHawk, updateCrows, freeze } from './life.js';
 import { loadJourney, saveJourney, updateJourney, journal, drawMap, placeNote, atPerch, updateNest, seasonName, NEST_TWIGS } from './journey.js';
@@ -143,7 +144,7 @@ export function start(canvas) {
       quit,
       fullscreen: on => { G.settings.full = on; store.set('full', on); if (on) goFull(); else if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {}); },
       newGame: () => { store.set('save', null); store.set('seed', G.sharedSeed ?? 1 + Math.floor(Math.random() * 99999)); G.noSave = true; location.reload(); },
-      gfx: k => { if (k === 'res') { res = 0; resLock = false; perf.prev = 0; perf.fails = 0; resize(); } redraw = true; },
+      gfx: k => { if (k === 'res' || k === 'style') { res = 0; resLock = false; perf.prev = 0; perf.fails = 0; resize(); } redraw = true; },
       subtitle: () => { const h = hourName(G.tod); return `${h[0].toUpperCase()}${h.slice(1)} on day ${G.day}, ${seasonName(G)}.`; },
     },
   });
@@ -898,7 +899,10 @@ export function start(canvas) {
   function resize() {
     const cw = innerWidth, ch = innerHeight;
     scrS = ch / 300; if (cw / scrS < 420) scrS = cw / 420;   // css px per screen unit
-    if (GFX.res !== 'auto') res = Math.min(GFX.res, devicePixelRatio || 1);
+    // the pixel style draws into a canvas a couple of hundred pixels tall and lets the browser scale it up crisp
+    canvas.style.imageRendering = GFX.style === 'pixel' ? 'pixelated' : '';
+    if (GFX.style === 'pixel') res = PIXEL_ROWS / ch;
+    else if (GFX.res !== 'auto') res = Math.min(GFX.res, devicePixelRatio || 1);
     else res = clamp(res || store.get('res', 9) * 1.08, Math.min(RES_MIN, resMax()), resMax());
     canvas.style.width = cw + 'px'; canvas.style.height = ch + 'px';
     canvas.width = Math.round(cw * res); canvas.height = Math.round(ch * res);
@@ -918,7 +922,7 @@ export function start(canvas) {
   const perf = { n: 0, sum: 0, prev: 0, settle: 0, fails: 0, step: 1 }, now = () => performance.now(), t0 = now();
   function setRes(r) { res = r; perf.settle = 1; resize(); store.set('res', res); }
   function watchFrames(ms) {
-    if (resLock || GFX.res !== 'auto' || ms > 250 || saverOn) { perf.n = perf.sum = 0; return; }
+    if (resLock || GFX.res !== 'auto' || GFX.style === 'pixel' || ms > 250 || saverOn) { perf.n = perf.sum = 0; return; }
     perf.n++; perf.sum += ms;
     if (perf.sum < 2000) return;
     const avg = perf.sum / perf.n; perf.n = perf.sum = 0;
@@ -939,7 +943,9 @@ export function start(canvas) {
   let lastDrawn = 0;
   function frame(now) {
     updateSaver();
-    if (saverOn && now - lastDrawn < 1000 / 30 - 4) { requestAnimationFrame(frame); return; }
+    // a frame-rate cap (Graphics settings) or the battery saver's 30: skip screen refreshes until it is time
+    const cap = saverOn ? 30 : GFX.cap === 'max' ? 0 : GFX.cap;
+    if (cap && now - lastDrawn < 1000 / cap - 4) { requestAnimationFrame(frame); return; }
     lastDrawn = now;
     const ms = now - last, dt = Math.min(.05, ms / 1000); last = now;
     const ta = performance.now();
@@ -952,7 +958,7 @@ export function start(canvas) {
       G.P = palette(G.tod, G.overcast, G.storm, G.sea);
       ctx.setTransform(G.view.px, 0, 0, G.view.px, 0, 0);
       ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
-      render(ctx, G);
+      if (GFX.style === 'wash') render(ctx, G); else renderSimple(ctx, G, GFX.style);
       // the gestures' quiet feedback, in screen pixels
       if (!G.photo && !G.roost) { const k = G.view.px / G.view.s; ctx.setTransform(k, 0, 0, k, 0, 0); gestures.draw(ctx, [(b.x - G.cam.x) * G.view.s, (b.y - G.cam.y) * G.view.s], b.face); ctx.setTransform(G.view.px, 0, 0, G.view.px, 0, 0); }
       if (!G.paused) { afterFrame(); quietHUD(); }

@@ -12,7 +12,10 @@ export const GFX_INFO = [
   ['weather', 'Rain and snow', true],
 ];
 export const RES_OPTS = ['auto', .5, .75, 1, 1.25, 1.5, 2];
-export const GFX = { res: 'auto' };
+// the look (watercolour, or one of the simple styles in simple.js) and a cap on frames a second
+export const STYLE_OPTS = ['wash', 'cut', 'ink', 'pixel', 'shadow'];
+export const CAP_OPTS = ['max', 60, 45, 30];
+export const GFX = { res: 'auto', style: 'wash', cap: 'max' };
 for (const [k, , d] of GFX_INFO) GFX[k] = d;
 
 export function loadGfx(store) {
@@ -21,6 +24,8 @@ export function loadGfx(store) {
   if (q) for (const kv of q.split(',')) {
     const [k, v] = kv.split(':');
     if (k === 'res') GFX.res = v === 'auto' ? 'auto' : +v;
+    else if (k === 'style') GFX.style = STYLE_OPTS.includes(v) ? v : 'wash';
+    else if (k === 'cap') GFX.cap = v === 'max' ? 'max' : +v;
     else if (k in GFX) GFX[k] = v !== '0';
   }
 }
@@ -37,7 +42,7 @@ export function summary() {
   return {
     fps: f.length ? 1000 / avg(f) : 0, frame: avg(f), worst: sorted[Math.floor(sorted.length * .95)] || 0,
     js: avg(last(stats.js, 120)), step: avg(last(stats.step, 120)), draw: avg(last(stats.draw, 120)),
-    res: stats.res, canvas: stats.canvas, sprites: stats.sprites,
+    res: stats.res, canvas: stats.canvas, sprites: stats.sprites, style: GFX.style,
   };
 }
 
