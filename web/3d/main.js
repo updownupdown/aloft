@@ -33,13 +33,13 @@ import { nestSystem } from './sys/nest.js';
 import { storySystem } from './sys/story.js';
 import { photoSystem } from './sys/photo.js';
 import { howtoSystem } from './sys/howto.js';
-import { STYLES } from './post.js';
 import { weatherSystem } from './sys/weather.js';
 import { faunaSystem } from './sys/fauna.js';
 import { landsSystem } from './sys/lands.js';
 import { windsSystem } from './sys/winds.js';
+import { floraSystem } from './sys/flora.js';
 
-const SYSTEMS = [clockSystem, weatherSystem, windsSystem, airSystem, ringsSystem, foodSystem, aimSystem, songsSystem,
+const SYSTEMS = [clockSystem, weatherSystem, windsSystem, floraSystem, airSystem, ringsSystem, foodSystem, aimSystem, songsSystem,
   guideSystem, journeySystem, nestSystem, storySystem, photoSystem, howtoSystem, faunaSystem, landsSystem];
 
 export function start(canvas, ui) {
@@ -132,15 +132,6 @@ export function start(canvas, ui) {
   G.menu.button(play, { label: 'Start a new journey', sub: 'from the valley', onClick: el => {
     if (el.dataset.sure) { store.set('save3d', null); location.reload(); } else { el.dataset.sure = 1; el.firstChild.textContent = 'Tap again to start over '; }
   } });
-  // the look: one of the styles in post.js (?style=ink to try one)
-  R.style = qs.get('style') || store.get('style3d', 'plain');
-  if (!STYLES.some(([k]) => k === R.style)) R.style = 'plain';
-  // one row per look; picking one closes the menu so you see it at once. L cycles them in flight.
-  const lookRows = new Map(), markLook = () => { for (const [k, el] of lookRows) el.querySelector('em').textContent = k === R.style ? 'in use' : ''; };
-  const useLook = k => { R.style = k; store.set('style3d', k); markLook(); H.toast(`Look: ${STYLES.find(([q]) => q === k)[1]}`); };
-  for (const [k, name] of STYLES) lookRows.set(k, G.menu.button(play, { label: `Look: ${name}`, sub: ' ', onClick: () => { useLook(k); G.menu.set(false); } }));
-  markLook();
-  addEventListener('keydown', e => { if (e.code === 'KeyL' && !e.repeat) { const i = STYLES.findIndex(([q]) => q === R.style); useLook(STYLES[(i + 1) % STYLES.length][0]); } });
   appRows(G);
   H.showFps(G.settings.fps);
   G.on('pause', persist);

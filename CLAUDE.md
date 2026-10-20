@@ -6,7 +6,7 @@ shared by 3D and the labs.
 
 A cozy, zen 3D flight game (first made in 2D). You play a hawk (a red-tailed-hawk-like
 species) riding thermals over procedurally generated hills, trees and ponds. The look is
-one of six post-processing styles in `web/3d/post.js` (Low poly default; James to pick one). Android-first as an installable PWA, desktop
+low poly (James's pick, 2026-10-20): flat-shaded facets, soft haze, paper grain. Android-first as an installable PWA, desktop
 browser for quick testing, iOS later.
 
 Live: https://updownupdown.github.io/aloft/ (every push to `main` touching `web/` deploys).
@@ -41,11 +41,10 @@ web/3d/seal.js          Aloft's wax seal (menu Resume, app icons via tools/icon.
 web/3d/dial.js          the day dial, top right
 web/3d/journal.js       the Journal tab: journal(G).section(order, title); shot.js: project(), afterDraw(), portraits
 web/3d/app.js           Update, Full screen, Quiet meters and Quit rows
-web/3d/post.js          looks (R.style): plain, wash, ink, cel, layers, woodblock, gouache; one full-screen pass after the scene
 web/src/                audio.js (Web Audio synth), music.js (four styles), birdvoice.js, songs.js (songbird species)
 web/lab.html            bird song lab; web/musiclab.html music lab (both share lab.css)
 web/icons/, web/fonts/  app icons (tools/icon.html + tools/make-icons.mjs), bundled fonts (SIL OFL)
-web/3d/sys/*.js         systems: air (thermal clouds/motes), rings, food (hunger, thirst, mice), aim,
+web/3d/sys/*.js         systems: air (thermal clouds/motes), rings, food (hunger, thirst, mice), aim, flora (tufts, flowers, stones, bushes, reeds),
                         guide (field guide: G.sight(key,x,y,z,r), G.guide.page()), journey (migration south to
                         JOURNEY.marsh, landmarks found, route, years, journal map), nest (twigs, egg, chick),
                         story (health -> G.tailRed, keepsakes, tricks, courtship, mate and fledglings),
@@ -77,9 +76,10 @@ particles with `G.part()`, and talks on the bus (`G.on`, `G.emit`). Saves go und
 ## Art direction
 
 Everything is code-generated: low-poly flat-shaded meshes (`shapes.js`, `hawk.js`), two-sided
-lighting, haze toward the horizon, then one of the looks in `post.js` (Watercolour carries on
-the 2D "Wet Wash": pooled edges, granulation, light left as bare paper). Notes from the 2D era
-are in the shared folder under `art-direction/`.
+lighting (top and underside of each face coloured apart), hemisphere ambient, haze toward the
+horizon colour and a faint paper grain. James chose this low-poly look on 2026-10-20 over
+watercolour, ink, cel, layers, woodblock and gouache post passes (removed; in git history).
+Colours live in `PAL` (world.js) and the moods in `sky.js`.
 
 ## Gameplay tuning (where the numbers live)
 

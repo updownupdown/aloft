@@ -10,7 +10,7 @@ export const SEASONS = ['summer', 'autumn', 'winter', 'spring'];
 const MOOD = {
   day: { zenith: [.52, .68, .8], horizon: [.92, .9, .83], sunCol: [.78, .73, .62], skyAmb: [.5, .55, .6], gndAmb: [.38, .35, .28], cloud: [.97, .95, .9] },
   dusk: { zenith: [.42, .42, .6], horizon: [.97, .7, .5], sunCol: [.85, .52, .3], skyAmb: [.45, .38, .46], gndAmb: [.3, .22, .2], cloud: [.98, .78, .66] },
-  night: { zenith: [.04, .06, .13], horizon: [.15, .17, .27], sunCol: [.2, .24, .34], skyAmb: [.13, .16, .26], gndAmb: [.05, .06, .09], cloud: [.2, .22, .3] },
+  night: { zenith: [.08, .11, .21], horizon: [.24, .27, .4], sunCol: [.36, .4, .52], skyAmb: [.27, .31, .44], gndAmb: [.13, .14, .19], cloud: [.3, .33, .42] },   // moonlit: dim, but the land reads
 };
 export function light(tod) {
   const a = (tod - .25) * Math.PI * 2, el = Math.sin(a);

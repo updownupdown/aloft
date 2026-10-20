@@ -48,14 +48,8 @@ export function blob(B, cx, cy, cz, r, col, col2, sc = [1, .85, 1]) {
 export function broadleaf() {
   seed = 7; const B = builder();
   prism(B, 0, 0, TREE.trunkR[0], TREE.trunkR[0] * .6, -.05, TREE.trunkH[0] + .1, 5, PAL.bark);
-  // the low limb (a perch under the canopy), along +x; instances turn it by their yaw
-  const lr = .018;
-  for (let i = 0; i < 4; i++) {
-    const a = i / 4 * Math.PI * 2, b = (i + 1) / 4 * Math.PI * 2;
-    const p = (t, ang) => [t * TREE.limbL, TREE.limbY - .04 + t * .06 + Math.sin(ang) * lr * (1 - t * .5), Math.cos(ang) * lr * (1 - t * .5)];
-    B.tri(p(0, a), p(1, b), p(1, a), PAL.bark); B.tri(p(0, a), p(0, b), p(1, b), PAL.bark);
-  }
-  blob(B, TREE.limbL * .9, TREE.limbY + .08, 0, .08, PAL.leaf, PAL.leaf2);
+  // the limbs (perches under the canopy, see TREE.limbs), each with a tuft at its tip
+  for (const [o, y, l] of TREE.limbs[0]) limb(B, o, y, l, .018, PAL.leaf, PAL.leaf2);
   const R = TREE.crownR;
   blob(B, 0, TREE.crownY, 0, R, PAL.leaf, PAL.leaf2);
   blob(B, R * .55, TREE.crownY - .08, R * .3, R * .62, PAL.leaf2, PAL.leaf);
@@ -63,9 +57,20 @@ export function broadleaf() {
   blob(B, 0, TREE.crownY + R * .55, 0, R * .5, PAL.leaf2, PAL.leaf);
   return B.out();
 }
+// a limb from the trunk at height y, turned o from +x, l long, r thick, rising a little to a tuft
+function limb(B, o, y, l, r, leaf, leaf2) {
+  const c = Math.cos(o), s = Math.sin(o);
+  for (let i = 0; i < 4; i++) {
+    const a = i / 4 * Math.PI * 2, b = (i + 1) / 4 * Math.PI * 2;
+    const p = (t, ang) => { const u = t * l, w = Math.cos(ang) * r * (1 - t * .5); return [u * c - w * s, y - .04 + t * .06 + Math.sin(ang) * r * (1 - t * .5), u * s + w * c]; };
+    B.tri(p(0, a), p(1, b), p(1, a), PAL.bark); B.tri(p(0, a), p(0, b), p(1, b), PAL.bark);
+  }
+  if (leaf) blob(B, l * 1.05 * c, y + .06, l * 1.05 * s, .07, leaf, leaf2);
+}
 export function pine() {
   seed = 11; const B = builder();
   prism(B, 0, 0, TREE.trunkR[1], TREE.trunkR[1] * .5, -.05, .5, 5, PAL.bark);
+  for (const [o, y, l] of TREE.limbs[1]) limb(B, o, y + .03, l, .012);   // bare limbs poking out of the needles
   cone(B, .18, .62, .26, 7, PAL.pine, 0);
   cone(B, .42, .82, .2, 7, PAL.pine2, .4);
   cone(B, .64, 1.0, .13, 6, PAL.pine, .8);

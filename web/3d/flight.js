@@ -73,7 +73,9 @@ export function step(b, c, dt, E) {
     b.ride = true;
   }
   b.roll += (rT - b.roll) * Math.min(1, dt * 3.2);
-  const yawRate = Math.max(-1.9, Math.min(1.9, g * Math.tan(b.roll) / Math.max(b.s, 5) * (1 + b.flare * .3)));
+  // in a stoop the tail and half-closed wings still steer: the turn doesn't fade with speed as a glide's does
+  const sTurn = Math.max(5, b.s * (1 - .65 * b.tuck));
+  const yawRate = Math.max(-1.9, Math.min(1.9, g * Math.tan(b.roll) / sTurn * (1 + b.flare * .3)));
   b.yaw += yawRate * dt;
 
   // stall sink and flap lift live in vy, which settles back to zero
@@ -165,7 +167,9 @@ function trees(b, dt, E) {
       b.s *= 1 - Math.min(.9, dt * (1.6 + b.s * .05));
       if (b.canopy < .2) E.leaves(b.p, b.s);
       b.canopy = 1;
-      if (b.s < 6) { settleOn(b, nearestPerch(perchesOf(t), b.p), t, E); return; }
+      // settle on the nearest limb; the crown's top only if you came in over it
+      const ps = perchesOf(t), limbs = ps.filter(p => !p.top), over = y > t.s * (t.kind ? .8 : TREE.crownY + TREE.crownR * .45);
+      if (b.s < 6) { settleOn(b, nearestPerch(over || !limbs.length ? ps : limbs, b.p), t, E); return; }
     }
     // a perch close by while slow: land on it
     if (b.s < FLY.landS && b.vy < 3) for (const p of perchesOf(t)) {
@@ -201,7 +205,7 @@ export function perchAhead(b) {
   for (const t of treesNear(b.p[0], b.p[2], 30)) for (const p of perchesOf(t)) {
     const dx = p.x - b.p[0], dy = p.y - b.p[1], dz = p.z - b.p[2], d = Math.hypot(dx, dy, dz);
     if (d > 28 || d < 1 || (dx * f[0] + dy * f[1] + dz * f[2]) / d < .75) continue;
-    if (d < bd) { bd = d; best = p; }
+    if (d + (p.top ? 5 : 0) < bd) { bd = d + (p.top ? 5 : 0); best = p; }   // limbs before treetops
   }
   for (const o of solidsNear(b.p[0], b.p[2], 30)) {
     const p = o.perch, dx = p.x - b.p[0], dy = p.y - b.p[1], dz = p.z - b.p[2], d = Math.hypot(dx, dy, dz);

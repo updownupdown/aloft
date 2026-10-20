@@ -36,11 +36,11 @@ export function foodSystem(G) {
   // which mice live in a cell (fixed by hash), where their burrow is
   function cellMice(cx, cz) {
     const out = [], x0 = cx * FOOD.cell, z0 = cz * FOOD.cell, n = ih(cx, cz, 71) < .55 ? 1 + (ih(cx, cz, 72) < .3) : 0;
-    for (let k = 0; k < n; k++) {
-      const x = x0 + (.15 + ih(cx, cz, 73 + k) * .7) * FOOD.cell, z = z0 + (.15 + ih(cx, cz, 75 + k) * .7) * FOOD.cell;
-      const y = height(x, z);
-      if (y < 1.5 || forest(x, z) > .12 || normalAt(x, z)[1] < .85) continue;
-      out.push({ id: cx * 92821 + cz * 6113 + k, hx: x, hz: z });
+    // a few tries per mouse for a dry, open, fairly flat spot in the cell (glades count)
+    for (let k = 0; k < n; k++) for (let tr = 0; tr < 4; tr++) {
+      const x = x0 + (.1 + ih(cx, cz, 73 + k * 7 + tr) * .8) * FOOD.cell, z = z0 + (.1 + ih(cx, cz, 75 + k * 7 + tr) * .8) * FOOD.cell;
+      if (height(x, z) < 1 || forest(x, z) > .2 || normalAt(x, z)[1] < .82) continue;
+      out.push({ id: cx * 92821 + cz * 6113 + k, hx: x, hz: z }); break;
     }
     return out;
   }
@@ -119,7 +119,13 @@ export function foodSystem(G) {
     },
     scene(S) {
       const d = S.props.mouse ||= [];
-      for (const m of mice.values()) if (Math.hypot(m.x - S.cam[0], m.z - S.cam[2]) < 120) d.push(m.x, m.y, m.z, 1.6, m.yaw - Math.PI / 2, .5, 0, 0);
+      // at night a mouse's eyes catch the moon; an owl's song (known, or its gift) makes them easy to find
+      const owl = Math.min(1, (G.learned?.has(6) ? .45 : 0) + (G.gifts?.night > 0 ? 1 : 0)), eye = (S.night || 0) * (.35 + owl * .65);
+      for (const m of mice.values()) {
+        const dc = Math.hypot(m.x - S.cam[0], m.y - S.cam[1], m.z - S.cam[2]);
+        if (dc < 120) d.push(m.x, m.y, m.z, 1.6, m.yaw - Math.PI / 2, .5, 0, 0);
+        if (eye > .05 && dc < 60 + owl * 140) S.motes.push(m.x, m.y + .12, m.z, .95, .85, .5, dc * (.003 + owl * .004) * eye * (.75 + .25 * Math.sin(G.t * 3 + m.id)));
+      }
     },
     save: () => ({ hunger: G.hunger, thirst: G.thirst, caught: [...caught].slice(-200) }),
     load(o) { G.hunger = clamp(o.hunger ?? 1, 0, 1); G.thirst = clamp(o.thirst ?? 1, 0, 1); for (const [k, v] of o.caught || []) caught.set(k, v); },
