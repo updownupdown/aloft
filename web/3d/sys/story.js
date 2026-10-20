@@ -40,7 +40,9 @@ export function storySystem(G) {
   const b = G.b;
   const St = { health: HEALTH_START, flapQ: .6, keepsakes: [], kept: new Set(), tricks: 0, mate: null, bonus: 0, courtDay: 0, suitor: null, feedT: 0 };
   G.story = St;
-  ['hawkGlide', 'hawkUp', 'hawkDown'].forEach((k, i) => G.R.shape(k, hawkShape([{}, { flapL: 1, flapR: 1, handL: -.3, handR: -.3 }, { flapL: -.7, flapR: -.7, handL: .4, handR: .4 }][i])));
+  // your mate and young are your own species: rebuilt when Settings > Bird changes
+  const ownKind = () => ['hawkGlide', 'hawkUp', 'hawkDown'].forEach((k, i) => G.R.shape(k, hawkShape([{}, { flapL: 1, flapR: 1, handL: -.3, handR: -.3 }, { flapL: -.7, flapR: -.7, handL: .4, handR: .4 }][i])));
+  ownKind(); G.on('bird', ownKind);
   G.R.shape('keepsake', keepsakeShape());
   const inMarsh = () => b.p[2] > MARSH_Z;
   const adult = () => (G.journey?.journeys || 0) > 0;

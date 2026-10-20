@@ -78,7 +78,7 @@ export function fish() {
 
 // a wild hawk soaring, built from the player's hawk mesh in a still glide, turned to face +x
 export function soaringHawk() {
-  const tris = buildHawk({ flapL: .08, flapR: .08, handL: .05, handR: .05, fold: 0, flare: 0, legs: 0, tail: .7, t: 0 });
+  const tris = buildHawk({ flapL: .08, flapR: .08, handL: .05, handR: .05, fold: 0, flare: 0, legs: 0, tail: .7, t: 0 }, 'hawk');
   const out = new Float32Array(tris.length);
   for (let i = 0; i < tris.length; i += 12) {
     const [x, y, z, nx, ny, nz] = tris.subarray(i, i + 6);

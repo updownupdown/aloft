@@ -32,7 +32,7 @@ web/3d/world.js         terrain height(x,z), colours, trees + perches, thermals,
 web/3d/render.js        WebGL2 renderer: sky, chunks, instanced trees and named shapes, hawk, water, points
 web/3d/shapes.js        low-poly builders (builder, blob, prism, cone) and tree/ring/cloud meshes
 web/3d/hawk.js          the hawk mesh, rebuilt per frame from a pose
-web/3d/birds.js         study: other species to fly as (?bird=swift|heron|mallard|owl|osprey|raven), same pose; sys/species.js sets FLY
+web/3d/birds.js         other birds: Settings > Bird picks red-tail, osprey, barn owl or raven (sys/species.js, aloft.bird); ?bird=swift|heron|mallard tries the rest
 web/3d/sky.js           clock (G.tod, G.day, G.season) and light (G.light)
 web/3d/hud.js           G.hud: meter() (rings), tip()/did(), toast() (queued), status, counter (under the dial), hide(), quiet meters, thumb pads
 web/3d/menu.js          G.menu: tab(), toggle(), button(), onOpen(), subtitle(), set(); tab order/titles in ORDER/TITLES
