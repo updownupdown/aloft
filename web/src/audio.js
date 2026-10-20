@@ -172,12 +172,13 @@ export function createAudio() {
   // the heron's croak as it lifts off, and a deer's snort
   A.heron = () => { tone({ f: 330, f2: 240, dur: .35, vol: .08, type: 'sawtooth', lp: 1100, vib: 24, vibF: 18 }); burst({ f: 900, q: 1, dur: .35, vol: .1 }); };
   A.snort = () => burst({ f: 700, f2: 300, type: 'lowpass', dur: .18, vol: .25 });
-  // A songbird note on one of the five song pitches, in that species' own voice (birdvoice.js:
+  // A songbird note on one of the five song pitches, in that species' own voice (a `kind` of
+  // syllable, w c t b, shapes it; see birdvoice.js) (birdvoice.js:
   // 0 chickadee, 1 robin, 2 warbler, 3 wren, 4 thrush, 5 finch, 6 owl, 7 lark), sung with the
   // engine, pitch and space picked in the bird song lab.
-  A.note = (lane, voice = 0, vol = .16) => {
+  A.note = (lane, voice = 0, vol = .16, kind = null) => {
     if (!A.ctx) return;
-    birds().sing(BASE[lane] * keyMul(), voice, vol);
+    birds().sing(BASE[lane] * keyMul(), voice, vol, kind);
   };
   let BV = null;
   const birds = () => BV || (BV = createBirdVoice(A.ctx, A.master, noiseBuf), BV.set(loadVoice()), BV);

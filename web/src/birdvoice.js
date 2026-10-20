@@ -117,8 +117,28 @@ export function createBirdVoice(ctx, dest, noiseBuf) {
       default: return syll([.9, 1.1, .95, 1.06], .21, { vib: .035, vibF: 21 });
     }
   }
-  // one song note at pitch f (the game's pitch for that note), in a species' voice
-  V.sing = (f, voice = 0, vol = .16) => {
+  // one syllable of a kind (w whistle, c chip, t trill, b buzz) in a species' voice. A whistle is
+  // the species' own note where that is tonal; the other kinds share shapes, coloured by the
+  // voice's register and roughness.
+  const TONAL = new Set([0, 1, 4, 6, 8, 9, 11, 14]), ROUGH = new Set([10, 12]);
+  function kindTemplate(kind, voice) {
+    const rough = ROUGH.has(voice % 16), soft = !!REG[voice % 16];
+    switch (kind) {
+      case 'c': return [{ at: 0, dur: .05, c: [[0, 1.25], [1, .86]], atk: .004, harsh: rough }];
+      case 't': return Array.from({ length: 6 }, (_, i) => ({ at: i * .045, dur: .032, c: i % 2 ? [[0, 1.1], [1, .92]] : [[0, .94], [1, 1.08]], v: 1 - i * .06, soft }));
+      case 'b': return [{ at: 0, dur: .24, c: [[0, 1.04], [.5, 1], [1, .96]], atk: .01, am: .9, amF: 88, harsh: true, soft }];
+      default: return [{ at: 0, dur: .24, c: [[0, .97], [.3, 1.02], [1, .99]], atk: .02, pure: !rough, harsh: rough, soft }];
+    }
+  }
+  // one song note at pitch f (the game's pitch for that note), in a species' voice; `kind` picks
+  // a syllable shape (left out: the species' own note, as the bird song lab plays it)
+  V.sing = (f, voice = 0, vol = .16, kind = null) => {
+    if (kind && !(kind === 'w' && TONAL.has(voice % 16))) {
+      const t = ctx.currentTime + .005, prev = V.engine, reg = REG[voice % 16], pitch = (reg ? f * reg : f * V.octave) * (1 + (Math.random() - .5) * .03);
+      if (V.engine === 'whistle') V.engine = 'natural';
+      for (const e of kindTemplate(kind, voice)) element(t + e.at, e, pitch, vol * (e.v ?? 1) * (reg ? 1.3 : 1.1));
+      V.engine = prev; return;
+    }
     const t = ctx.currentTime + .005, prev = V.engine;
     if (V.engine === 'whistle' && voice % 16 < 8) { V.engine = 'natural'; whistle(t, f, voice, vol * .85); V.engine = prev; return; }
     // a little variation every time: no bird sings a note exactly the same twice
