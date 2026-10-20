@@ -152,6 +152,7 @@ export function mapView(G, J, { HOME_Z, MARSH_Z }) {
   function teleport(x, z) {
     const g = Math.max(W.height(x, z), W.WATER);
     b.p = [x, g + 40, z]; b.state = 'fly'; b.s = 13; b.vy = 0; b.gamma = 0;
+    b.perch = b.tree = b.from = null; b.settle = b.hop = 0; b.acc = 0; b.sPrev = 13;   // no landing or hop carries over
     reveal(); cache = null; G.menu.set(false); G.hud.toast(`Flown to ${G.placeName?.(x, z) || 'there'}.`, 3);
   }
   const zoomAt = (k, px = V.w / 2, py = V.h / 2) => {
