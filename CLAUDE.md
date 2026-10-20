@@ -72,8 +72,8 @@ particles with `G.part()`, and talks on the bus (`G.on`, `G.emit`). Saves go und
   except in small caches. Mutable per-object state (caught mice, collected rings)
   lives in a system keyed by the object's id.
 - UI is frosted glass (James's pick, 2026-10-20): translucent white panels with a backdrop blur,
-  pill shapes, slate ink #1d2b36, a dark slate pill for the main action, in Manrope (bundled in
-  `web/fonts/` for the offline PWA, so no web-font links). Mockups: https://claude.ai/artifact/NHHnDTDSyAQwrsAbpTRVVk (B).
+  pill shapes, slate ink #1d2b36, a dark slate pill for the main action, in Outfit (James, 2026-10-20; bundled in
+  `web/fonts/` for the offline PWA, so no web-font links). The HUD has no panes: white ink with a dark halo. Mockups: https://claude.ai/artifact/NHHnDTDSyAQwrsAbpTRVVk (B).
 - Persisted settings use `localStorage` keys prefixed `aloft.`, always via the
   try/catch `store` helper in `web/3d/util.js`.
 - Keep it light on tests (project is early and experimental). Check changes in a
