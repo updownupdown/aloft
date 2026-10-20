@@ -79,6 +79,7 @@ export function start(canvas, ui) {
     for (const s of systems) if (s.load && S0.sys?.[s.id]) s.load(S0.sys[s.id]);
   }
   function persist() {
+    if (G.resetting) return;   // a new journey or world has cleared the save; the reload must not write it back
     const sys = {}; for (const s of systems) if (s.save) sys[s.id] = s.save();
     store.set('save3d', { p: b.p, yaw: b.yaw, stamina: b.stamina, clock: G.clock, perch: b.state === 'perch', sys });
     store.set('flags3d', G.flags);
@@ -142,7 +143,7 @@ export function start(canvas, ui) {
   G.menu.button(play, { label: 'Show the tips again', group: 'play', onClick: () => { H.resetTips(); G.menu.set(false); } });
   G.menu.button(play, { label: 'Music lab', sub: 'tune Valley', href: 'musiclab.html', group: 'sound' });
   G.menu.button(play, { label: 'Start a new journey', sub: 'from the valley', group: 'play', onClick: el => {
-    if (el.dataset.sure) { store.set('save3d', null); location.reload(); } else { el.dataset.sure = 1; el.firstChild.textContent = 'Tap again to start over '; }
+    if (el.dataset.sure) { G.resetting = true; store.set('save3d', null); location.reload(); } else { el.dataset.sure = 1; el.firstChild.textContent = 'Tap again to start over '; }
   } });
   appRows(G);
   H.showFps(G.settings.fps);

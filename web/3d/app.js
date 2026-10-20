@@ -1,5 +1,8 @@
-// The app around the game: Update (fetch every file afresh and reload), Quit, Quiet meters, and
-// full screen always (asked for again on the next touch whenever the phone's bars come back).
+// The app around the game: Update (fetch every file afresh and reload), Quit, Quiet meters, a new
+// world, and full screen always (asked for again on the next touch whenever the phone's bars come
+// back).
+import { WORLD, newWorld } from './world.js';
+
 export function appRows(G) {
   // Update: save, fetch the newest version of every file past every cache, and start again on it,
   // so a new version shows in one go instead of after two reloads
@@ -48,6 +51,10 @@ export function appRows(G) {
     const el = document.querySelector('.bye3');
     el.querySelector('button').onclick = () => { el.remove(); G.paused = false; quitting = false; };
   }
+  // a new world: another seed (world.js), a fresh journey in it; asks twice, like a new journey
+  G.menu.button('play', { label: 'Start a new world', sub: `this is world ${WORLD.seed}`, group: 'play', onClick: el => {
+    if (el.dataset.sure) { G.resetting = true; newWorld(); } else { el.dataset.sure = 1; el.firstChild.textContent = 'Tap again for a new world '; }
+  } });
   G.menu.button('play', { label: 'Quit', sub: 'saves your journey, then closes', group: 'app', onClick: quit });
   G.menu.quit = quit;
 }

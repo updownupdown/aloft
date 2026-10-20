@@ -81,6 +81,7 @@ export function mapView(G, J, { HOME_Z, MARSH_Z }) {
     const ground = (px, py) => {
       const x0 = X(px), z0 = Z(py), y = W.height(x0, z0);
       if (y < W.WATER + .3) return PIG.water;
+      if (W.mapColour) return W.mapColour(x0, z0);   // the biome's own colour (world.js)
       if (y > 150) return PIG.paper;
       if (y > 85) return PIG.rock;
       return W.forest(x0, z0) > .15 ? PIG.wood : y < 3 ? PIG.sand : PIG.meadow;
