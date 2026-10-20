@@ -23,7 +23,7 @@ const GLYPH = {
 };
 export const glyph = k => `<svg viewBox="0 0 40 20" aria-hidden="true">${GLYPH[k] || GLYPH.w}</svg>`;
 
-import { birdSVG } from '../birdart.js';
+import { songbirdPic } from '../pics.js';
 
 const css = new URL('./songs.css', import.meta.url).href;
 if (!document.querySelector(`link[href="${css}"]`)) document.head.append(Object.assign(document.createElement('link'), { rel: 'stylesheet', href: css }));
@@ -78,7 +78,7 @@ export function createSingUI(ui, { audio, voice, onSyll, onPick, onCall }) {
     if (key === S.species) return;
     S.species = key;
     birds.innerHTML = `<header><span>Imitate a bird</span><button data-close aria-label="Close">✕</button></header><div class="cards3">`
-      + list.map(sp => `<button data-sp="${sp.id}" class="${learned.has(sp.id) ? '' : 'heard'}${picked === sp ? ' on' : ''}" style="--breast:${rgb(sp.cols.breast)};--cap:${rgb(sp.cols.cap)}">${birdSVG(sp)}<span>${sp.name}</span>${learned.has(sp.id) ? '' : '<small>heard, not learned</small>'}</button>`).join('')
+      + list.map(sp => `<button data-sp="${sp.id}" class="${learned.has(sp.id) ? '' : 'heard'}${picked === sp ? ' on' : ''}" style="--breast:${rgb(sp.cols.breast)};--cap:${rgb(sp.cols.cap)}"><img src="${songbirdPic(sp, 64)}" alt=""><span>${sp.name}</span>${learned.has(sp.id) ? '' : '<small>heard, not learned</small>'}</button>`).join('')
       + (picked ? '<button data-sp="none" class="stop"><span>Sing as yourself</span></button>' : '') + '</div>'
       + (list.length ? '' : '<p>No songs yet. Perch near a singing bird and listen.</p>');
     bookBtn.querySelector('em').textContent = picked ? picked.name : list.length ? `${learned.size} known` : '';
