@@ -7,8 +7,8 @@ body { margin: 0; background: #fff; }
 </style></head><body>
 <canvas id="c" width="512" height="512"></canvas>
 <script type="module">
-import { handmadeTex } from '../web/src/paint.js';
-import { drawSeal } from '../web/src/seal.js';
+import { handmadeTex } from '../web/3d/paper.js';
+import { drawSeal } from '../web/3d/seal.js';
 await document.fonts.load('40px Spectral');
 window.render = size => {
   const c = document.getElementById('c'); c.width = c.height = size;
