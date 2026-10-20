@@ -36,8 +36,8 @@ web/3d/sky.js           clock (G.tod, G.day, G.season) and light (G.light)
 web/3d/hud.js           G.hud: meter() (rings), tip()/did(), toast() (queued), status, counter (under the dial), hide(), quiet meters, thumb pads
 web/3d/menu.js          G.menu: tab(), toggle(), button(), onOpen(), subtitle(), set(); tab order/titles in ORDER/TITLES
 web/3d/letter.js        the menu's frame (frosted glass, .glass3 in 3d.css); swap it to restyle
-web/3d/facet.js         low-poly helpers (map land, postcards, seal) (PIG colours, poly, facets, gem, chamfer, hardShadow, lit)
-web/3d/seal.js          Aloft's wax seal, cut as a faceted gem (menu Resume, app icons via tools/icon.html)
+web/3d/facet.js         low-poly helpers (map land, postcards) (PIG colours, poly, facets, gem, chamfer, hardShadow, lit)
+web/3d/logo.js          Aloft's mark, a hawk over the hills (menu title, app icons via tools/icon.html)
 web/3d/dial.js          the day dial, top right
 web/3d/tips.js          tips as a short line and an icon (SHORT, keyed by tip id), swipe to dismiss, i to pause and read more
 web/3d/journal.js       the Journal tab: journal(G).section(order, title); shot.js: project(), afterDraw(), portraits

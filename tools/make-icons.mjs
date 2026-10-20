@@ -17,6 +17,6 @@ const shot = async (size, name, round = false) => {
   await page.setViewportSize({ width: size, height: size });
   await page.locator('#c').screenshot({ path: join(root, 'web/icons', name), omitBackground: round });
 };
-await shot(512, 'icon-512.png'); await shot(192, 'icon-192.png'); await shot(180, 'apple-touch-icon.png'); await shot(32, 'favicon-32.png');
+await shot(512, 'icon-512.png'); await shot(192, 'icon-192.png'); await shot(180, 'apple-touch-icon.png'); await shot(32, 'favicon-32.png', true);
 await browser.close(); srv.close();
 console.log('icons written to web/icons/');

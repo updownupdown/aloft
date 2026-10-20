@@ -1,21 +1,15 @@
 <!doctype html>
-<!-- Renders the app icon, Aloft's faceted wax seal on a low-poly paper card, with the game's own drawing code.
-     Used by tools/make-icons.mjs, which calls render(size) for each icon size. -->
+<!-- Renders the app icon, Aloft's mark (a hawk over the hills, web/3d/logo.js), with the game's own
+     drawing code. Used by tools/make-icons.mjs, which calls render(size) for each icon size. -->
 <html><head><style>
-@font-face { font-family: 'Spectral'; src: url(../web/fonts/spectral-regular.woff2) format('woff2'); }
-body { margin: 0; background: #fff; }
+body { margin: 0; background: transparent; }
 </style></head><body>
 <canvas id="c" width="512" height="512"></canvas>
 <script type="module">
-import { facets } from '../web/3d/facet.js';
-import { drawSeal } from '../web/3d/seal.js';
-await document.fonts.load('40px Spectral');
+import { drawLogo } from '../web/3d/logo.js';
 window.render = size => {
   const c = document.getElementById('c'); c.width = c.height = size;
-  const x = c.getContext('2d');
-  // paper in broad facets, lit from the upper left, a little warmer toward the lower right
-  facets(x, 0, 0, size, size, size / 4, cx => { const t = cx / size; return [241 - t * 6, 234 - t * 9, 220 - t * 16]; }, { seed: 4, relief: .5 });
-  drawSeal(x, size / 2, size * .49, size * (size < 64 ? .44 : .38));
+  drawLogo(c.getContext('2d'), size);
 };
 render(512);
 window.done = true;

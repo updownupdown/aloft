@@ -133,7 +133,8 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .glass3 { position: relative; left: auto; top: auto; transform: none; overflow: hidden;
   display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-rows: auto auto minmax(0, 1fr); grid-template-areas: "title tabs foot" "date date date" "panes panes panes";
   width: min(920px, calc(100vw - 28px)); height: min(470px, calc(100vh - 24px)); max-height: none; padding: 0; color: var(--ink); }
-.glass3 h1 { grid-area: title; align-self: center; padding: 0 14px 0 22px; }
+.glass3 h1 { grid-area: title; align-self: center; display: flex; align-items: center; gap: 10px; padding: 0 14px 0 16px; }
+.logo3 { width: 30px; height: 30px; flex: none; border-radius: 7px; box-shadow: 0 1px 4px rgba(20, 40, 50, .2); }
 .glass3 .tabs3 { grid-area: tabs; display: flex; gap: 4px; align-items: center; padding: 10px 0; overflow-x: auto; scrollbar-width: none; }
 .glass3 .tabs3::-webkit-scrollbar { display: none; }
 .glass3 .tabs3 button { flex: none; min-height: 36px; padding: 0 15px; border: 0; border-radius: 18px; background: none; cursor: pointer;
