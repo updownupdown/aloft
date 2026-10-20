@@ -3,7 +3,7 @@
 // primaries and a rufous tail. Faces carry a top and an underside colour; the shader picks by
 // which side faces the camera, so a bank shows the pale underwing.
 // Model space: x right, y up, z forward (beak at +z). One unit is roughly 0.6 m.
-// A study: ?bird=swift (heron, mallard, owl, osprey, raven) flies another species (birds.js).
+// Other birds to fly as (birds.js): Settings > Bird picks one (sys/species.js); ?bird=swift etc. tries any.
 import { BIRDS, buildBird } from './birds.js';
 
 const hex = h => [parseInt(h.slice(1, 3), 16) / 255, parseInt(h.slice(3, 5), 16) / 255, parseInt(h.slice(5, 7), 16) / 255];
@@ -35,8 +35,8 @@ function tri(a, b, c, top, bot, up) {
 const quad = (a, b, c, d, top, bot, up) => { tri(a, b, c, top, bot, up); tri(a, c, d, top, bot, up); };
 
 // pose: { flapL/flapR (rad, + up), handL/handR (rad, extra at the wrist), fold 0..1, flare 0..1, legs 0..1, tail 0..1 fan, t }
-export function buildHawk(pose) {
-  if (BIRD !== 'hawk') return buildBird(BIRD, pose);
+export function buildHawk(pose, bird = BIRD) {
+  if (bird !== 'hawk') return buildBird(bird, pose);
   o = 0;
   body(pose);
   wing(pose, 1); wing(pose, -1);
