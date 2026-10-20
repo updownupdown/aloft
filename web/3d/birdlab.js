@@ -59,6 +59,11 @@ export function poseAt(mode, t) {
   const glide = .1 + Math.sin(t * 1.7) * .025;
   const base = { flapL: glide, flapR: glide, handL: 0, handR: 0, fold: 0, flare: 0, legs: 0, tail: .2, tailPitch: 0, t, tailRed: 1 };
   if (mode === 'glide') return { pose: base, roll: Math.sin(t * .6) * .12, pitch: 0 };
+  // the Settings card: hanging in the air on the breeze, now and then a few wing beats
+  if (mode === 'hover') {
+    const u = t % 5.5, flaps = u < 1.26, [f, h] = flaps ? beat(u % .42, glide) : [glide, 0];
+    return { pose: { ...base, flapL: f, flapR: f, handL: h, handR: h, tail: .35 + Math.sin(t * .7) * .1 }, roll: Math.sin(t * .5) * .1, pitch: .06 + Math.sin(t * .4) * .03 };
+  }
   if (mode === 'flap') {
     const [f, h] = beat((t % .9), glide);
     return { pose: { ...base, flapL: f, flapR: f, handL: h, handR: h }, roll: 0, pitch: .1 };

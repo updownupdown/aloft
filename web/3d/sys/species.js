@@ -48,7 +48,7 @@ export function speciesSystem(G) {
     if (!CHOICES.includes(BIRD)) use('hawk');
     G.store.set('bird', BIRD);
   }
-  // Settings > Your bird: one card, the bird flying through its poses (the bird lab's renderer,
+  // Settings > Your bird: one card, the bird hovering on the breeze, a button to hear its call (the bird lab's renderer,
   // drawn only while Settings shows), with arrows either side to pick the one before or after
   const BLURB = { hawk: 'Soars on thermals, stoops on mice', osprey: 'Long wings, plunges for fish', owl: 'Soft and slow, sees in the dark', raven: 'Agile, rolls and tumbles' };
   const traits = id => {
@@ -58,7 +58,7 @@ export function speciesSystem(G) {
   };
   const box = G.menu.group('bird');
   box.insertAdjacentHTML('beforeend', `<div class="birdpick3"><button class="arr3" data-step="-1" aria-label="The bird before">‹</button>
-    <div class="birdcard3"><canvas aria-hidden="true"></canvas><span class="pic"></span><b></b><small></small><span class="birdmore3"></span><span class="dots3">${CHOICES.map(() => '<i></i>').join('')}</span></div>
+    <div class="birdcard3"><canvas aria-hidden="true"></canvas><span class="pic"></span><button class="hear3" aria-label="Hear its call"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12" fill="none"/></svg></button><b></b><small></small><span class="birdmore3"></span><span class="dots3">${CHOICES.map(() => '<i></i>').join('')}</span></div>
     <button class="arr3" data-step="1" aria-label="The next bird">›</button></div>${tried ? `<p><small>Flying as ${nameOf(tried).toLowerCase()} for now, a study bird from the link.</small></p>` : ''}`);
   const card = box.querySelector('.birdcard3'), pic = card.querySelector('.pic'), dots = [...card.querySelectorAll('.dots3 i')];
   const show = () => {
@@ -69,13 +69,14 @@ export function speciesSystem(G) {
   };
   show();
   box.addEventListener('click', e => {
+    if (e.target.closest('.hear3')) { G.audio.unlock?.(); G.audio.call?.(tried || BIRD); return; }
     const a = e.target.closest('[data-step]'); if (!a || tried) return;
     use(CHOICES[(CHOICES.indexOf(BIRD) + +a.dataset.step + CHOICES.length) % CHOICES.length]); G.store.set('bird', BIRD); show();
   });
   let shown = false;
   G.on('menuTab', id => { shown = id === 'play'; });
   G.on('resume', () => { shown = false; });
-  queueMicrotask(() => startLab(card.querySelector('canvas'), [pic], () => 'cycle', { active: () => shown && G.menu.open }));
+  queueMicrotask(() => startLab(card.querySelector('canvas'), [pic], () => 'hover', { active: () => shown && G.menu.open }));
   return {
     id: 'species',
     // the owl's night sight: the dark lifts as if the owl's gift were on
