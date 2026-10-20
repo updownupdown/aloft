@@ -3,12 +3,13 @@
    each band and score glyph, --breast and --cap on each bird. Everything here can be restyled
    without touching singui.js. */
 .sing3 { position: absolute; inset: 0; pointer-events: none; --side: calc(14px + env(safe-area-inset-left)); --side2: calc(14px + env(safe-area-inset-right));
-  --pane: rgba(255, 255, 255, .5); --edge: rgba(255, 255, 255, .66); --shadow: 0 4px 16px rgba(20, 40, 50, .14); }
+  --pane: rgba(255, 255, 255, .5); --edge: rgba(255, 255, 255, .66); --shadow: 0 4px 16px rgba(20, 40, 50, .14);
+  --top: max(34%, calc(162px + env(safe-area-inset-top))); --bot: calc(22px + env(safe-area-inset-bottom)); }
 .sing3 button { font-family: var(--text); color: var(--ink); touch-action: none; }
-.kinds3 button, .bookbtn3, .birds3, .score3, .cheer3, .call3 { -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); }
+.kinds3, .bookbtn3, .birds3, .score3, .cheer3, .call3 { -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); }
 
 /* the pitch strip: five bands of glass tinted by their note, high at the top */
-.strip3 { pointer-events: auto; position: absolute; right: var(--side2); bottom: calc(22px + env(safe-area-inset-bottom)); top: max(34%, calc(162px + env(safe-area-inset-top))); width: 100px;
+.strip3 { pointer-events: auto; position: absolute; right: var(--side2); bottom: var(--bot); top: var(--top); width: 100px;
   display: flex; flex-direction: column; gap: 5px; touch-action: none; }
 .strip3 i { flex: 1; border-radius: 14px; background: color-mix(in srgb, var(--note) 55%, rgba(255, 255, 255, .6)); opacity: .85; box-shadow: var(--shadow);
   border: 1px solid rgba(255, 255, 255, .7); transition: opacity .2s, transform .2s; }
@@ -17,16 +18,20 @@
 @keyframes hit3 { 0% { opacity: 1; transform: scaleX(1.08); filter: brightness(1.2); } 100% { transform: none; } }
 @keyframes glow3 { 0% { filter: brightness(1.4); opacity: 1; } 100% { filter: none; } }
 
-/* the kinds of syllable */
-.kinds3 { pointer-events: auto; position: absolute; left: var(--side); bottom: calc(22px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 6px; }
-.kinds3 button { display: flex; align-items: center; gap: 6px; width: 108px; height: 40px; padding: 0 10px; border: 1px solid var(--edge); border-radius: 20px;
-  background: var(--pane); box-shadow: var(--shadow); font-size: 12.5px; font-weight: 600; cursor: pointer; }
-.kinds3 svg { width: 32px; height: 16px; stroke: var(--ink); flex: none; }
-.kinds3 button.on { background: var(--ink); color: #fff; border-color: transparent; }
-.kinds3 button.on svg { stroke: #fff; }
+/* the kinds of syllable: a column for the left thumb, the dark pill on the chosen kind; it
+   follows the thumb while held (.slide) and springs onto a kind when let go */
+.kinds3 { pointer-events: auto; position: absolute; left: var(--side); bottom: var(--bot); top: var(--top); width: 108px; padding: 4px;
+  display: flex; flex-direction: column; gap: 4px; touch-action: none; border-radius: 22px; background: var(--pane); border: 1px solid var(--edge); box-shadow: var(--shadow); }
+.kinds3 div { position: relative; flex: 1; display: flex; align-items: center; gap: 6px; padding: 0 10px; border-radius: 18px;
+  font-size: 12.5px; font-weight: 600; color: var(--ink); transition: color .15s; user-select: none; -webkit-user-select: none; }
+.kinds3 svg { width: 32px; height: 16px; stroke: currentColor; flex: none; }
+.kinds3 div.on { color: #fff; }
+.puck3 { position: absolute; left: 4px; right: 4px; top: 0; border-radius: 18px; background: var(--ink); box-shadow: 0 2px 8px rgba(20, 40, 50, .25);
+  transition: transform .22s cubic-bezier(.3, 1.35, .5, 1), height .2s; }
+.kinds3.slide .puck3 { transition: none; }
 
 /* Songs: a pill that unfolds the birds you know */
-.book3 { pointer-events: auto; position: absolute; left: var(--side); bottom: calc(22px + 4 * 46px + 10px + env(safe-area-inset-bottom)); }
+.book3 { pointer-events: auto; position: absolute; left: var(--side); top: calc(var(--top) - 54px); }
 .bookbtn3 { display: flex; flex-direction: column; align-items: flex-start; width: 108px; padding: 6px 14px; border: 1px solid var(--edge); border-radius: 18px;
   background: var(--pane); box-shadow: var(--shadow); cursor: pointer; }
 .bookbtn3 span { font-weight: 700; font-size: 14px; line-height: 1.2; }
@@ -49,10 +54,11 @@
 .cards3 small { font-size: 10.5px; font-weight: 500; color: var(--ink2); }
 .birds3 p { margin: 6px 8px; font-size: 12.5px; color: var(--ink2); }
 
-/* the score: glyphs at their pitch, the next one underlined; low in the middle, clear of the
-   toasts and Take off at the top and above the tips at the bottom */
-.score3 { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(74px + env(safe-area-inset-bottom)); padding: 6px 16px 8px; border-radius: 18px;
+/* the score: glyphs at their pitch, the next one underlined; at the bottom in the middle, and
+   hushed (.hush) while a cheer line has the spot */
+.score3 { position: absolute; left: 50%; transform: translateX(-50%); bottom: var(--bot); transition: opacity .3s; padding: 6px 16px 8px; border-radius: 18px;
   background: var(--pane); box-shadow: var(--shadow); border: 1px solid var(--edge); text-align: center; max-width: 70vw; }
+.score3.hush { opacity: 0; }
 .score3 b { display: block; font-weight: 700; font-size: 12.5px; }
 .score3 div { display: flex; gap: 3px; justify-content: center; align-items: flex-end; }
 .score3 div:not(:empty) { height: 46px; }
@@ -69,11 +75,12 @@
 .sing3.lefty .kinds3, .sing3.lefty .book3 { left: auto; right: var(--side2); }
 .sing3.lefty .birds3 { left: auto; right: var(--side2); }
 
-.cheer3 { position: absolute; left: 50%; top: calc(140px + env(safe-area-inset-top)); transform: translateX(-50%); margin: 0; padding: 7px 18px;
+.cheer3 { position: absolute; left: 50%; bottom: calc(22px + 12px + env(safe-area-inset-bottom)); transform: translateX(-50%); margin: 0; padding: 7px 18px;
   font-weight: 700; font-size: 15px; color: var(--ink); background: rgba(255, 255, 255, .6); border: 1px solid rgba(255, 255, 255, .66); border-radius: 20px;
   box-shadow: 0 4px 16px rgba(20, 40, 50, .14); opacity: 0; transition: opacity .6s; pointer-events: none; white-space: nowrap; }
 .cheer3.show { opacity: 1; }
-.call3 { pointer-events: auto; position: absolute; right: calc(12px + env(safe-area-inset-right)); top: calc(100px + env(safe-area-inset-top));
+/* Call sits left of the day dial (128px wide, 12px in) */
+.call3 { pointer-events: auto; position: absolute; right: calc(12px + 128px + 10px + env(safe-area-inset-right)); top: calc(12px + env(safe-area-inset-top));
   width: 54px; height: 54px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .66); cursor: pointer; touch-action: none; box-shadow: 0 4px 16px rgba(20, 40, 50, .14);
   font-family: var(--text); font-weight: 700; font-size: 12.5px; color: var(--ink); background: rgba(255, 255, 255, .5); }
 .call3:active { background: var(--ink); color: #fff; }

@@ -2,10 +2,12 @@
 // songbird), the song controls open:
 //   right edge  a pitch strip, five bands from low (bottom) to high, each its own colour: touch a
 //               band to sing a syllable at that pitch; slide and each band you cross sings
-//   left edge   the four kinds of syllable (whistle, chip, trill, buzz): touch one to choose
-//               the sound the strip makes; above them, Songs opens the birds you know
-//   top centre  the score of the song you are copying: each syllable's kind and pitch, the next
-//               one marked
+//   left edge   the four kinds of syllable (whistle, chip, trill, buzz) in a column: press and
+//               hold, and slide up and down to shift between them; the dark pill follows the
+//               thumb and snaps to each kind as you cross into it. Above, Songs opens the birds
+//               you know
+//   bottom      one line of news at a time: the score of the song you are copying (each
+//               syllable's kind and pitch, the next one marked), or a moment's cheer over it
 // Pick a bird from Songs and you sing in its voice, imitating it: play its score through and a
 // bird of that kind answers (once you have learned it). Left-handed, the sides swap. Everything
 // sits above the canvas, so a thumb on it never reaches the wings; the look is all in
@@ -32,7 +34,7 @@ const rgb = c => `rgb(${c.join(',')})`;
 export function createSingUI(ui, { audio, voice, onSyll, onPick, onCall }) {
   ui.insertAdjacentHTML('beforeend', `<div class="sing3 hidden">
       <div class="strip3">${NOTE_COLS.map((c, i) => `<i data-lane="${i}" style="--note:${c}"></i>`).reverse().join('')}</div>
-      <div class="kinds3">${KINDS.map(([k, name]) => `<button data-kind="${k}" aria-label="${name}">${glyph(k)}<span>${name}</span></button>`).join('')}</div>
+      <div class="kinds3"><b class="puck3"></b>${KINDS.map(([k, name]) => `<div data-kind="${k}" aria-label="${name}">${glyph(k)}<span>${name}</span></div>`).join('')}</div>
       <div class="book3"><button class="bookbtn3"><span>Songs</span><em></em></button><div class="birds3 hidden"></div></div>
       <div class="score3 hidden"><b></b><div></div></div>
     </div>
@@ -41,7 +43,7 @@ export function createSingUI(ui, { audio, voice, onSyll, onPick, onCall }) {
   const root = q('.sing3'), strip = q('.strip3'), kinds = q('.kinds3'), bookBtn = q('.bookbtn3'), birds = q('.birds3'), score = q('.score3');
   const cheer = q('.cheer3'), callBtn = q('.call3');
   const bands = [...strip.children].sort((a, b) => a.dataset.lane - b.dataset.lane);
-  const S = { open: false, kind: 'w', finger: null, species: '', score: '' };
+  const S = { open: false, kind: 'w', finger: null, slide: null, species: '', score: '' };
   let cheerTimer = 0;
   const flash = (el, cls = 'hit') => { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); };
 
@@ -59,10 +61,38 @@ export function createSingUI(ui, { audio, voice, onSyll, onPick, onCall }) {
   const up = e => { if (S.finger?.id === e.pointerId) S.finger = null; };
   strip.addEventListener('pointerup', up); strip.addEventListener('pointercancel', up);
 
-  // the kinds: touch one to choose it (it stays chosen)
-  const setKind = k => { S.kind = k; for (const b of kinds.children) b.classList.toggle('on', b.dataset.kind === k); };
+  // the kinds: press and hold, slide to shift. The pill rides under the thumb; the kind changes
+  // once the thumb is a little past the line between two (so it never flickers on the line), and
+  // on release the pill settles onto the chosen kind.
+  const puck = q('.puck3'), segs = [...kinds.querySelectorAll('[data-kind]')];
+  const place = (top = null) => {
+    const seg = segs.find(b => b.dataset.kind === S.kind);
+    puck.style.height = seg.offsetHeight + 'px';
+    puck.style.transform = `translateY(${top ?? seg.offsetTop}px)`;
+  };
+  const setKind = k => {
+    if (k !== S.kind) navigator.vibrate?.(8);
+    S.kind = k; for (const b of segs) b.classList.toggle('on', b.dataset.kind === k);
+    if (!S.slide) place();
+  };
   setKind('w');
-  kinds.addEventListener('pointerdown', e => { const b = e.target.closest('[data-kind]'); if (!b) return; e.preventDefault(); audio.unlock(); setKind(b.dataset.kind); });
+  const slideTo = y => {
+    const r = kinds.getBoundingClientRect(), h = segs[0].offsetHeight, step = (r.height - segs[0].offsetTop * 2) / segs.length;
+    const at = y - r.top - segs[0].offsetTop;   // from the top of the first kind
+    const cur = segs.findIndex(b => b.dataset.kind === S.kind), f = at / step - .5;
+    const i = Math.abs(f - cur) > .62 ? Math.max(0, Math.min(segs.length - 1, Math.round(f))) : cur;
+    if (i !== cur) setKind(segs[i].dataset.kind);
+    place(Math.max(segs[0].offsetTop, Math.min(segs.at(-1).offsetTop, at + segs[0].offsetTop - h / 2)));
+  };
+  kinds.addEventListener('pointerdown', e => {
+    e.preventDefault(); kinds.setPointerCapture?.(e.pointerId); audio.unlock();
+    S.slide = e.pointerId; kinds.classList.add('slide');
+    const f = (e.clientY - kinds.getBoundingClientRect().top) / kinds.clientHeight;
+    setKind(KINDS[Math.max(0, Math.min(3, Math.floor(f * 4)))][0]); slideTo(e.clientY);
+  });
+  kinds.addEventListener('pointermove', e => { if (S.slide === e.pointerId) slideTo(e.clientY); });
+  const settle = e => { if (S.slide !== e.pointerId) return; S.slide = null; kinds.classList.remove('slide'); place(); };
+  kinds.addEventListener('pointerup', settle); kinds.addEventListener('pointercancel', settle);
 
   // Songs: the birds you know, folded away until you want one
   bookBtn.addEventListener('click', () => { audio.unlock(); birds.classList.toggle('hidden'); });
@@ -122,14 +152,19 @@ export function createSingUI(ui, { audio, voice, onSyll, onPick, onCall }) {
     update({ available, known, learned, picked, sc, lefty, resting }) {
       root.classList.toggle('lefty', lefty);
       callBtn.classList.toggle('rest', resting);
-      if (!!available !== S.open) { S.open = !!available; root.classList.toggle('hidden', !S.open); S.finger = null; if (!S.open) birds.classList.add('hidden'); }
+      if (!!available !== S.open) {
+        S.open = !!available; root.classList.toggle('hidden', !S.open); ui.classList.toggle('singing3', S.open);
+        S.finger = S.slide = null; kinds.classList.remove('slide');
+        if (S.open) place(); else birds.classList.add('hidden');
+      }
       if (!S.open) return;
       setBirds(known, learned, picked); setScore(sc);
     },
     glow(lane) { if (S.open) flash(bands[lane], 'glow'); },
     cheer(text) {
-      cheer.textContent = text; cheer.classList.remove('show'); void cheer.offsetWidth; cheer.classList.add('show');
-      clearTimeout(cheerTimer); cheerTimer = setTimeout(() => cheer.classList.remove('show'), 2600);
+      // in the score's place for a moment: one line of news at a time
+      cheer.textContent = text; cheer.classList.remove('show'); void cheer.offsetWidth; cheer.classList.add('show'); score.classList.add('hush');
+      clearTimeout(cheerTimer); cheerTimer = setTimeout(() => { cheer.classList.remove('show'); score.classList.remove('hush'); }, 2600);
     },
     // where a control sits on screen (for test scripts)
     lanePt(lane) { const r = bands[lane].getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; },
