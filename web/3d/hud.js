@@ -1,18 +1,19 @@
 // The heads-up layer: meters, a status line, the day dial, toasts, one tip at a time, and the
 // thumb pads. Systems add meters with G.hud.meter() and tips with G.hud.tip(); they call
-// G.hud.toast(). Meters are washes of pigment along a pencil line (the "Wash" style), each
-// painted on its own small canvas and only when its value changes.
+// G.hud.toast(). Meters are rows of slanted facets in the world's colours (low poly, like the
+// world), each painted on its own small canvas and only when its value changes.
 import { store } from './util.js';
-import { wash, pillP, circP, hexRGB } from './paper.js';
+import { C, shade, poly, hexRGB, ngon } from './facet.js';
 import { createDial } from './dial.js';
 
 const BAR = 64, MH = 13;   // bar length and meter height, in CSS pixels
-// a little icon before each meter, washed in its pigment
+// a little icon before each meter: a flat gem in its colour, lit on its upper left facet
+const two = (x, pts, split, col) => { poly(x, pts, C(col)); poly(x, split, C(shade(col, 1.22))); };
 const ICONS = {
-  thirst: (x, cx, cy, col) => wash(x, [[cx, cy - 4.5], [cx + 3, cy + .5], [cx + 2, cy + 3], [cx - 2, cy + 3], [cx - 3, cy + .5]], col, .9, { passes: 2, amp: .3, seed: 1, rim: .4 }),
-  hunger: (x, cx, cy, col) => { wash(x, circP(cx - 1.5, cy + 1, 2.2, 8), col, .9, { passes: 2, amp: .3, seed: 2, rim: .4 }); wash(x, circP(cx + 1.8, cy, 2.2, 8), col, .9, { passes: 2, amp: .3, seed: 4, rim: .4 }); },
-  wings: (x, cx, cy, col) => wash(x, [[cx - 3.2, cy + 4], [cx - 1.2, cy - .5], [cx + 1.6, cy - 4], [cx + 3.4, cy - 3.2], [cx + 2.2, cy + 1], [cx - 1, cy + 4]], col, .9, { passes: 2, amp: .3, seed: 6, rim: .4 }),
-  dot: (x, cx, cy, col) => wash(x, circP(cx, cy, 2.6, 9), col, .9, { passes: 2, amp: .3, seed: 8, rim: .4 }),
+  thirst: (x, cx, cy, col) => two(x, [[cx, cy - 5], [cx + 3.4, cy + .6], [cx, cy + 3.6], [cx - 3.4, cy + .6]], [[cx, cy - 5], [cx, cy + 3.6], [cx - 3.4, cy + .6]], col),
+  hunger: (x, cx, cy, col) => { for (const [ox, oy] of [[-1.7, 1], [2, -.4]]) { const P = ngon(cx + ox, cy + oy, 2.5, 6, .5); two(x, P, [P[2], P[3], P[4], [cx + ox, cy + oy]], col); } },
+  wings: (x, cx, cy, col) => two(x, [[cx - 3.4, cy + 4], [cx + 1.6, cy - 4.2], [cx + 3.6, cy - 3.2], [cx - 1, cy + 4]], [[cx - 3.4, cy + 4], [cx + 1.6, cy - 4.2], [cx + .3, cy + 1]], col),
+  dot: (x, cx, cy, col) => { const P = ngon(cx, cy, 3, 6, .5); two(x, P, [P[2], P[3], P[4], [cx, cy]], col); },
 };
 const TICKS = { thirst: 3, hunger: 6 };
 
@@ -31,13 +32,13 @@ export function createHud(G, ui, input) {
   let toastT = 0, tipNow = null, tipT = 0, wake = -9, blink = false;
   const queue = [];
 
-  // a meter: a pencil line with a tick for each meal or sip that would fill it, and a wash of
-  // pigment along it as far as it is full, blinking berry-red when low
+  // a meter: a row of slanted facets, one for each meal or sip that would fill it (or eight),
+  // lit as far as it is full, flashing berry-red when low
   H.meter = (id, { label, colour, low = .2, icon, ticks }) => {
     const pig = hexRGB((colour.match(/#[0-9a-f]{6}/gi) || ['#8a7a6a']).pop());
     const cv = document.createElement('canvas'); cv.className = 'm3'; cv.title = label; cv.dataset.m = id;
     meters.append(cv);
-    const draw = ICONS[icon || id] || ICONS.dot, nt = ticks ?? TICKS[id] ?? 0, m = { v: 1, low };
+    const draw = ICONS[icon || id] || ICONS.dot, n = ticks ?? TICKS[id] ?? 8, m = { v: 1, low };
     all.push(m);
     let key = '';
     return v => {
@@ -48,13 +49,17 @@ export function createHud(G, ui, input) {
       if (cv.width !== Math.ceil(W * sc)) { cv.width = Math.ceil(W * sc); cv.height = Math.ceil(MH * sc); cv.style.width = W * 1.2 + 'px'; cv.style.height = MH * 1.2 + 'px'; }
       const x = cv.getContext('2d');
       x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, cv.width, cv.height); x.setTransform(sc, 0, 0, sc, 0, 0);
-      const y = MH / 2;
+      const y = MH / 2, col = flash ? [196, 72, 52] : pig, sw = BAR / n, sl = 2.2, hh = 3.2;
       draw(x, 5, y, pig);
-      x.save(); x.globalCompositeOperation = 'multiply'; x.strokeStyle = 'rgba(58,36,24,.4)'; x.lineWidth = .6; x.beginPath();
-      x.moveTo(13, y); x.lineTo(13 + BAR, y);
-      for (let i = 1; i < nt; i++) { const tx = 13 + BAR * i / nt; x.moveTo(tx, y - 2.5); x.lineTo(tx, y + 2.5); }
-      x.stroke(); x.restore();
-      if (v > .01) wash(x, pillP(13, y - 3, BAR * v, 6), flash ? [190, 70, 50] : pig, .72, { passes: 2, amp: .6, seed: id.length * 3, rim: .35, rimW: .8 });
+      for (let i = 0; i < n; i++) {
+        const x0 = 13 + i * sw, x1 = x0 + sw - 1.4, fill = Math.max(0, Math.min(1, v * n - i));
+        const seg = [[x0 + sl, y - hh], [x1 + sl, y - hh], [x1 - sl, y + hh], [x0 - sl, y + hh]];
+        poly(x, seg, 'rgba(43,26,16,.16)');
+        if (fill <= 0) continue;
+        const xf = x0 + (x1 - x0) * fill;
+        poly(x, [[x0 + sl, y - hh], [xf + sl, y - hh], [xf - sl, y + hh], [x0 - sl, y + hh]], C(col));
+        poly(x, [[x0 + sl, y - hh], [xf + sl, y - hh], [x0 - sl, y + hh]], C(shade(col, 1.18)));
+      }
     };
   };
   // one toast at a time; later ones wait their turn so a message is never cut short
