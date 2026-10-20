@@ -64,11 +64,17 @@ export function createInput(el) {
     let pitch = 0, roll = 0, spread = 0, keyRoll = 0, yaw = 0;
     const k = I.invert ? -1 : 1;
     if (l && rr) {
-      pitch = -(L.dy + R.dy) / 2 * k;
+      // Thumbs pulled together never move exactly alike, and they wander up and down as they
+      // slide in. So a tuck must not read as a turn: sideways steering (yaw, and the tuck's bank)
+      // takes only the part both thumbs share (same way, the smaller of the two), past a small
+      // dead zone, and up/down is dead-zoned too, more so the tighter the tuck.
       spread = (R.dx - L.dx) / 2;
-      // bank: one wing up, one down; in a tuck, both thumbs shifted to one side steer too
-      roll = clampU((R.dy - L.dy) / 2 + (L.dx + R.dx) / 2 * Math.max(0, -spread) * 1.6);
-      yaw = clampU((L.dx + R.dx) / 2);
+      const tk = Math.max(0, -spread), dz = .08 + tk * .14;
+      const common = Math.sign(L.dx) === Math.sign(R.dx) ? Math.sign(L.dx) * Math.min(Math.abs(L.dx), Math.abs(R.dx)) : 0;
+      const side = dead(common, .1);
+      pitch = -dead((L.dy + R.dy) / 2, dz) * k;
+      roll = clampU(dead((R.dy - L.dy) / 2, dz) + side * tk * 1.6);
+      yaw = clampU(side);
     } else if (l || rr) {
       const P = l ? L : R; pitch = -P.dy * k; roll = P.dx;
     }
@@ -92,4 +98,5 @@ export function createInput(el) {
   };
   return I;
 }
+const dead = (v, d) => (Math.abs(v) < d ? 0 : (v - Math.sign(v) * d) / (1 - d));
 const clampU = v => (v < -1 ? -1 : v > 1 ? 1 : v);
