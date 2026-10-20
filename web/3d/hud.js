@@ -39,11 +39,13 @@ export function createHud(G, ui, input) {
     const el = meters.lastElementChild, fill = el.querySelector('.bar i'), m = { v: 1, low };
     all.push(m);
     let key = '';
-    return v => {
+    // glow: a colour for a soft halo round the bar (say, how clean the last wing beat was), or none
+    return (v, glow = '') => {
       v = Math.max(0, Math.min(1, v)); m.v = v;
-      const lo = v < low, k = `${Math.round(v * 100)},${lo},${v < low * .6}`;
+      const lo = v < low, k = `${Math.round(v * 100)},${lo},${v < low * .6},${glow}`;
       if (k === key) return; key = k;
       fill.style.transform = `scaleX(${v.toFixed(3)})`;
+      el.classList.toggle('glow', !!glow); if (glow) el.style.setProperty('--glow', glow);
       el.classList.toggle('low', lo); el.classList.toggle('urgent', v < low * .6);
     };
   };

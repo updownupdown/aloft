@@ -40,6 +40,9 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .m3 .bar { position: relative; width: 74px; height: 6px; border-radius: 3px; overflow: hidden; background: rgba(20, 32, 40, .32); box-shadow: 0 0 0 1px rgba(255, 255, 255, .55), 0 1px 4px rgba(10, 20, 28, .3); }
 .m3 .bar i { position: absolute; inset: 0; border-radius: 3px; background: var(--m); transform-origin: left; transition: transform .4s; }
 .m3 .nm { display: none; }
+.m3 .bar { transition: box-shadow .5s; }
+.m3.glow .bar { box-shadow: 0 0 0 1px var(--glow), 0 0 8px 2px var(--glow); }
+.m3.glow svg { stroke: var(--glow); }
 .m3.low svg { stroke: #ff8a6e; }
 .m3.low .bar i { background: #ff6a4a; }
 .m3.low { animation: flash3 1.1s ease-in-out infinite; }
@@ -188,6 +191,13 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .glass3 p { font-size: 14.5px; margin: 8px 0; }
 .glass3 small { font-size: 12.5px; color: var(--ink2); }
 /* a short screen (a phone on its side): the column keeps to icons and the Resume pill */
+/* room to spare: taller tabs */
+@media (min-height: 600px) and (min-width: 621px) {
+  .glass3 { height: min(640px, calc(100vh - 48px)); }
+  .glass3 .tabs3 { gap: 4px; }
+  .glass3 .tabs3 button { min-height: 56px; font-size: 16px; }
+  .glass3 .tabs3 svg { width: 21px; height: 21px; }
+}
 @media (max-height: 460px) and (min-width: 621px) {
   .glass3 { grid-template-columns: 168px minmax(0, 1fr); }
   .glass3 .tabs3 button { min-height: 40px; font-size: 14px; }
