@@ -25,7 +25,10 @@ export const fwd = b => [Math.sin(b.yaw) * Math.cos(b.gamma), Math.sin(b.gamma),
 export function step(b, c, dt, E) {
   b.t += dt;
   b.flapL += dt; b.flapR += dt;
-  b.tuck += (Math.max(0, -c.spread) - b.tuck) * Math.min(1, dt * 6);
+  // the tuck eases in over a dead zone and saturates well before the thumbs meet, so how far the
+  // thumbs happen to slide doesn't swing the dive (and the aim's focus) about
+  const tw = Math.min(1, Math.max(0, (-c.spread - .1) / .5)), tuckT = tw * tw * (3 - 2 * tw);
+  b.tuck += (tuckT - b.tuck) * Math.min(1, dt * 5);
   b.flare += (Math.max(0, c.spread) - b.flare) * Math.min(1, dt * 6);
   if (b.state !== 'fly') return still(b, c, dt, E);
   // how fast the hawk is gaining speed (smoothed): no perching while it is
@@ -134,7 +137,8 @@ function still(b, c, dt, E) {
     // take off: a strong stroke forward and up
     const wet = b.state === 'swim';
     b.state = 'fly'; b.perch = null; b.tree = null; b.view = null;
-    b.s = 8; b.gamma = .35; b.vy = wet ? 3.5 : 4.5; b.flapL = b.flapR = 0; b.ampL = b.ampR = 1;
+    b.s = 8; b.gamma = .35; b.vy = wet ? 3.5 : 4.5;
+    if (wet) b.p[1] = WATER + .5;   // clear of the surface, or the first frame would settle back onto it b.flapL = b.flapR = 0; b.ampL = b.ampR = 1;
     b.stamina = Math.max(0, b.stamina - FLY.flapCost);
     E.flap(1, 0); E.takeoff();
   }
@@ -283,7 +287,7 @@ function ground(b, E) {
   if (b.p[1] >= floor) return;
   const f = fwd(b), down = -(f[1] * b.s + b.vy + b.lift);
   if (gy < WATER) {
-    if (b.s < 9 && down < 6) { b.state = 'swim'; b.p[1] = WATER + .12; b.settle = .5; E.land('water'); }
+    if (b.s < 9 && down > 0 && down < 6 && !(b.noPerch > 1.2)) { b.state = 'swim'; b.p[1] = WATER + .12; b.settle = .5; E.land('water'); }
     else { b.p[1] = floor; b.gamma = Math.max(b.gamma, .12); b.s *= .82; b.vy = Math.max(b.vy, 1); E.splash(b.p, b.s); }
     return;
   }

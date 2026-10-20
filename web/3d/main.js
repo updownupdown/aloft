@@ -128,7 +128,7 @@ export function start(canvas, ui) {
   // how well paired the last two-thumb flap was: the wings bar glows green, blue, orange or red a moment
   let glow = '', glowT = 0;
   function wingGlow(sync) { glow = sync > .8 ? '#5fd17a' : sync > .55 ? '#5aa9ff' : sync > .3 ? '#ffa64a' : '#ff5a4a'; glowT = .7; }
-  H.tip('flap', () => b.state !== 'fly', 'Tap Take off (top) to fly. Then tap both thumbs at once to flap.');
+  H.tip('flap', () => b.state !== 'fly', 'Tap Take off (bottom right) to fly. Then tap both thumbs at once to flap.');
   H.tip('bank', () => b.state === 'fly', 'Two thumbs, two wings: tip one up and the other down to bank and turn.');
   H.tip('climb', () => b.state === 'fly', 'Push both thumbs up to climb, both down to dive.');
   H.tip('tuck', () => b.state === 'fly' && b.p[1] - height(b.p[0], b.p[2]) > 30, 'Slide your thumbs together to tuck your wings and stoop.');
