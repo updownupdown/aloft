@@ -24,17 +24,27 @@ const water = y => line(`M6 ${y} q6 -3 13 0 t13 0 t13 0 t13 0`, WATER, 1.8);
 const berries = (x, y) => dot(x, y, 3.4, BERRY) + dot(x + 6, y + 2, 3.4, BERRY) + dot(x + 2, y + 6, 3.4, BERRY);
 const up = (x, y0 = 54, y1 = 14) => dot(x, y0) + line(`M${x} ${y0} V${y1}`) + head(x, y1, -90);
 const down = (x, y0 = 12, y1 = 50) => dot(x, y0) + line(`M${x} ${y0} V${y1}`) + head(x, y1, 90);
-const held = () => dot(32, 34, 4.5) + ring(32, 34, 8, INK, .7) + ring(32, 34, 12, INK, .35);
-const lean = (a, o = 1) => { const r = a * Math.PI / 180, c = Math.cos(r), s = Math.sin(r), x = 32 + c * 25, y = 34 + s * 25;
-  return `<g opacity="${o}">${line(`M${32 + c * 15} ${34 + s * 15} L${x} ${y}`, INK, 2)}${head(x, y, a, INK, 4.5)}</g>`; };
+// the hawk in flight, facing right: where a touch sits from it is what it does
+const flyer = (x, y) => `<g fill="${FAINT}"><ellipse cx="${x}" cy="${y}" rx="7.5" ry="3"/><circle cx="${x + 7}" cy="${y - 1.2}" r="2.6"/>`
+  + `<path d="M${x + 9} ${y - 2} L${x + 12.5} ${y - .4} L${x + 9} ${y + .4} Z M${x - 6} ${y - 1.5} L${x - 13} ${y - 2.5} L${x - 13} ${y + 2.5} L${x - 6} ${y + 1.5} Z`
+  + ` M${x + 2} ${y - 2} Q${x - 1} ${y - 12} ${x - 9} ${y - 15} Q${x - 4} ${y - 7} ${x - 4} ${y - 1} Z"/></g>`;
+// a finger kept down: a pool of ink spread round where it rests (a tap is a dot and a ring)
+const held = (x, y, c = INK) => `<circle cx="${x}" cy="${y}" r="10" fill="${c}" opacity=".16"/><circle cx="${x}" cy="${y}" r="6.5" fill="${c}" opacity=".22"/>` + dot(x, y, 4, c);
+const dash = (d, c = INK) => `<path d="${d}" fill="none" stroke="${c}" stroke-width="1.6" stroke-dasharray="2.5 3.5" stroke-linecap="round" opacity=".7"/>`;
 const three = (x, y) => dot(x, y - 12, 3) + dot(x, y, 3) + dot(x, y + 12, 3);
 
 const DRAW = {
   flap: () => tap(32, 34),
-  // a finger held down, and the ways it can lean from there (down and back lands too)
-  hold: () => held() + [-90, -45, 0, 45, 90, 180].map(a => lean(a)).join(''),
-  leanUp: () => held() + lean(-90), leanUpFwd: () => held() + lean(-45), leanFwd: () => held() + lean(0),
-  leanDownFwd: () => held() + lean(45), leanDown: () => held() + lean(90) + lean(135, .45), leanBack: () => held() + lean(180),
+  follow: () => flyer(16, 44) + dash('M24 40 Q36 30 44 24') + head(44, 24, -38, INK, 4) + held(50, 19),
+  hover: () => flyer(32, 50) + dash('M32 38 V26') + held(32, 15),
+  slow: () => flyer(42, 48) + dash('M36 38 L24 26') + held(17, 18),
+  back: () => flyer(44, 42) + line('M50 30 Q50 18 38 18 H24', INK, 2) + head(22, 18, 180, INK, 4.5) + held(10, 30),
+  tapLine: () => flyer(14, 46) + dash('M24 42 L42 26') + tap(50, 18),
+  ring: () => flyer(14, 48) + `<ellipse cx="45" cy="24" rx="6" ry="14" fill="none" stroke="${WATER}" stroke-width="2.4" opacity=".6"/>` + dash('M26 44 L38 32') + tap(45, 24, 1),
+  sky: () => flyer(14, 46) + dash('M24 42 Q34 26 44 22') + tap(48, 20, 2),
+  thermalPt: () => flyer(12, 50) + [52, 42, 32, 22].map((y, i) => `<ellipse cx="${42 + (i % 2) * 2}" cy="${y}" rx="${14 - i * 2}" ry="3" fill="none" stroke="${OCHRE}" stroke-width="1.6" opacity="${.7 - i * .1}"/>`).join('') + tap(43, 30, 2, OCHRE),
+  prey: () => flyer(14, 18) + `<ellipse cx="44" cy="48" rx="6" ry="3.6" fill="${RED}" opacity=".75"/>` + tap(44, 46, 2, RED),
+  walk: () => line('M6 50 H58', FAINT, 1.6) + sitting(14, 40) + dash('M24 42 H40') + held(48, 40),
   glide: () => dot(12, 36) + line('M12 36 H52') + head(52, 36, 0),
   turn: () => dot(52, 36) + line('M52 36 H12') + head(12, 36, 180) + head(20, 36, 180),
   thermal: () => dot(14, 40, 4, OCHRE) + line('M14 40 H44 Q54 40 54 32 Q54 24 44 24 H18', OCHRE) + head(18, 24, 180, OCHRE),
@@ -56,45 +66,47 @@ const DRAW = {
 
 // [where it works, the gesture, what it does, its drawing]
 export const CONTROLS = [
-  ['air', 'Tap anywhere', 'Flap. Flapping keeps a glide, a ride, a perch or a hunt going, but ends a hover or a landing.', 'flap'],
-  ['air', 'Hold, then lean', 'Keep a finger down a moment (it may move first; it still counts), then lean it from where it came down. The further the lean, the stronger. Holding never turns the hawk.', 'hold'],
-  ['air', 'Lean up', 'Hover, kiting into the wind.', 'leanUp'],
-  ['air', 'Lean up and forward', 'Glide up, trading speed for height.', 'leanUpFwd'],
-  ['air', 'Lean forward', 'The longest glide.', 'leanFwd'],
-  ['air', 'Lean down and forward', 'Glide down, gaining speed.', 'leanDownFwd'],
-  ['air', 'Lean down, or down and back', 'Settle down and land.', 'leanDown'],
-  ['air', 'Lean back', 'Slow down, then hover once slowed.', 'leanBack'],
-  ['air', 'Swipe forward', 'A long glide.', 'glide'],
-  ['air', 'Swipe back', 'Turn round. Only a clean swipe turns.', 'turn'],
-  ['air', 'Swipe forward, then back', 'Ride the thermal you are in, or head for the nearest one and ride it up.', 'thermal'],
-  ['air', 'Draw a circle', 'A flip, drawn the way the nose goes: over the top for a loop, under for a front flip. Draw it through a cloud ring nearby and the hawk loops through the ring.', 'flip'],
-  ['air', 'Draw a line to a mouse or fish', 'Stoop on it.', 'hunt'],
+  ['air', 'Hold where it should go', 'The hawk flies toward your finger and follows it as it slides. Hold inside a thermal and it circles up it.', 'follow'],
+  ['air', 'Right above the hawk', 'Hold or tap there to hover. It tires the wings.', 'hover'],
+  ['air', 'Above and a little behind', 'Slow down, then hover once slowed.', 'slow'],
+  ['air', 'Well behind the hawk', 'Turn round and come back toward the finger.', 'back'],
+  ['air', 'Tap anywhere', 'A flap, and a line toward the tap: ahead and higher climbs, ahead and lower dives. The hawk never flaps by itself, so taps are how it climbs.', 'tapLine'],
+  ['air', 'Tap a cloud ring', 'Head through it, if the hawk can reach it on the speed it has.', 'ring'],
   ['air', 'Double tap a branch', 'Fly to it and perch.', 'perch'],
   ['air', 'Double tap berries, a worm or a twig', 'Fly down, land and eat it (or pick up the twig).', 'food'],
+  ['air', 'Double tap a mouse or fish', 'Stoop on it.', 'prey'],
+  ['air', 'Double tap a thermal', 'Ride it up.', 'thermalPt'],
+  ['air', 'Double tap the sky', 'Fly to that spot.', 'sky'],
+  ['extra', 'Draw a circle', 'A flip, drawn the way the nose goes: over the top for a loop, under for a front flip. Draw it through a cloud ring nearby and the hawk loops through the ring.', 'flip'],
+  ['extra', 'Draw a line to a mouse or fish', 'Stoop on it.', 'hunt'],
+  ['extra', 'Swipe back, quickly', 'Turn round.', 'turn'],
+  ['extra', 'Swipe forward', 'A long glide.', 'glide'],
+  ['extra', 'Swipe forward, then back', 'Ride the thermal you are in, or head for the nearest one and ride it up.', 'thermal'],
   ['branch', 'Tap beside the hawk', 'Hop along the branch that way.', 'hop'],
   ['branch', 'Swipe down', 'Drop to the branch below.', 'drop'],
-  ['branch', 'Swipe up, or three quick taps', 'Take off. Double tap another branch to fly straight there, or draw a line to prey to go after it.', 'takeoff'],
+  ['branch', 'Tap well above, swipe up, or tap three times', 'Take off. Double tap another branch to fly straight there, or draw a line to prey to go after it.', 'takeoff'],
   ['ground', 'Tap', 'Hop toward the tap. Taps spaced out only ever hop.', 'hop'],
   ['ground', 'Tap berries, worms or water', 'Walk there to eat or drink.', 'walkTo'],
+  ['ground', 'Hold', 'Walk toward your finger.', 'walk'],
   ['ground', 'Swipe down', 'Eat or drink what is at your feet.', 'eat'],
-  ['ground', 'Swipe up, or three quick taps', 'Take off.', 'takeoff'],
+  ['ground', 'Tap well above, swipe up, or tap three times', 'Take off.', 'takeoff'],
   ['water', 'Tap', 'Paddle that way.', 'paddle'],
   ['water', 'Tap the water by the hawk', 'Drink. Three sips fill your thirst.', 'drink'],
-  ['water', 'Swipe up, or three quick taps', 'Take off.', 'takeoff'],
+  ['water', 'Tap well above, swipe up, or tap three times', 'Take off.', 'takeoff'],
   ['any', 'Call button', 'The red-tail\'s scream. The longer you hold it, the louder it is; it calls when you let go, or at full voice after a moment and a half.', 'call'],
 ];
-const GROUPS = { air: 'In the air', branch: 'On a branch', ground: 'On the ground', water: 'On the water', any: 'Anywhere' };
+const GROUPS = { air: 'In the air: where you touch is where the hawk goes', extra: 'Strokes, in the air', branch: 'On a branch', ground: 'On the ground', water: 'On the water', any: 'Anywhere' };
 
 export function controlMap() {
   // one wobble for every line, so the ink looks brushed rather than ruled
   let html = '<svg width="0" height="0" style="position:absolute"><filter id="ctl-ink"><feTurbulence type="fractalNoise" baseFrequency=".09" numOctaves="2" seed="3"/>'
     + '<feDisplacementMap in="SourceGraphic" scale="2.6"/></filter></svg>';
-  html += '<p class="ctl-note">Drawn as if the hawk is flying right; flying left, every gesture mirrors. A new gesture replaces the last one, unless the two can work together. A small sign above the hawk confirms each one, and stays while a hold, a ride or a target lasts.</p>';
+  html += '<p class="ctl-note">Drawn as if the hawk is flying right; flying left, every gesture mirrors. A new gesture replaces the last one, unless the two can work together. A dot in a ring is a tap (two rings, a double tap); a soft pool is a finger held down. A small sign above the hawk confirms each one, and stays while a hold, a ride or a target lasts.</p>';
   for (const [g, name] of Object.entries(GROUPS)) {
     html += `<h3>${name}</h3><div class="ctl-map">`;
     for (const [grp, title, text, d] of CONTROLS) {
       if (grp !== g) continue;
-      html += `<figure><svg viewBox="0 0 64 64" aria-hidden="true"><g filter="url(#ctl-ink)">${grp === 'air' ? hawk() : ''}${DRAW[d]()}</g></svg>`
+      html += `<figure><svg viewBox="0 0 64 64" aria-hidden="true"><g filter="url(#ctl-ink)">${grp === 'extra' ? hawk() : ''}${DRAW[d]()}</g></svg>`
         + `<figcaption><b>${title}</b><small>${text}</small></figcaption></figure>`;
     }
     html += '</div>';
