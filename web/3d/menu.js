@@ -6,8 +6,8 @@ import { letter } from './letter.js';
 import { store } from './util.js';
 
 // where each section sits, whichever system adds it first; others follow in the order added
-const ORDER = { play: 0, journal: 1, songs: 2, how: 3 };
-const TITLES = { play: 'Settings', journal: 'Journal', songs: 'Songs', how: 'How to play' };
+const ORDER = { map: -1, play: 0, journal: 1, songs: 2, how: 3 };
+const TITLES = { map: 'Map', play: 'Settings', journal: 'Journal', songs: 'Songs', how: 'How to play' };
 
 export function createMenu(G, ui) {
   ui.insertAdjacentHTML('beforeend', `
@@ -64,8 +64,10 @@ export function createMenu(G, ui) {
   M.subtitle = fn => { M.sub = fn; };
   M.repaint = repaint;
   M.hideButton = h => button.classList.toggle('hidden', h);
-  M.set = on => {
-    if (on === M.open) return;
+  // open (on a given tab, if named) or close
+  M.set = (on, tab) => {
+    if (on && tab) current = tab;
+    if (on === M.open) { if (on && tab) show(tab); return; }
     M.open = G.paused = on; veil.classList.toggle('hidden', !on); ui.classList.toggle('menu-open', on);
     if (on) {
       card.querySelector('.sub3').textContent = M.sub ? M.sub() : 'Paused';

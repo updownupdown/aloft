@@ -39,6 +39,7 @@ web/3d/letter.js        the menu's look in low poly (faceted sheet, margin rule,
 web/3d/facet.js         low-poly helpers for the UI (PIG colours, poly, facets, gem, chamfer, hardShadow, lit)
 web/3d/seal.js          Aloft's wax seal, cut as a faceted gem (menu Resume, app icons via tools/icon.html)
 web/3d/dial.js          the day dial, top right
+web/3d/tips.js          tips as a short line and an icon (SHORT, keyed by tip id), swipe to dismiss, i to pause and read more
 web/3d/journal.js       the Journal tab: journal(G).section(order, title); shot.js: project(), afterDraw(), portraits
 web/3d/app.js           Update, Full screen, Quiet meters and Quit rows
 web/src/                audio.js (Web Audio synth), music.js (four styles), birdvoice.js, songs.js (songbird species)
@@ -46,7 +47,7 @@ web/lab.html            bird song lab; web/musiclab.html music lab (both share l
 web/icons/, web/fonts/  app icons (tools/icon.html + tools/make-icons.mjs), bundled fonts (SIL OFL)
 web/3d/sys/*.js         systems: air (thermal clouds/motes), rings, food (hunger, thirst, mice), aim, flora (tufts, flowers, stones, bushes, reeds),
                         guide (field guide: G.sight(key,x,y,z,r), G.guide.page()), journey (migration south to
-                        JOURNEY.marsh, landmarks found, route, years, journal map), nest (twigs, egg, chick),
+                        JOURNEY.marsh, landmarks found, route, years), map (the Map tab: fog of war, pan/zoom, tap a place), nest (twigs, egg, chick),
                         story (health -> G.tailRed, keepsakes, tricks, courtship, mate and fledglings),
                         photo (photo mode, postcards, album), howto (How to play and the controls map)
                         songs (songbirds, learning and imitating songs on the pitch strip, gifts, Call)

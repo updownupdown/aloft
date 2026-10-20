@@ -5,6 +5,7 @@
 import { store } from './util.js';
 import { C, shade, poly, hexRGB, ngon } from './facet.js';
 import { createDial } from './dial.js';
+import { tipBar } from './tips.js';
 
 const BAR = 64, MH = 13;   // bar length and meter height, in CSS pixels
 // a little icon before each meter: a flat gem in its colour, lit on its upper left facet
@@ -22,12 +23,13 @@ export function createHud(G, ui, input) {
     <div class="hud3"><span class="meters"></span><span class="alt"></span></div>
     <div class="corner3"><div class="fps3 hidden"></div></div>
     <div class="pad3 L"><i></i></div><div class="pad3 R"><i></i></div>
-    <p class="hint3"></p><p class="toast3"></p>`);
+    <p class="toast3"></p>`);
   const q = s => ui.querySelector(s);
-  const hud = q('.hud3'), meters = q('.meters'), hintEl = q('.hint3'), toastEl = q('.toast3'), padL = q('.pad3.L'), padR = q('.pad3.R');
+  const hud = q('.hud3'), meters = q('.meters'), toastEl = q('.toast3'), padL = q('.pad3.L'), padR = q('.pad3.R');
   const dial = createDial(q('.corner3'));
   q('.corner3').prepend(q('.corner3 .dial'));
   const H = { tips: [], done: store.get('hints3d', {}), status: '', counter: '', quiet: store.get('quietHud3d', false), hidden: false };
+  const bar = tipBar(G, ui, H);
   const all = [];   // every meter: { v, low }
   let toastT = 0, tipNow = null, tipT = 0, wake = -9, blink = false;
   const queue = [];
@@ -67,8 +69,9 @@ export function createHud(G, ui, input) {
     if (toastT > 0) { if (toastEl.textContent !== msg && !queue.some(m => m[0] === msg)) queue.push([msg, secs]); return; }
     toastEl.textContent = msg; toastEl.classList.add('show'); toastT = secs;
   };
-  // a tip shows while `when()` holds, until H.did(id) is called (it is remembered). It shows for
-  // nine seconds at a time, then rests a minute, and no more than three times a session
+  // a tip shows while `when()` holds, until H.did(id) is called or it is swiped away (both are
+  // remembered). It shows for eight seconds at a time, then rests a minute, at most three times a
+  // session; tips.js gives it its short line and icon
   H.tip = (id, when, text) => H.tips.push({ id, when, text, shown: 0, rest: 0 });
   H.did = id => {
     if (!H.done[id]) { H.done[id] = 1; store.set('hints3d', H.done); }
@@ -91,9 +94,9 @@ export function createHud(G, ui, input) {
     tipT -= dt;
     if (tipT <= 0) {
       tipNow = null;
-      for (const t of H.tips) if (!H.done[t.id] && t.shown < 3 && G.t > t.rest && t.when()) { tipNow = t.id; hintEl.textContent = t.text; tipT = 9; t.shown++; t.rest = G.t + 69; break; }
+      for (const t of H.tips) if (!H.done[t.id] && t.shown < 3 && G.t > t.rest && t.when()) { tipNow = t.id; bar.show(t); tipT = 8; t.shown++; t.rest = G.t + 68; break; }
     }
-    hintEl.classList.toggle('show', !!tipNow && tipT > .3);
+    if (!tipNow || tipT <= .3 || H.done[tipNow]) bar.hide();
     q('.alt').textContent = H.status;
     // quiet meters: fade while every meter is well filled, back as soon as one runs lower
     const lowest = Math.min(...all.map(m => m.v)), quiet = H.quiet && G.t - wake > 4 && lowest > (hud.classList.contains('quiet') ? .5 : .7);
