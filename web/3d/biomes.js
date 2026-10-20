@@ -6,7 +6,7 @@
 // A biome is its ground (h: height in m at x, z), its colours (c), how wooded it is (forest),
 // and flags for the shared touches (rock on steep ground, snow up high, sand at the shore).
 // Trees, rocks and flora read the biome too (world.js, sys/flora.js).
-import { ih, fbm, ridged, smooth, clamp } from './noise.js';
+import { ih, fbm, ridged, softRidged, smooth, clamp } from './noise.js';
 
 export const JOURNEY = { home: 0, marsh: 9000 };
 export const BIOME_CELL = 950, BLEND = 210;
@@ -83,18 +83,18 @@ export const BIOMES = {
   },
   mountains: {
     w: (n) => .5 + n * .4, label: 'the high country', forest: 0, high: 1,
-    h: (x, z, B) => 30 + B.big * 30 + B.mid * 12 + ridged(x / 260, z / 260, 4, 3) ** 2 * 160,
+    h: (x, z, B) => 30 + B.big * 30 + B.mid * 12 + softRidged(x / 260, z / 260, 4, 3) ** 2 * 160,
     c: (x, y, z) => mixc(PAL.meadow, PAL.heath, smooth(40, 110, y) * .6),
   },
   alpine: {
     w: (n) => .12 + n * 1.3, label: 'the snowy peaks', forest: -.2, high: 1, peaks: 1,
-    h: (x, z, B) => 70 + B.big * 40 + B.mid * 16 + ridged(x / 330, z / 330, 41, 3) ** 2.2 * 270 + ridged(x / 90, z / 90, 42, 2) ** 2 * 18,
+    h: (x, z, B) => 70 + B.big * 40 + B.mid * 16 + softRidged(x / 330, z / 330, 41, 3, .06) ** 2.2 * 270 + softRidged(x / 90, z / 90, 42, 2, .15) ** 2 * 8,
     c: (x, y, z, st) => mixc(mixc(PAL.alpine, PAL.heath, smooth(60, 140, y)), PAL.scree, smooth(.15, .3, st) * smooth(90, 150, y)),
   },
   cliffs: {
     w: () => .55, label: 'the cliffs', forest: -.1, high: 1,
     h: (x, z, B) => {
-      const h = 45 + B.big * 40 + B.mid * 14 + ridged(x / 300, z / 300, 43, 2) ** 2 * 90;
+      const h = 45 + B.big * 40 + B.mid * 14 + softRidged(x / 300, z / 300, 43, 2) ** 2 * 90;
       return h + smooth(-.2, .12, fbm(x / 650, z / 650, 64, 2)) * .85 * (stepped(Math.max(0, h), 24, .78, .96) - h);
     },
     c: (x, y, z) => mixc(PAL.meadow, PAL.heath, smooth(30, 100, y) * .6),
@@ -102,7 +102,7 @@ export const BIOMES = {
   fjord: {
     w: (n) => .12 + n * .8, label: 'the fjords', forest: .1, high: .5, coast: 1,
     h: (x, z, B) => {
-      const plat = 92 + B.big * 34 + B.mid * 12 + ridged(x / 210, z / 210, 44, 2) ** 2 * 60, cl = riverLine(x, z, 45, 800);
+      const plat = 92 + B.big * 34 + B.mid * 12 + softRidged(x / 210, z / 210, 44, 2) ** 2 * 60, cl = riverLine(x, z, 45, 800);
       return plat + (-15 - plat) * smooth(.13, .055, cl);
     },
     c: (x, y, z) => mixc(PAL.fjord, PAL.moss, smooth(-.2, .4, fbm(x / 30, z / 30, 23, 2)) * .5),
@@ -145,7 +145,7 @@ export const BIOMES = {
   },
   badlands: {
     w: (n, s) => .12 + s * .7, label: 'the badlands', forest: -.95, dry: 1, ownRock: 1, noSnow: 1,
-    h: (x, z, B) => 10 + B.big * 8 + ridged(x / 115, z / 115, 46, 3) ** 2 * 36 * (.6 + .4 * smooth(-.4, .3, fbm(x / 500, z / 500, 47, 2))) + Math.abs(fbm(x / 28, z / 28, 48, 1)) * 2.5,
+    h: (x, z, B) => 10 + B.big * 8 + softRidged(x / 115, z / 115, 46, 3, .1) ** 2 * 36 * (.6 + .4 * smooth(-.4, .3, fbm(x / 500, z / 500, 47, 2))) + Math.abs(fbm(x / 28, z / 28, 48, 1)) * 2.5,
     // bands of grey, pink, cream and lilac clay
     c: (x, y, z) => pick([PAL.clay1, PAL.clay2, PAL.clay3, PAL.clay4, PAL.clay5, PAL.clay2], Math.floor((y + fbm(x / 120, z / 120, 49, 1) * 4) / 3.2)),
   },

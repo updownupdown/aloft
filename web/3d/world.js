@@ -46,6 +46,19 @@ export function normalAt(x, z) {
   const e = 1.5, hx = height(x + e, z) - height(x - e, z), hz = height(x, z + e) - height(x, z - e);
   const l = Math.hypot(hx, 2 * e, hz); return [-hx / l, 2 * e / l, -hz / l];
 }
+// the ground as drawn: the chunk's triangles, not the smooth function between their corners
+// (so small things set on a ridge sit on it, not above it)
+export function groundAt(x, z) {
+  const i = Math.floor(x / CELL), j = Math.floor(z / CELL), u = x / CELL - i, v = z / CELL - j, xa = i * CELL, za = j * CELL;
+  const a = height(xa, za), b = height(xa + CELL, za), c = height(xa, za + CELL), d = height(xa + CELL, za + CELL);
+  if ((i + j) & 1) return u + v < 1 ? a + (b - a) * u + (c - a) * v : d + (c - d) * (1 - u) + (b - d) * (1 - v);
+  return u > v ? a + (b - a) * u + (d - b) * v : a + (c - a) * v + (d - c) * u;
+}
+// the slope of the drawn ground there (its triangle's normal, y up)
+export function groundNormal(x, z) {
+  const e = .3, hx = groundAt(x + e, z) - groundAt(x - e, z), hz = groundAt(x, z + e) - groundAt(x, z - e);
+  const l = Math.hypot(hx, 2 * e, hz); return [-hx / l, 2 * e / l, -hz / l];
+}
 // open meadow vs woodland: where trees grow (above about .1 is wood)
 function forestOf(x, z, bl) {
   let f = fbm(x / 220, z / 220, 9, 2) - .35 * Math.max(0, 1 - Math.hypot(x, z + 60) / 200);
@@ -174,7 +187,7 @@ export function treesIn(cx, cz) {
     const p = ih(gx, gz, 23); if (p > .55) continue;
     const bl = blend(x, z), e = rollBiome(bl, ih(gx, gz, 27)), f = forestOf(x, z, bl);
     if (p > densityOf(e.name, f, x, z)) continue;
-    const y = height(x, z), wet = e.name === 'swamp';
+    const y = groundAt(x, z), wet = e.name === 'swamp';
     if ((wet ? y < -1.2 || y > 3 : y < 1.2) || y > 140) continue;
     const nm = normalAt(x, z); if (nm[1] < .82) continue;
     if (Math.hypot(x, z + 60) < 22) continue;   // keep the starting spot clear
@@ -352,12 +365,14 @@ function rockAt(gx, gz) {
   let o = null;
   const x = (gx + .2 + ih(gx, gz, 151) * .6) * ROCK_CELL, z = (gz + .2 + ih(gx, gz, 152) * .6) * ROCK_CELL, p = ih(gx, gz, 153);
   const list = ROCKS[rollBiome(blend(x, z), ih(gx, gz, 156)).name];
+  // rocks gather in outcrops: thick in some patches, none in others
+  const crop = smooth(.05, .45, fbm(x / 260, z / 260, 158, 2)) * 1.6;
   let kind = null, acc = 0;
-  if (list) for (const [k, w] of list) if (p < (acc += w)) { kind = k; break; }
+  if (list && crop > 0) for (const [k, w] of list) if (p < (acc += w * .6 * crop)) { kind = k; break; }
   if (kind) {
-    const y = height(x, z), s = ROCK_S[kind] * (.7 + ih(gx, gz, 154) * .7), yaw = ih(gx, gz, 155) * 6.283, id = gx * 9973 + gz;
+    const y = groundAt(x, z), s = ROCK_S[kind] * (.7 + ih(gx, gz, 154) * .7), yaw = ih(gx, gz, 155) * 6.283, id = gx * 9973 + gz;
     if (kind === 'stack') { if (y < -4) o = { x, y, z, kind, s: -y + 8 + ih(gx, gz, 157) * 24, yaw, id }; }
-    else if (y > 1 && normalAt(x, z)[1] > (kind === 'arch' ? .9 : .7)) o = { x, y, z, kind, s, yaw, id };
+    else if (y > 1 && groundNormal(x, z)[1] > (kind === 'arch' ? .92 : .82)) o = { x, y, z, kind, s, yaw, id };
   }
   rockCache.set(key, o); if (rockCache.size > 4000) rockCache.delete(rockCache.keys().next().value);
   return o;

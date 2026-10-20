@@ -66,18 +66,17 @@ export function createAudio() {
     const wg = .04 + windAmt * .22 + pines * .05 * sigh * low + surf * .09 * sigh + high * .06;
     A.wind.g.gain.setTargetAtTime(wg, t, .3);
     A.wind.fl.frequency.setTargetAtTime(300 + windAmt * 900 - pines * 120 + surf * 200 * sigh, t, .3);
-    A.rain.g.gain.setTargetAtTime(rainAmt * .12, t, .5);
+    A.rain.g.gain.setTargetAtTime(rainAmt * .035, t, .5);
     A.whistle.g.gain.setTargetAtTime((scene.stoop || 0) * .07, t, .15);
     A.whistle.fl.frequency.setTargetAtTime(2200 + (scene.stoop || 0) * 900, t, .15);
     A.babble.g.gain.setTargetAtTime((scene.falls || 0) * .09 * (.8 + .2 * Math.sin(t * 6.3)) * (.4 + .6 * low), t, .25);
     A.muffleLp.frequency.setTargetAtTime(20000 - (scene.fog || 0) * 18200, t, .4);
     const frogs = (scene.frogs || 0) * low, sea = scene.sea || {};
     if (frogs > 0 && t > nextFrog) {
-      // a chorus of frogs: short low croaks from the reeds; in spring the high peepers too
-      const n = 1 + (Math.random() * 3 | 0);
-      for (let i = 0; i < n; i++) croak(frogs * (.5 + Math.random() * .5), i * (.1 + Math.random() * .2));
-      if ((sea.spring || 0) > .3) for (let i = 0; i < 2; i++) tone({ f: 2700 + Math.random() * 300, f2: 3100, dur: .09, vol: .03 * frogs * sea.spring, delay: .3 + i * (.4 + Math.random() * .5) });
-      nextFrog = t + .6 + Math.random() * 2.2;
+      // one frog at a time from the reeds, each its own kind, with quiet between; in spring the high peepers too
+      frog(FROGS[Math.random() * FROGS.length | 0], frogs * (.5 + Math.random() * .5));
+      if ((sea.spring || 0) > .3 && Math.random() < .5) for (let i = 0; i < 2; i++) tone({ f: 2700 + Math.random() * 300, f2: 3100, dur: .09, vol: .02 * frogs * sea.spring, delay: .4 + i * (.5 + Math.random() * .6) });
+      nextFrog = t + 2.5 + Math.random() * 5;
     }
     const bugs = (scene.night || 0) * low * (1 - (sea.winter || 0)) * (1 - rainAmt), sum = sea.summer || 0, aut = sea.autumn || 0;
     if (bugs > .05 && t > nextBug) {
@@ -109,9 +108,15 @@ export function createAudio() {
   }
   A.tone = tone; A.burst = burst;   // for creatures whose calls live with them (encounters.js)
 
-  // a frog: a pulsed low croak
-  function croak(vol, delay) {
-    for (let k = 0; k < 4; k++) tone({ f: 170 + Math.random() * 60, f2: 140, dur: .06, vol: .05 * vol, type: 'sawtooth', delay: delay + k * .07, lp: 700 });
+  // frogs, each kind its own call: a green frog's single plucked 'gunk', a bullfrog's deep
+  // slow 'jug-o-rum', a leopard frog's soft rattle, a tree frog's rising 'rib-bit'
+  const FROGS = ['green', 'bull', 'rattle', 'tree'];
+  function frog(kind, vol) {
+    const v = .035 * vol;
+    if (kind === 'green') tone({ f: 230 + Math.random() * 40, f2: 180, dur: .12, vol: v * 1.2, type: 'triangle', lp: 900 });
+    if (kind === 'bull') [0, .32, .62].forEach((d, i) => tone({ f: 95 + i * 6 + Math.random() * 8, f2: 82, dur: i === 1 ? .26 : .18, vol: v * 1.4, type: 'sawtooth', delay: d, lp: 380, vib: 4, vibF: 22 }));
+    if (kind === 'rattle') { const n = 5 + (Math.random() * 4 | 0); for (let k = 0; k < n; k++) tone({ f: 330 - k * 8, dur: .025, vol: v * (1 - k / n * .6), type: 'square', delay: k * .045, lp: 1200 }); }
+    if (kind === 'tree') { tone({ f: 850, f2: 1250, dur: .07, vol: v * .8, type: 'square', lp: 1800 }); tone({ f: 1150, f2: 780, dur: .1, vol: v * .8, type: 'square', delay: .1, lp: 1800 }); }
   }
   A.flap = () => burst({ f: 420, f2: 260, q: .8, dur: .22, vol: .35 });
   A.splash = big => { burst({ f: 1800, f2: 500, q: .7, dur: big ? .6 : .35, vol: big ? .45 : .25 }); };

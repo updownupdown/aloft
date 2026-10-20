@@ -2,8 +2,9 @@
 // Scattered by hash in 8 m cells (so the same tuft is always in the same place), cached per
 // cell, drawn instanced within FLORA.near metres of the camera. They make height and speed
 // readable close to the ground, which the big facets alone don't.
-import { height, normalAt, forest, bands, ih, PAL, WATER, env } from '../world.js';
+import { height, groundAt, groundNormal, forest, bands, ih, fbm, PAL, WATER, env } from '../world.js';
 import { rollBiome } from '../biomes.js';
+import { smooth } from '../util.js';
 import { builder, blob, reseed } from '../shapes.js';
 
 export const FLORA = { cell: 8, near: 95, cache: 1600 };
@@ -86,17 +87,20 @@ export function floraSystem(G) {
     const x0 = cx * FLORA.cell, z0 = cz * FLORA.cell, k = bands(x0, z0), bio = rollBiome(k.bl, ih(cx, cz, 270)).name;
     const ground = GROUND[bio];
     for (let i = 0; i < 7; i++) {
-      const x = x0 + ih(cx, cz, 200 + i) * FLORA.cell, z = z0 + ih(cx, cz, 210 + i) * FLORA.cell, y = height(x, z);
+      const x = x0 + ih(cx, cz, 200 + i) * FLORA.cell, z = z0 + ih(cx, cz, 210 + i) * FLORA.cell, y = groundAt(x, z);
       if (y < WATER - .2) continue;
-      const r = ih(cx, cz, 220 + i), n = normalAt(x, z)[1], f = forest(x, z), sc = .8 + ih(cx, cz, 230 + i) * .6, yaw = ih(cx, cz, 240 + i) * 6.283;
+      const r = ih(cx, cz, 220 + i), n = groundNormal(x, z)[1];
+      if (n < .6) continue;                                                   // nothing clings to a crag
+      const scree = smooth(.1, .45, fbm(x / 120, z / 120, 271, 2));            // stones lie in patches
+      const f = forest(x, z), sc = .8 + ih(cx, cz, 230 + i) * .6, yaw = ih(cx, cz, 240 + i) * 6.283;
       const tint = ih(cx, cz, 250 + i); let gold = 0;
       const snowy = y > 185 - env.snow * 200;
       let kind = null;
       if (y < .9 || (k.marsh > .5 && r < .5)) kind = y > WATER - .2 && (k.marsh > .3 || y < .5) ? 'reeds' : null;   // at the water's edge
-      else if (ground) { kind = ground(r, n); if (kind === 'gold') { kind = 'tuft'; gold = 1; } }                  // the dry and bare lands
-      else if (n < .8 || (k.high + k.ridge > .5 && r < .45)) kind = r < .7 ? 'stone' : null;                    // slopes and heights: stones
+      else if (ground) { kind = ground(r, n); if (kind === 'gold') { kind = 'tuft'; gold = 1; } if (kind === 'stone' && ih(cx, cz, 280 + i) > scree) kind = null; }                  // the dry and bare lands
+      else if (n < .8 || (k.high + k.ridge > .5 && r < .45)) kind = r < .35 * scree ? 'stone' : null;           // slopes and heights: stones, in patches
       else if (f > .05 && f < .35 && r < .1) kind = 'bush';                                                     // wood edges
-      else if (f < .25 && !snowy) kind = r < .62 ? 'tuft' : r < .78 && !G.season?.winter ? ['flowerY', 'flowerW', 'flowerP'][(ih(cx, cz, 260) * 3) | 0] : r < .82 ? 'stone' : null;
+      else if (f < .25 && !snowy) kind = r < .62 ? 'tuft' : r < .78 && !G.season?.winter ? ['flowerY', 'flowerW', 'flowerP'][(ih(cx, cz, 260) * 3) | 0] : r < .78 + .04 * scree ? 'stone' : null;
       if ((kind === 'tuft' || kind === 'scrub') && snowy) kind = null;
       if (kind) c.push([kind, x, y - .05, z, kind === 'stone' ? sc * (.6 + r) : kind === 'tuft' ? sc * 1.7 : sc, yaw, tint, gold]);
     }
