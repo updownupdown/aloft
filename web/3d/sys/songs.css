@@ -33,14 +33,20 @@
 .bookbtn3 em { font-style: normal; font-size: 11px; color: var(--ink2); }
 .bookbtn3.on { background: var(--ink); border-color: transparent; }
 .bookbtn3.on span, .bookbtn3.on em { color: #fff; }
-.birds3 { position: absolute; left: 116px; bottom: 0; width: 220px; max-height: 62vh; overflow: auto; padding: 6px; border-radius: 18px;
-  background: rgba(255, 255, 255, .66); box-shadow: 0 8px 24px rgba(20, 40, 50, .2); border: 1px solid var(--edge); }
-.birds3 button { display: flex; align-items: center; gap: 9px; width: 100%; padding: 8px 10px; border: 0; border-radius: 12px; background: none; font-size: 13px; font-weight: 600; text-align: left; cursor: pointer; }
-.birds3 button i { width: 16px; height: 16px; border-radius: 50%; background: var(--breast); box-shadow: inset -5px -5px 0 var(--cap); flex: none; }
-.birds3 button.heard { opacity: .55; }
-.birds3 button.on { background: rgba(29, 43, 54, .1); }
-.birds3 button.stop { font-weight: 500; color: var(--ink2); }
-.birds3 small { font-size: 11px; font-weight: 500; }
+.birds3 { position: fixed; left: var(--side); bottom: calc(22px + env(safe-area-inset-bottom)); z-index: 3; width: min(470px, 64vw);
+  max-height: calc(100vh - 120px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); display: flex; flex-direction: column; padding: 6px 8px 8px; border-radius: 18px;
+  background: rgba(255, 255, 255, .72); box-shadow: 0 8px 24px rgba(20, 40, 50, .2); border: 1px solid var(--edge); }
+.birds3 header { display: flex; align-items: center; justify-content: space-between; padding: 2px 4px 6px; font-weight: 700; font-size: 13px; }
+.birds3 header button { width: 30px; height: 30px; border: 0; border-radius: 15px; background: rgba(29, 43, 54, .08); font-size: 13px; cursor: pointer; }
+.cards3 { overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 6px; }
+.sing3 .cards3 button { touch-action: pan-y; }
+.cards3 button { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 6px 4px 7px; border: 1px solid transparent; border-radius: 14px;
+  background: rgba(255, 255, 255, .5); font-size: 12.5px; font-weight: 600; text-align: center; cursor: pointer; }
+.cards3 svg { width: 64px; height: 48px; }
+.cards3 button.heard { opacity: .55; }
+.cards3 button.on { background: rgba(29, 43, 54, .12); border-color: rgba(29, 43, 54, .3); }
+.cards3 button.stop { justify-content: center; font-weight: 500; color: var(--ink2); }
+.cards3 small { font-size: 10.5px; font-weight: 500; color: var(--ink2); }
 .birds3 p { margin: 6px 8px; font-size: 12.5px; color: var(--ink2); }
 
 /* the score: glyphs at their pitch, the next one underlined; low in the middle, clear of the
@@ -61,7 +67,7 @@
 /* left-handed: the sides swap */
 .sing3.lefty .strip3 { right: auto; left: var(--side); }
 .sing3.lefty .kinds3, .sing3.lefty .book3 { left: auto; right: var(--side2); }
-.sing3.lefty .birds3 { left: auto; right: 116px; }
+.sing3.lefty .birds3 { left: auto; right: var(--side2); }
 
 .cheer3 { position: absolute; left: 50%; top: calc(140px + env(safe-area-inset-top)); transform: translateX(-50%); margin: 0; padding: 7px 18px;
   font-weight: 700; font-size: 15px; color: var(--ink); background: rgba(255, 255, 255, .6); border: 1px solid rgba(255, 255, 255, .66); border-radius: 20px;
