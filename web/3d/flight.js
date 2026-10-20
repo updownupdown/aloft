@@ -2,7 +2,7 @@
 // diving speeds you up), drag depends on the wing shape (tucked, gliding, flared), banking
 // turns, and below stall speed the nose drops. Rising air (thermals, ridges) lifts the whole
 // air mass, so it never changes airspeed. With no input the hawk trims to its best glide.
-import { height, WATER, treesNear, TREE, perchesOf, airLift, thermalsNear, thermalCentre } from './world.js';
+import { height, WATER, treesNear, TREE, perchesOf, airLift, thermalsNear, thermalCentre, solidsNear } from './world.js';
 
 const g = 9.8;
 export const FLY = {
@@ -91,7 +91,8 @@ export function step(b, c, dt, E) {
   b.stamina = Math.min(1, b.stamina + dt * (b.lift > .5 ? .06 : .035) * (b.recover ?? 1));
 
   trees(b, dt, E);
-  ground(b, E);
+  if (b.state === 'fly') solids(b, E);
+  if (b.state === 'fly') ground(b, E);
 }
 
 const stallness = (b, sStall = FLY.stall) => Math.max(0, Math.min(1, (sStall - b.s) / sStall));
@@ -130,6 +131,14 @@ function avoid(b, dt) {
     const clear = t.s * TREE.trunkR[t.kind] + 1.1;
     if (Math.abs(side) < clear) push += (side >= 0 ? 1 : -1) * (1 - ahead / look) * (clear - Math.abs(side)) / clear;
   }
+  // towers, stones and cairns too, unless you are coming in slow to land on top
+  for (const o of solidsNear(b.p[0], b.p[2], look + 6)) {
+    if (b.p[1] > o.top + 1 || b.p[1] < o.y0 || (b.s < FLY.landS && b.p[1] > o.top - 2)) continue;
+    const dx = o.x - b.p[0], dz = o.z - b.p[2], ahead = dx * f[0] + dz * f[2];
+    if (ahead < 0 || ahead > look + o.r) continue;
+    const side = dx * f[2] - dz * f[0], clear = o.r + 1.2;
+    if (Math.abs(side) < clear) push += (side >= 0 ? 1 : -1) * (1 - ahead / (look + o.r)) * (clear - Math.abs(side)) / clear;
+  }
   b.yaw += Math.max(-1, Math.min(1, push)) * 1.4 * dt;
 }
 
@@ -164,6 +173,19 @@ function trees(b, dt, E) {
     }
   }
 }
+// towers, standing stones and cairns: hard sides, a perch on top
+function solids(b, E) {
+  for (const o of solidsNear(b.p[0], b.p[2], 10)) {
+    const dx = b.p[0] - o.x, dz = b.p[2] - o.z, hd = Math.hypot(dx, dz);
+    if (b.s < FLY.landS && b.vy < 3 && Math.hypot(o.perch.x - b.p[0], o.perch.y + .25 - b.p[1], o.perch.z - b.p[2]) < FLY.perchR + o.r * .5 + b.flare * .8) { settleOn(b, o.perch, null, E); return; }
+    const tr = o.r + .35;
+    if (hd >= tr || b.p[1] < o.y0 || b.p[1] > o.top + .3) continue;
+    // over the top edge: hop up onto it; otherwise the side is hard
+    if (b.p[1] > o.top - .6) { b.p[1] = o.top + .3; b.vy = Math.max(b.vy, .5); continue; }
+    b.p[0] = o.x + dx / (hd || 1) * tr; b.p[2] = o.z + dz / (hd || 1) * tr;
+    if (b.t - b.lastHit > .5) { b.s *= .45; b.lastHit = b.t; b.stamina = Math.max(0, b.stamina - .08); E.bump(b.p, 'stone'); }
+  }
+}
 const nearestPerch = (ps, q) => ps.reduce((a, p) => (Math.hypot(p.x - q[0], p.y - q[1], p.z - q[2]) < Math.hypot(a.x - q[0], a.y - q[1], a.z - q[2]) ? p : a));
 function settleOn(b, p, t, E) {
   b.state = 'perch'; b.perch = p; b.tree = t; b.settle = .45; b.s = 0; b.vy = 0;
@@ -178,6 +200,11 @@ export function perchAhead(b) {
   const f = fwd(b); let best = null, bd = 1e9;
   for (const t of treesNear(b.p[0], b.p[2], 30)) for (const p of perchesOf(t)) {
     const dx = p.x - b.p[0], dy = p.y - b.p[1], dz = p.z - b.p[2], d = Math.hypot(dx, dy, dz);
+    if (d > 28 || d < 1 || (dx * f[0] + dy * f[1] + dz * f[2]) / d < .75) continue;
+    if (d < bd) { bd = d; best = p; }
+  }
+  for (const o of solidsNear(b.p[0], b.p[2], 30)) {
+    const p = o.perch, dx = p.x - b.p[0], dy = p.y - b.p[1], dz = p.z - b.p[2], d = Math.hypot(dx, dy, dz);
     if (d > 28 || d < 1 || (dx * f[0] + dy * f[1] + dz * f[2]) / d < .75) continue;
     if (d < bd) { bd = d; best = p; }
   }
