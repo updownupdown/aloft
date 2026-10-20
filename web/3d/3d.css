@@ -105,6 +105,8 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 #ui3 .takeoff3::before { content: ''; width: 14px; height: 14px; background: var(--ink);
   clip-path: polygon(50% 0, 100% 50%, 64% 50%, 64% 100%, 36% 100%, 36% 50%, 0 50%); }
 #ui3 .takeoff3.gone { opacity: 0; pointer-events: none; }
+/* left-handed singing puts the notes on the left: Take off follows them */
+#ui3:has(.sing3.lefty) .takeoff3 { right: auto; left: calc(126px + env(safe-area-inset-left)); }
 /* a phone held upright: the compass and the toasts drop below the top row */
 @media (max-width: 620px) {
   .hud3 { gap: 10px; padding-right: 12px; }
