@@ -1,6 +1,7 @@
 // DOM overlay: the menu button, pause menu (settings, journal, how to play, tuning) and toasts.
 import { TUNE, DEFAULTS, RANGES } from './tune.js';
-import { GFX, GFX_INFO, RES_OPTS, saveGfx, overlay, debugInfo } from './gfx.js';
+import { GFX, GFX_INFO, RES_OPTS, STYLE_OPTS, CAP_OPTS, saveGfx, overlay, debugInfo } from './gfx.js';
+import { STYLES } from './simple.js';
 import { letter } from './letter.js';
 import { controlMap } from './controlmap.js';
 
@@ -144,7 +145,9 @@ export function createUI({ audio, G, store, species, onPause, playSong, haptics,
   const gfxList = q('.gfx-list');
   function gfxButtons() {
     gfxList.innerHTML = '';
-    const r = $('button', 'row-btn res', `Resolution <em>${GFX.res === 'auto' ? 'auto' : GFX.res + 'x'}</em>`); r.dataset.gfx = 'res'; gfxList.append(r);
+    const st = $('button', 'row-btn res', `Style <em>${STYLES.find(s => s[0] === GFX.style)[1]}</em>`); st.dataset.gfx = 'style'; gfxList.append(st);
+    const cp = $('button', 'row-btn res', `Frame rate cap <em>${GFX.cap === 'max' ? 'none' : GFX.cap + ' fps'}</em>`); cp.dataset.gfx = 'cap'; gfxList.append(cp);
+    const r = $('button', 'row-btn res', `Resolution <em>${GFX.style === 'pixel' ? 'pixel' : GFX.res === 'auto' ? 'auto' : GFX.res + 'x'}</em>`); r.dataset.gfx = 'res'; gfxList.append(r);
     for (const [k, name] of GFX_INFO) {
       const b = $('button', 'sw' + (GFX[k] ? ' on' : ''), `<span>${name}</span><i></i>`); b.dataset.gfx = k; b.setAttribute('role', 'switch'); b.setAttribute('aria-checked', !!GFX[k]); gfxList.append(b);
     }
@@ -152,6 +155,8 @@ export function createUI({ audio, G, store, species, onPause, playSong, haptics,
   gfxList.addEventListener('click', e => {
     const k = e.target.closest('[data-gfx]')?.dataset.gfx; if (!k) return;
     if (k === 'res') GFX.res = RES_OPTS[(RES_OPTS.indexOf(GFX.res) + 1) % RES_OPTS.length];
+    else if (k === 'style') GFX.style = STYLE_OPTS[(STYLE_OPTS.indexOf(GFX.style) + 1) % STYLE_OPTS.length];
+    else if (k === 'cap') GFX.cap = CAP_OPTS[(CAP_OPTS.indexOf(GFX.cap) + 1) % CAP_OPTS.length];
     else GFX[k] = !GFX[k];
     saveGfx(store); overlay(GFX.fps); hooks.gfx?.(k); gfxButtons();
   });

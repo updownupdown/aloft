@@ -896,7 +896,7 @@ function hintMark(ctx, p, P, G) {
 
 /* ---------- the hawk ---------- */
 // the wing is a little 3D rig seen from slightly below; `yaw` swings it round for a turn
-function wingGeo(b, side, yaw = 0) {
+export function wingGeo(b, side, yaw = 0) {
   const cy = Math.cos(yaw), sy = Math.sin(yaw), V = .32 * Math.abs(sy);   // head-on, the wings show their shallow V
   const SPAN = 31 * b.L, cp = .87, sp = .5, sh = [2, -2.2], th0 = b.theta + V, th1 = b.theta + b.bend + V;
   function at(s, xo) {
@@ -1124,7 +1124,7 @@ function glideLine(ctx, pts, P, G) {
 
 // focus: a solid ring in the target's colour when the hawk has picked something out, a dashed
 // paper-white ring ahead when there is nothing in reach
-function focusMark(ctx, F, P, G) {
+export function focusMark(ctx, F, P, G) {
   if (F.x === undefined) return;
   // quiet marks: thin pigment over a soft paper halo, small, with no words. Branches are green,
   // prey (mice and fish alike) red, thermals ochre.
@@ -1169,7 +1169,7 @@ function focusMark(ctx, F, P, G) {
 }
 
 // stamina shows as a thin ring that only appears once the wings are tiring
-function stamina(ctx, b, P) {
+export function stamina(ctx, b, P) {
   if (b.stamina > .97 || b.state !== 'fly') return;
   const a = Math.min(1, (1 - b.stamina) * 3);
   ctx.save(); ctx.lineCap = 'round';
@@ -1180,7 +1180,7 @@ function stamina(ctx, b, P) {
 }
 
 /* ---------- particles and weather ---------- */
-function particles(ctx, G, P) {
+export function particles(ctx, G, P) {
   for (const p of G.parts) {
     const k = p.life / p.max;
     if (p.type === 'drop') { ctx.fillStyle = C(P.water, .7 * k); ctx.beginPath(); ctx.arc(p.x, p.y, 1.1, 0, TAU); ctx.fill(); }
@@ -1195,7 +1195,7 @@ function particles(ctx, G, P) {
   }
 }
 
-function rain(ctx, G, P, w, h) {
+export function rain(ctx, G, P, w, h) {
   if (G.rain <= .02) return;
   if (G.sea.winter > .5) {
     // snow: slow flakes drifting with the wind
