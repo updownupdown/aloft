@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#eef1f2">
+<title>Aloft · Bird lab</title>
+<link rel="icon" href="icons/favicon-32.png">
+<style>
+  @font-face { font-family: Manrope; src: url(fonts/manrope.woff2) format('woff2'); font-weight: 200 800; }
+  :root { --ink: #1d2b36; --soft: #5b6b76; --glass: rgba(255, 255, 255, .62); }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.45 Manrope, system-ui, sans-serif; color: var(--ink); background: linear-gradient(#dfe9ee, #f4efe4) fixed; }
+  main { max-width: 1180px; margin: 0 auto; padding: 18px 16px 40px; }
+  h1 { font-size: 22px; margin: 4px 0 2px; font-weight: 700; }
+  p.lead { color: var(--soft); margin: 0 0 14px; max-width: 70ch; }
+  .modes { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+  .modes button { font: inherit; font-weight: 600; border: 0; border-radius: 99px; padding: 7px 14px; background: var(--glass); color: var(--ink); cursor: pointer; backdrop-filter: blur(8px); }
+  .modes button.on { background: var(--ink); color: #fff; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+  .card { background: var(--glass); border-radius: 20px; overflow: hidden; backdrop-filter: blur(10px); box-shadow: 0 1px 0 rgba(255,255,255,.7) inset, 0 6px 20px rgba(29,43,54,.08); }
+  .cell { aspect-ratio: 4 / 3; }
+  .info { padding: 10px 14px 14px; }
+  .info b { font-size: 16px; }
+  .info small { display: block; color: var(--soft); margin: 2px 0 8px; }
+  .fit { font-size: 12px; font-weight: 700; border-radius: 99px; padding: 2px 9px; margin-left: 6px; vertical-align: 2px; }
+  .good { background: #d5e8cf; } .some { background: #f1e3c2; } .poor { background: #efd2c8; }
+  .fly { display: inline-block; text-decoration: none; color: #fff; background: var(--ink); border-radius: 99px; padding: 6px 14px; font-weight: 600; font-size: 13px; }
+  canvas { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 2; }
+  a.back { color: var(--soft); font-size: 13px; }
+</style>
+</head>
+<body>
+<main>
+  <a class="back" href="./">Back to the game</a>
+  <h1>Bird lab</h1>
+  <p class="lead">Who else could you be? Each bird is built the hawk's way, posed by the same controls: glide, flap, bank, stoop, land, perch. "Fly as" opens the game as that bird, with its own speed, glide and turn; your hawk and its save are untouched.</p>
+  <div class="modes"></div>
+  <div class="grid"></div>
+</main>
+<canvas></canvas>
+<script type="module">
+  import { startLab, MODES, LAB_BIRDS, nameOf } from './3d/birdlab.js';
+  const NOTES = {
+    hawk: ['good', 'Soars, perches, hunts mice from above. The game as it is.'],
+    swift: ['some', 'The fastest, most aerial bird; eats insects on the wing and almost never lands.'],
+    heron: ['some', 'Slow, deep beats, legs trailing; hunts by standing still in shallow water.'],
+    mallard: ['poor', 'Beats its wings the whole way and can\'t ride a thermal; lands on water.'],
+    owl: ['good', 'Hunts mice by night, hovering low and silent. Doesn\'t migrate.'],
+    osprey: ['good', 'Soars, migrates far south, and dives feet first for fish.'],
+    raven: ['good', 'Plays in the wind, rolls, and copies any sound it hears.'],
+  };
+  let mode = 'cycle';
+  const modes = document.querySelector('.modes');
+  for (const [k, label] of Object.entries(MODES)) {
+    const b = document.createElement('button'); b.textContent = label; b.className = k === mode ? 'on' : '';
+    b.onclick = () => { mode = k; for (const x of modes.children) x.className = x === b ? 'on' : ''; };
+    modes.append(b);
+  }
+  const grid = document.querySelector('.grid');
+  for (const id of LAB_BIRDS) {
+    const [fit, note] = NOTES[id];
+    grid.insertAdjacentHTML('beforeend', `<div class="card"><div class="cell" data-bird="${id}"></div><div class="info">
+      <b>${nameOf(id)}</b><span class="fit ${fit}">${{ good: 'good fit', some: 'partly', poor: 'odd fit' }[fit]}</span>
+      <small>${note}</small><a class="fly" href="./${id === 'hawk' ? '' : '?bird=' + id}">Fly as ${id === 'hawk' ? 'the hawk' : 'this bird'}</a></div></div>`);
+  }
+  startLab(document.querySelector('canvas'), [...document.querySelectorAll('.cell')], () => mode);
+</script>
+</body>
+</html>

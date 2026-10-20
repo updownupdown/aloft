@@ -38,8 +38,9 @@ import { faunaSystem } from './sys/fauna.js';
 import { landsSystem } from './sys/lands.js';
 import { windsSystem } from './sys/winds.js';
 import { floraSystem } from './sys/flora.js';
+import { speciesSystem } from './sys/species.js';
 
-const SYSTEMS = [clockSystem, weatherSystem, windsSystem, floraSystem, airSystem, ringsSystem, foodSystem, aimSystem, songsSystem,
+const SYSTEMS = [speciesSystem, clockSystem, weatherSystem, windsSystem, floraSystem, airSystem, ringsSystem, foodSystem, aimSystem, songsSystem,
   guideSystem, journeySystem, nestSystem, storySystem, photoSystem, howtoSystem, faunaSystem, landsSystem];
 
 export function start(canvas, ui) {
