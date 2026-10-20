@@ -5,14 +5,40 @@ import { FLY } from '../flight.js';
 import { BIRD, setBird } from '../hawk.js';
 import { BIRDS } from '../birds.js';
 import { startLab } from '../birdlab.js';
+import { FOOD } from './food.js';
+import { FAUNA } from './fauna.js';
 
 export const CHOICES = ['hawk', 'osprey', 'owl', 'raven'];
-const HAWK_FLY = { ...FLY };
+const HAWK_FLY = { ...FLY }, HAWK_FOOD = { catchR: FOOD.catchR }, HAWK_FAUNA = { catchR: FAUNA.catchR, catchDive: FAUNA.catchDive, catchH: FAUNA.catchH };
+
+// what each bird is good at beyond its flight numbers, and what it gives up
+const ABILITY = {
+  hawk: { food: {}, fauna: {}, good: ['Steady all-rounder', 'Its tail reddens as it grows strong'], bad: ['Nothing special at night'] },
+  osprey: { food: {}, fauna: { catchR: 2.6, catchDive: 2.4, catchH: 3.4 }, good: ['Fastest dive, longest glide', 'Snatches fish from higher up'], bad: ['Wide turns', 'Flapping tires it quickly'] },
+  owl: { food: { catchR: 2.1 }, fauna: {}, night: .6, good: ['Sees in the dark', 'Hovers almost still, lands softly', 'Silent: reaches mice from further'], bad: ['Slow', 'Sinks faster in a glide'] },
+  raven: { food: {}, fauna: {}, good: ['Tightest turns and rolls', 'Flapping costs little'], bad: ['Lower top speed', 'Hovers poorly'] },
+};
+// the card's stats, worked out from the flight numbers so they always tell the truth (1 to 5)
+const rate = (v, lo, hi) => Math.max(1, Math.min(5, Math.round(1 + 4 * (v - lo) / (hi - lo))));
+export function stats(id) {
+  const f = { ...HAWK_FLY, ...(BIRDS[id]?.fly || {}) };
+  return [
+    ['Speed', rate(f.maxS, 30, 52)],
+    ['Glide', rate(9.8 / (f.cd * f.best * f.best), 9, 13)],
+    ['Agility', rate(f.roll, .7, 1.5)],
+    ['Hover', rate(f.flapHover + (5 - f.stallFlare) * .3, 2.7, 5)],
+    ['Stamina', rate(-f.flapCost, -.078, -.045)],
+  ];
+}
 const nameOf = id => id === 'hawk' ? 'Red-tailed hawk' : BIRDS[id].name;
 
 export function speciesSystem(G) {
   const tried = BIRD !== 'hawk' && !CHOICES.includes(BIRD) ? BIRD : null;   // a ?bird= study bird
-  const use = id => { setBird(id); Object.assign(FLY, HAWK_FLY, BIRDS[id]?.fly || {}); G.emit('bird', id); };
+  const use = id => {
+    setBird(id); Object.assign(FLY, HAWK_FLY, BIRDS[id]?.fly || {});
+    Object.assign(FOOD, HAWK_FOOD, ABILITY[id]?.food || {}); Object.assign(FAUNA, HAWK_FAUNA, ABILITY[id]?.fauna || {});
+    G.emit('bird', id);
+  };
   if (tried) {
     use(tried);
     setTimeout(() => G.hud.toast?.(`Flying as ${/^[aeiou]/i.test(nameOf(tried)) ? 'an' : 'a'} ${nameOf(tried).toLowerCase()} (a study)`), 1500);
@@ -25,14 +51,20 @@ export function speciesSystem(G) {
   // Settings > Your bird: one card, the bird flying through its poses (the bird lab's renderer,
   // drawn only while Settings shows), with arrows either side to pick the one before or after
   const BLURB = { hawk: 'Soars on thermals, stoops on mice', osprey: 'Long wings, plunges for fish', owl: 'Soft and slow, sees in the dark', raven: 'Agile, rolls and tumbles' };
+  const traits = id => {
+    const a = ABILITY[id];
+    return `<span class="stats3">${stats(id).map(([k, v]) => `<span>${k}</span><span class="pips3" aria-label="${v} of 5">${[1, 2, 3, 4, 5].map(n => `<i${n <= v ? ' class="on"' : ''}></i>`).join('')}</span>`).join('')}</span>`
+      + (a ? `<span class="traits3">${a.good.map(t => `<span class="good">${t}</span>`).join('')}${a.bad.map(t => `<span class="bad">${t}</span>`).join('')}</span>` : '');
+  };
   const box = G.menu.group('bird');
   box.insertAdjacentHTML('beforeend', `<div class="birdpick3"><button class="arr3" data-step="-1" aria-label="The bird before">‹</button>
-    <div class="birdcard3"><canvas aria-hidden="true"></canvas><span class="pic"></span><b></b><small></small><span class="dots3">${CHOICES.map(() => '<i></i>').join('')}</span></div>
+    <div class="birdcard3"><canvas aria-hidden="true"></canvas><span class="pic"></span><b></b><small></small><span class="more3"></span><span class="dots3">${CHOICES.map(() => '<i></i>').join('')}</span></div>
     <button class="arr3" data-step="1" aria-label="The next bird">›</button></div>${tried ? `<p><small>Flying as ${nameOf(tried).toLowerCase()} for now, a study bird from the link.</small></p>` : ''}`);
   const card = box.querySelector('.birdcard3'), pic = card.querySelector('.pic'), dots = [...card.querySelectorAll('.dots3 i')];
   const show = () => {
     const id = tried || BIRD, i = CHOICES.indexOf(BIRD);
     pic.dataset.bird = id; card.querySelector('b').textContent = nameOf(id); card.querySelector('small').textContent = tried ? 'A study bird' : BLURB[id] || '';
+    card.querySelector('.more3').innerHTML = traits(id);
     dots.forEach((d, k) => d.classList.toggle('on', k === i));
   };
   show();
@@ -44,5 +76,14 @@ export function speciesSystem(G) {
   G.on('menuTab', id => { shown = id === 'play'; });
   G.on('resume', () => { shown = false; });
   queueMicrotask(() => startLab(card.querySelector('canvas'), [pic], () => 'cycle', { active: () => shown && G.menu.open }));
-  return { id: 'species' };
+  return {
+    id: 'species',
+    // the owl's night sight: the dark lifts as if the owl's gift were on
+    scene(S) {
+      const k = (S.night || 0) * (ABILITY[BIRD]?.night || 0);
+      if (!k) return;
+      const up = (c, to) => c.map((v, i) => v + (to[i] - v) * k);
+      S.skyAmb = up(S.skyAmb, [.36, .4, .5]); S.gndAmb = up(S.gndAmb, [.24, .24, .24]); S.sunCol = up(S.sunCol, [.42, .46, .56]);
+    },
+  };
 }

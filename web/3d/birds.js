@@ -78,7 +78,7 @@ export const BIRDS = {
 
   owl: {
     name: 'Barn owl', scale: .95,
-    fly: { best: 8.5, maxS: 30, cd: .0095, stall: 5, stallFlare: 2.6, roll: 1.1, flapS: 2.6, flapHover: 3.9, flapCost: .055, landS: 9 },
+    fly: { best: 9, maxS: 32, cd: .013, cdTuck: .003, stall: 5, stallFlare: 2.6, roll: 1.15, flapS: 2.6, flapHover: 4.3, flapCost: .058, landS: 9 },
     rings: [[-.24, .05, .04, 0], [-.12, .11, .09, 0], [.02, .125, .11, 0], [.13, .115, .105, .02], [.2, .12, .12, .06], [.27, .13, .13, .08], [.32, .11, .11, .08], [.345, .06, .06, .08]],
     paint(i, s) {
       if (i >= 5) return s > .3 ? hex('#bd9a6c') : hex('#f4efe4');
@@ -99,7 +99,7 @@ export const BIRDS = {
 
   osprey: {
     name: 'Osprey', scale: 1.1,
-    fly: { best: 13, maxS: 48, cd: .0052, flapHover: 3.7, roll: .95, flapCost: .06 },
+    fly: { best: 13, maxS: 52, cd: .0046, cdTuck: .002, stall: 8, roll: .8, yaw: 1.0, flapHover: 3.8, flapCost: .075 },
     rings: [[-.3, .045, .032, .01], [-.18, .085, .07, 0], [-.02, .105, .095, -.01], [.12, .095, .09, 0], [.21, .07, .072, .025], [.29, .066, .068, .045], [.36, .04, .044, .04]],
     paint(i, s) {
       if (i >= 4) return s > .45 ? hex('#efebe2') : s > -.2 ? hex('#3b2c22') : hex('#f4f1ea');   // white head, dark eye stripe
@@ -119,7 +119,7 @@ export const BIRDS = {
 
   raven: {
     name: 'Common raven', scale: 1.05,
-    fly: { best: 12, maxS: 44, cd: .006, roll: 1.5, flapCost: .055 },
+    fly: { best: 12, maxS: 40, cd: .0064, roll: 1.5, yaw: 1.55, flapHover: 2.6, flapCost: .047 },
     rings: [[-.32, .05, .04, 0], [-.18, .1, .085, 0], [-.02, .115, .1, -.01], [.12, .1, .095, 0], [.21, .08, .085, .02], [.29, .075, .07, .04], [.35, .05, .05, .04]],
     paint: (i, s) => s > .35 ? hex('#25252d') : s > -.35 ? hex('#1d1d24') : hex('#2a2a33'),
     bill: { len: .16, w: .75, drop: .035, base: hex('#18181d'), tip: hex('#101014') },
