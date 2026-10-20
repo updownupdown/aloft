@@ -9,7 +9,7 @@
 // Keyboard for desktop: W/S or Up/Down pitch, A/D or Left/Right bank, Shift or Q tuck,
 // E flare, Space flap.
 
-const TAP_TIME = .24, TAP_MOVE = .06, PAIR = .2;
+const TAP_TIME = .3, TAP_MOVE = .06, PAIR = .2;
 
 export function createInput(el) {
   const I = { L: pad(), R: pad(), keys: new Set(), taps: [], invert: false, onAny: null, radius: 70 };
