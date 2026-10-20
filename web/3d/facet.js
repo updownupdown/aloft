@@ -1,7 +1,6 @@
-// Low poly for the pages around the world: the menu sheet, the HUD, the journal map, postcards
-// and the seal are flat polygons, each facet one colour, shaded by which way it leans toward a
-// light in the upper left, the way the world's own triangles are. Painted on demand, never every
-// frame.
+// Low poly for things drawn from the world: the map's land and the postcards' paper are flat
+// polygons, each facet one colour, shaded by which way it leans toward a light in the upper left,
+// the way the world's own triangles are. Painted on demand, never every frame.
 const TAU = Math.PI * 2;
 const cl = (v, a, b) => (v < a ? a : v > b ? b : v);
 export const hexRGB = h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
