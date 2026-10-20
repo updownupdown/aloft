@@ -1,5 +1,5 @@
-// The app around the game: Update (fetch every file afresh and reload), Full screen, Quit, and
-// Quiet meters.
+// The app around the game: Update (fetch every file afresh and reload), Quit, Quiet meters, and
+// full screen always (asked for again on the next touch whenever the phone's bars come back).
 export function appRows(G) {
   // Update: save, fetch the newest version of every file past every cache, and start again on it,
   // so a new version shows in one go instead of after two reloads
@@ -20,18 +20,22 @@ export function appRows(G) {
       location.reload();
     } catch { G.hud.toast('Could not reach the internet to update. Try again with a connection.', 5); }
   }
-  // full screen hides the phone's status bar and buttons, so stray thumbs reach them less
-  if (document.fullscreenEnabled && !matchMedia('(display-mode: fullscreen)').matches) {
-    G.menu.toggle('play', { label: 'Full screen', sub: 'off shows the phone’s bars and buttons', get: () => !!document.fullscreenElement,
-      set: v => { if (v) document.documentElement.requestFullscreen?.().catch(() => {}); else document.exitFullscreen?.().catch(() => {}); } });
-  }
-  if ('serviceWorker' in navigator && 'caches' in window) G.menu.button('play', { label: 'Update', sub: 'fetch the latest version and reload', onClick: () => { G.menu.set(false); update(); } });
+  // full screen hides the phone's status bar and buttons, so stray thumbs reach them less; a page
+  // may only ask from inside a touch, so each touch asks while it is not full screen
+  let askT = 0;
+  const wantFull = document.fullscreenEnabled && !matchMedia('(display-mode: fullscreen)').matches && matchMedia('(pointer: coarse)').matches;
+  if (wantFull) G.on('gesture', () => {
+    if (document.fullscreenElement || quitting || performance.now() - askT < 1500) return;
+    askT = performance.now(); document.documentElement.requestFullscreen?.({ navigationUI: 'hide' }).catch(() => {});
+  });
+  let quitting = false;
+  if ('serviceWorker' in navigator && 'caches' in window) G.menu.button('play', { label: 'Update', sub: 'fetch the latest version and reload', group: 'app', onClick: () => { G.menu.set(false); update(); } });
   G.menu.toggle('play', { label: 'Quiet meters', sub: 'hide them while they are well filled', get: () => G.hud.quiet, set: v => { G.hud.quiet = v; G.store.set('quietHud3d', v); } });
 
   // Quit saves, then closes the app if the system lets a page do that; if not, it says the
   // journey is safe and the app can be closed
   function quit() {
-    G.persist();
+    G.persist(); quitting = true;
     if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
     try { window.close(); } catch { /* not allowed */ }
     setTimeout(goodbye, 250);
@@ -42,7 +46,8 @@ export function appRows(G) {
     document.getElementById('ui3').insertAdjacentHTML('beforeend', `<div class="veil3 bye3"><div class="card3"><h1>Aloft</h1>
       <p>Your journey is saved. You can close the app now, or fly on.</p><button class="main3">Fly on</button></div></div>`);
     const el = document.querySelector('.bye3');
-    el.querySelector('button').onclick = () => { el.remove(); G.paused = false; };
+    el.querySelector('button').onclick = () => { el.remove(); G.paused = false; quitting = false; };
   }
-  G.menu.button('play', { label: 'Quit', sub: 'saves your journey, then closes', onClick: quit });
+  G.menu.button('play', { label: 'Quit', sub: 'saves your journey, then closes', group: 'app', onClick: quit });
+  G.menu.quit = quit;
 }

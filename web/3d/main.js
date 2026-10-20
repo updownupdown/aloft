@@ -97,12 +97,8 @@ export function start(canvas, ui) {
   // ---- flight events -------------------------------------------------------------------------
   const H = G.hud;
   // one button to take off, top centre, whenever the hawk is perched, on the ground or on the water
-  // (the menu thread styles it with the rest of the UI; it hides with the menu and in photo mode)
-  ui.insertAdjacentHTML('beforeend', `<style>.takeoff3{position:absolute;top:calc(10px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);
-    font:italic 600 20px 'Cormorant Garamond',serif;color:#3a2418;background:rgba(244,238,225,.88);border:1px solid rgba(58,36,24,.35);
-    border-radius:22px;padding:7px 22px;pointer-events:auto;touch-action:manipulation;transition:opacity .25s}
-    .takeoff3.gone{opacity:0;pointer-events:none}.menu-open .takeoff3,.bare3 .takeoff3{display:none}</style>
-    <button class="takeoff3 gone" aria-label="Take off">Take off</button>`);
+  // (3d.css styles it with the rest of the UI; it hides with the menu and in photo mode)
+  ui.insertAdjacentHTML('beforeend', `<button class="takeoff3 gone" aria-label="Take off">Take off</button>`);
   const takeoffBtn = ui.querySelector('.takeoff3');
   const takeoff = e => { e.preventDefault(); e.stopPropagation(); audio.unlock?.(); b.wantOff = .6; };   // flight.js takes off as soon as it can
   takeoffBtn.addEventListener('pointerdown', takeoff);
@@ -137,10 +133,10 @@ export function start(canvas, ui) {
   G.menu.toggle(play, { label: 'Music', get: () => G.settings.music, set: v => { G.settings.music = v; music.setOn(v); store.set('music', v); } });
   G.menu.toggle(play, { label: 'Invert climb and dive', sub: 'thumbs up to dive', get: () => G.settings.invert, set: v => { G.settings.invert = input.invert = v; store.set('invert3d', v); } });
   G.menu.toggle(play, { label: 'Full refresh rate', sub: 'smoother, more battery', get: () => G.settings.full, set: v => { G.settings.full = v; store.set('fullRate3d', v); } });
-  G.menu.toggle(play, { label: 'Frame rate', get: () => G.settings.fps, set: v => { G.settings.fps = v; store.set('fps3d', v); H.showFps(v); } });
-  G.menu.button(play, { label: 'Show the tips again', onClick: () => { H.resetTips(); G.menu.set(false); } });
-  G.menu.button(play, { label: 'Music lab', sub: 'tune Valley', href: 'musiclab.html' });
-  G.menu.button(play, { label: 'Start a new journey', sub: 'from the valley', onClick: el => {
+  G.menu.toggle(play, { label: 'Show frame rate', get: () => G.settings.fps, set: v => { G.settings.fps = v; store.set('fps3d', v); H.showFps(v); } });
+  G.menu.button(play, { label: 'Show the tips again', group: 'play', onClick: () => { H.resetTips(); G.menu.set(false); } });
+  G.menu.button(play, { label: 'Music lab', sub: 'tune Valley', href: 'musiclab.html', group: 'sound' });
+  G.menu.button(play, { label: 'Start a new journey', sub: 'from the valley', group: 'play', onClick: el => {
     if (el.dataset.sure) { store.set('save3d', null); location.reload(); } else { el.dataset.sure = 1; el.firstChild.textContent = 'Tap again to start over '; }
   } });
   appRows(G);
@@ -182,7 +178,7 @@ export function start(canvas, ui) {
       const target = G.settings.full ? 80 : 55;
       if (G.pinRes) { /* pinned */ } else if (fps < target && G.res > .5) { G.res = Math.max(.5, G.res - .1); resize(); }
       else if (fps > target + 4 && G.res < 1) { G.res = Math.min(1, G.res + .05); resize(); }
-      H.fps(`${fps.toFixed(0)} fps · res ${G.res.toFixed(2)} · ${R.stats.chunks} chunks · ${(R.stats.tris / 1000).toFixed(0)}k tris`);
+      H.fps(fps); G.stats = { fps, res: G.res, chunks: R.stats.chunks, tris: R.stats.tris };
     }
 
     const c = input.read();
@@ -214,8 +210,8 @@ export function start(canvas, ui) {
     music.update(dt, { night: L.night, storm: G.storm || 0, learned: G.learned || new Set(), species: G.species || [], speed: b.s * 4, wind: G.windK ?? .3, height: above * 2 });
 
     setWings(b.stamina);
-    H.status = b.state === 'fly' ? `${above.toFixed(0)} m · ${(b.s * 3.6).toFixed(0)} km/h${b.ride ? ' · riding the thermal' : b.lift > .8 ? ' · rising air' : ''}`
-      : b.eating > 0 ? 'eating' : b.state === 'perch' ? 'perched' : b.state === 'swim' ? 'on the water' : 'on the ground';
+    H.flight = b.state === 'fly' ? { m: above.toFixed(0), kmh: (b.s * 3.6).toFixed(0), lift: b.ride ? 'ride' : b.lift > .8 ? 'rise' : '' } : null;
+    H.status = b.state === 'fly' ? '' : b.eating > 0 ? 'eating' : b.state === 'perch' ? 'perched' : b.state === 'swim' ? 'on the water' : 'on the ground';
     takeoffBtn.classList.toggle('gone', b.state === 'fly' || b.settle > 0 || b.eating > 0);
     H.update(dt);
     saveT += dt; if (saveT > 5) { saveT = 0; persist(); }

@@ -8,6 +8,7 @@ import * as W from '../world.js';
 import { PIG, C, shade, poly, facets } from '../facet.js';
 import { clamp } from '../util.js';
 import { esc } from '../journal.js';
+import { hourName } from '../dial.js';
 
 const CELL = 100;                        // fog cells, metres
 const SEE = [160, 2.2, 520];             // clearing radius: base, per metre of height, most
@@ -39,9 +40,8 @@ export function mapView(G, J, { HOME_Z, MARSH_Z }) {
 
   // ---- the tab ----------------------------------------------------------------------------
   const pane = G.menu.tab('map', 'Map');
-  pane.classList.add('mappane3');
-  pane.innerHTML = `<p class="mapsum3"></p>
-    <div class="mapbox3"><canvas></canvas>
+  pane.classList.add('mappane3', 'flush3');
+  pane.innerHTML = `<div class="mapbox3"><canvas></canvas><div class="mapsum3"><b></b><span></span></div>
       <div class="mapbtn3"><button data-z="in" aria-label="Zoom in">+</button><button data-z="out" aria-label="Zoom out">−</button><button data-z="me" aria-label="Centre on the hawk">◎</button></div>
       <div class="mapnote3 hidden"></div></div>`;
   const sum = pane.querySelector('.mapsum3'), box = pane.querySelector('.mapbox3'), cv = box.querySelector('canvas'), note = box.querySelector('.mapnote3');
@@ -59,7 +59,10 @@ export function mapView(G, J, { HOME_Z, MARSH_Z }) {
     if (!open) return;
     centre(); note.classList.add('hidden');
     const pct = Math.round(explored() * 100);
-    sum.textContent = `${G.placeNote()} ${pct}% of the way south explored.`;
+    // the overlay: when it is, then where the hawk is and how much of the way is known
+    const h = hourName(G.tod), where = G.placeNote().replace(/^Day \d+, \w+, /, '');
+    sum.firstChild.textContent = `${h[0].toUpperCase()}${h.slice(1)} · Day ${G.day} · ${G.season.name[0].toUpperCase()}${G.season.name.slice(1)}`;
+    sum.lastChild.textContent = `${where[0].toUpperCase()}${where.slice(1)} ${pct}% of the way south explored.`;
     requestAnimationFrame(() => { fit(); cache = null; draw(); });
   });
   addEventListener('resize', () => { if (open) { fit(); cache = null; soon(); } });

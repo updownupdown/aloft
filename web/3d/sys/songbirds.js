@@ -11,7 +11,7 @@ const dark = (c, k) => c.map(v => v * k);
 
 // Model space: metres, beak along +x, y up. Instances turn it by yaw - PI/2 (as the mice).
 // wings: 'fold' (sitting), 'up' and 'down' (two frames of a wingbeat)
-function birdShape(sp, wings) {
+export function birdShape(sp, wings) {
   reseed(31 + sp.id * 7);
   const B = builder(), L = sp.look, s = L.size;
   const body = c01(sp.cols.body), cap = c01(sp.cols.cap), breast = c01(sp.cols.breast), bill = [.25, .2, .16];
