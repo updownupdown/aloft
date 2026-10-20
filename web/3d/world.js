@@ -431,33 +431,55 @@ export function airLift(x, y, z, sun) {
   return w;
 }
 
-// Rings come in small loops: one maybe per 1100 m cell, five to eight rings round a circle
-// 70 to 130 m across, all at one height (70 to 120 m above the highest ground under the loop),
-// each facing along the loop so the boost from one carries the hawk on to the next.
-export const RING_CELL = 1100, RING_GAP = 85;
+// Rings come in courses: one maybe per 1100 m cell, a chain of 6 to 12 rings laid along a
+// shape (a climbing spiral, an S-curve, switchbacks, a figure of eight, a long arc or a
+// staircase). Each starts low, 10 to 20 m over the ground where a hawk can find it, and climbs
+// ring by ring, so the boost from one carries the hawk up to the next. Easy courses climb
+// gently with wide rings; hard ones climb steeply with small rings, wound tighter. The courses
+// are laid afresh each day (setRingDay, from sys/rings.js).
+export const RING_CELL = 1100;
 const loopCache = new Map();
+let ringDay = 0;
+export function setRingDay(d) { if (d !== ringDay) { ringDay = d; loopCache.clear(); } }
+const tri = t => 2 * Math.abs(t - Math.floor(t + .5));
+// course shapes as paths in local metres (x along, z across), by a parameter t of about a metre
+export const COURSES = {
+  spiral: (t, k) => { const R = 45 + k * 25; return [Math.cos(t / R) * R, Math.sin(t / R) * R]; },
+  scurve: (t, k) => [t, Math.sin(t / (60 + k * 30)) * (40 + k * 25)],
+  zigzag: (t, k) => [t * .7, (tri(t / (150 + k * 60)) - .5) * (90 + k * 40)],
+  eight: (t, k) => { const a = 90 + k * 40, u = t / (a * 1.2); return [Math.sin(u) * a, Math.sin(u) * Math.cos(u) * a]; },
+  arc: (t, k) => { const R = 180 + k * 120; return [Math.sin(t / R) * R, (1 - Math.cos(t / R)) * R]; },
+  stairs: (t, k) => { const w = 110 + k * 40, u = t / w; return [t * .9, Math.sin(t / 45) * 12 + smooth(.35, .65, tri(u / 2)) * 40]; },
+};
+const SHAPES = Object.keys(COURSES);
 export function ringLoop(gx, gz) {
   const key = gx + ',' + gz; if (loopCache.has(key)) return loopCache.get(key);
-  let L = null;
-  if (ih(gx, gz, 51) < .3) {
-    const cx = (gx + .25 + ih(gx, gz, 52) * .5) * RING_CELL, cz = (gz + .25 + ih(gx, gz, 53) * .5) * RING_CELL;
-    const R = 70 + ih(gx, gz, 54) * 60, n = Math.max(5, Math.min(8, Math.round(2 * Math.PI * R / RING_GAP))), dir = ih(gx, gz, 56) < .5 ? 1 : -1;
-    let top = WATER;
-    for (let k = 0; k < 12; k++) { const a = k / 12 * 6.283; top = Math.max(top, height(cx + Math.cos(a) * R, cz + Math.sin(a) * R)); }
-    const y = top + 70 + ih(gx, gz, 55) * 50, id = gx * 7907 + gz * 31, a0 = ih(gx, gz, 57) * 6.283;
-    L = { id, x: cx, z: cz, y, R, n, rings: [] };
-    for (let k = 0; k < n; k++) {
-      const a = a0 + dir * k / n * 6.283;
-      // the ring's plane faces along the loop: its normal (-sin yaw, cos yaw) is the tangent
-      const tx = -Math.sin(a) * dir, tz = Math.cos(a) * dir;
-      L.rings.push({ x: cx + Math.cos(a) * R, y: y + Math.sin(k * 2.1) * 3, z: cz + Math.sin(a) * R, yaw: Math.atan2(-tx, tz), r: 5, id: id * 16 + k, circuit: id, k });
+  let L = null; const s = ringDay * 7 + 51, h = n => ih(gx, gz, s * 13 + n);
+  if (h(0) < .35) {
+    const x0 = (gx + .2 + h(1) * .6) * RING_CELL, z0 = (gz + .2 + h(2) * .6) * RING_CELL;
+    const hard = h(3), level = hard < .4 ? 'easy' : hard < .8 ? 'steady' : 'hard';
+    const shape = SHAPES[Math.floor(h(4) * SHAPES.length)], f = COURSES[shape], k = h(5), turn = h(6) * 6.283, flip = h(7) < .5 ? -1 : 1;
+    const n = 6 + Math.floor(hard * 7), gap = 75 - hard * 12, rise = 4 + hard * 9, r = 6.5 - hard * 2;
+    // walk the shape, a ring every `gap` metres along it
+    const c = Math.cos(turn), sn = Math.sin(turn), at = t => { const [a, b] = f(t, k), [a0, b0] = f(0, k), u = a - a0, v = (b - b0) * flip; return [x0 + c * u - sn * v, z0 + sn * u + c * v]; };
+    const pts = [at(0)];
+    for (let t = 1; pts.length < n && t < 6000; t++) { const p = at(t), q = pts[pts.length - 1]; if (Math.hypot(p[0] - q[0], p[1] - q[1]) >= gap) pts.push(p); }
+    const id = (gx * 7907 + gz * 31) * 64 + (ringDay % 64), y0 = Math.max(height(x0, z0), WATER) + 10 + h(8) * 10;
+    L = { id, x: x0, z: z0, n: pts.length, shape, level, rings: [] };
+    let y = y0;
+    for (let i = 0; i < pts.length; i++) {
+      const [x, z] = pts[i], g = Math.max(height(x, z), WATER);
+      y = Math.max(y0 + i * rise, g + 12, i ? y : 0);
+      // the ring's plane faces along the course: its normal (-sin yaw, cos yaw) is the way on
+      const q = pts[Math.min(i + 1, pts.length - 1)], p = pts[Math.max(i - 1, 0)], tx = q[0] - p[0], tz = q[1] - p[1];
+      L.rings.push({ x, y, z, yaw: Math.atan2(-tx, tz), r, id: id * 16 + i, circuit: id, k: i, of: pts.length, level });
     }
   }
   loopCache.set(key, L); if (loopCache.size > 400) loopCache.delete(loopCache.keys().next().value);
   return L;
 }
 export function ringsNear(x, z, r) {
-  const out = [], a = Math.floor((x - r - 150) / RING_CELL), b = Math.floor((x + r + 150) / RING_CELL), c = Math.floor((z - r - 150) / RING_CELL), d = Math.floor((z + r + 150) / RING_CELL);
+  const out = [], m = 950, a = Math.floor((x - r - m) / RING_CELL), b = Math.floor((x + r + m) / RING_CELL), c = Math.floor((z - r - m) / RING_CELL), d = Math.floor((z + r + m) / RING_CELL);
   for (let gz = c; gz <= d; gz++) for (let gx = a; gx <= b; gx++) {
     const L = ringLoop(gx, gz); if (!L) continue;
     for (const q of L.rings) if (Math.abs(q.x - x) < r && Math.abs(q.z - z) < r) out.push(q);
