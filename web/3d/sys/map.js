@@ -13,7 +13,7 @@ import { hourName } from '../dial.js';
 const CELL = 100;                        // fog cells, metres
 const SEE = [160, 2.2, 520];             // clearing radius: base, per metre of height, most
 const ZOOM = [1.2, 24], ZOOM0 = 5;       // metres per CSS pixel: closest, farthest, at first
-const FOG = 'rgba(0, 0, 0, .8)';
+const FOG = 'rgba(0, 0, 0, .6)';
 const key = (i, j) => i + ',' + j;
 
 export function mapView(G, J, { HOME_Z, MARSH_Z }) {

@@ -183,7 +183,7 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .logo3 { width: 30px; height: 30px; flex: none; border-radius: 7px; box-shadow: 0 1px 4px rgba(20, 40, 50, .2); }
 .glass3 .tabs3 { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 2px; overflow-y: auto; scrollbar-width: none; }
 .glass3 .tabs3::-webkit-scrollbar { display: none; }
-.glass3 .tabs3 button { flex: none; display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 12px; border: 0; border-radius: 14px; background: none; cursor: pointer;
+.glass3 .tabs3 button { flex: 1 1 0; max-height: 96px; display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 12px; border: 0; border-radius: 14px; background: none; cursor: pointer;
   font-family: var(--text); font-size: 15px; font-weight: 500; color: var(--ink2); text-align: left; transition: background .2s, color .2s; }
 .glass3 .tabs3 svg { flex: none; width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 .glass3 .tabs3 button.on { color: var(--ink); font-weight: 600; background: rgba(255, 255, 255, .7); box-shadow: 0 1px 4px rgba(20, 40, 50, .1); }
@@ -197,7 +197,7 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .glass3 p { font-size: 14.5px; margin: 8px 0; }
 .glass3 small { font-size: 12.5px; color: var(--ink2); }
 /* a short screen (a phone on its side): the column keeps to icons and the Resume pill */
-/* room to spare: taller tabs */
+/* the tabs share the column's height between them (bigger to tap); with room to spare, bigger type */
 @media (min-height: 600px) and (min-width: 621px) {
   .glass3 { height: min(640px, calc(100vh - 48px)); }
   .glass3 .tabs3 { gap: 4px; }
@@ -218,7 +218,7 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
   .glass3 .side3 { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "head head" "tabs resume"; align-items: center; border-right: 0; border-bottom: 1px solid var(--rule); padding: 10px 12px; }
   .glass3 .head3 { grid-area: head; }
   .glass3 .tabs3 { grid-area: tabs; flex-direction: row; overflow-x: auto; }
-  .glass3 .tabs3 button { padding: 0 10px; min-height: 40px; }
+  .glass3 .tabs3 button { flex: none; padding: 0 10px; min-height: 40px; }
   .glass3 .tabs3 button span { display: none; }
   .glass3 .tabs3 button.on span { display: inline; }
   .glass3 .resume3 { grid-area: resume; min-height: 40px; }
@@ -375,5 +375,6 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .songs3 li.unknown b { color: var(--ink2); opacity: .7; }
 /* singing: the sound kinds take the left edge and the score the bottom middle (songs.css), so
    notes move up clear of them and tips wait */
-#ui3.singing3 .toast3 { bottom: auto; top: calc(96px + env(safe-area-inset-top)); }
+/* while singing the song controls fill both sides and the bottom: notes go top middle, under the compass */
+#ui3.singing3 .toast3 { bottom: auto; top: calc(64px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); max-width: min(420px, 50vw); text-align: center; }
 #ui3.singing3 .hint3, #ui3.singing3 .tipmore3 { display: none; }
