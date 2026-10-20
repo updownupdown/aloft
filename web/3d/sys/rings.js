@@ -1,27 +1,17 @@
-// Rings of cloud hang over the land (little doughnuts of cumulus, as if a puff had been blown
-// through); fly through the hole for a burst of speed. Collected rings stay collected (by id)
-// until they come back after a day.
+// Rings of mist hang high over the land in small loops (world.js ringLoop): faint wisps of
+// cloud, just about visible. Fly through one for a burst of speed (+4 m/s), enough to carry the
+// hawk on to the next ring of its loop; fly a whole loop in one go and it says so ('ringLoop').
+// Collected rings stay collected (by id) until they come back after a day.
 import { ringsNear } from '../world.js';
 import { DAY } from '../sky.js';
-import { builder, blob, reseed } from '../shapes.js';
-
-// puffs round a circle in the x-y plane (radius 1.25, the hole about .85), thin along z
-function cloudRing() {
-  reseed(71); const B = builder(), W = [.98, .97, .94], S = [.88, .88, .9];
-  for (let i = 0; i < 13; i++) {
-    const a = i / 13 * Math.PI * 2 + Math.sin(i * 3.1) * .08, r = 1.25 + Math.sin(i * 1.7) * .05;
-    blob(B, Math.cos(a) * r, Math.sin(a) * r, 0, .36 + Math.abs(Math.sin(i * 2.3)) * .14, W, S, [1, 1, .7]);
-  }
-  for (let i = 0; i < 5; i++) { const a = i / 5 * Math.PI * 2 + .4; blob(B, Math.cos(a) * 1.45, Math.sin(a) * 1.45, .12, .26, W, W, [1, 1, .6]); }
-  return B.out();
-}
+import { mix3 } from '../util.js';
 
 export function ringsSystem(G) {
   const b = G.b, got = new Map();   // ring id -> G.clock time collected
   G.rings = 0;
-  G.R.shape('cloudring', cloudRing());
+  let run = null;   // the loop being flown: { circuit, n, k, count, t }
   const live = r => { const t = got.get(r.id); return t === undefined || G.clock - t > DAY; };
-  G.hud.tip('ring', () => b.state === 'fly' && ringsNear(b.p[0], b.p[2], 60).some(r => live(r) && Math.hypot(r.x - b.p[0], r.y - b.p[1], r.z - b.p[2]) < 60), 'A ring of cloud: fly through the hole for a burst of speed.');
+  G.hud.tip('ring', () => b.state === 'fly' && ringsNear(b.p[0], b.p[2], 60).some(r => live(r) && Math.hypot(r.x - b.p[0], r.y - b.p[1], r.z - b.p[2]) < 60), 'A faint ring of mist: fly through it for a burst of speed, on to the next in its loop.');
   return {
     id: 'rings',
     update() {
@@ -35,13 +25,26 @@ export function ringsSystem(G) {
         if (rad > r.r) continue;
         b.s = Math.min(46, b.s + 4); G.rings++; got.set(r.id, G.clock);
         G.audio.ring(); G.hud.did('ring'); G.emit('ring', r);
+        // a loop flown ring after ring, without a long pause between
+        if (run && run.circuit === r.circuit && G.clock - run.t < 25) { run.count++; run.t = G.clock; } else run = { circuit: r.circuit, count: 1, t: G.clock };
+        const size = ringsNear(r.x, r.z, 300).filter(q => q.circuit === r.circuit).length;
+        if (run.count >= size) { run = null; G.emit('ringLoop', { circuit: r.circuit, n: size }); G.hud.toast('A whole loop of rings, flown in one go.', 3); }
         for (let i = 0; i < 20; i++) { const a = i / 20 * 6.283; G.part([r.x + Math.cos(a) * r.r * Math.cos(r.yaw), r.y + Math.sin(a) * r.r, r.z + Math.cos(a) * r.r * Math.sin(r.yaw)], [Math.cos(a) * 1.5 * Math.cos(r.yaw), Math.sin(a) * 1.5 + .5, Math.cos(a) * 1.5 * Math.sin(r.yaw)], 1.4, [.97, .97, .95], .3); }
       }
       G.hud.counter = G.rings ? `${G.rings} ring${G.rings > 1 ? 's' : ''}` : '';
     },
     scene(S) {
-      const d = S.props.cloudring ||= [];
-      for (const r of ringsNear(S.cam[0], S.cam[2], 320)) if (live(r)) d.push(r.x, r.y, r.z, r.r * (1 + Math.sin(G.t * .6 + r.id) * .025), r.yaw + Math.sin(G.t * .2 + r.id) * .04, .5, 0, 0);
+      // each ring a circle of soft points, barely paler than the sky behind, drifting a little
+      for (const r of ringsNear(S.cam[0], S.cam[2], 360)) {
+        if (!live(r)) continue;
+        const d = Math.hypot(r.x - S.cam[0], r.y - S.cam[1], r.z - S.cam[2]), near = Math.min(1, 30 / Math.max(d, 1));
+        const col = mix3(S.horizon, [1, 1, .98], .16 + near * .22), c = Math.cos(r.yaw), sn = Math.sin(r.yaw);
+        for (let i = 0; i < 40; i++) {
+          const a = i / 40 * 6.283 + G.t * .05, w = Math.sin(i * 2.7 + G.t * .4 + r.id) * .35, rr = r.r * (1 + w * .1);
+          const lx = Math.cos(a) * rr, ly = Math.sin(a) * rr, lz = Math.sin(i * 1.3 + G.t * .3) * .4;
+          S.motes.push(r.x + c * lx - sn * lz, r.y + ly, r.z + sn * lx + c * lz, ...col, .9 + Math.abs(w) * 1.1);
+        }
+      }
     },
     save: () => ({ n: G.rings, got: [...got].slice(-300) }),
     load(o) { G.rings = o.n || 0; for (const [k, v] of o.got || []) got.set(k, v); },
