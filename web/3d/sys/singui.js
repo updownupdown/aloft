@@ -1,100 +1,96 @@
-// Singing from a perch, and the hawk's call. Whenever the hawk sits (or a songbird is close
-// while it stands), pigment pools open at the sides. Up the right edge, the five song notes in a
-// ladder, lowest at the bottom, each its own colour: touch one to sing it, slide across to sing
-// each you cross. Up the left side, the songbirds you have heard, each pooled in its breast
-// colour with a dot of its cap (paler until you learn its song): touch one and the hawk sings
-// that bird's song in its voice. Left-handed, the sides swap. The next note of a song you are
-// copying wears a red ring; a pool brightens while the songbird sings that note.
-// The pools sit above the canvas, so a thumb on them never reaches the wings; a thumb anywhere
-// else still flaps you off the branch.
-// The Call button (top right) screams: hold it longer to call louder.
+// Singing from a perch, and the hawk's call. While the hawk sits (or stands near a singing
+// songbird), the song controls open:
+//   right edge  a pitch strip, five bands from low (bottom) to high, each its own colour: touch a
+//               band to sing a syllable at that pitch; slide and each band you cross sings
+//   left edge   the four kinds of syllable (whistle, chip, trill, buzz): touch one to choose
+//               the sound the strip makes; above them, Songs opens the birds you know
+//   top centre  the score of the song you are copying: each syllable's kind and pitch, the next
+//               one marked
+// Pick a bird from Songs and you sing in its voice, imitating it: play its score through and a
+// bird of that kind answers (once you have learned it). Left-handed, the sides swap. Everything
+// sits above the canvas, so a thumb on it never reaches the wings; the look is all in
+// songs.css (classes and the --note colours), so a restyle need not touch this file.
+// The Call button screams: hold it longer to call louder.
 
 export const NOTE_COLS = ['#2f4a74', '#3e7c88', '#608842', '#c49234', '#b04e3a'];
-const GAP = 46, BTN = 38;
+export const KINDS = [['w', 'Whistle'], ['c', 'Chip'], ['t', 'Trill'], ['b', 'Buzz']];
+// a little drawing of each kind of syllable, as on a sonogram
+const GLYPH = {
+  w: '<path d="M5 13 Q20 5 35 10" stroke-width="3.2" fill="none" stroke-linecap="round"/>',
+  c: '<path d="M17 5 L23 15" stroke-width="3.6" fill="none" stroke-linecap="round"/>',
+  t: '<path d="M4 10 l4 -5 l4 10 l4 -10 l4 10 l4 -10 l4 10 l4 -10 l4 5" stroke-width="2.2" fill="none" stroke-linejoin="round"/>',
+  b: '<path d="M4 10 l2 -6 l2 12 l2 -12 l2 12 l2 -12 l2 12 l2 -12 l2 12 l2 -12 l2 12 l2 -12 l2 12 l2 -12 l2 12 l2 -6" stroke-width="1.5" fill="none"/>',
+};
+export const glyph = k => `<svg viewBox="0 0 40 20" aria-hidden="true">${GLYPH[k] || GLYPH.w}</svg>`;
 
 const css = new URL('./songs.css', import.meta.url).href;
 if (!document.querySelector(`link[href="${css}"]`)) document.head.append(Object.assign(document.createElement('link'), { rel: 'stylesheet', href: css }));
-
 const rgb = c => `rgb(${c.join(',')})`;
-// a pool is a hexagon in two facets of its colour (low poly, like the world), with a chip of the
-// bird's cap colour when it has one
-const poolBg = (col, dot) => (dot ? `linear-gradient(135deg, transparent 0 58%, ${dot} 58% 76%, transparent 76%), ` : '') +
-  `linear-gradient(150deg, color-mix(in srgb, ${col} 80%, #fff) 0 50%, ${col} 50% 100%)`;
 
-export function createSingUI(ui, { audio, voice, onNote, onMimic, onCall }) {
-  ui.insertAdjacentHTML('beforeend', `<div class="sing3 hidden"><div class="notes3"></div><div class="calls3"></div><div class="dots3"></div></div>
+export function createSingUI(ui, { audio, voice, onSyll, onPick, onCall }) {
+  ui.insertAdjacentHTML('beforeend', `<div class="sing3 hidden">
+      <div class="strip3">${NOTE_COLS.map((c, i) => `<i data-lane="${i}" style="--note:${c}"></i>`).reverse().join('')}</div>
+      <div class="kinds3">${KINDS.map(([k, name]) => `<button data-kind="${k}" aria-label="${name}">${glyph(k)}<span>${name}</span></button>`).join('')}</div>
+      <div class="book3"><button class="bookbtn3"><span>Songs</span><em></em></button><div class="birds3 hidden"></div></div>
+      <div class="score3 hidden"><b></b><div></div></div>
+    </div>
     <p class="cheer3"></p><button class="call3" aria-label="Hawk call">Call</button>`);
-  const root = ui.querySelector('.sing3'), notes = root.querySelector('.notes3'), calls = root.querySelector('.calls3'), dots = root.querySelector('.dots3');
-  const cheer = ui.querySelector('.cheer3'), callBtn = ui.querySelector('.call3');
-  const S = { open: false, finger: null, next: -1, lefty: false, species: '', key: '' };
+  const q = s => ui.querySelector(s);
+  const root = q('.sing3'), strip = q('.strip3'), kinds = q('.kinds3'), bookBtn = q('.bookbtn3'), birds = q('.birds3'), score = q('.score3');
+  const cheer = q('.cheer3'), callBtn = q('.call3');
+  const bands = [...strip.children].sort((a, b) => a.dataset.lane - b.dataset.lane);
+  const S = { open: false, kind: 'w', finger: null, species: '', score: '' };
   let cheerTimer = 0;
-
-  const noteBtns = NOTE_COLS.map((col, lane) => {
-    const el = document.createElement('button'); el.className = 'pool3'; el.style.background = poolBg(col);
-    el.setAttribute('aria-label', `Note ${lane + 1}`); el.dataset.lane = lane; notes.append(el); return el;
-  });
   const flash = (el, cls = 'hit') => { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); };
-  function sound(lane) { flash(noteBtns[lane]); audio.note(lane, voice(), .18); onNote(lane); }
 
-  // touch a pool to sing it; slide on and each pool the finger reaches sings in turn
-  const laneAt = (x, y) => {
-    let best = -1, bd = BTN * .8;
-    noteBtns.forEach((el, i) => { const r = el.getBoundingClientRect(), d = Math.hypot(x - r.left - r.width / 2, y - r.top - r.height / 2); if (d < bd) { bd = d; best = i; } });
-    return best;
-  };
-  notes.addEventListener('pointerdown', e => {
-    const lane = laneAt(e.clientX, e.clientY); if (lane < 0) return;
-    e.preventDefault(); e.target.setPointerCapture?.(e.pointerId); audio.unlock();
-    S.finger = { id: e.pointerId, lane }; sound(lane);
+  // the pitch strip: the band under the finger, by height
+  const laneAt = y => { const r = strip.getBoundingClientRect(); return Math.max(0, Math.min(4, 4 - Math.floor((y - r.top) / r.height * 5))); };
+  function sound(lane) { flash(bands[lane]); audio.note(lane, voice(), .18, S.kind); onSyll(lane, S.kind); }
+  strip.addEventListener('pointerdown', e => {
+    e.preventDefault(); strip.setPointerCapture?.(e.pointerId); audio.unlock();
+    const lane = laneAt(e.clientY); S.finger = { id: e.pointerId, lane }; sound(lane);
   });
-  notes.addEventListener('pointermove', e => {
+  strip.addEventListener('pointermove', e => {
     const f = S.finger; if (f?.id !== e.pointerId) return;
-    const lane = laneAt(e.clientX, e.clientY);
-    if (lane >= 0 && lane !== f.lane) { f.lane = lane; sound(lane); }
+    const lane = laneAt(e.clientY); if (lane !== f.lane) { f.lane = lane; sound(lane); }
   });
   const up = e => { if (S.finger?.id === e.pointerId) S.finger = null; };
-  notes.addEventListener('pointerup', up); notes.addEventListener('pointercancel', up);
-  calls.addEventListener('pointerdown', e => {
-    const el = e.target.closest('.pool3'); if (!el) return;
-    e.preventDefault(); audio.unlock(); flash(el); onMimic(+el.dataset.sp);
+  strip.addEventListener('pointerup', up); strip.addEventListener('pointercancel', up);
+
+  // the kinds: touch one to choose it (it stays chosen)
+  const setKind = k => { S.kind = k; for (const b of kinds.children) b.classList.toggle('on', b.dataset.kind === k); };
+  setKind('w');
+  kinds.addEventListener('pointerdown', e => { const b = e.target.closest('[data-kind]'); if (!b) return; e.preventDefault(); audio.unlock(); setKind(b.dataset.kind); });
+
+  // Songs: the birds you know, folded away until you want one
+  bookBtn.addEventListener('click', () => { audio.unlock(); birds.classList.toggle('hidden'); });
+  birds.addEventListener('click', e => {
+    const b = e.target.closest('[data-sp]'); if (!b) return;
+    audio.unlock(); birds.classList.add('hidden'); onPick(b.dataset.sp === 'none' ? null : +b.dataset.sp);
   });
-  for (const el of [root, callBtn]) { el.addEventListener('contextmenu', e => e.preventDefault()); el.addEventListener('touchstart', e => e.stopPropagation(), { passive: true }); }
+  for (const el of [root, callBtn]) el.addEventListener('contextmenu', e => e.preventDefault());
 
-  // the songbirds you have heard or learned, one pool each, in field-guide order
-  function setSpecies(list, learned) {
-    const key = list.map(s => s.id + (learned.has(s.id) ? '' : '?')).join();
+  function setBirds(list, learned, picked) {
+    const key = list.map(s => s.id + (learned.has(s.id) ? '' : '?')).join() + '/' + (picked?.id ?? -1);
     if (key === S.species) return;
-    S.species = key; calls.textContent = '';
-    for (const sp of list) {
-      const el = document.createElement('button'); el.className = 'pool3'; el.dataset.sp = sp.id;
-      el.style.background = poolBg(rgb(sp.cols.breast), rgb(sp.cols.cap)); el.setAttribute('aria-label', `Sing like the ${sp.name}`);
-      el.title = sp.name; el.classList.toggle('heard', !learned.has(sp.id));
-      calls.append(el);
-    }
-    S.key = '';
+    S.species = key;
+    birds.innerHTML = list.map(sp => `<button data-sp="${sp.id}" class="${learned.has(sp.id) ? '' : 'heard'}${picked === sp ? ' on' : ''}" style="--breast:${rgb(sp.cols.breast)};--cap:${rgb(sp.cols.cap)}"><i></i>${sp.name}${learned.has(sp.id) ? '' : ' <small>heard</small>'}</button>`).join('')
+      + (picked ? '<button data-sp="none" class="stop">Sing as yourself</button>' : '')
+      + (list.length ? '' : '<p>No songs yet. Perch near a singing bird and listen.</p>');
+    bookBtn.querySelector('em').textContent = picked ? picked.name : list.length ? `${learned.size} known` : '';
+    bookBtn.classList.toggle('on', !!picked);
   }
-
-  // the notes stand in a ladder up the right edge, each step a little inward like notes on a
-  // stave; the birds fill the other side in columns from the edge inward, bottom up
-  function layout() {
-    const key = [innerWidth, innerHeight, S.lefty, S.species].join();
-    if (key === S.key) return;
-    S.key = key;
-    const bottom = innerHeight - 30 - BTN / 2, top = Math.min(120, innerHeight * .28), edge = 20 + BTN / 2;
-    const ns = S.lefty ? -1 : 1, at = (el, x, y) => { el.style.left = `${x - BTN / 2}px`; el.style.top = `${y - BTN / 2}px`; };
-    const step = Math.min(64, (bottom - top) / (noteBtns.length - 1));
-    noteBtns.forEach((el, i) => at(el, ns > 0 ? innerWidth - edge - i * 8 : edge + i * 8, bottom - i * step));
-    const birds = [...calls.children], rows = Math.max(1, Math.floor((bottom - top) / GAP) + 1);
-    birds.forEach((el, i) => {
-      const c = Math.floor(i / rows), r = i % rows, x = edge + c * GAP;
-      at(el, ns > 0 ? x : innerWidth - x, bottom - r * GAP);
-    });
-  }
-
-  function setOpen(o) {
-    if (o === S.open) return;
-    S.open = o; S.finger = null; root.classList.toggle('hidden', !o);
-    if (o) { S.key = ''; layout(); }
+  // the score: one glyph per syllable at its pitch; the bird's own half of a duet is hollow
+  function setScore(sc) {
+    const key = sc ? [sc.sp.id, sc.title, sc.done, sc.bird, sc.state, sc.hidden].join() : '';
+    if (key === S.score) return;
+    S.score = key; score.classList.toggle('hidden', !sc);
+    if (!sc) return;
+    score.querySelector('b').textContent = sc.title;
+    score.querySelector('div').innerHTML = sc.hidden ? '' : sc.sp.notes.map((n, i) => {
+      const st = i < sc.bird ? 'bird' : i < sc.done ? 'done' : i === sc.done ? (sc.state === 'wrong' ? 'next wrong' : 'next') : '';
+      return `<span class="${st}" style="--note:${NOTE_COLS[n]};--lane:${n}">${glyph(sc.sp.kinds[i])}</span>`;
+    }).join('');
   }
 
   // hold Call to call louder: it goes on release, or by itself at full strength once held long
@@ -116,27 +112,23 @@ export function createSingUI(ui, { audio, voice, onNote, onMimic, onCall }) {
 
   return {
     get open() { return S.open; },
-    // per frame: whether the pools are out, the next note to copy, and the songs you know
-    update({ available, next = -1, known, learned, lefty, resting }) {
-      S.lefty = lefty; setSpecies(known, learned); setOpen(!!available);
+    get kind() { return S.kind; },
+    setKind,
+    // per frame: whether the controls are out, the birds you know, who you imitate, the score
+    update({ available, known, learned, picked, sc, lefty, resting }) {
+      root.classList.toggle('lefty', lefty);
       callBtn.classList.toggle('rest', resting);
+      if (!!available !== S.open) { S.open = !!available; root.classList.toggle('hidden', !S.open); S.finger = null; if (!S.open) birds.classList.add('hidden'); }
       if (!S.open) return;
-      layout();
-      if (next !== S.next) { noteBtns.forEach((el, i) => el.classList.toggle('next', i === next)); S.next = next; }
+      setBirds(known, learned, picked); setScore(sc);
     },
-    // one dot per note of the song being copied; in a duet the bird's half is hollow
-    progress(total, done, state, bird = 0) {
-      let html = '';
-      for (let i = 0; i < total; i++) html += `<i class="${i < bird ? 'bird' : i < done ? (state || 'on') : ''}"></i>`;
-      if (dots.innerHTML !== html) dots.innerHTML = html;
-    },
-    glow(lane) { if (S.open) flash(noteBtns[lane], 'glow'); },
+    glow(lane) { if (S.open) flash(bands[lane], 'glow'); },
     cheer(text) {
       cheer.textContent = text; cheer.classList.remove('show'); void cheer.offsetWidth; cheer.classList.add('show');
-      if (S.open) for (const el of noteBtns) flash(el, 'glow');
       clearTimeout(cheerTimer); cheerTimer = setTimeout(() => cheer.classList.remove('show'), 2600);
     },
-    // where a pool sits on screen (for test scripts)
-    lanePt(lane) { const r = noteBtns[lane].getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; },
+    // where a control sits on screen (for test scripts)
+    lanePt(lane) { const r = bands[lane].getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; },
+    kindPt(k) { const r = kinds.querySelector(`[data-kind=${k}]`).getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; },
   };
 }
