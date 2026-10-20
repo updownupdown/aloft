@@ -136,21 +136,40 @@ export function perchOn(b, p, G, soft = false) {
 
 const dragOf = s => T.dragA * 1e-3 * s * s + T.dragB * 1e3 / Math.max(s, 40) ** 2;
 
-// Where the current glide ends if the player lets go: a short hands-off simulation.
+// Where the hawk's line goes from here, flown the same way fly() does it: with the same lift
+// (thermals, ridges, waves, clouds), the lift of a flap still fading, and whatever the hawk is
+// set on doing (b.plan: heading for a point, holding a line, or hands off). Turns are not
+// flown; a point behind is taken as ahead, as the hawk turns for it straight away.
 export function predictGlide(b, G, maxT = 3.5) {
-  const pts = []; let x = b.x, y = b.y, s = b.s, g = b.g;
-  const dt = .06;
+  const P = b.plan; if (!P) return null;
+  const pts = []; let x = b.x, y = b.y, s = b.s, g = b.g, kick = b.kick, face = b.face;
+  const dt = .05;
   for (let t = 0; t < maxT; t += dt) {
-    let gT = T.relax + clamp((s - 88) * .007, -.5, .45);
-    if (s < T.stall) gT = -.85;
+    let gT;
+    if (P.wx !== undefined) {
+      const dx = P.wx - x, dy = y - P.wy;
+      if (dx * face < -14) face = -face;
+      if (Math.hypot(dx, dy) < 6) break;
+      gT = Math.atan2(dy, Math.max(Math.abs(dx), 4));
+    } else gT = P.free ? T.relax + clamp((s - 88) * .007, -.5, .45) : P.gT;
+    const th = W.lift(x, y, G.t) * (b.airK || 1);
+    if (P.free && th > 6) { gT = -.1; if (s > 64) s += (64 - s) * .8 * dt; }   // hands off in a thermal it floats
+    const stall = s < T.stall;
+    if (stall) gT = Math.min(gT, -.85);
+    gT = clamp(gT, -1.45, 1);
     const rate = 2.4 * clamp(s / 70, .25, 1.3);
     g += clamp(gT - g, -rate * dt, rate * dt);
-    s = clamp(s + (-T.gravity * Math.sin(g) - dragOf(s) * (1 + .25 * (b.wear || 0))) * dt, 8, MAX_SPEED);
-    x += (Math.cos(g) * s * b.face + W.windAt(y) * .5) * dt;
-    y += (-Math.sin(g) * s - W.updraft(x, y, G.t) - waveLift(x, y)) * dt;
+    if (stall) g -= (1 - s / (T.stall + 14)) * 2 * dt;
+    const flaring = g > .3 && s > 25, brake = flaring ? (g - .3) * s * T.flare : 0;
+    s = clamp(s + (-T.gravity * Math.sin(g) - dragOf(s) * (P.trim ? .75 : P.stoop ? .55 : 1) * (1 + .25 * (b.wear || 0)) - brake) * dt, 8, MAX_SPEED);
+    const air = th + W.ridgeLift(x, y) + waveLift(x, y) + W.extraLift(x, y);
+    kick *= Math.exp(-dt * 2.6);
+    x += (Math.cos(g) * s * face + W.windAt(y) * .5) * dt;
+    y += (-Math.sin(g) * s - air + kick) * dt;
     pts.push([x, y]);
     const wy = W.waterAt(x), gy = wy ?? W.groundY(x);
     if (y + FEET >= gy) { pts.end = 'ground'; break; }
+    if (P.wx !== undefined && Math.abs(P.wx - x) < 3) break;
   }
   return pts;
 }
@@ -263,7 +282,7 @@ function fly(b, dt, inp, G) {
       if (dx * b.face < 0 && Math.abs(dx) > 16) turn(b);
       gT = Math.atan2(dy, Math.max(Math.abs(dx), 10));
       if (dist < 120 && b.s > 58) b.s -= (b.s - 58) * 1.8 * dt;
-      if (dy > 2 && b.s < 90 && b.autoFlapT <= 0) { flap(b, G.flapPower, G); b.autoFlapT = .42; }
+      // (no flaps of its own: if the branch is above, climbing to it is the player's taps)
     }
   }
   // a stall drops the nose until the bird has flying speed again (a kiting hawk hangs below
@@ -311,6 +330,12 @@ function fly(b, dt, inp, G) {
     }
   }
 
+  // what the hawk is set on doing, for the line drawn ahead of it (predictGlide)
+  b.plan = b.hover > .3 || b.kiteT > .3 || b.ride || b.loop ? null
+    : inp.steer ? { wx: inp.steer.wx, wy: inp.steer.wy }
+    : b.target ? { wx: b.target.x, wy: b.target.y - FEET - 3 }
+    : manual || b.trim ? { gT, trim: b.trim, stoop: b.stoop } : { free: true };
+  b.airK = kb.k;
   // through a turn the forward speed swings away from the picture and back
   const swing = b.yaw ? Math.abs(Math.cos(Math.PI * Math.min(1, b.yaw.t / b.yaw.dur))) : 1;
   b.vx = Math.cos(b.g) * b.s * b.face * swing + W.windAt(b.y) * .5;

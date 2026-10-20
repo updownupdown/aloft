@@ -1,8 +1,8 @@
 // Touch controls drawn on the screen itself. Each touch is read as one of:
 //  - a tap, counted with the quick taps before it (a double tap, three fast taps);
 //  - a hold: a touch kept down a moment, whether it moved first or not. Once the finger rests
-//    (or has simply stayed down long enough), it aims: where it points from where it came down,
-//    reported every frame until it lifts, so it can be trimmed as it is held;
+//    (or has simply stayed down long enough), it is a place: where the finger is now, reported
+//    every frame until it lifts, so it can be slid about as it is held;
 //  - a stroke: a quick line, hook or circle, read when the finger lifts.
 // controls.js decides what each one does. Nothing is drawn under the finger: the feedback is a
 // small sign above the hawk, flashed when a gesture is understood and held faintly while the
@@ -12,8 +12,8 @@ import { TAU, C, clamp } from './util.js';
 import { MARK } from './palette.js';
 
 // a hold: down HOLD_S and resting (moved under REST px for REST_S), or down HOLD_MAX whatever it does
-const TAP_S = .3, TAP_MOVE = 12, HOLD_S = .26, HOLD_MAX = 1.1, REST = 7, REST_S = .12;
-const QUICK = .32, QUICK_R = 60, AIM_R = 60, MIN_STROKE = 30, STEP = 6;
+const TAP_S = .3, TAP_MOVE = 12, HOLD_S = .2, HOLD_MAX = 1, REST = 7, REST_S = .1;
+const QUICK = .32, QUICK_R = 60, MIN_STROKE = 30, STEP = 6;
 const INK = MARK.ink;
 export const TINT = { prey: MARK.mouse, perch: MARK.perch, thermal: MARK.thermal, food: MARK.mouse, turn: [26, 20, 16], ink: INK };
 
@@ -56,7 +56,7 @@ export function createGestures(canvas) {
   const cancel = id => { const k = tracks.get(id); if (k?.hold && S.hold === k) { S.hold = null; S.events.push({ type: 'holdEnd' }); } tracks.delete(id); };
 
   // per frame: turn a touch that has stayed down into a hold, then hand over the events and,
-  // while a hold lasts, where it aims (x right, y down, within the unit circle)
+  // while a hold lasts, where the finger is (screen pixels)
   function frame() {
     const t = now();
     for (const k of tracks.values()) {
@@ -66,7 +66,7 @@ export function createGestures(canvas) {
     }
     let aim = null;
     const h = S.hold;
-    if (h) { let x = (h.x - h.x0) / AIM_R, y = (h.y - h.y0) / AIM_R; const m = Math.hypot(x, y); if (m > 1) { x /= m; y /= m; } aim = { x, y }; }
+    if (h) aim = { x: h.x, y: h.y };
     const ev = S.events; S.events = [];
     return { events: ev, aim };
   }
