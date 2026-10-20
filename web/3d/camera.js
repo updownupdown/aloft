@@ -8,7 +8,16 @@ export function createCamera(G) {
   const b = G.b;
 
   C.update = (dt, S) => {
-    const p = b.p;
+    // settling onto a perch (or hopping), the hawk is drawn gliding from where it was, turning as it
+    // comes; the camera frames that drawn hawk, not the perch it has already arrived at
+    let hp = b.p, vyaw = b.yaw;
+    if (b.settle > 0 && b.from) {
+      const t = smooth(0, 1, 1 - b.settle / (b.settleT || .45)); hp = mix3(b.from, b.p, t);
+      if (b.hop > 0) hp = [hp[0], hp[1] + Math.sin(t * Math.PI) * b.hop, hp[2]];   // a hop arcs over
+      if (b.fromYaw != null) vyaw = b.fromYaw + angleTo(b.fromYaw, b.yaw) * smooth(0, 1, Math.min(1, t * 1.4));
+    }
+    if (b.state === 'fly' && b.settle <= 0) b.from = null;
+    const p = hp;
     let look, want;
     if (b.state === 'fly') {
       // the camera swings after the hawk's heading rather than its position, so it never falls behind
@@ -25,7 +34,7 @@ export function createCamera(G) {
     } else {
       // on the ground a drag turns the view itself (b.view), quickly; otherwise it drifts round the bird
       if (b.state === 'ground' && b.view != null) C.yaw += angleTo(C.yaw, b.view) * Math.min(1, dt * 8);
-      else C.yaw += angleTo(C.yaw, b.yaw + Math.sin(G.t * .15) * .3) * Math.min(1, dt * .8);
+      else C.yaw += angleTo(C.yaw, vyaw + Math.sin(G.t * .15) * .3) * Math.min(1, dt * .8);
       C.pitch = 0;
       const d = [Math.sin(C.yaw), 0, -Math.cos(C.yaw)];
       // a little above and behind, the hawk just under the middle of the view (clear of the song box)
@@ -43,20 +52,17 @@ export function createCamera(G) {
 
     // the hawk's frame: forward with a body pitch, banked by roll
     const pv = b.state === 'fly' ? b.gamma * .8 + b.flare * .45 - b.tuck * .1 : b.state === 'perch' ? .5 : b.state === 'ground' ? .3 : .08;
-    const f = [Math.sin(b.yaw) * Math.cos(pv), Math.sin(pv), -Math.cos(b.yaw) * Math.cos(pv)];
-    const r0 = [Math.cos(b.yaw), 0, Math.sin(b.yaw)], u0 = cross(r0, f), cr = Math.cos(b.roll), sr = Math.sin(b.roll);
+    const f = [Math.sin(vyaw) * Math.cos(pv), Math.sin(pv), -Math.cos(vyaw) * Math.cos(pv)];
+    const r0 = [Math.cos(vyaw), 0, Math.sin(vyaw)], u0 = cross(r0, f), cr = Math.cos(b.roll), sr = Math.sin(b.roll);
     const r = [r0[0] * cr - u0[0] * sr, r0[1] * cr - u0[1] * sr, r0[2] * cr - u0[2] * sr];
     const u = [u0[0] * cr + r0[0] * sr, u0[1] * cr + r0[1] * sr, u0[2] * cr + r0[2] * sr];
-    let hp = p;
-    if (b.settle > 0 && b.from) {
-      const t = smooth(0, 1, 1 - b.settle / (b.settleT || .45)); hp = mix3(b.from, p, t);
-      if (b.hop > 0) hp = [hp[0], hp[1] + Math.sin(t * Math.PI) * b.hop, hp[2]];   // a hop arcs over
-    }
-    if (b.state === 'fly' && b.settle <= 0) b.from = null;
 
     const aspect = innerWidth / innerHeight;
     let fov = (52 + Math.min(b.s, 45) * .4) * Math.PI / 180; if (aspect < 1) fov = Math.min(1.9, fov * 1.35);
     S.cam = C.cam; S.look = C.look; S.fov = fov;
+    // flaring to land (or sitting on a perch) the trees open up wider, to find a perch
+    C.seek = (C.seek || 0) + ((b.state === 'fly' ? clamp((b.flare - .15) / .6, 0, 1) : b.state === 'perch' ? .5 : 0) - (C.seek || 0)) * Math.min(1, dt * 3);
+    S.seek = C.seek;
     S.camUp = norm([r0[0] * Math.sin(b.roll) * .3, 1, r0[2] * Math.sin(b.roll) * .3]);
     S.camHigh = C.cam[1] - height(C.cam[0], C.cam[2]);
     S.focus = hp;

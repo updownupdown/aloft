@@ -389,16 +389,25 @@ const archLegs = (o, s) => [-1, 1].map(k => ({ x: o.x + Math.cos(o.yaw) * .42 * 
 // cairns, arches), and where a hawk could stand on them, for flight to bump into and perch on
 export function solidsNear(x, z, r) {
   const out = [];
-  const pillar = (px, pz, rad, y0, top) => out.push({ x: px, z: pz, r: rad, y0, top, perch: { x: px, y: top + .1, z: pz, top: true } });
+  // a hard column (r, from y0 to top) with a perch where its drawn mesh really ends (feet on the
+  // surface: the hawk adds its own height), by default on the middle of the top
+  const pillar = (px, pz, rad, y0, top, perch = { x: px, y: top, z: pz }) => out.push({ x: px, z: pz, r: rad, y0, top, perch: { ...perch, top: true } });
+  // rocks are drawn .3 m sunk into the ground (lands.js)
+  const TOP = { tor: 1, hoodoo: 1, boulder: .75, lava: .7, stack: 1 };
   for (const o of rocksNear(x, z, r + 10)) {
-    if (o.kind === 'arch') { for (const g of archLegs(o, o.s)) pillar(g.x, g.z, .12 * o.s, o.y - 1, o.y + o.s * .85); continue; }
+    if (o.kind === 'arch') { for (const g of archLegs(o, o.s)) pillar(g.x, g.z, .12 * o.s, o.y - 1, o.y - .3 + o.s * .68); continue; }
     const rad = { tor: .7, hoodoo: .16, boulder: .45, lava: .5, stack: .14 }[o.kind] * o.s;
-    pillar(o.x, o.z, rad, o.y - 1, o.y + o.s * (o.kind === 'boulder' || o.kind === 'lava' ? .75 : 1));
+    pillar(o.x, o.z, rad, o.y - 1, o.y - .3 + o.s * TOP[o.kind]);
   }
   for (const l of landmarksNear(x, z, r + 30)) {
-    if (l.kind === 'tower' || l.kind === 'lighthouse') pillar(l.x, l.z, l.kind === 'tower' ? 4 : 3.2, l.y - 1, l.y + (l.kind === 'tower' ? 20.4 : 24.5));
-    if (l.kind === 'cairn') pillar(l.x, l.z, .9, l.y - 1, l.y + 2.6);
-    if (l.kind === 'arch') for (const g of archLegs(l, l.h)) pillar(g.x, g.z, .12 * l.h, l.y - 1, l.y + l.h * .85);
+    // the tower is a hollow ruin: perch on its tallest piece of wall; the lighthouse on its gallery rail
+    if (l.kind === 'tower') { const a = l.yaw + Math.PI / 9; pillar(l.x, l.z, 4, l.y - 1, l.y + 20.4, { x: l.x + Math.cos(a) * 3.35, y: l.y + 21.5, z: l.z + Math.sin(a) * 3.35 }); }
+    if (l.kind === 'lighthouse') {   // the tower to its gallery, then the narrower lantern and cap
+      pillar(l.x, l.z, 3.2, l.y - 1, l.y + 18.8, { x: l.x + 2.25, y: l.y + 18.8, z: l.z });
+      pillar(l.x, l.z, 1.9, l.y + 18.8, l.y + 23.7, { x: l.x - 2.25, y: l.y + 18.8, z: l.z });
+    }
+    if (l.kind === 'cairn') pillar(l.x, l.z, .9, l.y - 1, l.y + 2.33);
+    if (l.kind === 'arch') for (const g of archLegs(l, l.h)) pillar(g.x, g.z, .12 * l.h, l.y - 1, l.y - .5 + l.h * .68);
     if (l.kind === 'stones') for (let i = 0; i < 9; i++) {
       const a = i / 9 * 6.283, c = Math.cos(l.yaw), s = Math.sin(l.yaw), lx = Math.cos(a) * 8, lz = Math.sin(a) * 8, h = 2.6 + (i * 37 % 10) / 10 * 1.8;
       pillar(l.x + c * lx - s * lz, l.z + s * lx + c * lz, .55, l.y - 1, l.y + h);

@@ -233,9 +233,12 @@ function solids(b, E) {
 // how high the hawk's centre sits above a perch point (the top of the limb), feet on it
 const PERCH_Y = .14;
 const nearestPerch = (ps, q) => ps.reduce((a, p) => (Math.hypot(p.x - q[0], p.y - q[1], p.z - q[2]) < Math.hypot(a.x - q[0], a.y - q[1], a.z - q[2]) ? p : a));
-function settleOn(b, p, t, E, dur = .45) {
+function settleOn(b, p, t, E, dur) {
+  // the glide onto it takes longer the farther it has to go, so it never jumps
+  const far = Math.hypot(p.x - b.p[0], p.y + PERCH_Y - b.p[1], p.z - b.p[2]);
+  dur ??= Math.min(.75, Math.max(.35, .3 + far * .12));
   b.state = 'perch'; b.perch = p; b.tree = t; b.settle = b.settleT = dur; b.s = 0; b.vy = 0;
-  b.from = [b.p[0], b.p[1], b.p[2]];
+  b.from = [b.p[0], b.p[1], b.p[2]]; b.fromYaw = b.yaw;
   b.p = [p.x, p.y + PERCH_Y, p.z];
   // sit across a limb, facing whichever way along it is nearer the way you came in
   if (p.a !== undefined) { const d = Math.atan2(Math.sin(p.a - b.yaw), Math.cos(p.a - b.yaw)); b.yaw = Math.abs(d) < Math.PI / 2 ? p.a : p.a + Math.PI; }
