@@ -2,7 +2,7 @@
 // and what singing their song back to the world does once you have learned it.
 // `look` shapes the drawing so each reads by silhouette at phone size: size, how high the
 // tail cocks, a crest, a round owl head, how stubby the bill is, spots on the breast.
-import { hx } from './util.js';
+const hx = h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
 
 export const SPECIES = [
   { name: 'Chickadee', winter: true, notes: [4, 2], gap: .42, body: '#8a8a80', cap: '#2a2a2a', breast: '#efe6d0', biomes: ['forest', 'cliffs', 'mountains'], times: ['dawn', 'day', 'dusk'], power: 'worms come up around you', powerKey: 'worms', hint: 'Forests and cliffs, by day', look: { size: .85, bib: 1 } },
