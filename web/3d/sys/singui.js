@@ -23,6 +23,8 @@ const GLYPH = {
 };
 export const glyph = k => `<svg viewBox="0 0 40 20" aria-hidden="true">${GLYPH[k] || GLYPH.w}</svg>`;
 
+import { birdSVG } from '../birdart.js';
+
 const css = new URL('./songs.css', import.meta.url).href;
 if (!document.querySelector(`link[href="${css}"]`)) document.head.append(Object.assign(document.createElement('link'), { rel: 'stylesheet', href: css }));
 const rgb = c => `rgb(${c.join(',')})`;
@@ -65,6 +67,7 @@ export function createSingUI(ui, { audio, voice, onSyll, onPick, onCall }) {
   // Songs: the birds you know, folded away until you want one
   bookBtn.addEventListener('click', () => { audio.unlock(); birds.classList.toggle('hidden'); });
   birds.addEventListener('click', e => {
+    if (e.target.closest('[data-close]')) { birds.classList.add('hidden'); return; }
     const b = e.target.closest('[data-sp]'); if (!b) return;
     audio.unlock(); birds.classList.add('hidden'); onPick(b.dataset.sp === 'none' ? null : +b.dataset.sp);
   });
@@ -74,8 +77,9 @@ export function createSingUI(ui, { audio, voice, onSyll, onPick, onCall }) {
     const key = list.map(s => s.id + (learned.has(s.id) ? '' : '?')).join() + '/' + (picked?.id ?? -1);
     if (key === S.species) return;
     S.species = key;
-    birds.innerHTML = list.map(sp => `<button data-sp="${sp.id}" class="${learned.has(sp.id) ? '' : 'heard'}${picked === sp ? ' on' : ''}" style="--breast:${rgb(sp.cols.breast)};--cap:${rgb(sp.cols.cap)}"><i></i>${sp.name}${learned.has(sp.id) ? '' : ' <small>heard</small>'}</button>`).join('')
-      + (picked ? '<button data-sp="none" class="stop">Sing as yourself</button>' : '')
+    birds.innerHTML = `<header><span>Imitate a bird</span><button data-close aria-label="Close">✕</button></header><div class="cards3">`
+      + list.map(sp => `<button data-sp="${sp.id}" class="${learned.has(sp.id) ? '' : 'heard'}${picked === sp ? ' on' : ''}" style="--breast:${rgb(sp.cols.breast)};--cap:${rgb(sp.cols.cap)}">${birdSVG(sp)}<span>${sp.name}</span>${learned.has(sp.id) ? '' : '<small>heard, not learned</small>'}</button>`).join('')
+      + (picked ? '<button data-sp="none" class="stop"><span>Sing as yourself</span></button>' : '') + '</div>'
       + (list.length ? '' : '<p>No songs yet. Perch near a singing bird and listen.</p>');
     bookBtn.querySelector('em').textContent = picked ? picked.name : list.length ? `${learned.size} known` : '';
     bookBtn.classList.toggle('on', !!picked);
