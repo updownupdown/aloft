@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Aloft · 3D</title>
+<meta name="theme-color" content="#f6f1e6">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="stylesheet" href="3d/3d.css">
+</head>
+<body>
+<canvas id="game3" aria-label="Aloft in 3D"></canvas>
+<div id="ui3"></div>
+<script type="module">
+  import { start } from './3d/main.js';
+  try { localStorage.setItem('aloft.mode', '"3d"'); } catch { /* private mode */ }
+  start(document.getElementById('game3'), document.getElementById('ui3'));
+  if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js');
+</script>
+</body>
+</html>
