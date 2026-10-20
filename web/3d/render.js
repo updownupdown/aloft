@@ -34,7 +34,8 @@ void main() {
     vec3 ab = uFocus - uCam, ap = vPos - uCam; float t = clamp(dot(ap, ab) / dot(ab, ab), 0., 1.);
     float dl = length(ap - ab * t), dc = length(ap), dh = length(vPos - uFocus);
     float k = min(min(smoothstep(3.5, 10., dl) + step(.98, t), smoothstep(6., 18., dc)), mix(.12, 1., smoothstep(3., 15., dh)));
-    if (k < .99) {
+    // only leaves go see-through: trunks and limbs stay solid so you can see what to land on
+    if (k < .99 && vCol.g > vCol.r * 1.05) {
       // an ordered 4x4 dither reads as a soft screen rather than noise
       ivec2 q = ivec2(gl_FragCoord.xy) & 3;
       int i = q.x + q.y * 4;
@@ -287,6 +288,12 @@ export function createRenderer(gl) {
       gl.bindBuffer(gl.ARRAY_BUFFER, fx.buf); gl.bufferData(gl.ARRAY_BUFFER, sh, gl.DYNAMIC_DRAW);
       gl.bindVertexArray(fx.vao); gl.drawArrays(gl.TRIANGLES, 0, sh.length / 7);
       gl.disable(gl.POLYGON_OFFSET_FILL);
+    }
+    // ribbons: thin see-through strips a system lays in the world (the aim line), 7 floats a vertex
+    if (S.ribbon?.length) {
+      gl.uniform1f(flat.u.uPoints, 0);
+      gl.bindBuffer(gl.ARRAY_BUFFER, fx.buf); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(S.ribbon), gl.DYNAMIC_DRAW);
+      gl.bindVertexArray(fx.vao); gl.drawArrays(gl.TRIANGLES, 0, S.ribbon.length / 7);
     }
     gl.useProgram(water.p);
     gl.uniformMatrix4fv(water.u.uVP, false, vp); gl.uniform3fv(water.u.uCam, S.cam);

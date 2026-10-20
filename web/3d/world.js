@@ -171,7 +171,8 @@ export const TREE = {
   crownY: .68, crownR: .3,                      // broadleaf crown sphere (soft)
   limbY: .42, limbL: .3,                        // broadleaf low limb, a perch under the canopy
   // perchable limbs: [turn from the tree's yaw, height, length] (broadleaf); pines get [turn, height, reach]
-  limbs: [[[0, .42, .3], [2.3, .5, .27], [4.2, .36, .28]], [[0, .34, .2], [3.1, .5, .15]]],
+  limbs: [[[0, .42, .3], [2.3, .5, .27], [4.2, .36, .28]], [[0, .3, .26], [2.1, .42, .26], [4.2, .54, .18]]],
+  limbR: [.018, .015],                           // limb thickness at the trunk (it tapers to half)
 };
 const treeCache = new Map();
 export function treesIn(cx, cz) {
@@ -212,9 +213,11 @@ export function treesNear(x, z, r) {
 export function perchesOf(t) {
   const p = [{ x: t.x, y: t.y + t.s * (t.kind ? 1.0 : .97), z: t.z, top: true }];
   // out along each limb, where a hawk would sit (broadleaf limbs rise a little toward the tip)
-  for (const [o, y, l] of TREE.limbs[t.kind ? 1 : 0]) {
-    const a = t.yaw + o, r = l * (t.kind ? .9 : .75);
-    p.push({ x: t.x + Math.cos(a) * t.s * r, y: t.y + t.s * (y + (t.kind ? .01 : .015)), z: t.z + Math.sin(a) * t.s * r, top: false });
+  // on top of the limb (its centre line rises .06 along it and it tapers to half its thickness)
+  const k = t.kind ? 1 : 0, f = t.kind ? .85 : .75;
+  for (const [o, y, l] of TREE.limbs[k]) {
+    const a = t.yaw + o, r = l * f, top = y - .04 + f * .06 + TREE.limbR[k] * (1 - f * .5);
+    p.push({ x: t.x + Math.cos(a) * t.s * r, y: t.y + t.s * top, z: t.z + Math.sin(a) * t.s * r, top: false, a });
   }
   return p;
 }
