@@ -70,7 +70,7 @@ small { display: block; font-size: 12.5px; font-style: italic; color: var(--ink2
 .hint3 { bottom: calc(22px + env(safe-area-inset-bottom)); font-style: italic; }
 .toast3 { top: calc(56px + env(safe-area-inset-top)); }
 .hint3.show, .toast3.show { opacity: 1; }
-#ui3.menu-open .menu3, #ui3.menu-open .corner3, #ui3.menu-open .hint3 { display: none; }
+#ui3.menu-open .menu3, #ui3.menu-open .corner3, #ui3.menu-open .hint3, #ui3.menu-open .hud3, #ui3.menu-open .pad3 { display: none; }
 #ui3.bare3 > :not(.photo3):not(.toast3) { display: none !important; }
 
 /* a plain card (no WebGL, goodbye) */

@@ -30,8 +30,9 @@ export function lit(a, b, c, k = 1) {
   return (n[0] * LIGHT[0] + n[1] * LIGHT[1] + n[2] * LIGHT[2]) / l;
 }
 // a rectangle cut into jittered triangles, each shaded by its lean; colour(cx, cy) gives the base
-// colour at a facet's centre. relief scales how far the facets tilt.
-export function facets(x, x0, y0, w, h, cell, colour, { seed = 1, relief = 1, gap = 0 } = {}) {
+// colour at a facet's centre. relief scales how far the facets tilt; gap strokes each facet in its
+// own colour so no hairline of background shows along the seams.
+export function facets(x, x0, y0, w, h, cell, colour, { seed = 1, relief = 1, gap = .8 } = {}) {
   seedR(seed);
   const nx = Math.max(1, Math.round(w / cell)), ny = Math.max(1, Math.round(h / cell)), sx = w / nx, sy = h / ny, V = [];
   for (let j = 0; j <= ny; j++) for (let i = 0; i <= nx; i++) {
@@ -46,8 +47,9 @@ export function facets(x, x0, y0, w, h, cell, colour, { seed = 1, relief = 1, ga
       const cx = (t[0][0] + t[1][0] + t[2][0]) / 3, cy = (t[0][1] + t[1][1] + t[2][1]) / 3;
       const base = colour(cx, cy, t); if (!base) continue;
       const f = base.length > 3 ? base[3] : lit(...t, relief);
-      poly(x, t, C(shade(base, .9 + f * .14)));
-      if (gap) { x.strokeStyle = C(shade(base, .9 + f * .14)); x.lineWidth = gap; x.stroke(); }
+      const col = C(shade(base, .9 + f * .14));
+      poly(x, t, col);
+      if (gap) { x.strokeStyle = col; x.lineWidth = gap; x.lineJoin = 'round'; x.stroke(); }
     }
   }
 }

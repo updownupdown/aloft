@@ -1,9 +1,10 @@
-// How to play: the controls map (an ink drawing of the two thumbs for each move, beside its
+// How to play: the controls map (a flat drawing of the two thumbs for each move, beside its
 // words), then the ways of the world. Keep the map in step with input.js and flight.js.
 const INK = '#3a2418';
 const PIG = { water: '#4f7fa6', berry: '#a8483a', ochre: '#b8862f', leaf: '#6f8a4a', indigo: '#4f6f9e', stone: '#8a7a6a' };
 
-// a phone held sideways with a thumb on each side; marks: 'tap', 'up', 'down', 'in', 'out', 'hold', or none
+// a phone held sideways with a thumb on each side; marks: 'tap', 'up', 'down', 'in', 'out', 'hold',
+// 'side' (slid left and right together, for steering a stoop), or none
 function thumbs(left, right, col) {
   const mark = (m, x, y, s) => {
     const arrow = (dx, dy) => { const tx = x + dx * 12, ty = y + dy * 12, px = -dy * 3.2, py = dx * 3.2;
@@ -14,11 +15,14 @@ function thumbs(left, right, col) {
     if (m === 'down') return arrow(0, 1);
     if (m === 'in') return arrow(s, 0);
     if (m === 'out') return arrow(-s, 0);
+    if (m === 'side') { if (s < 0) return ''; const c = x + 7, yy = y + 12;   // one double arrow under both thumbs
+      return `<path d="M${c - 17} ${yy} L${c + 17} ${yy} M${c - 13} ${yy - 3.5} L${c - 17} ${yy} L${c - 13} ${yy + 3.5} M${c + 13} ${yy - 3.5} L${c + 17} ${yy} L${c + 13} ${yy + 3.5}"/>`; }
     return '';
   };
-  const thumb = (x, y, m) => `<ellipse cx="${x}" cy="${y}" rx="5" ry="6" fill="${m ? col : 'none'}" fill-opacity=".28" stroke="${INK}" stroke-opacity="${m ? .8 : .35}"/>` +
+  const hex = (x, y) => Array.from({ length: 6 }, (_, i) => { const a = i / 6 * Math.PI * 2 + Math.PI / 6; return `${(x + Math.cos(a) * 6).toFixed(1)},${(y + Math.sin(a) * 6).toFixed(1)}`; }).join(' ');
+  const thumb = (x, y, m) => `<polygon points="${hex(x, y)}" fill="${m ? col : 'none'}" fill-opacity=".32" stroke="${INK}" stroke-opacity="${m ? .8 : .35}" stroke-linejoin="miter"/>` +
     `<g stroke="${col}" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round">${mark(m, x, y, x < 38 ? 1 : -1)}</g>`;
-  return `<svg viewBox="0 0 76 50" aria-hidden="true"><rect x="3" y="5" width="70" height="40" rx="6" fill="none" stroke="${INK}" stroke-opacity=".35" stroke-width="1"/>${thumb(18, 28, left)}${thumb(58, 28, right)}</svg>`;
+  return `<svg viewBox="0 0 76 50" aria-hidden="true"><polygon points="9,5 67,5 73,11 73,39 67,45 9,45 3,39 3,11" fill="none" stroke="${INK}" stroke-opacity=".35" stroke-width="1"/>${thumb(left === 'side' ? 31 : 18, left === 'side' ? 22 : 28, left)}${thumb(right === 'side' ? 45 : 58, right === 'side' ? 22 : 28, right)}</svg>`;
 }
 
 const MOVES = [
@@ -28,6 +32,7 @@ const MOVES = [
   ['down', 'down', PIG.water, 'Dive', 'Both thumbs down. Diving earns speed. (Invert in Settings swaps the two.)'],
   ['up', 'down', PIG.leaf, 'Bank and turn', 'One up, one down: you turn toward the lower thumb, like tipping your wings.'],
   ['in', 'in', PIG.berry, 'Tuck and stoop', 'Slide your thumbs together. The faint aim dots focus on one spot: dive at a mouse.'],
+  ['side', 'side', PIG.berry, 'Steer the stoop', 'Wings tucked, slide both thumbs left or right together to steer the dive onto its mark.'],
   ['out', 'out', PIG.ochre, 'Flare and land', 'Slide them apart. You slow, hover with flaps, and drop your feet to land.'],
   ['hold', '', PIG.ochre, 'Ride a thermal', 'Inside rising air, hold a thumb still: the hawk circles the lift on its own.'],
 ];
@@ -40,7 +45,7 @@ export function howtoSystem(G) {
     <ul class="how">
       <li><b>Mice</b> twitch the grass in open meadows. Dive at one and come in low; your feet reach for it. The aim ring turns berry-red on a mouse.</li>
       <li><b>Drink</b> by landing at the water’s edge or on the water. Food lasts about five minutes, water about seven. Nothing bad happens when they run low; your wings just recover more slowly.</li>
-      <li>Fly slow into a <b>branch, a treetop or the leaves</b> and you settle on it. Trunks are hard. The aim ring is sage where a landing would be soft.</li>
+      <li>Slow down into a tree’s crown and you settle on one of its <b>limbs</b>. Trunks are hard. The aim ring is sage where a landing would be soft.</li>
     </ul>
     <h3>The air</h3>
     <ul class="how">

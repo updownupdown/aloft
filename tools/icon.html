@@ -14,7 +14,7 @@ window.render = size => {
   const c = document.getElementById('c'); c.width = c.height = size;
   const x = c.getContext('2d');
   // paper in broad facets, lit from the upper left, a little warmer toward the lower right
-  facets(x, 0, 0, size, size, size / 4, cx => { const t = cx / size; return [241 - t * 6, 234 - t * 9, 220 - t * 16]; }, { seed: 4, relief: .5, gap: .6 });
+  facets(x, 0, 0, size, size, size / 4, cx => { const t = cx / size; return [241 - t * 6, 234 - t * 9, 220 - t * 16]; }, { seed: 4, relief: .5 });
   drawSeal(x, size / 2, size * .49, size * (size < 64 ? .44 : .38));
 };
 render(512);

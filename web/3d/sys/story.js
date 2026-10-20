@@ -87,7 +87,7 @@ export function storySystem(G) {
     }
     return out;
   }
-  G.hud.tip('keepsake', () => b.state === 'fly' && keepsakesNear(b.p[0], b.p[2], 60).length > 0, 'Something glints in the grass. Land beside it to pick it up: a keepsake for a nest.');
+  G.hud.tip('keepsake', () => b.state === 'fly' && keepsakesNear(b.p[0], b.p[2], 35).length > 0, 'Something glints in the grass. Land beside it to pick it up: a keepsake for a nest.');
   function pickUp() {
     for (const k of keepsakesNear(b.p[0], b.p[2], 6)) {
       if (Math.hypot(k.x - b.p[0], k.z - b.p[2]) > 3.5) continue;

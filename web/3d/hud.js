@@ -67,8 +67,9 @@ export function createHud(G, ui, input) {
     if (toastT > 0) { if (toastEl.textContent !== msg && !queue.some(m => m[0] === msg)) queue.push([msg, secs]); return; }
     toastEl.textContent = msg; toastEl.classList.add('show'); toastT = secs;
   };
-  // a tip shows while `when()` holds, until H.did(id) is called (it is remembered)
-  H.tip = (id, when, text) => H.tips.push({ id, when, text });
+  // a tip shows while `when()` holds, until H.did(id) is called (it is remembered). It shows for
+  // nine seconds at a time, then rests a minute, and no more than three times a session
+  H.tip = (id, when, text) => H.tips.push({ id, when, text, shown: 0, rest: 0 });
   H.did = id => {
     if (!H.done[id]) { H.done[id] = 1; store.set('hints3d', H.done); }
     if (tipNow === id) tipT = Math.min(tipT, .3);
@@ -90,7 +91,7 @@ export function createHud(G, ui, input) {
     tipT -= dt;
     if (tipT <= 0) {
       tipNow = null;
-      for (const t of H.tips) if (!H.done[t.id] && t.when()) { tipNow = t.id; hintEl.textContent = t.text; tipT = 9; break; }
+      for (const t of H.tips) if (!H.done[t.id] && t.shown < 3 && G.t > t.rest && t.when()) { tipNow = t.id; hintEl.textContent = t.text; tipT = 9; t.shown++; t.rest = G.t + 69; break; }
     }
     hintEl.classList.toggle('show', !!tipNow && tipT > .3);
     q('.alt').textContent = H.status;

@@ -94,7 +94,7 @@ export function photoSystem(G) {
   function postcard(canvas, name, date, at) {
     const W = 400, H = 250, c = document.createElement('canvas'); c.width = W; c.height = H;
     const x = c.getContext('2d');
-    facets(x, 0, 0, W, H, 70, cx => { const t = cx / W; return [PIG.paper[0] - 2 - t * 6, PIG.paper[1] - 4 - t * 9, PIG.paper[2] - 8 - t * 16]; }, { seed: date.length + name.length, relief: .4, gap: .6 });
+    facets(x, 0, 0, W, H, 70, cx => { const t = cx / W; return [PIG.paper[0] - 2 - t * 6, PIG.paper[1] - 4 - t * 9, PIG.paper[2] - 8 - t * 16]; }, { seed: date.length + name.length, relief: .4 });
     const pw = 300, ph = 150, py = 18, cw = canvas.width, ch = canvas.height;
     const sw = Math.min(cw, ch * 2), sh = sw / 2;
     const sx = clamp(at[0] - sw / 2, 0, cw - sw), sy = clamp(at[1] - sh * .6, 0, ch - sh);
