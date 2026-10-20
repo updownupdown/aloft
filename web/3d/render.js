@@ -10,7 +10,7 @@ import { buildHawk, HAWK_SCALE } from './hawk.js';
 const CLOUDY = new Set(['cloud', 'storm', 'puff', 'lens']);
 const COMMON_FS = `
 uniform vec3 uCam, uSun, uSunCol, uSkyAmb, uGndAmb, uFogCol, uFocus;
-uniform float uFogDen, uDither;
+uniform float uFogDen, uDither, uSeek;
 in vec3 vPos, vNrm, vCol, vColB; in float vLeaf;
 out vec4 frag;
 float h21(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
@@ -41,7 +41,9 @@ void main() {
     // leaves never hide it and you can see the gaps you are flying into
     vec3 ab = uFocus - uCam, ap = vPos - uCam; float t = clamp(dot(ap, ab) / dot(ab, ab), 0., 1.);
     float dl = length(ap - ab * t), dc = length(ap), dh = length(vPos - uFocus);
-    float k = min(min(smoothstep(3.5, 10., dl) + step(.98, t), smoothstep(6., 18., dc)), mix(.12, 1., smoothstep(3., 15., dh)));
+    // uSeek (flaring to land, or perched) opens the trees wider and from farther off, to find a perch
+    float e = uSeek;
+    float k = min(min(smoothstep(3.5 + 6. * e, 10. + 22. * e, dl) + step(.98, t), smoothstep(6. + 12. * e, 18. + 34. * e, dc)), mix(.12 - .07 * e, 1., smoothstep(3. + 6. * e, 15. + 25. * e, dh)));
     // only leaves go see-through: trunks and limbs stay solid so you can see what to land on
     if (k < .99 && vLeaf > .5) {   // leaves, marked by the vertex shader before the autumn turn
       // an ordered 4x4 dither reads as a soft screen rather than noise
@@ -230,7 +232,7 @@ export function createRenderer(gl) {
   function setLight(P, S) {
     gl.uniform3fv(P.u.uCam, S.cam); gl.uniform3fv(P.u.uSun, S.sun); gl.uniform3fv(P.u.uSunCol, S.sunCol);
     gl.uniform3fv(P.u.uSkyAmb, S.skyAmb); gl.uniform3fv(P.u.uGndAmb, S.gndAmb); gl.uniform3fv(P.u.uFogCol, S.horizon);
-    gl.uniform1f(P.u.uFogDen, S.fogDen); gl.uniform3fv(P.u.uFocus, S.focus); gl.uniform1f(P.u.uDither, 0);
+    gl.uniform1f(P.u.uFogDen, S.fogDen); gl.uniform3fv(P.u.uFocus, S.focus); gl.uniform1f(P.u.uDither, 0); if (P.u.uSeek) gl.uniform1f(P.u.uSeek, S.seek || 0);
   }
 
   R.draw = (S, W, cw, ch) => {
