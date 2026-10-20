@@ -122,7 +122,12 @@ function wing(p, sgn) {
   quad(P(Et), P(Wt), P(Wt2), P(Et2), C.hand, C.tipUnder, up);
 }
 
+// the tail's colour with health: 0 a juvenile's brown with fine dark bars, 1 glossy brick red
+const JUV = { tail: hex('#8a6a48'), tailBand: hex('#4a3626'), tailTip: hex('#d9c8ad') };
+const mixc = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 function tail(p) {
+  const red = Math.max(0, Math.min(1, p.tailRed ?? 1));
+  const T = { tail: mixc(JUV.tail, C.tail, red), band: mixc(JUV.tailBand, C.tailBand, red), tip: mixc(JUV.tailTip, C.tailTip, red) };
   const n = 6, spread = .14 + p.tail * .9, L = .3 + p.tail * .03, base = [0, .0, -.27], up = [0, 1, 0];
   const droop = p.tailPitch || 0;
   for (let i = 0; i < n; i++) {
@@ -130,9 +135,12 @@ function tail(p) {
     const dir = [Math.sin(a), -Math.sin(droop) * .8, -Math.cos(a)], side = [Math.cos(a), 0, Math.sin(a)];
     const w = .045 + p.tail * .012;
     const at = (k, s) => [base[0] + dir[0] * L * k + side[0] * w * s, base[1] + dir[1] * L * k, base[2] + dir[2] * L * k + side[2] * w * s];
-    quad(at(0, -.5), at(0, .5), at(.78, 1), at(.78, -1), C.tail, C.tailUnder, up);
-    quad(at(.78, -1), at(.78, 1), at(.88, 1), at(.88, -1), C.tailBand, C.tailUnder, up);
-    quad(at(.88, -1), at(.88, 1), at(1, .8), at(1, -.8), C.tailTip, C.tailTip, up);
+    if (red < .6) {   // a juvenile's tail is barred all along
+      for (let k = 0; k < 4; k++) quad(at(k * .195, -.5 - k * .12), at(k * .195, .5 + k * .12), at(k * .195 + .16, .6 + k * .12), at(k * .195 + .16, -.6 - k * .12), T.tail, C.tailUnder, up);
+      for (let k = 0; k < 4; k++) quad(at(k * .195 + .16, -.6 - k * .12), at(k * .195 + .16, .6 + k * .12), at(k * .195 + .195, .62 + k * .12), at(k * .195 + .195, -.62 - k * .12), mixc(T.band, T.tail, red / .6), C.tailUnder, up);
+    } else quad(at(0, -.5), at(0, .5), at(.78, 1), at(.78, -1), T.tail, C.tailUnder, up);
+    quad(at(.78, -1), at(.78, 1), at(.88, 1), at(.88, -1), T.band, C.tailUnder, up);
+    quad(at(.88, -1), at(.88, 1), at(1, .8), at(1, -.8), T.tip, T.tip, up);
   }
 }
 

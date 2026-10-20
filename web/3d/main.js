@@ -7,7 +7,8 @@
 // S.props[name]: x, y, z, scale, yaw, tint, turn, phase), points (S.motes: x, y, z, r, g, b,
 // size) and particles (G.part()). It listens and speaks on the bus: G.on(name, fn) and
 // G.emit(name, ...args). Events: flap, takeoff, land, bump, leaves, splash, ring, catch,
-// newDay, season, pause, resume, gesture.
+// newDay, season, pause, resume, gesture, trick ('stoop' or 'wingover').
+// Weather (sys/weather.js) sets G.rain, G.storm, G.windK (0..1); the tail colour reads G.tailRed.
 import { createGL } from './gl.js';
 import { createRenderer } from './render.js';
 import { createInput } from './input.js';
@@ -25,6 +26,7 @@ import { ringsSystem } from './sys/rings.js';
 import { foodSystem } from './sys/food.js';
 import { aimSystem } from './sys/aim.js';
 import { appRows } from './app.js';
+import { STYLES } from './post.js';
 
 const SYSTEMS = [clockSystem, airSystem, ringsSystem, foodSystem, aimSystem];
 
@@ -118,6 +120,14 @@ export function start(canvas, ui) {
   G.menu.button(play, { label: 'Start a new journey', sub: 'from the valley', onClick: el => {
     if (el.dataset.sure) { store.set('save3d', null); location.reload(); } else { el.dataset.sure = 1; el.firstChild.textContent = 'Tap again to start over '; }
   } });
+  // the look: one of the styles in post.js (?style=ink to try one)
+  R.style = qs.get('style') || store.get('style3d', 'plain');
+  if (!STYLES.some(([k]) => k === R.style)) R.style = 'plain';
+  const styleBtn = G.menu.button(play, { label: 'Look', sub: 'Low poly', onClick: el => {
+    const i = STYLES.findIndex(([k]) => k === R.style), next = STYLES[(i + 1) % STYLES.length];
+    R.style = next[0]; store.set('style3d', R.style); el.querySelector('em').textContent = next[1];
+  } });
+  styleBtn.querySelector('em').textContent = STYLES.find(([k]) => k === R.style)[1];
   appRows(G);
   H.showFps(G.settings.fps);
   G.menu.tab(how, 'How to fly').insertAdjacentHTML('beforeend', `<ul class="how">
@@ -136,6 +146,17 @@ export function start(canvas, ui) {
   G.on('pause', persist);
   document.addEventListener('visibilitychange', () => { if (document.hidden) { persist(); audio.suspend(); G.menu.set(true); } else audio.resume(); });
   addEventListener('pagehide', persist);
+
+  // tricks, for whoever is watching (a mate, the story): a full stoop, a wingover (a hard
+  // bank one way then the other)
+  let stooping = false, lastBank = 0, lastBankT = -9;
+  function tricks() {
+    if (b.state !== 'fly') { stooping = false; return; }
+    if (!stooping && b.s > 30 && b.tuck > .7) { stooping = true; G.emit('trick', 'stoop'); }
+    if (stooping && b.s < 18) stooping = false;
+    const side = b.roll > .8 ? 1 : b.roll < -.8 ? -1 : 0;
+    if (side && side !== lastBank) { if (lastBank && G.t - lastBankT < 2) G.emit('trick', 'wingover'); lastBank = side; lastBankT = G.t; }
+  }
 
   // ---- the frame ---------------------------------------------------------------------------
   function resize() {
@@ -170,13 +191,14 @@ export function start(canvas, ui) {
     if (c.spread < -.5) { H.did('tuck'); H.did('aim'); }
     if (c.spread > .5) H.did('flare');
     G.perchMark = perchAhead(b);
+    tricks(dt);
     for (const s of systems) if (s.id !== 'clock') s.update?.(dt, c);
 
     for (const p of G.parts) { p.life -= dt; p.v[1] -= 1.5 * dt; for (let k = 0; k < 3; k++) p.p[k] += p.v[k] * dt; }
     G.parts = G.parts.filter(p => p.life > 0);
 
     // the scene: light, camera and hawk, then whatever each system adds
-    const S = { ...G.light, time: G.t, wind: .3, fogDen: .0042, autumnCol: [.8, .5, .22], props: {}, motes: [] };
+    const S = { ...G.light, time: G.t, wind: G.windK ?? .3, fogDen: .0042, autumnCol: [.8, .5, .22], props: {}, motes: [] };
     camera.update(dt, S);
     if (G.perchMark) (S.props.ring ||= []).push(G.perchMark.x, G.perchMark.y + .35, G.perchMark.z, .45, G.t * 1.5, .7, 0, 0);
     for (const s of systems) s.scene?.(S);
@@ -187,8 +209,8 @@ export function start(canvas, ui) {
 
     // sound
     const above = b.p[1] - Math.max(height(b.p[0], b.p[2]), WATER), L = G.light;
-    audio.ambience(Math.min(1, b.s / 30), 0, { height: above * 2, stoop: clamp((b.s - 25) / 18, 0, 1), night: L.night, frogs: L.night * (height(b.p[0], b.p[2]) < 3 ? 1 : 0) });
-    music.update(dt, { night: L.night, storm: 0, learned: G.learned || new Set(), species: G.species || [], speed: b.s * 4, wind: .3, height: above * 2 });
+    audio.ambience(Math.min(1, b.s / 30 + (G.storm || 0) * .3), G.rain || 0, { height: above * 2, stoop: clamp((b.s - 25) / 18, 0, 1), night: L.night, frogs: L.night * (height(b.p[0], b.p[2]) < 3 ? 1 : 0) });
+    music.update(dt, { night: L.night, storm: G.storm || 0, learned: G.learned || new Set(), species: G.species || [], speed: b.s * 4, wind: G.windK ?? .3, height: above * 2 });
 
     setWings(b.stamina);
     H.status = b.state === 'fly' ? `${above.toFixed(0)} m · ${(b.s * 3.6).toFixed(0)} km/h${b.ride ? ' · riding the thermal' : b.lift > .8 ? ' · rising air' : ''}`
