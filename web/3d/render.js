@@ -99,7 +99,7 @@ void main() {
     vec2 q = d.xz / (d.y + .08) * 1.6 + vec2(uTime * .004, 0.);
     float n = vn(q) * .6 + vn(q * 2.3 + 7.) * .3 + vn(q * 5.1 + 3.) * .1;
     float cl = smoothstep(.52, .78, n) * smoothstep(.02, .25, d.y);
-    c = mix(c, uCloud, cl * .75);
+    c = mix(c, uCloud, cl * .3);   // only faint high haze: the clouds themselves are meshes (sys/air.js)
     if (uNight > 0.) { vec2 g = floor(d.xz / (d.y + .3) * 140.); float st = step(.996, h21(g)) * (1. - cl) * smoothstep(.05, .3, d.y);
       c += vec3(st) * uNight * (.6 + .4 * sin(uTime * 2. + h21(g + 3.) * 40.)); }
   }

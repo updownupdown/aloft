@@ -61,9 +61,10 @@ function body(p) {
     tri(a, b, m, C.cere, C.cere);
     tri(m, b, (k & 1) ? hook : tip, C.beak, C.beak);
   }
-  // eyes
+  // eyes, under a stern brow
   for (const sx of [1, -1]) {
     const e = [sx * .066, .065, .31];
+    tri([sx * .05, .1, .28], [sx * .072, .088, .33], [sx * .062, .098, .25], C.cap, C.cap);
     tri([e[0], e[1] + .016, e[2]], [e[0] + sx * .004, e[1], e[2] + .022], [e[0], e[1] - .014, e[2]], C.eye, C.eye);
   }
 }
@@ -98,6 +99,15 @@ function wing(p, sgn) {
   quad(P(Sl), P(El), P(Et), P(St), C.covert, C.under, up);
   quad(P(E), P(W), P(Wl), P(El), C.lead, C.comma, up);
   quad(P(El), P(Wl), P(Wt), P(Et), C.hand, C.handUnder, up);
+  // a row of lighter coverts scalloped across the arm (top), with a few dark flecks under it
+  for (let i = 0; i < 4; i++) {
+    const t0 = i / 4, t1 = (i + 1) / 4, mid = .5;
+    const A = [Sl[0] + (El[0] - Sl[0]) * t0, Sl[1] + (El[1] - Sl[1]) * t0], B = [Sl[0] + (El[0] - Sl[0]) * t1, Sl[1] + (El[1] - Sl[1]) * t1];
+    const Ad = [A[0] + (St[0] + (Et[0] - St[0]) * t0 - A[0]) * mid, A[1] + (St[1] + (Et[1] - St[1]) * t0 - A[1]) * mid];
+    const Bd = [B[0] + (St[0] + (Et[0] - St[0]) * t1 - B[0]) * mid, B[1] + (St[1] + (Et[1] - St[1]) * t1 - B[1]) * mid];
+    const tipc = [(Ad[0] + Bd[0]) / 2, (Ad[1] + Bd[1]) / 2 - .03];
+    tri(P(A, .006), P(B, .006), P(tipc, .006), C.side, i & 1 ? C.comma : C.under, up);
+  }
   // the wrist comma
   tri(P(Wl), P([Wl[0] - .05, Wl[1] - .02]), P([(Wl[0] + Wt[0]) / 2, (Wl[1] + Wt[1]) / 2]), C.hand, C.comma, up);
   // five slotted primaries fanning from the wrist
@@ -147,7 +157,9 @@ function tail(p) {
 function legs(p) {
   const d = .16 * p.legs;
   for (const sx of [1, -1]) {
-    const a = [sx * .04, -.07, .04], b = [sx * .045, -.07 - d, .04 + d * .2];
+    const a = [sx * .04, -.07, .04], b = [sx * .045, -.07 - d, .04 + d * .2], k = [sx * .05, -.07 - d * .45, .04 + d * .09];
+    // feathered thighs, then bare yellow shanks
+    quad([a[0] - .03, a[1] + .02, a[2] - .02], [a[0] + .03, a[1] + .02, a[2] - .02], [k[0] + .022, k[1], k[2]], [k[0] - .022, k[1], k[2]], C.belly, C.belly);
     quad([a[0] - .012, a[1], a[2]], [a[0] + .012, a[1], a[2]], [b[0] + .01, b[1], b[2]], [b[0] - .01, b[1], b[2]], C.leg, C.leg);
     for (const dz of [-.03, .04]) tri([b[0] - .01, b[1], b[2]], [b[0] + .01, b[1], b[2]], [b[0], b[1] - .015, b[2] + dz], C.beak, C.beak);
   }
