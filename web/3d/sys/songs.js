@@ -20,6 +20,7 @@ import { clamp, dist3 } from '../util.js';
 import { registerSongbirds, pushBird, songTreesNear, habitat } from './songbirds.js';
 import { createSingUI, NOTE_COLS, KINDS } from './singui.js';
 import { journal } from '../journal.js';
+import { BIRD } from '../hawk.js';
 import { songbirdPic } from '../pics.js';
 
 export const SONG = {
@@ -42,6 +43,7 @@ const GIFT_TEXT = {
   fish: 'a fish rises and you snatch it',
   calm: 'the air goes calm and gentle for a while',
 };
+const FAR = { hawk: 'hawks', osprey: 'ospreys', owl: 'owls', raven: 'ravens' };
 const PHRASE = { dawn: 'at dawn', day: 'in the daytime', dusk: 'at dusk', night: 'at night' };
 const PLACE = { forest: 'the woods', ridge: 'the great ridge', coast: 'the coast', meadow: 'a meadow', marsh: 'the marsh', lakeland: 'the lakeland', cliffs: 'the high ground', mountains: 'the mountains' };
 const hex01 = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255);
@@ -243,12 +245,12 @@ export function songsSystem(G) {
     if (callT > 0) return;
     callT = SONG.callCD;
     const e = echo(); if (e) e.vol *= .4 + .6 * k;
-    A.scream(false, e, .3 + .7 * k);
-    if (Math.random() < .6) A.scream(true);   // a hawk far off answers
+    A.call(BIRD, false, e, .3 + .7 * k);   // in the voice of the bird you fly as
+    if (Math.random() < .6) A.call(BIRD, true);   // one of your kind far off answers
     // mice freeze where they stand for a few seconds
     for (const m of G.systems.food?.mice?.values() || []) { m.go = 0; m.flee = 0; m.wait = Math.max(m.wait, 5); }
     H.did('call'); G.emit('call', k);
-    if (!G.flags.call) { G.flags.call = 1; H.toast('Your call carries over the valley. Mice freeze where they stand, and hawks far off answer.', 5); }
+    if (!G.flags.call) { G.flags.call = 1; H.toast(`Your call carries over the valley. Mice freeze where they stand, and ${FAR[BIRD] || 'birds of your kind'} far off answer.`, 5); }
   }
 
   // ---- keys: 1 to 5 sing at each pitch, 6 to 9 choose whistle, chip, trill, buzz; C calls -------

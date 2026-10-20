@@ -20,7 +20,7 @@ const SHORT = {
   keepsake: ['spark', 'Something glints: land by it'],
   song: ['note', 'Copy the songbird'],
   imitate: ['note', 'Pick a bird in Songs to imitate'],
-  call: ['call', 'Hold Call to scream'],
+  call: ['call', 'Hold Call to call out'],
 };
 // 20-unit line icons, drawn in the text colour
 const ICON = {
