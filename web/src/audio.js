@@ -173,13 +173,13 @@ export function createAudio() {
   // The other birds you can fly as call in their own voices, through the same paths as the
   // scream: `far` answers from across the valley, `echo` comes back off a cliff, `gain` is how
   // long the button was held. `A.call(bird, ...)` picks the voice (the hawk screams).
-  function callAt(far, echo, gain, near) {
+  function callAt(far, echo, gain, near, dry = false) {
     if (echo) far = true;
     const ctx = A.ctx, t = ctx.currentTime + (echo ? echo.delay : far ? 1.1 + Math.random() * .6 : 0);
     const vol = (echo ? near * echo.vol : far ? near * .35 : near) * gain;
     const out = ctx.createBiquadFilter(); out.type = 'lowpass'; out.frequency.value = far ? 1900 : 6000;
     out.connect(far ? bus() : A.master);
-    if (!far) { const send = ctx.createGain(); send.gain.value = .3; out.connect(send).connect(bus()); }
+    if (!far && !dry) { const send = ctx.createGain(); send.gain.value = .3; out.connect(send).connect(bus()); }
     return { ctx, t, vol, out, k: far && !echo ? .97 : 1 };
   }
   // one syllable: a voice sliding f -> f2 (-> f3), with a rasp (a fast wobble in pitch), through
@@ -212,24 +212,39 @@ export function createAudio() {
         at += .2 - i * .012;
       }
     },
-    // the barn owl: no hoot, a long hissing shriek, "shhrreeeee", that sags at the end
+    // the barn owl: no hoot, a long breathy shriek, "shhhrrreeee": rough hiss over a broad band
+    // (most of it 2-6 kHz), swelling in and trailing off, roughened by a fast flutter in loudness
     owl(v) {
-      syl(v, { dur: 1.9, f: 1300, f2: 1650, f3: 1050, vol: .9, rasp: 320, raspF: 92, bp: 3600, q: .8, breath: 5, bf: 4200 });
-      syl(v, { dur: 1.7, f: 2600, f2: 3200, f3: 2300, type: 'sine', vol: .12, rasp: 140, raspF: 92 });
+      const { ctx, out, t } = v, dur = 1.8, g = ctx.createGain(), am = ctx.createGain(), fl = ctx.createOscillator(), fg = ctx.createGain();
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(v.vol, t + .25); g.gain.setValueAtTime(v.vol, t + 1.1);
+      g.gain.exponentialRampToValueAtTime(.0008, t + dur);
+      am.gain.value = .6; fl.frequency.value = 78; fg.gain.value = .4; fl.connect(fg).connect(am.gain);   // the flutter
+      am.connect(g).connect(out);
+      for (const [f, q, w] of [[2400, 2.5, .8], [3900, 3, 1], [5600, 3, .6]]) {
+        const n = ctx.createBufferSource(), bp = ctx.createBiquadFilter(), bg = ctx.createGain();
+        n.buffer = noiseBuf; bp.type = 'bandpass'; bp.Q.value = q; bg.gain.value = w;
+        bp.frequency.setValueAtTime(f * .9 * v.k, t); bp.frequency.linearRampToValueAtTime(f * v.k, t + .5); bp.frequency.linearRampToValueAtTime(f * .82 * v.k, t + dur);
+        n.connect(bp).connect(bg).connect(am); n.start(t, Math.random()); n.stop(t + dur + .05);
+      }
+      fl.start(t); fl.stop(t + dur + .05);
+      // a faint thin tone inside the hiss
+      syl(v, { dur: 1.6, f: 2100, f2: 2300, f3: 1800, type: 'sine', vol: .06, rasp: 60, raspF: 78 });
     },
-    // the raven: two or three deep, rolling croaks, "prruk ... kraa", far lower than a crow
+    // the raven: two or three deep, rolling croaks, "kronk ... kraa", far lower than a crow; each
+    // starts hard, with a knock in the throat, so it sounds the moment you let go
     raven(v) {
       const n = 2 + (Math.random() < .5 ? 1 : 0);
       for (let i = 0; i < n; i++) {
-        syl(v, { at: i * .5, dur: .34, f: 430 - i * 15, f2: 470 - i * 15, f3: 330, vol: 1, rasp: 70, raspF: 34, bp: 950, q: 1.1, breath: .6, bf: 1300 });
+        syl(v, { at: i * .42, dur: .3, f: 400 - i * 15, f2: 440 - i * 15, f3: 320, vol: 1, rasp: 60, raspF: 32, bp: 900, q: 1.1, breath: .5, bf: 1200 });
+        syl(v, { at: i * .42, dur: .05, f: 260, type: 'square', vol: .5, bp: 700, q: 1 });
       }
     },
   };
-  const NEAR = { osprey: .3, owl: .15, raven: .5 };
+  const NEAR = { osprey: .3, owl: .85, raven: .5 }, DRY = { raven: 1 };
   A.call = (bird, far = false, echo = null, gain = 1) => {
     if (!A.ctx) return;
     if (!CALLS[bird]) return A.scream(far, echo, gain);
-    CALLS[bird](callAt(far, echo, gain, NEAR[bird]));
+    CALLS[bird](callAt(far, echo, gain, NEAR[bird], DRY[bird]));
   };
   // the fledgling's thin answering peep
   A.peep = () => { tone({ f: 3100, f2: 2600, dur: .22, vol: .07, vib: 40, vibF: 30, delay: .8 }); tone({ f: 3300, f2: 2700, dur: .2, vol: .06, vib: 40, vibF: 30, delay: 1.1 }); };
