@@ -10,7 +10,7 @@ import { createPost, STYLE_ID } from './post.js';
 const COMMON_FS = `
 uniform vec3 uCam, uSun, uSunCol, uSkyAmb, uGndAmb, uFogCol, uFocus;
 uniform float uFogDen, uDither;
-uniform highp int uStyle;   // 0 plain, 1 watercolour, 2 ink, 3 cel, 4 layers, 5 retro (see post.js)
+uniform highp int uStyle;   // 0 plain, 1 watercolour, 2 ink, 3 cel, 4 layers, 5 woodblock, 6 gouache (see post.js)
 in vec3 vPos, vNrm, vCol, vColB;
 out vec4 frag;
 float h21(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
@@ -24,6 +24,8 @@ vec3 shade(vec3 col, vec3 n) {
   }
   if (uStyle == 1) wrap = mix(wrap, floor(wrap * 3. + .5) / 3., .45);   // washes: soft steps
   if (uStyle == 4) return col * (amb * .55 + uSunCol * (.45 + wrap * .2));   // layers: nearly flat
+  if (uStyle == 5) wrap = d > .15 ? 1. : .38;                                  // woodblock: lit or shaded, no between
+  if (uStyle == 6) wrap = smoothstep(-.2, .7, d) * .85 + .1;                   // gouache: broad, soft-edged light
   return col * (amb + uSunCol * wrap);
 }
 vec3 haze(vec3 c) {
@@ -35,6 +37,7 @@ vec3 haze(vec3 c) {
     return mix(sil, uFogCol, q * .95);
   }
   if (uStyle == 2) f = min(1., f * 1.25);
+  if (uStyle == 5) f = floor(f * 4. + .3) / 4.;   // woodblock: distance in printed steps
   return mix(c, uFogCol, f);
 }
 float grain() { return .965 + .05 * h21(floor(gl_FragCoord.xy)); }
@@ -65,20 +68,18 @@ void main() {
 const LIT_VS = `#version 300 es
 layout(location=0) in vec3 aPos; layout(location=1) in vec3 aNrm; layout(location=2) in vec3 aCol; layout(location=3) in vec3 aColB;
 uniform mat4 uVP, uModel;
-uniform int uStyle; uniform vec2 uSnap;
-vec4 snap(vec4 p) { if (uStyle != 5) return p; vec2 q = floor(p.xy / p.w * uSnap + .5) / uSnap; return vec4(q * p.w, p.z, p.w); }
+uniform int uStyle;
 out vec3 vPos, vNrm, vCol, vColB;
 void main() {
   vec4 w = uModel * vec4(aPos, 1.);
   vPos = w.xyz; vNrm = mat3(uModel) * aNrm; vCol = aCol; vColB = aColB;
-  gl_Position = snap(uVP * w);
+  gl_Position = uVP * w;
 }`;
 const INST_VS = `#version 300 es
 layout(location=0) in vec3 aPos; layout(location=1) in vec3 aNrm; layout(location=2) in vec3 aCol; layout(location=3) in vec3 aColB;
 layout(location=4) in vec4 iA; layout(location=5) in vec4 iB;
 uniform mat4 uVP; uniform float uTime, uSway; uniform vec3 uAutumn;
-uniform int uStyle; uniform vec2 uSnap;
-vec4 snap(vec4 p) { if (uStyle != 5) return p; vec2 q = floor(p.xy / p.w * uSnap + .5) / uSnap; return vec4(q * p.w, p.z, p.w); }
+uniform int uStyle;
 
 out vec3 vPos, vNrm, vCol, vColB;
 void main() {
@@ -94,7 +95,7 @@ void main() {
   vec3 col = aCol * (.88 + iB.y * .24);
   col = mix(col, uAutumn * (.85 + iB.y * .3), leafy * clamp(iB.z, 0., 1.));
   vCol = col; vColB = col;
-  gl_Position = snap(uVP * vec4(vPos, 1.));
+  gl_Position = uVP * vec4(vPos, 1.);
 }`;
 const SKY_VS = `#version 300 es
 layout(location=0) in vec2 aP; out vec2 vP;
@@ -128,9 +129,8 @@ void main() {
 }`;
 const WATER_VS = `#version 300 es
 layout(location=0) in vec2 aP; uniform mat4 uVP; uniform vec3 uCam; out vec3 vPos;
-uniform int uStyle; uniform vec2 uSnap;
-vec4 snap(vec4 p) { if (uStyle != 5) return p; vec2 q = floor(p.xy / p.w * uSnap + .5) / uSnap; return vec4(q * p.w, p.z, p.w); }
-void main() { vPos = vec3(aP.x * 900. + uCam.x, 0., aP.y * 900. + uCam.z); gl_Position = snap(uVP * vec4(vPos, 1.)); }`;
+uniform int uStyle;
+void main() { vPos = vec3(aP.x * 900. + uCam.x, 0., aP.y * 900. + uCam.z); gl_Position = uVP * vec4(vPos, 1.); }`;
 const WATER_FS = `#version 300 es
 precision highp float;
 in vec3 vPos; out vec4 frag;
@@ -255,7 +255,7 @@ export function createRenderer(gl) {
     let w = cw, h = ch;
     if (styled) [w, h] = post.begin(cw, ch, R.style);
     gl.viewport(0, 0, w, h);
-    for (const P of [lit, inst, sky, water]) { gl.useProgram(P.p); gl.uniform1i(P.u.uStyle, sid); if (P.u.uSnap) gl.uniform2f(P.u.uSnap, w / 2, h / 2); }
+    for (const P of [lit, inst, sky, water]) { gl.useProgram(P.p); gl.uniform1i(P.u.uStyle, sid); }
     const proj = perspective(S.fov, w / h, .15, 1400), view = lookAt(S.cam, S.look, S.camUp);
     const vp = mul(proj, view);
     R.vp = vp;

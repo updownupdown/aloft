@@ -135,11 +135,12 @@ export function start(canvas, ui) {
   // the look: one of the styles in post.js (?style=ink to try one)
   R.style = qs.get('style') || store.get('style3d', 'plain');
   if (!STYLES.some(([k]) => k === R.style)) R.style = 'plain';
-  const styleBtn = G.menu.button(play, { label: 'Look', sub: 'Low poly', onClick: el => {
-    const i = STYLES.findIndex(([k]) => k === R.style), next = STYLES[(i + 1) % STYLES.length];
-    R.style = next[0]; store.set('style3d', R.style); el.querySelector('em').textContent = next[1];
-  } });
-  styleBtn.querySelector('em').textContent = STYLES.find(([k]) => k === R.style)[1];
+  // one row per look; picking one closes the menu so you see it at once. L cycles them in flight.
+  const lookRows = new Map(), markLook = () => { for (const [k, el] of lookRows) el.querySelector('em').textContent = k === R.style ? 'in use' : ''; };
+  const useLook = k => { R.style = k; store.set('style3d', k); markLook(); H.toast(`Look: ${STYLES.find(([q]) => q === k)[1]}`); };
+  for (const [k, name] of STYLES) lookRows.set(k, G.menu.button(play, { label: `Look: ${name}`, sub: ' ', onClick: () => { useLook(k); G.menu.set(false); } }));
+  markLook();
+  addEventListener('keydown', e => { if (e.code === 'KeyL' && !e.repeat) { const i = STYLES.findIndex(([q]) => q === R.style); useLook(STYLES[(i + 1) % STYLES.length][0]); } });
   appRows(G);
   H.showFps(G.settings.fps);
   G.on('pause', persist);

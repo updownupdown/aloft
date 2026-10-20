@@ -1,69 +1,26 @@
 # Aloft — project conventions
 
-**2026-10-20: Aloft is now 3D** (James's decision). The game is `web/index.html` + `web/3d/`.
-The 2D game in `web/src/` is no longer loaded; it stays only as reference while its features
-are ported to 3D, then it is deleted (keep `src/audio.js`, `music.js`, `birdvoice.js`, `songs.js`,
-which 3D and the labs share). See "3D layout" below.
+**2026-10-20: Aloft is 3D** (James's decision); the 2D game was deleted (it is in git history
+before that date). `web/src/` keeps only `audio.js`, `music.js`, `birdvoice.js` and `songs.js`,
+shared by 3D and the labs.
 
-A cozy, zen flight game, first made in 2D (side-scrolling). You play a hawk (a red-tailed-hawk-like
-species) riding thermals over procedurally generated hills, trees and ponds. Painted
-in a loose watercolour style ("Wet Wash"). Android-first as an installable PWA, desktop
+A cozy, zen 3D flight game (first made in 2D). You play a hawk (a red-tailed-hawk-like
+species) riding thermals over procedurally generated hills, trees and ponds. The look is
+one of six post-processing styles in `web/3d/post.js` (Low poly default; James to pick one). Android-first as an installable PWA, desktop
 browser for quick testing, iOS later.
 
 Live: https://updownupdown.github.io/aloft/ (every push to `main` touching `web/` deploys).
 
 ## Stack
 
-- **Plain HTML + JavaScript (ES modules) on a 2D canvas.** No framework, no bundler,
+- **Plain HTML + JavaScript (ES modules), WebGL2 written directly.** No framework, no bundler,
   no build step, no npm dependencies for the game. `web/` is served as-is.
-- Godot was the first prototype and was dropped (2026-10-18): the wasm was ~40 MB, and
-  the art direction is JavaScript canvas code.
+- Godot was the first prototype and was dropped (2026-10-18): the wasm was ~40 MB.
 - All sound is synthesised with Web Audio (`web/src/audio.js`); no audio files.
 - PWA: `web/manifest.webmanifest` + `web/sw.js` (stale-while-revalidate cache). When you
-  add a file under `web/src/`, add it to `FILES` in `sw.js`.
+  add a file, add it to `FILES` in `sw.js` and bump `CACHE`.
 
 ## Layout
-
-```
-web/index.html          entry; loads src/game.js as a module, registers sw.js
-web/style.css           DOM overlay in the Pigment style (menu button, pause menu, toasts, Sing, dial)
-web/src/game.js         state, systems (meters, weather, clock, critters, songs), taps, loop, HUD meters
-web/src/bird.js         hawk flight model, perch/ground/swim states, animation pose
-web/src/world.js        procedural world: biomes (incl. mountains), ground, cliff scarps + rock spires, ponds + fish, landmarks, trees + perches, bushes, twigs, worms, mice, thermals, rings
-web/src/air.js          wave lift + lens clouds, kettles of wild hawks, cumulus at the cloudbase and the tunnels carved in them
-web/src/airart.js       their art: lens clouds, kettle hawks, carved cumulus, ridge-lift grass lean and streaming leaves
-web/src/render.js       draws a frame (sky, parallax hills, world layer, hawk, weather)
-web/src/atmos.js        sky moods and slow changes: dawn fog, rainbow, meteors, aurora, moon phase, feather wear + moult, dream path, way hint
-web/src/skyfx.js        paints those: aurora, rainbow, golden rays, meteors, fog, moulted feathers, wind-arrow hint, the dream
-web/src/paint.js        watercolour toolkit: wash, bloom, softWash, lift, paper textures
-web/src/palette.js      day / dusk / night palettes blended by time of day, greyed by weather
-web/src/input.js        keyboard (arrows/WASD, flap keys) and hands touches to gestures.js
-web/src/gestures.js     touch gestures: taps (counted), holds (by time; report where the finger is), strokes (line, hook, circle); the sign above the hawk
-web/src/controls.js     what each gesture does per state: tap or hold where the hawk should go (hover above, slow above-behind, turn far behind, ride in a thermal), double-tap targets, strokes; latched modes
-web/src/songs.js        songbird species: songs, where and when they sing, the gift each song brings
-web/src/life.js         mice, fish, flocks (boids), visiting songbirds, companion hawk and fledgling
-web/src/journey.js      migration, landmarks found, nest and chick, journal + map (with the route flown), save/resume
-web/src/guide.js        field guide: sight() from the drawing code, portraits cut from the frame, pages for the journal
-web/src/postcard.js     postcards at landmarks, saved to the album
-web/src/story.js        long-term health (tail colour), keepsakes, acrobatics, courtship and a mate down south
-web/src/fauna.js        herons, deer and squirrels: larger life that is only there to be seen
-web/src/music.js        generative music in four styles (valley, tape loops, wind harp, kalimba); Valley's numbers in VALLEY_TUNE
-web/src/birdvoice.js    songbird voices: per-species call templates and synthesis engines
-web/lab.html            bird song lab (pick the songbird voice, saved as aloft.birdVoice)
-web/musiclab.html       music lab (tune Valley, saved as aloft.musicTune); both labs share lab.css
-web/src/photo.js        photo mode (pan, save or share a PNG)
-web/src/ui.js           pause menu, settings, how to play, songbook, toasts
-web/src/controlmap.js   the controls map in How to play: one ink drawing per gesture (keep it in step with controls.js)
-web/src/singing.js      perched singing: a ladder of note pools up one edge (low at the bottom), known birds in columns on the other
-web/src/dial.js         time-of-day dial (top right)
-web/src/seal.js         Aloft's mark, the wax seal (drawSeal): the menu's Resume seal and the app icons
-web/icons/              app icons, the wax seal on paper (generated from tools/icon.html by tools/make-icons.mjs)
-web/fonts/              bundled Cormorant Garamond italic and Spectral (SIL OFL, licences alongside)
-tools/serve.sh          serve web/ on localhost:8000
-tools/make-icons.mjs    regenerate icons from tools/icon.html (needs Playwright)
-```
-
-## 3D layout (the game)
 
 ```
 web/index.html          entry; loads 3d/main.js
@@ -84,7 +41,10 @@ web/3d/seal.js          Aloft's wax seal (menu Resume, app icons via tools/icon.
 web/3d/dial.js          the day dial, top right
 web/3d/journal.js       the Journal tab: journal(G).section(order, title); shot.js: project(), afterDraw(), portraits
 web/3d/app.js           Update, Full screen, Quiet meters and Quit rows
-web/3d/post.js          looks (R.style): plain, wash, ink, cel, layers, retro; one full-screen pass after the scene
+web/3d/post.js          looks (R.style): plain, wash, ink, cel, layers, woodblock, gouache; one full-screen pass after the scene
+web/src/                audio.js (Web Audio synth), music.js (four styles), birdvoice.js, songs.js (songbird species)
+web/lab.html            bird song lab; web/musiclab.html music lab (both share lab.css)
+web/icons/, web/fonts/  app icons (tools/icon.html + tools/make-icons.mjs), bundled fonts (SIL OFL)
 web/3d/sys/*.js         systems: air (thermal clouds/motes), rings, food (hunger, thirst, mice), aim,
                         guide (field guide: G.sight(key,x,y,z,r), G.guide.page()), journey (migration south to
                         JOURNEY.marsh, landmarks found, route, years, journal map), nest (twigs, egg, chick),
@@ -103,41 +63,31 @@ particles with `G.part()`, and talks on the bus (`G.on`, `G.emit`). Saves go und
 
 - Modern JS, ES modules, 2-space indent, semicolons, single quotes. Keep files small
   and focused; shared helpers go in `util.js` / `paint.js`.
-- The world is a pure function of x and `hash()`; never store generated content
-  except in small caches. Mutable per-object state (eaten berries, collected rings)
-  lives in `G` keyed by the object's id.
-- World coordinates: x right, **y down**, ground around y = 0, sky up to `CEILING`
-  (-820). The view is ~300 world units tall (wider/taller on other aspect ratios).
+- The world is a pure function of (x, z) and `ih()`; never store generated content
+  except in small caches. Mutable per-object state (caught mice, collected rings)
+  lives in a system keyed by the object's id.
 - UI typography is Cormorant Garamond italic for titles and Spectral for text, both bundled in
   `web/fonts/` (offline PWA), so no web-font links. UI style is "Pigment" (Field Journal D): sepia
   ink, ruled lines, world pigments as accents; notes in the shared folder under `ui-style/`.
 - Persisted settings use `localStorage` keys prefixed `aloft.`, always via the
-  try/catch `store` helper in `game.js`.
+  try/catch `store` helper in `web/3d/util.js`.
 - Keep it light on tests (project is early and experimental). Check changes in a
-  browser; `window.__aloft` exposes the game state and `__aloft.dbg` has helpers
-  to jump the hawk to a perch, pond, ground or thermal.
+  browser; `window.__aloft3d` exposes G, b, R and `dbg` helpers.
 
-## Art direction: Wet Wash
+## Art direction
 
-Every hill, tree, cloud and feather is a polygon washed two or three times with
-slightly different wobbly edges in multiply blend (`wash()`), with a darker rim where
-pigment dries; paper texture is multiplied over the whole frame. Light comes from
-leaving paper bare (`lift()`), never from white paint. Source demos and notes live in
-the project's shared folder under `art-direction/`. Palettes are in `palette.js`;
-add colours there rather than inline.
+Everything is code-generated: low-poly flat-shaded meshes (`shapes.js`, `hawk.js`), two-sided
+lighting, haze toward the horizon, then one of the looks in `post.js` (Watercolour carries on
+the 2D "Wet Wash": pooled edges, granulation, light left as bare paper). Notes from the 2D era
+are in the shared folder under `art-direction/`.
 
 ## Gameplay tuning (where the numbers live)
 
-- Flight: `bird.js` constants (gravity, drag, relax angle, stall, flap) and `world.js`
-  `lift()` for thermal strength. Ridge lift: `world.js` `ridgeLift()` and `TUNE.ridge`; wave lift and kettles: top of `air.js`. A tap flaps; `flap(b, power, G, sync)`
-  scales cost and thrust by sync. Gesture timing and sizes: top of `gestures.js`; what they do: `controls.js`.
-- Camera zoom (`ZOOM` default, `ZOOM_OUT` high and fast) and the two-tap take-off window: top of
-  `game.js`. `G.view` is the zoomed world view; `G.view.scr` is screen space (sky, far hills,
-  weather, HUD), sized as the art was first drawn; world sprites paint at the fixed `G.view.spx`.
-- Day length, thirst/hunger rates, berry and ring respawn: top of `game.js`. Seasons last eight days (`SEASON_DAYS`,
-  `updateClock`). Journey length and start: `JOURNEY` / `START_X` in `world.js`.
-- Progress is saved under `aloft.save` (position, clock, meters, journey, nest); learned songs
-  and the song log are separate keys so a new journey keeps them.
+- Flight: `FLY` at the top of `flight.js`; thermals and lift in `world.js`; wave lift in `sys/winds.js`.
+- Thumb timing (tap, pairing): top of `input.js`. Camera distances and dive focus: `camera.js`.
+- Food and drink: `FOOD` in `sys/food.js`. Aim and the dive assist: `sys/aim.js`.
+- Day length and seasons: `DAY`, `SEASON_DAYS` in `sky.js`. Journey: `JOURNEY` in `world.js`.
+- Progress saves under `aloft.save3d`, one entry per system.
 
 ## CLI workflow (Git Bash on Windows, or any shell)
 

@@ -4,11 +4,12 @@
 //   ink          pen and ink on cream paper: outlines, cross-hatched shadow, a sepia wash
 //   cel          storybook cel: hard light bands, bold ink outlines, rich colour
 //   layers       flat bands of distance, a banded sky, silhouettes in the near ground
-//   retro        a 1998 console: low resolution, wobbling vertices, dithered colour
+//   woodblock    a Japanese woodblock print: a few flat inks, a dark keyline, wood grain, the sky graded
+//   gouache      opaque gouache: colour laid in flat dabs (a Kuwahara filter), brush texture, matte
 import { program, mesh } from './gl.js';
 
 export const STYLES = [
-  ['plain', 'Low poly'], ['wash', 'Watercolour'], ['ink', 'Pen and ink'], ['cel', 'Storybook cel'], ['layers', 'Layers'], ['retro', 'Retro console'],
+  ['plain', 'Low poly'], ['wash', 'Watercolour'], ['ink', 'Pen and ink'], ['cel', 'Storybook cel'], ['layers', 'Layers'], ['woodblock', 'Woodblock print'], ['gouache', 'Gouache'],
 ];
 export const STYLE_ID = Object.fromEntries(STYLES.map(([k], i) => [k, i]));
 
@@ -75,12 +76,48 @@ void main() {
     float e = edge(uv, 1.6) * 7.;
     c = mix(c, c * .22 + uInk * .1, smoothstep(.35, .7, e));
   } else if (uStyle == 5) {
-    // retro: the picture is small and drawn up big; 5-bit colour with an ordered dither
-    vec2 px = floor(uv / uPx);
-    c = texture(uTex, (px + .5) * uPx).rgb;
-    ivec2 q = ivec2(px) & 3;
-    float bayer[16] = float[16](0., 8., 2., 10., 12., 4., 14., 6., 3., 11., 1., 9., 15., 7., 13., 5.);
-    c = floor(c * 12. + bayer[q.x + q.y * 4] / 16.) / 12.;
+    // woodblock: each ink a flat block, printed on soft paper with the grain of the wood showing
+    // through, a dark keyline cut round shapes and slightly out of register
+    vec2 reg = uPx * vec2(1.5, -1.), q = uPx * 1.5;
+    c = (texture(uTex, uv).rgb * 2. + texture(uTex, uv + q).rgb + texture(uTex, uv - q).rgb
+      + texture(uTex, uv + vec2(q.x, -q.y)).rgb + texture(uTex, uv - vec2(q.x, -q.y)).rgb) / 6.;   // soften grain before cutting tones
+    float L = lum(c);
+    vec3 ch = clamp(mix(vec3(L), c, 1.6), 0., 1.) / max(L, .05);     // hue, richer
+    float t = floor(L * 4. + .5) / 4. * .9 + .08;                    // a few printed tones
+    c = clamp(ch * t, 0., 1.);
+    c = mix(c, c * vec3(.86, .95, 1.12), .5);                        // cooler, Prussian-leaning
+    float far = smoothstep(.9, 1., lin(uv) / uFar * 1.1);           // sky: graded darker indigo at the top (bokashi)
+    c = mix(c, mix(c, vec3(.16, .25, .45), smoothstep(.55, 1., uv.y) * .75), far);
+    float grain = vn(vec2(fc.x / 40., fc.y / 2.5) + vn(fc / 60.) * 3.);
+    c *= .9 + .12 * grain;                                           // wood grain in the flats
+    float e = edge(uv + reg, 1.2) * 8. + colEdge(uv + reg, 1.2) * .5;
+    c = mix(c, uInk * .6, smoothstep(.35, .65, e) * .95);            // keyline
+    c = mix(c, uPaper, .08) * paper(fc);
+  } else if (uStyle == 6) {
+    // gouache: a Kuwahara filter flattens colour into dabs (the calmest of four corners wins),
+    // then a brush texture, a touch of chalky white and a matte finish
+    vec2 d = uPx * 2.6;
+    float ang = vn(fc / 26.) * 6.283;                                // the brush drags paint a little, this way and that
+    uv += vec2(cos(ang), sin(ang)) * uPx * 2.5 * vn(fc / 7. + 4.);
+    vec3 m[4]; float v[4];
+    for (int k = 0; k < 4; k++) {
+      vec2 o = vec2(k == 1 || k == 3 ? 1. : -1., k > 1 ? 1. : -1.);
+      vec3 s = vec3(0.), s2 = vec3(0.);
+      for (int j = 0; j < 3; j++) for (int i = 0; i < 3; i++) { vec3 q = texture(uTex, uv + o * vec2(i, j) * d).rgb; s += q; s2 += q * q; }
+      m[k] = s / 9.; vec3 var = s2 / 9. - m[k] * m[k]; v[k] = var.r + var.g + var.b;
+    }
+    c = m[0]; float best = v[0];
+    for (int k = 1; k < 4; k++) if (v[k] < best) { best = v[k]; c = m[k]; }
+    c = clamp(mix(vec3(lum(c)), c, 1.25), 0., 1.);                   // pigment straight from the tube
+    float sa = vn(fc / 45. + 7.) * 6.283;                            // brush marks: short dabs whose direction wanders
+    vec2 sp = mat2(cos(sa), sin(sa), -sin(sa), cos(sa)) * fc;
+    float stroke = vn(vec2(sp.x / 9., sp.y / 2.2)) - .5;
+    c *= 1. + stroke * .1;
+    c = mix(c, vec3(lum(c)) * vec3(1.04, 1., .93) + .06, .1);        // opaque, chalky
+    c = mix(c, uPaper * 1.02, smoothstep(.7, .9, lum(c)) * .35);     // highlights laid on in light paint
+    float e = edge(uv, 1.5) * 6.;
+    c = mix(c, c * .78, smoothstep(.4, .9, e) * .6);                 // a soft darker edge where one dab meets another
+    c *= .96 + .04 * vn(fc / 1.8);
   } else {
     c = texture(uTex, uv).rgb;
     float v = length(uv - .5); c *= 1. - v * v * .35;   // layers: a soft vignette
@@ -94,8 +131,7 @@ export function createPost(gl) {
   const P = { w: 0, h: 0 };
   // the target the scene is drawn into, sized for the style
   P.begin = (cw, ch, style) => {
-    const k = style === 'retro' ? Math.max(1, ch / 160) : 1;
-    const tw = Math.max(1, Math.round(cw / k)), th = Math.max(1, Math.round(ch / k)), f = style === 'retro' ? gl.NEAREST : gl.LINEAR;
+    const tw = Math.max(1, cw), th = Math.max(1, ch), f = gl.LINEAR;
     if (!fbo || tw !== w || th !== h || f !== filter) {
       if (fbo) { gl.deleteFramebuffer(fbo); gl.deleteTexture(tex); gl.deleteTexture(depth); }
       w = tw; h = th; filter = f;
