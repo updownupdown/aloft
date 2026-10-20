@@ -206,16 +206,21 @@ export function weatherSystem(G) {
       // the storm cell, and the bolt
       if (cell && st > .05) (S.props.storm ||= []).push(cell.x, Math.max(80, cam[1] + 60), cell.z, WEATHER.cell.r * 1.1 * Math.min(1, st * 1.5), 0, .5, 0, 0);
       if (bolt) (S.props.bolt ||= []).push(bolt.x, bolt.y, bolt.z, Math.max(150, cam[1] + 140 - bolt.y), bolt.yaw, .5, 0, 0);
-      // the rainbow: bands of points far off, opposite the sun
+      // the rainbow: a faint, wide arc far off, opposite the sun, its colours running into each
+      // other (many small overlapping points read as a smooth band), fading toward its feet
       if (rainbowT > 0) {
-        const fade = Math.min(1, rainbowT / 10, (80 - rainbowT) / 6) * L.daylight * (1 - G.rain);
-        const sd = S.sunSky || L.sunSky, ax = norm([-sd[0], 0, -sd[2]]), side = [-ax[2], 0, ax[0]], D = 520;
-        const cols = [[.86, .38, .3], [.9, .62, .3], [.9, .84, .45], [.5, .72, .45], [.38, .55, .78], [.5, .42, .7]];
-        for (let band = 0; band < cols.length; band++) {
-          const r = D * (.73 - band * .018), c = mix3(S.horizon, cols[band], .45 * fade);
-          for (let i = 0; i <= 90; i++) {
-            const a = i / 90 * Math.PI, x = Math.cos(a) * r, y = Math.sin(a) * r - D * .12;
-            S.motes.push(cam[0] + ax[0] * D + side[0] * x, cam[1] + y, cam[2] + ax[2] * D + side[2] * x, ...c, 7);
+        const fade = Math.min(1, rainbowT / 12, (80 - rainbowT) / 8) * L.daylight * (1 - G.rain);
+        const sd = S.sunSky || L.sunSky, ax = norm([-sd[0], 0, -sd[2]]), side = [-ax[2], 0, ax[0]], D = 560;
+        const cols = [[.86, .4, .32], [.9, .64, .32], [.9, .85, .48], [.52, .74, .48], [.4, .56, .78], [.52, .44, .72]];
+        const N = 14, M = 240;
+        for (let k = 0; k < N; k++) {
+          const u = k / (N - 1) * (cols.length - 1), c0 = cols[Math.floor(u)], c1 = cols[Math.min(cols.length - 1, Math.floor(u) + 1)];
+          const edge = Math.sin(k / (N - 1) * Math.PI) * .6 + .4, col = mix3(c0, c1, u % 1), r = D * (.8 - k * .0075);
+          for (let i = 0; i <= M; i++) {
+            const t = i / M, a = .12 + t * (Math.PI - .24), x = Math.cos(a) * r, y = Math.sin(a) * r - D * .45;
+            if (y < -20) continue;
+            const feet = Math.min(1, Math.sin(t * Math.PI) * 2.2);
+            S.motes.push(cam[0] + ax[0] * D + side[0] * x, cam[1] + y, cam[2] + ax[2] * D + side[2] * x, ...mix3(S.horizon, col, .38 * fade * edge * feet), 3.2);
           }
         }
       }
