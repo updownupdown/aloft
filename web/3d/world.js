@@ -9,10 +9,14 @@ export { ih, fbm, WORLD, newWorld, PAL, JOURNEY, blend };
 
 export const CHUNK = 96;
 // Ground detail (Settings > Ground detail): cells per chunk side. 16 is 6 m facets, 24 (the
-// default) 4 m, 32 3 m, 48 2 m. Triangles grow with the square: 1x, 2.25x, 4x, 9x.
+// default) 4 m, 32 3 m, 48 2 m. Triangles grow with the square: 1x, 2.25x, 4x, 9x. Chunks near
+// the bird (NEAR_R) get twice as many a side, up to 48 (CELLS_NEAR; see cellsFor()).
 export const GROUND = [[16, 'Coarse', '6 m facets'], [24, 'Fine', '4 m facets'], [32, 'Finer', '3 m facets, more for the GPU'], [48, 'Finest', '2 m facets, heavy: try it on a fast phone']];
-export let CELLS = 24, CELL = CHUNK / CELLS;
-export function setGroundDetail(n) { CELLS = GROUND.some(g => g[0] === n) ? n : 24; CELL = CHUNK / CELLS; }
+export const NEAR_R = 160;
+export let CELLS = 24, CELLS_NEAR = 48, CELL = CHUNK / CELLS_NEAR;
+export function setGroundDetail(n) { CELLS = GROUND.some(g => g[0] === n) ? n : 24; CELLS_NEAR = Math.min(48, CELLS * 2); CELL = CHUNK / CELLS_NEAR; }
+// how many cells a side for a chunk whose middle is d metres from the bird
+export const cellsFor = d => (d < NEAR_R ? CELLS_NEAR : CELLS);
 setGroundDetail(store.get('ground', 24));
 export const WATER = 0;
 
@@ -54,7 +58,8 @@ export function normalAt(x, z) {
   const l = Math.hypot(hx, 2 * e, hz); return [-hx / l, 2 * e / l, -hz / l];
 }
 // the ground as drawn: the chunk's triangles, not the smooth function between their corners
-// (so small things set on a ridge sit on it, not above it)
+// (so small things set on a ridge sit on it, not above it). This follows the near chunks' finer
+// cells (CELL), which is where the bird is and where small things are set down.
 export function groundAt(x, z) {
   const i = Math.floor(x / CELL), j = Math.floor(z / CELL), u = x / CELL - i, v = z / CELL - j, xa = i * CELL, za = j * CELL;
   const a = height(xa, za), b = height(xa + CELL, za), c = height(xa, za + CELL), d = height(xa + CELL, za + CELL);
@@ -105,29 +110,40 @@ export function mapColour(x, z) {
 }
 
 // A chunk of ground as flat-shaded triangles: pos, normal, colour, colour (two-sided slot).
-export function chunkMesh(cx, cz) {
-  const N = CELLS, x0 = cx * CHUNK, z0 = cz * CHUNK;
+export function chunkMesh(cx, cz, N = CELLS) {
+  const C = CHUNK / N, x0 = cx * CHUNK, z0 = cz * CHUNK;
   const H = new Float32Array((N + 1) * (N + 1));
-  for (let j = 0; j <= N; j++) for (let i = 0; i <= N; i++) H[j * (N + 1) + i] = height(x0 + i * CELL, z0 + j * CELL);
-  // the biomes are looked up once per 2 x 2 cells for colouring (they change over 100s of m)
-  const BL = [];
-  for (let j = 0; j < N; j += 2) for (let i = 0; i < N; i += 2) BL.push(blend(x0 + (i + 1) * CELL, z0 + (j + 1) * CELL));
-  const out = new Float32Array(N * N * 6 * 12); let o = 0, bl = null;
+  for (let j = 0; j <= N; j++) for (let i = 0; i <= N; i++) H[j * (N + 1) + i] = height(x0 + i * C, z0 + j * C);
+  // the biomes are looked up once per few cells for colouring (they change over 100s of m)
+  const BL = [], bs = N >= 36 ? 4 : 2, bn = N / bs;
+  for (let j = 0; j < N; j += bs) for (let i = 0; i < N; i += bs) BL.push(blend(x0 + (i + bs / 2) * C, z0 + (j + bs / 2) * C));
+  const out = new Float32Array((N * N * 2 + N * 8) * 3 * 12); let o = 0, bl = null, skirt = false;
   const tri = (ax, ay, az, bx, by, bz, cx_, cy, cz_) => {
     let ux = bx - ax, uy = by - ay, uz = bz - az, vx = cx_ - ax, vy = cy - ay, vz = cz_ - az;
     let nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx; const l = Math.hypot(nx, ny, nz) || 1; nx /= l; ny /= l; nz /= l;
-    const col = groundColour((ax + bx + cx_) / 3, (ay + by + cy) / 3, (az + bz + cz_) / 3, Math.abs(ny), bl);
+    const mx = (ax + bx + cx_) / 3, mz = (az + bz + cz_) / 3, col = groundColour(mx, (ay + by + cy) / 3, mz, skirt ? 1 : Math.abs(ny), bl);
+    // a faint per-facet shade, so the ground reads as cut facets rather than noise
+    const k = 1 + (ih(Math.floor(mx * 3), Math.floor(mz * 3), 77) - .5) * .05; col[0] *= k; col[1] *= k; col[2] *= k;
     for (const [px, py, pz] of [[ax, ay, az], [bx, by, bz], [cx_, cy, cz_]]) {
       out[o++] = px; out[o++] = py; out[o++] = pz; out[o++] = nx; out[o++] = ny; out[o++] = nz;
       out[o++] = col[0]; out[o++] = col[1]; out[o++] = col[2]; out[o++] = col[0]; out[o++] = col[1]; out[o++] = col[2];
     }
   };
   for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
-    bl = BL[(j >> 1) * (N >> 1) + (i >> 1)];
-    const xa = x0 + i * CELL, xb = xa + CELL, za = z0 + j * CELL, zb = za + CELL;
+    bl = BL[Math.floor(j / bs) * bn + Math.floor(i / bs)];
+    const xa = x0 + i * C, xb = xa + C, za = z0 + j * C, zb = za + C;
     const a = H[j * (N + 1) + i], b = H[j * (N + 1) + i + 1], c = H[(j + 1) * (N + 1) + i], d = H[(j + 1) * (N + 1) + i + 1];
     if ((i + j) & 1) { tri(xa, a, za, xa, c, zb, xb, b, za); tri(xb, b, za, xa, c, zb, xb, d, zb); }
     else { tri(xa, a, za, xa, c, zb, xb, d, zb); tri(xa, a, za, xb, d, zb, xb, b, za); }
+  }
+  // skirts: a short wall down from each edge, hiding the cracks where a finer chunk meets a coarser one
+  const S = 3; skirt = true;
+  for (let e = 0; e < N; e++) {
+    for (const [i0, j0, i1, j1] of [[e, 0, e + 1, 0], [e + 1, N, e, N], [0, e + 1, 0, e], [N, e, N, e + 1]]) {
+      bl = BL[Math.floor(Math.min(j0, N - 1) / bs) * bn + Math.floor(Math.min(i0, N - 1) / bs)];
+      const xa = x0 + i0 * C, za = z0 + j0 * C, xb = x0 + i1 * C, zb = z0 + j1 * C, ha = H[j0 * (N + 1) + i0], hb = H[j1 * (N + 1) + i1];
+      tri(xa, ha, za, xb, hb, zb, xb, hb - S, zb); tri(xa, ha, za, xb, hb - S, zb, xa, ha - S, za);
+    }
   }
   return out.subarray(0, o);
 }
