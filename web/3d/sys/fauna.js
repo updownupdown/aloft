@@ -261,6 +261,9 @@ export function faunaSystem(G) {
         const step = Math.min(d, route.v * dt);
         if (d > 0) for (let i = 0; i < 3; i++) p[i] += (q[i] - p[i]) / d * step;
         if (d < 3 && ++route.i >= route.pts.length) { const done = route.done; route = null; done?.(); }
+      } else if (companion && G.slipLead) {
+        // leading you (feel.js steers it, so you can ride its wake)
+        companion.p = [...G.slipLead.p]; companion.yaw = G.slipLead.ang;
       } else if (companion) {
         companion.t -= dt; companion.a += dt * .45;
         const tx = b.p[0] + Math.cos(companion.a) * 16, tz = b.p[2] + Math.sin(companion.a) * 16, ty = b.p[1] + 4 + Math.sin(companion.a * .7) * 3;

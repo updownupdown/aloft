@@ -40,6 +40,7 @@ import { seasonsSystem } from './sys/seasons.js';
 import { windsSystem } from './sys/winds.js';
 import { floraSystem } from './sys/flora.js';
 import { sleepSystem } from './sys/sleep.js';
+import { feelSystem } from './sys/feel.js';
 import { speciesSystem } from './sys/species.js';
 import { aimsSystem } from './sys/aims.js';
 import { movesSystem } from './sys/moves.js';
@@ -47,7 +48,7 @@ import { lifeSystem } from './sys/life.js';
 import { seasonSystem } from './sys/season.js';
 import { ghostSystem } from './sys/ghost.js';
 
-const SYSTEMS = [speciesSystem, movesSystem, lifeSystem, clockSystem, weatherSystem, windsSystem, floraSystem, airSystem, ringsSystem, foodSystem, aimSystem, sleepSystem, songsSystem,
+const SYSTEMS = [speciesSystem, movesSystem, lifeSystem, clockSystem, weatherSystem, windsSystem, floraSystem, airSystem, ringsSystem, foodSystem, aimSystem, sleepSystem, feelSystem, songsSystem,
   guideSystem, journeySystem, nestSystem, storySystem, photoSystem, howtoSystem, faunaSystem, landsSystem, seasonsSystem, aimsSystem, seasonSystem, ghostSystem];
 
 export function start(canvas, ui) {
@@ -110,6 +111,8 @@ export function start(canvas, ui) {
   const takeoffBtn = ui.querySelector('.takeoff3:not(.sleep3)');
   const takeoff = e => { e.preventDefault(); e.stopPropagation(); audio.unlock?.(); b.wantOff = .6; };   // flight.js takes off as soon as it can
   takeoffBtn.addEventListener('pointerdown', takeoff);
+  // the actions other UI can offer (menu.js's one action button): run() and when() it fits now
+  (G.actions ||= {}).takeoff = { run: () => { audio.unlock?.(); b.wantOff = .6; }, when: () => b.state !== 'fly' && !(b.settle > 0) && !(b.eating > 0) };
   const E = {
     get sun() { return G.light.daylight; },
     flap: (q, side, sync) => { audio.flap(); H.did('flap'); G.emit('flap', q, side); if (sync != null) wingGlow(sync); },
@@ -194,6 +197,7 @@ export function start(canvas, ui) {
       H.fps(fps); G.stats = { fps, res: G.res, chunks: R.stats.chunks, tris: R.stats.tris };
     }
 
+    input.gyroOn = b.state === 'perch' && b.settle <= 0;
     const c = input.read();
     G.systems.clock.update(dt, c);
     step(b, c, dt, E);
@@ -209,7 +213,7 @@ export function start(canvas, ui) {
     G.parts = G.parts.filter(p => p.life > 0);
 
     // the scene: light, camera and hawk, then whatever each system adds
-    const S = { ...G.light, time: G.t, wind: G.windK ?? .3, fogDen: .0042, autumnCol: [.8, .5, .22], props: {}, motes: [] };
+    const S = { ...G.light, time: G.t, wind: (G.windK ?? .3) + (G.gustWind || 0), fogDen: .0042, autumnCol: [.8, .5, .22], props: {}, motes: [] };
     camera.update(dt, S);
     for (const s of systems) s.scene?.(S);
     for (const q of G.parts) S.motes.push(...q.p, ...q.col, q.size * Math.min(1, q.life / q.max * 2));

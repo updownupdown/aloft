@@ -22,12 +22,14 @@ export function sleepSystem(G) {
     sleeping = b.asleep = false; veil.classList.remove('on');
     if (msg) H.toast(msg, 3);
   };
-  btn.addEventListener('pointerdown', e => {
-    e.preventDefault(); e.stopPropagation(); G.audio.unlock?.();
+  const sleep = () => {
     if (b.state === 'ground') { H.toast('Too open to sleep on the ground. Find a branch to roost on.', 3); return; }
     if (b.state !== 'perch') return;
     sleeping = b.asleep = true; slept = 0; veil.classList.add('on'); H.did('sleep');
-  });
+  };
+  btn.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); G.audio.unlock?.(); sleep(); });
+  // for menu.js's one action button
+  (G.actions ||= {}).sleep = { run: sleep, when: () => !sleeping && period(G.tod) === 'night' && (b.state === 'perch' || b.state === 'ground') && !(b.settle > 0) };
   G.on('gesture', () => { if (sleeping && slept > 1) wake(); });
   H.tip('sleep', () => b.state === 'perch' && period(G.tod) === 'night', 'Night has come. Tap Sleep to roost till first light; your wings rest while you sleep.');
   return {
