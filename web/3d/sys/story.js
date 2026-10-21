@@ -147,7 +147,7 @@ export function storySystem(G) {
   const sec = journal(G).section(40);
   sec.body.innerHTML = '<p class="j-health"></p><p class="j-court"></p>';
   G.menu.onOpen(() => {
-    const ks = St.keepsakes.length ? ` Keepsakes: ${St.keepsakes.map(k => KEEPSAKES[k]).join(', ')}.` : '';
+    const ks = St.keepsakes.length ? ` Keepsakes: ${St.keepsakes.map(k => KEEPSAKES[k] ?? k).join(', ')}.` : '';   // names: things people left (ruins.js)
     sec.body.querySelector('.j-health').textContent = `Health: ${healthWord(St.health)}.${ks}`;
     sec.body.querySelector('.j-court').textContent = St.mate ? `Your mate, met ${St.mate.note.replace(/\.$/, '').replace(/^Day/, 'on day')}, flies with you.`
       : `Courtship, down south: health ${healthWord(St.health).split(',')[0]}, ${St.keepsakes.length} of ${COURT.keep} keepsakes, ${G.learned?.size || 0} of ${COURT.songs} songs, ${Math.min(St.tricks, COURT.tricks)} of ${COURT.tricks} acrobatics.`;
