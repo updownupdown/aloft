@@ -38,7 +38,6 @@ export function appRows(G) {
   // (sys/aim.js reads it; each aim ring also has its own shape)
   G.settings.cbAim = G.store.get('cbAim3d', false);
   G.menu.toggle('play', { label: 'Colour-blind aim colours', sub: 'orange prey, blue perches', get: () => G.settings.cbAim, set: v => { G.settings.cbAim = v; G.store.set('cbAim3d', v); } });
-  G.menu.toggle('play', { label: 'Quiet meters', sub: 'hide them while they are well filled', get: () => G.hud.quiet, set: v => { G.hud.quiet = v; G.store.set('quietHud3d', v); } });
 
   // Quit saves, then closes the app if the system lets a page do that; if not, it says the
   // journey is safe and the app can be closed
