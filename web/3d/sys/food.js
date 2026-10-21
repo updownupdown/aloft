@@ -1,12 +1,15 @@
 // Hunger and thirst, mice in the meadows, worms after rain, and drinking at the water's edge.
 // Running low on either lowers how full the wings can get (G.maxStamina, marked on the wings bar).
 // Mice live in 48 m cells of open grass; only those near the hawk are simulated. A caught
-// mouse's cell refills after a while. Grass twitches over each mouse, a cue seen from high up.
+// mouse's cell refills after a while. Now and then a mouse squeaks (little white marks over it, a
+// cue seen from high up; often while you hunt with wings tucked, bigger for the owl). A mouse
+// that sees you coming bolts and digs down out of reach, leaving a scrape of earth.
 // Catching is forgiving: come down low over one and the feet reach for it; dive with wings
 // tucked (the aim tightens, see aim.js) and the reach is longer.
 import { height, normalAt, forest, WATER, ih } from '../world.js';
 import { builder, blob, reseed } from '../shapes.js';
 import { clamp } from '../util.js';
+import { BIRD } from '../hawk.js';
 
 export const FOOD = {
   hungerTime: 1200, thirstTime: 1680,        // seconds from full to empty (four times the 2D times)
@@ -15,7 +18,8 @@ export const FOOD = {
   lowAt: .35, lowMax: .3,                    // below lowAt, hunger and thirst each take up to lowMax off max stamina
   cell: 48, near: 170, respawn: 150,         // mouse cells, simulated radius, seconds to refill
   catchR: 1.5, catchDive: 1.6, catchH: 2.6,  // reach, extra reach diving, how low to be
-  freeze: 2.5, bolt: 3, burrow: 25,           // a passing shadow freezes a mouse; a stoop sends it bolting home (and hidden a while)
+  freeze: 2.5, bolt: 3, burrow: 25, dig: .8,  // a passing shadow freezes a mouse; a stoop sends it bolting home to dig down (gone a while)
+  squeak: .05, squeakHunt: .2,                // chance a mouse squeaks each quarter second; hunting (wings tucked) as often as before
   meal: 2.4, perchMeal: 1.15, cacheDays: 2,   // seconds to eat; a calm meal on a perch is worth more; a cache keeps two days
 };
 
@@ -50,9 +54,30 @@ function mouseShape() {
   return B.out();
 }
 
+// a squeak: three short strokes fanning up from a point, like a cartoon cry (drawn facing the camera)
+function squeakShape() {
+  const B = builder(), w = [1, .97, .9];
+  for (const a of [-.85, 0, .85]) {
+    const s = Math.sin(a), c = Math.cos(a), r0 = .07, r1 = a ? .17 : .2, t = .04;
+    const p = r => [s * r, c * r, 0], q = (r, k) => [s * r + c * k, c * r - s * k, 0];
+    const A = q(r0, -t * .5), Bq = q(r0, t * .5), C = q(r1, t), D = q(r1, -t), E = p(r1 + .02);
+    B.tri(A, Bq, C, w); B.tri(A, C, D, w); B.tri(D, C, E, w);
+  }
+  return B.out();
+}
+// the scrape of earth a mouse leaves where it dug down
+function burrowShape() {
+  reseed(11); const B = builder(), earth = [.42, .33, .24], dark = [.2, .15, .11];
+  blob(B, 0, -.02, 0, .12, earth, earth, [1.3, .35, 1.1]);
+  blob(B, .02, .015, 0, .045, dark, dark, [1, .3, 1]);
+  return B.out();
+}
+
 export function foodSystem(G) {
   const b = G.b, mice = new Map(), caught = new Map();   // id -> mouse; id -> G.clock caught
   G.R.shape('mouse', mouseShape()); G.R.shape('worm', wormShape());
+  G.R.shape('squeak', squeakShape()); G.R.shape('burrow', burrowShape());
+  const squeaks = [];   // { m, t }: marks over squeaking mice, each a moment long
   const worms = []; let wormT = 0; G.wet = 0;
   const caches = G.caches = [];   // { x, y, z, kind, food, wet, day }: catches left on branches
   G.hud.tip('carry', () => b.eating > 0 && !!b.meal, 'Tap Take off while you eat to carry your catch up to a branch: a meal there is calmer and worth more.');
@@ -93,6 +118,15 @@ export function foodSystem(G) {
     // wander near the burrow in short scurries; run from a low, close shadow
     const dx = m.x - b.p[0], dz = m.z - b.p[2], hd = Math.hypot(dx, dz), hh = b.p[1] - height(b.p[0], b.p[2]), low = hh < 14, air = b.state === 'fly';
     if (m.hidden > 0) { m.hidden -= dt; m.x = m.bx; m.z = m.bz; m.y = height(m.x, m.z); return; }
+    // digging down: a moment of flying earth, then it is gone
+    if (m.dig > 0) {
+      m.dig -= dt;
+      if (Math.random() < dt * 14) G.part([m.x, m.y + .05, m.z], [(Math.random() - .5) * 1.6, 1 + Math.random() * 1.2, (Math.random() - .5) * 1.6], .6, Math.random() < .5 ? [.42, .33, .24] : [.55, .46, .34], .07);
+      if (m.dig <= 0) { m.dig = 0; m.hidden = FOOD.burrow; m.bx = m.x; m.bz = m.z; }
+      return;
+    }
+    // you landed (or hopped down) close by: it runs for its burrow
+    if ((b.state === 'ground' || b.state === 'perch' && b.p[1] - m.y < 6) && hd < 7 && !m.bolt) { m.bolt = true; m.flee = 3; m.freeze = 0; }
     if (air && hd < 10 && low && m.flee <= 0 && !G.silent) { m.flee = 1.2; m.yaw = Math.atan2(dx, -dz) + (Math.random() - .5); }
     // a shadow sweeping over from high up: it freezes (and stops rustling the grass)
     if (air && hd < 5 && !low && m.flee <= 0) m.freeze = FOOD.freeze;
@@ -102,12 +136,12 @@ export function foodSystem(G) {
     }
     if (m.bolt) {
       m.yaw = Math.atan2(m.bx - m.x, -(m.bz - m.z));
-      if (Math.hypot(m.x - m.bx, m.z - m.bz) < .4) {
-        m.bolt = false; m.flee = 0; m.hidden = FOOD.burrow;
-        if (!G.flags.burrow) { G.flags.burrow = 1; G.hud.toast('It made its burrow. Mice bolt when they see you stoop: come in fast and low, or from behind.', 4); }
+      // home (or out of breath, then down any hole): it digs in
+      if (Math.hypot(m.x - m.bx, m.z - m.bz) < .4 || m.flee <= 0) {
+        m.bolt = false; m.flee = 0; m.dig = FOOD.dig; m.go = 0;
+        if (!G.flags.burrow) { G.flags.burrow = 1; G.hud.toast('It dug into its burrow. Mice bolt when they see you stoop or land near: come in fast and low, or from behind.', 4); }
         return;
       }
-      if (m.flee <= 0) m.bolt = false;
     }
     let sp = 0;
     if (m.freeze > 0 && m.flee <= 0) { m.freeze -= dt; sp = 0; }
@@ -250,10 +284,13 @@ export function foodSystem(G) {
       b.stamina = Math.min(b.stamina, b.maxStamina);
       setHunger(G.hunger); setThirst(G.thirst);
       worms_(dt);
-      // grass twitches over mice: little green flecks, easy to spot from the air
+      // mice squeak now and then (a frozen one keeps still and quiet); hunting with wings tucked you
+      // pick out every squeak, and an owl hears them more often still
+      for (let i = squeaks.length - 1; i >= 0; i--) if ((squeaks[i].t += dt) > .7) squeaks.splice(i, 1);
       if ((rustleT -= dt) <= 0) {
         rustleT = .25;
-        for (const m of mice.values()) if (!(m.hidden > 0) && !(m.freeze > 0 && m.flee <= 0) && (Math.random() < .2 || m.flee > 0)) for (let i = 0; i < 3; i++) G.part([m.x + (Math.random() - .5) * .4, m.y + .25, m.z + (Math.random() - .5) * .4], [(Math.random() - .5) * .8, 1 + Math.random(), (Math.random() - .5) * .8], .7, [.62, .72, .35], .12);
+        const hunt = b.state === 'fly' && (G.aim?.focus || 0) > .35, k = (hunt ? FOOD.squeakHunt : FOOD.squeak) * (BIRD === 'owl' ? 1.5 : 1);
+        for (const m of mice.values()) if (!(m.hidden > 0) && !(m.dig > 0) && !(m.freeze > 0 && m.flee <= 0) && Math.random() < (m.flee > 0 ? .4 : k) && !squeaks.some(q => q.m === m)) squeaks.push({ m, t: 0 });
       }
     },
     scene(S) {
@@ -265,11 +302,22 @@ export function foodSystem(G) {
       // the catch in your feet, and catches left on branches
       if (b.carry && S.hawk) { const h = S.hawk, u = h.u; d.push(h.p[0] - u[0] * .3, h.p[1] - u[1] * .3 - .05, h.p[2] - u[2] * .3, 1.6, b.yaw - Math.PI / 2, .5, 0, 0); }
       for (const c of caches) if (Math.hypot(c.x - S.cam[0], c.z - S.cam[2]) < 120) d.push(c.x, c.y + .02, c.z, 1.6, c.yaw, .35, 0, 0);
+      const hole = S.props.burrow ||= [], sq = S.props.squeak ||= [];
       for (const m of mice.values()) {
-        if (m.hidden > 0) continue;
         const dc = Math.hypot(m.x - S.cam[0], m.y - S.cam[1], m.z - S.cam[2]);
-        if (dc < 120) d.push(m.x, m.y, m.z, 1.6, m.yaw - Math.PI / 2, .5, 0, 0);
+        if (m.hidden > 0 || m.dig > 0) { if (dc < 120) hole.push(m.bx ?? m.x, m.y, m.bz ?? m.z, 1, m.id % 6.28, .5, 0, 0); }
+        if (m.hidden > 0) continue;
+        // digging, it noses down into the earth
+        const dk = m.dig > 0 ? m.dig / FOOD.dig : 1;
+        if (dc < 120) d.push(m.x, m.y - (1 - dk) * .1, m.z, 1.6 * (.4 + .6 * dk), m.yaw - Math.PI / 2, .5, 0, 0);
         if (eye > .05 && dc < 60 + owl * 140) S.motes.push(m.x, m.y + .12, m.z, .95, .85, .5, dc * (.003 + owl * .004) * eye * (.75 + .25 * Math.sin(G.t * 3 + m.id)));
+      }
+      // squeaks pop up over the mouse, facing you, sized to stay about as big on screen from high up
+      for (const q of squeaks) {
+        const m = q.m, dx = S.cam[0] - m.x, dz = S.cam[2] - m.z, dc = Math.hypot(dx, m.y - S.cam[1], dz);
+        if (m.hidden > 0 || dc > 170) continue;
+        const pop = Math.sin(Math.min(1, q.t / .7) * Math.PI) ** .5, s = Math.max(.8, Math.min(14, dc * .11)) * (BIRD === 'owl' ? 1.4 : 1) * pop;
+        sq.push(m.x, m.y + .12 + s * .05 + q.t * .15 * s, m.z, s, Math.atan2(-dx, dz), .5, 0, 0);
       }
     },
     save: () => ({ hunger: G.hunger, thirst: G.thirst, caught: [...caught].slice(-200), caches, carry: b.carry || b.meal || null }),
