@@ -1,12 +1,13 @@
 // Which bird you fly as: Settings > Your bird picks the red-tail, osprey, barn owl or raven, which
 // share the controls (birds.js builds them; this gives each its flight feel in FLY). ?bird=swift,
-// heron or mallard tries the others for a session. The story stays the hawk's for now.
+// heron or mallard tries the others for a session. Each has its own move (moves.js) and life goal (life.js).
 import { FLY } from '../flight.js';
 import { BIRD, setBird } from '../hawk.js';
 import { BIRDS } from '../birds.js';
 import { startLab } from '../birdlab.js';
 import { FOOD } from './food.js';
 import { FAUNA } from './fauna.js';
+import { GOALS } from './life.js';
 
 export const CHOICES = ['hawk', 'osprey', 'owl', 'raven'];
 const HAWK_FLY = { ...FLY }, HAWK_FOOD = { catchR: FOOD.catchR }, HAWK_FAUNA = { catchR: FAUNA.catchR, catchDive: FAUNA.catchDive, catchH: FAUNA.catchH };
@@ -50,11 +51,13 @@ export function speciesSystem(G) {
   }
   // Settings > Your bird: one card, the bird hovering on the breeze, a button to hear its call (the bird lab's renderer,
   // drawn only while Settings shows), with arrows either side to pick the one before or after
+  const MOVE = { hawk: 'Kites: flare into the wind to hang still', osprey: 'Plunges: dive into water for deep fish', owl: 'Silent glide: mice don’t hear it', raven: 'Tumbles: flick a bank twice the same way' };
   const BLURB = { hawk: 'Soars on thermals, stoops on mice', osprey: 'Long wings, plunges for fish', owl: 'Soft and slow, sees in the dark', raven: 'Agile, rolls and tumbles' };
   const traits = id => {
     const a = ABILITY[id];
     return `<span class="stats3">${stats(id).map(([k, v]) => `<span>${k}</span><span class="pips3" aria-label="${v} of 5">${[1, 2, 3, 4, 5].map(n => `<i${n <= v ? ' class="on"' : ''}></i>`).join('')}</span>`).join('')}</span>`
-      + (a ? `<span class="traits3">${a.good.map(t => `<span class="good">${t}</span>`).join('')}${a.bad.map(t => `<span class="bad">${t}</span>`).join('')}</span>` : '');
+      + (a ? `<span class="traits3">${a.good.map(t => `<span class="good">${t}</span>`).join('')}${a.bad.map(t => `<span class="bad">${t}</span>`).join('')}</span>` : '')
+      + (MOVE[id] ? `<span class="traits3"><span class="move">${MOVE[id]}</span><span class="goal">Life goal: ${GOALS[id].title.toLowerCase()}</span></span>` : '');
   };
   const box = G.menu.group('bird');
   box.insertAdjacentHTML('beforeend', `<div class="birdpick3"><button class="arr3" data-step="-1" aria-label="The bird before">‹</button>

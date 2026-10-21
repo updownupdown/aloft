@@ -156,6 +156,8 @@ const cols = {};
 const col = h => cols[h] || (cols[h] = hex(h));
 
 // pose: the hawk's (hawk.js). Settled on a perch, the ground or water when legs and fold are both full.
+// an extra roll about the body's long axis, for the raven's tumble (sys/moves.js sets it)
+export const SPIN = { a: 0 };
 export function buildBird(id, pose) {
   const sp = BIRDS[id];
   const p = { flapL: 0, flapR: 0, handL: 0, handR: 0, fold: 0, flare: 0, legs: 0, tail: 0, tailPitch: 0, t: 0, ...pose };
@@ -167,6 +169,10 @@ export function buildBird(id, pose) {
   wing(sp, p, 1); wing(sp, p, -1);
   tail(sp, p);
   if (p.legs > .02 || sp.legs.trail) legs(sp, p);
+  if (SPIN.a) {
+    const c = Math.cos(SPIN.a), s = Math.sin(SPIN.a);
+    for (let i = 0; i < o; i += 12) for (const k of [i, i + 3]) { const x = buf[k], y = buf[k + 1]; buf[k] = x * c - y * s; buf[k + 1] = x * s + y * c; }
+  }
   return buf.subarray(0, o);
 }
 
