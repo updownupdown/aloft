@@ -153,6 +153,22 @@ export function foodSystem(G) {
     if (!G.flags.firstMouse) { G.flags.firstMouse = 1; G.hud.toast('Caught! A mouse fills you up a good way.'); }
   }
 
+  // other prey (sys/critters.js: jackrabbits, lizards, marmots, crabs, squirrels): the same
+  // strike as a mouse; one taken off a branch (carry) rides in your feet to a perch
+  function take(p) {
+    const A = G.audio;
+    if (p.carry) { b.carry = { food: p.food, wet: p.wet, kind: p.kind }; A.feather(); }
+    else {
+      b.state = 'ground'; b.from = [...b.p]; b.p = [p.x, Math.max(p.y, WATER) + .35, p.z]; b.settle = .45; b.s = 0;
+      meal(p.food, p.wet, p.kind);
+      A.thump(.6); A.rustle(1); setTimeout(() => A.eat(), 800); setTimeout(() => A.eat(), 1400);
+    }
+    for (let i = 0; i < 12; i++) { const a = i / 12 * 6.283; G.part([p.x, p.y + .15, p.z], [Math.cos(a) * 2.2, 1.2 + Math.random() * 1.5, Math.sin(a) * 2.2], .8, [.55, .46, .34], .1); }
+    for (let i = 0; i < 6; i++) G.part([p.x + (Math.random() - .5) * .6, p.y + .5, p.z + (Math.random() - .5) * .6], [0, 1.6 + Math.random(), 0], 1.4, [1, .86, .45], .14);
+    G.hud.toast(`Caught ${p.name}`, 2);
+    G.hud.did('hunt'); G.emit('catch', { kind: p.kind, x: p.x, z: p.z });
+  }
+
   // ---- worms: after rain they come up near you, only while you are on the ground --------------
   function worms_(dt) {
     G.wet = (G.rain || 0) > .3 ? 1 : Math.max(0, G.wet - dt / FOOD.wet);
@@ -187,7 +203,7 @@ export function foodSystem(G) {
 
   return {
     id: 'food',
-    mice,
+    mice, take,
     update(dt) {
       G.hunger = Math.max(0, G.hunger - dt / FOOD.hungerTime);
       G.thirst = Math.max(0, G.thirst - dt / FOOD.thirstTime);
