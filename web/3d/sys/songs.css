@@ -14,7 +14,7 @@
 /* a bird's picture in a white round */
 .sing3 .pic3 { flex: none; display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; background: #fff; overflow: hidden; }
 .sing3 .pic3 img { width: 40px; height: 30px; }
-.sing3 .pic3 svg { width: 20px; height: 20px; stroke: #1d2b36; fill: #1d2b36; }
+.sing3 .pic3 svg { width: 22px; height: 22px; color: #1d2b36; }
 
 /* Sing: bottom left while the hawk can sing; it opens the controls */
 .singbtn3 { pointer-events: auto; position: absolute; left: var(--side); bottom: var(--bot); min-height: 52px; display: flex; align-items: center; gap: 9px; padding: 0 22px 0 5px;
@@ -39,14 +39,12 @@
 @keyframes sweepup3 { 0% { opacity: 1; transform: translateY(170%); } 100% { opacity: 1; transform: translateY(-100%); } }
 @keyframes rub3 { 0%, 100% { transform: none; filter: brightness(1.4); } 20% { transform: translateX(-5px); } 40% { transform: translateX(5px); } 60% { transform: translateX(-4px); } 80% { transform: translateX(3px); } }
 .notepad3 i.glow { animation: glow3 .6s ease-out; }
-.notepad3 i.next { box-shadow: 0 0 0 3px #fff, 0 0 14px 4px var(--lit); animation: nextband3 1.1s ease-in-out infinite alternate; }
-@keyframes nextband3 { to { filter: brightness(1.3); } }
 @keyframes glow3 { 0% { filter: brightness(1.7); } 100% { filter: none; } }
 
 /* stop singing: a crossed-out note, left of the pad at its top */
 .sgdone3 { pointer-events: auto; position: absolute; right: calc(var(--side2) + var(--padw) + var(--gap)); top: var(--top); width: 48px; height: 48px; padding: 0;
   display: grid; place-items: center; border: 1px solid var(--blkedge); border-radius: 24px; background: var(--blk); box-shadow: var(--shadow); cursor: pointer; }
-.sgdone3 svg { width: 22px; height: 22px; stroke: #fff; fill: #fff; }
+.sgdone3 svg { width: 24px; height: 24px; color: #fff; }
 
 /* the Legend: the four touches, left of the pad at its foot; it folds down to its title */
 .sglegend3 { pointer-events: auto; position: absolute; right: calc(var(--side2) + var(--padw) + var(--gap)); bottom: var(--bot); box-sizing: border-box; display: flex; flex-direction: column; gap: 1px;
@@ -56,16 +54,14 @@
 .sglegend3 div.hit { animation: key3 .4s ease-out; }
 @keyframes key3 { 0% { background: rgba(255, 255, 255, .28); } }
 .sglegend3 div.on { background: rgba(255, 255, 255, .14); }
-.sglegend3 div.next { background: #fff; color: #1d2b36; }
-.sglegend3 div.next svg { stroke: #1d2b36; }
 .sgfold3 { display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 32px; padding: 0 6px 0 8px; border: 0; background: none; cursor: pointer;
   font-size: 12.5px; font-weight: 700; letter-spacing: .02em; }
 .sgfold3 svg { width: 18px; height: 18px; stroke: #fff; transform: rotate(180deg); transition: transform .2s; }
 .sing3.fold .sglegend3 div { display: none; }
 .sing3.fold .sgfold3 svg { transform: none; }
 
-/* the song card, bottom left: the bird, its name (or a cheer) and words, its score, Hear it and
-   Slow; the bird or the chevron opens the birds to imitate */
+/* the song card, bottom left: the bird, its name (or a cheer) and words, its score; the bird or
+   the chevron opens the birds to imitate */
 .songcard3 { pointer-events: auto; position: absolute; left: var(--side); bottom: var(--bot); box-sizing: border-box; display: flex; flex-direction: column; gap: 5px; padding: 6px 8px 8px 6px;
   max-width: min(44vw, 400px); border: 1px solid var(--blkedge); border-radius: 20px; background: var(--blk); box-shadow: var(--shadow); color: #fff; }
 .sghead3 { display: flex; align-items: center; gap: 9px; cursor: pointer; min-width: 0; }
@@ -89,10 +85,6 @@
 .score3 span.wrong { opacity: 1; filter: saturate(0) brightness(.7); }
 .score3 span.next { opacity: 1; background: rgba(255, 255, 255, .2); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .25); }
 .score3 span.bird { opacity: .6; filter: saturate(.3); }
-.sgtools3 { display: flex; gap: 6px; }
-.sgtools3 button { height: 32px; display: flex; align-items: center; gap: 6px; padding: 0 12px; border: 0; border-radius: 16px; background: rgba(255, 255, 255, .12); font-size: 12.5px; font-weight: 600; cursor: pointer; }
-.sgtools3 svg { width: 12px; height: 12px; fill: #fff; }
-.sing3.practice .slow3 { background: #fff; color: #1d2b36; }
 
 /* the birds to imitate: just the list, four to a row, the whole height of the screen */
 .birds3 { pointer-events: auto; position: absolute; z-index: 3; left: var(--side); top: calc(10px + env(safe-area-inset-top)); bottom: calc(10px + env(safe-area-inset-bottom));

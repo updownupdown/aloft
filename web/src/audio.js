@@ -154,7 +154,7 @@ export function createAudio() {
     if (echo) far = true;
     const ctx = A.ctx, t = ctx.currentTime + (echo ? echo.delay : far ? 1.1 + Math.random() * .6 : 0), vol = (echo ? .17 * echo.vol : far ? .06 : .17) * gain, k = far && !echo ? .97 : 1;
     const env = ctx.createGain(), bp = ctx.createBiquadFilter(), lp = ctx.createBiquadFilter();
-    bp.type = 'bandpass'; bp.Q.value = 2.2; lp.type = 'lowpass'; lp.frequency.value = far ? 1900 : 5200;
+    bp.type = 'bandpass'; bp.Q.value = 2.2; lp.type = 'lowpass'; lp.frequency.value = far ? 1900 : 4400;
     env.gain.setValueAtTime(0, t); env.gain.linearRampToValueAtTime(vol, t + .07); env.gain.linearRampToValueAtTime(vol * .85, t + .7);
     env.gain.linearRampToValueAtTime(vol * .7, t + 1.0); env.gain.exponentialRampToValueAtTime(.0008, t + 1.35);
     const pitch = (o, m) => {
@@ -164,7 +164,7 @@ export function createAudio() {
     const o = ctx.createOscillator(), o2 = ctx.createOscillator(), g2 = ctx.createGain(), rasp = ctx.createOscillator(), rg = ctx.createGain();
     o.type = 'sawtooth'; o2.type = 'sine'; g2.gain.value = .9; pitch(o, 1); pitch(o2, 1);
     bp.frequency.setValueAtTime(2900, t); bp.frequency.exponentialRampToValueAtTime(1800, t + 1.3);
-    rasp.frequency.value = 62; rg.gain.value = 110; rasp.connect(rg); rg.connect(o.frequency); rg.connect(o2.frequency);
+    rasp.frequency.value = 58; rg.gain.value = 70; rasp.connect(rg); rg.connect(o.frequency); rg.connect(o2.frequency);
     o.connect(bp).connect(env); o2.connect(g2).connect(env); env.connect(lp).connect(far ? bus() : A.master);
     if (!far) { const send = ctx.createGain(); send.gain.value = .3; lp.connect(send).connect(bus()); }
     for (const x of [o, o2, rasp]) { x.start(t); x.stop(t + 1.4); }
@@ -212,35 +212,33 @@ export function createAudio() {
         at += .2 - i * .012;
       }
     },
-    // the barn owl: no hoot, a long breathy shriek, "shhhrrreeee": rough hiss over a broad band
-    // (most of it 2-6 kHz), swelling in and trailing off, roughened by a fast flutter in loudness
+    // the barn owl: no hoot, a long breathy "shhheee", kept soft: an airy hiss in one broad band
+    // round 3 kHz that swells in and fades away slowly, over a faint falling whistle with a slow
+    // waver (no fast flutter, which made it grate)
     owl(v) {
-      const { ctx, out, t } = v, dur = 1.8, g = ctx.createGain(), am = ctx.createGain(), fl = ctx.createOscillator(), fg = ctx.createGain();
-      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(v.vol, t + .25); g.gain.setValueAtTime(v.vol, t + 1.1);
+      const { ctx, out, t } = v, dur = 1.5, g = ctx.createGain();
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(v.vol, t + .35); g.gain.setValueAtTime(v.vol, t + .7);
       g.gain.exponentialRampToValueAtTime(.0008, t + dur);
-      am.gain.value = .6; fl.frequency.value = 78; fg.gain.value = .4; fl.connect(fg).connect(am.gain);   // the flutter
-      am.connect(g).connect(out);
-      for (const [f, q, w] of [[2400, 2.5, .8], [3900, 3, 1], [5600, 3, .6]]) {
-        const n = ctx.createBufferSource(), bp = ctx.createBiquadFilter(), bg = ctx.createGain();
-        n.buffer = noiseBuf; bp.type = 'bandpass'; bp.Q.value = q; bg.gain.value = w;
-        bp.frequency.setValueAtTime(f * .9 * v.k, t); bp.frequency.linearRampToValueAtTime(f * v.k, t + .5); bp.frequency.linearRampToValueAtTime(f * .82 * v.k, t + dur);
-        n.connect(bp).connect(bg).connect(am); n.start(t, Math.random()); n.stop(t + dur + .05);
-      }
-      fl.start(t); fl.stop(t + dur + .05);
-      // a faint thin tone inside the hiss
-      syl(v, { dur: 1.6, f: 2100, f2: 2300, f3: 1800, type: 'sine', vol: .06, rasp: 60, raspF: 78 });
+      const n = ctx.createBufferSource(), bp = ctx.createBiquadFilter(), lp = ctx.createBiquadFilter();
+      n.buffer = noiseBuf; bp.type = 'bandpass'; bp.Q.value = 1.6; lp.type = 'lowpass'; lp.frequency.value = 4800;
+      bp.frequency.setValueAtTime(2700 * v.k, t); bp.frequency.linearRampToValueAtTime(3300 * v.k, t + .5); bp.frequency.linearRampToValueAtTime(2300 * v.k, t + dur);
+      n.connect(bp).connect(lp).connect(g).connect(out); n.start(t, Math.random()); n.stop(t + dur + .05);
+      syl(v, { at: .05, dur: 1.35, f: 2300, f2: 2500, f3: 1700, type: 'sine', vol: .22, rasp: 18, raspF: 6 });
     },
-    // the raven: two or three deep, rolling croaks, "kronk ... kraa", far lower than a crow; each
-    // starts hard, with a knock in the throat, so it sounds the moment you let go
+    // the raven: two or three deep, hollow croaks, "krok ... kraa", far lower than a crow: a
+    // round voice through a throat band with a slow, gentle roll (a fast buzz sounded like a
+    // saw), and a soft knock at the start so it sounds the moment you let go
     raven(v) {
       const n = 2 + (Math.random() < .5 ? 1 : 0);
       for (let i = 0; i < n; i++) {
-        syl(v, { at: i * .42, dur: .3, f: 400 - i * 15, f2: 440 - i * 15, f3: 320, vol: 1, rasp: 60, raspF: 32, bp: 900, q: 1.1, breath: .5, bf: 1200 });
-        syl(v, { at: i * .42, dur: .05, f: 260, type: 'square', vol: .5, bp: 700, q: 1 });
+        const at = i * .45, f = 330 - i * 14;
+        syl(v, { at, dur: .32, f, f2: f * 1.1, f3: f * .8, type: 'triangle', vol: 1, rasp: 14, raspF: 22, bp: 780, q: .9, breath: .12, bf: 1100 });
+        syl(v, { at, dur: .3, f: f * 2, f2: f * 2.2, f3: f * 1.6, type: 'sine', vol: .25 });
+        syl(v, { at, dur: .04, f: 240, type: 'triangle', vol: .35, bp: 600, q: 1 });
       }
     },
   };
-  const NEAR = { osprey: .3, owl: .85, raven: .5 }, DRY = { raven: 1 };
+  const NEAR = { osprey: .3, owl: .3, raven: .45 }, DRY = { raven: 1 };
   A.call = (bird, far = false, echo = null, gain = 1) => {
     if (!A.ctx) return;
     if (!CALLS[bird]) return A.scream(far, echo, gain);

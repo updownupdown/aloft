@@ -8,8 +8,8 @@
 //   beside it   at the top the stop button (a crossed-out note); at the foot the Legend of those
 //               four touches, which folds down to its title
 //   bottom left the song card: the bird you imitate, its name (or a moment's cheer), the song's
-//               words and its score (each syllable's kind and pitch, the next one boxed), Hear it
-//               and Slow. Its chevron opens the birds you know, the whole height of the screen,
+//               words and its score (each syllable's kind and pitch, the next one boxed). Its
+//               chevron opens the birds you know, the whole height of the screen,
 //               to pick one to imitate (a mark on those singing nearby)
 // Pick a bird and you sing in its voice, imitating it: play its score through and a bird of that
 // kind answers (once you have learned it). Each syllable sung, yours or a songbird's, rises from
@@ -34,8 +34,6 @@ export const glyph = k => `<svg viewBox="0 0 40 20" aria-hidden="true">${GLYPH[k
 // the touches, in the Legend's order: [kind, words]
 const TOUCHES = [['c', 'tap'], ['w', 'swipe down'], ['t', 'swipe up'], ['b', 'rub']];
 const CHEVRON = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 12.5l5-5 5 5" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-const NOTE = '<path d="M8 15.5V4.5l8-2v10" fill="none" stroke-width="1.8" stroke-linejoin="round"/><circle cx="6" cy="15.5" r="2.2"/><circle cx="14" cy="12.5" r="2.2"/>';
-const UNSING = `<svg viewBox="0 0 20 20" aria-hidden="true">${NOTE}<path d="M3 3l14 14" stroke-width="2" stroke-linecap="round"/></svg>`;
 // a touch on the pad: a path shorter than MOVE px is a tap; past DECIDE px it sings at once, a
 // swipe up or down by which way it went, else a rub
 const MOVE = 10, DECIDE = 18;
@@ -43,12 +41,14 @@ const MOVE = 10, DECIDE = 18;
 import { songbirdPic } from '../pics.js';
 import { project } from '../shot.js';
 import { store } from '../util.js';
-import { icon } from '../icons.js';
+import { icon, ICONS } from '../icons.js';
+// stop singing: the sing icon, crossed out
+const UNSING = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS.sing}<path d="M3.5 3.5l17 17"/></svg>`;
 
 const css = new URL('./songs.css', import.meta.url).href;
 if (!document.querySelector(`link[href="${css}"]`)) document.head.append(Object.assign(document.createElement('link'), { rel: 'stylesheet', href: css }));
 
-export function createSingUI(ui, { audio, voice, onSyll, onPick, onCall, onPractice, onHear }) {
+export function createSingUI(ui, { audio, voice, onSyll, onPick, onCall }) {
   ui.insertAdjacentHTML('beforeend', `<div class="rise3"></div><div class="sing3 hidden">
       <button class="singbtn3"><span class="pic3"></span><b>Sing</b></button>
       <div class="notepad3">${NOTE_COLS.map((c, i) => `<i data-lane="${i}" style="--note:${c};--lit:${NOTE_LIT[i]}"></i>`).reverse().join('')}</div>
@@ -58,7 +58,6 @@ export function createSingUI(ui, { audio, voice, onSyll, onPick, onCall, onPract
       <div class="songcard3">
         <div class="sghead3"><span class="pic3"></span><span class="txt3"><b></b><i></i></span><button class="sgmore3" aria-label="Imitate a bird">${CHEVRON}</button></div>
         <div class="score3"></div>
-        <div class="sgtools3"><button class="hearit3"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 4l10 6-10 6z"/></svg>Hear it</button><button class="slow3">Slow</button></div>
       </div>
       <div class="birds3"><header><span>Imitate a bird</span><button class="sgless3" aria-label="Close">${CHEVRON}</button></header><div class="cards3"></div></div>
     </div>
@@ -122,11 +121,6 @@ export function createSingUI(ui, { audio, voice, onSyll, onPick, onCall, onPract
   legend.querySelector('.sgfold3').addEventListener('click', () => fold(!root.classList.contains('fold')));
   card.querySelector('.sghead3').addEventListener('click', () => { audio.unlock(); big(true); });
   q('.sgless3').addEventListener('click', () => big(false));
-  q('.hearit3').addEventListener('click', () => { audio.unlock(); onHear?.(); });
-  q('.slow3').addEventListener('click', () => {
-    // slow practice: the bird's phrase loops at half speed, the next note lit on the pad
-    S.practice = !S.practice; root.classList.toggle('practice', S.practice); onPractice?.(S.practice);
-  });
   cards.addEventListener('click', e => {
     const b = e.target.closest('[data-sp]'); if (!b) return;
     audio.unlock(); big(false); onPick(b.dataset.sp === 'none' ? null : +b.dataset.sp);
@@ -144,7 +138,7 @@ export function createSingUI(ui, { audio, voice, onSyll, onPick, onCall, onPract
       + (picked ? '<button data-sp="none" class="stop"><span>Sing as yourself</span></button>' : '')
       + (list.length ? '' : '<p>No songs yet. Perch near a singing bird and listen.</p>');
     S.idle = list.length ? `${learned.size} known` : 'Listen to the birds';
-    singPic.innerHTML = picked ? `<img src="${songbirdPic(picked, 64)}" alt="">` : `<svg viewBox="0 0 20 20" aria-hidden="true">${NOTE}</svg>`;
+    singPic.innerHTML = picked ? `<img src="${songbirdPic(picked, 64)}" alt="">` : icon('sing');
   }
   // the card: the bird, its name (or a cheer for a moment), and the score, one glyph per
   // syllable at its pitch; the bird's own half of a duet is dimmed. With no bird, an invitation.
@@ -155,7 +149,7 @@ export function createSingUI(ui, { audio, voice, onSyll, onPick, onCall, onPract
     S.score = key; card.classList.toggle('idle', !sc);
     S.name = sc ? sc.title : 'Imitate a bird'; setName();
     words.textContent = sc?.words || '';
-    pic.innerHTML = sc ? `<img src="${songbirdPic(sc.sp, 64)}" alt="">` : `<svg viewBox="0 0 20 20" aria-hidden="true">${NOTE}</svg>`;
+    pic.innerHTML = sc ? `<img src="${songbirdPic(sc.sp, 64)}" alt="">` : icon('sing');
     if (sc && !singPic.querySelector('img')) singPic.innerHTML = `<img src="${songbirdPic(sc.sp, 64)}" alt="">`;
     if (!sc || sc.hidden) { score.innerHTML = `<small>${sc ? sc.note : S.idle}</small>`; return; }
     score.innerHTML = sc.sp.notes.map((n, i) => {
@@ -217,13 +211,6 @@ export function createSingUI(ui, { audio, voice, onSyll, onPick, onCall, onPract
     glow(lane) { if (S.ready && S.on) flash(rows[lane], 'glow'); },
     // a syllable rising from a beak at world point p (the scene S3 gives the camera)
     rise: riseAt,
-    // light the row and the touch to sing next (practice), or none (-1)
-    hint(lane, kind) {
-      const key = lane + (kind || ''); if (key === S.hint) return; S.hint = key;
-      rows.forEach((r, i) => r.classList.toggle('next', i === lane));
-      for (const d of keys) d.classList.toggle('next', lane >= 0 && d.dataset.kind === kind);
-    },
-    get practice() { return !!S.practice; },
     openBirds() { audio.unlock(); setOn(true); big(true); },
     cheer(text) {
       // in the card's name line for a moment: one line of news at a time

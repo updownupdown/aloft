@@ -58,7 +58,7 @@ export function songsSystem(G) {
   G.species = SPECIES;
   G.gifts = {};
   const songLog = store.get('songlog', {});
-  let placeK = 0, placeSent = 0, practiceT = 0;
+  let placeK = 0, placeSent = 0;
   const sungAt = {};                 // landmark id -> the day a song opened it
   const taught = {};                 // young bird's spot id -> { from: species id, day } (a song you taught it)
   const mixHeard = {};               // spot ids whose mixed song you have heard
@@ -78,7 +78,7 @@ export function songsSystem(G) {
   const ui = createSingUI(document.getElementById('ui3'), {
     audio: A, voice: () => SPECIES[voice ?? 1].voice,
     onSyll: (lane, kind) => { notePart(b.p, lane, kind, true); G.music.echo(lane); singNote(lane, kind); },
-    onPick: pick, onCall: call, onHear: hearIt,
+    onPick: pick, onCall: call,
   });
 
   // ---- songbirds singing --------------------------------------------------------------------
@@ -152,12 +152,6 @@ export function songsSystem(G) {
     if (!G.learned.has(id)) { ui.cheer(`You sing in the ${picked.name}'s voice`); return; }
     ui.cheer(`Imitate the ${picked.name}`); H.did('imitate');
     picked.notes.forEach((n, i) => later(.5 + i * picked.gap, () => { A.note(n, picked.voice, .07, picked.kinds[i]); ui.glow(n); }));
-  }
-  // Hear it (the song card): the song you are copying, once, softly, its notes lit on the pad
-  function hearIt() {
-    const sp = S.target || (picked && G.learned.has(picked.id) ? picked : null);
-    if (!sp) { ui.cheer(picked ? 'Listen for one nearby first' : 'Pick a bird to imitate'); return; }
-    sp.notes.forEach((n, i) => later(.2 + i * sp.gap, () => { A.note(n, sp.voice, .08, sp.kinds[i]); ui.glow(n); }));
   }
 
   // ---- teaching a young bird (round six) -----------------------------------------------------
@@ -458,15 +452,8 @@ export function songsSystem(G) {
         const listening = close && young(close) && close.sp !== target && G.learned.has(target.id) ? `a young ${close.sp.name.toLowerCase()} is listening` : '';
         sc = { sp: target, title, words: listening || words, done: off + S.tries.length, bird: off, state: S.wrongT > 0 ? 'wrong' : S.doneT > 0 ? 'done' : '' };
       } else if (picked) sc = { sp: picked, hidden: true, title: picked.name, note: 'Listen for one nearby to learn its song' };
-      G.camSing = ui.open ? 1 : 0;   // the camera comes in closer while singing (camera.js)
+      G.singing = ui.open;   // the sing controls are out (main.js turns the perched gyro look off)
       ui.update({ available, known, learned: G.learned, picked, sc, nearby, lefty: lefty(), resting: callT > 0 });
-      // slow practice: the phrase at half speed, over and over, softly; the next note lit
-      const prac = ui.practice && ui.open && target && sc && !sc.hidden;
-      ui.hint(prac ? target.notes[sc.done] ?? -1 : -1, prac ? target.kinds[sc.done] : '');
-      if (prac && (practiceT -= dt) <= 0) {
-        practiceT = target.notes.length * target.gap * 2 + 2;
-        target.notes.forEach((n, i) => later(i * target.gap * 2, () => { if (ui.practice) { A.note(n, target.voice, .06, target.kinds[i]); ui.glow(n); } }));
-      } else if (!prac) practiceT = 0;
 
       // gifts that run for a while
       const g = G.gifts;
