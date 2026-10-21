@@ -1,6 +1,6 @@
 // Songs: songbirds sit in some trees and sing in their hours, songs written from the real
-// birds' (whistles, chips, trills and buzzes at five pitches; see src/songs.js). Perch near one
-// and copy its score on the song controls to learn it. To use a song you know, pick its bird
+// birds' (notes sliding up or down, steady whistles, trills and chips at five pitches; see
+// src/songs.js). Perch near one and copy its score on the song controls to learn it. To use a song you know, pick its bird
 // from Songs and imitate it: sing it right from any perch and a bird of that kind answers, with
 // its gift. Beside its own bird, a known song is a duet: it sings the first half and you answer
 // with the rest; a clean, well-timed song makes the gift last longer.
@@ -334,10 +334,10 @@ export function songsSystem(G) {
     if (!G.flags.call) { G.flags.call = 1; H.toast(`Your call carries over the valley. Mice freeze where they stand, and ${FAR[BIRD] || 'birds of your kind'} far off answer.`, 5); }
   }
 
-  // ---- keys: 1 to 5 sing at each pitch, 6 to 9 choose whistle, chip, trill, buzz; C calls -------
+  // ---- keys: 1 to 5 sing at each pitch, 6 to 0 choose up, down, left, right, tap; C calls -------
   addEventListener('keydown', e => {
     if (G.paused || e.repeat) return;
-    const n = '12345'.indexOf(e.key), k = '6789'.indexOf(e.key);
+    const n = '12345'.indexOf(e.key), k = '67890'.indexOf(e.key);
     if (n >= 0 && ui.ready && !ui.open) ui.sing(true);
     if (n >= 0 && ui.open) { A.note(n, SPECIES[voice ?? 1].voice, .18, ui.kind); ui.glow(n); notePart(b.p, n, ui.kind, true); G.music.echo(n); singNote(n, ui.kind); }
     if (k >= 0 && ui.open) ui.setKind(KINDS[k][0]);
@@ -448,9 +448,8 @@ export function songsSystem(G) {
       if (target) {
         const off = S.duet ? Math.ceil(target.notes.length / 2) : 0;
         const title = !G.learned.has(target.id) ? `Learn the ${target.name}` : S.duet ? `Duet with the ${target.name}` : target.name;
-        const words = target.words.split(':')[0];
         const listening = close && young(close) && close.sp !== target && G.learned.has(target.id) ? `a young ${close.sp.name.toLowerCase()} is listening` : '';
-        sc = { sp: target, title, words: listening || words, done: off + S.tries.length, bird: off, state: S.wrongT > 0 ? 'wrong' : S.doneT > 0 ? 'done' : '' };
+        sc = { sp: target, title, note: listening, done: off + S.tries.length, bird: off, state: S.wrongT > 0 ? 'wrong' : S.doneT > 0 ? 'done' : '' };
       } else if (picked) sc = { sp: picked, hidden: true, title: picked.name, note: 'Listen for one nearby to learn its song' };
       G.singing = ui.open;   // the sing controls are out (main.js turns the perched gyro look off)
       ui.update({ available, known, learned: G.learned, picked, sc, nearby, lefty: lefty(), resting: callT > 0 });

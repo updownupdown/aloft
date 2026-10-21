@@ -2,15 +2,14 @@
 // songbird), a Sing button waits bottom left; tap it and the song controls open, in black frames
 // so the note colours stand out:
 //   right edge  the note pad, five rows from low (bottom) to high, each its own colour. The row
-//               is the pitch and the touch is the kind of syllable: tap for a chip, swipe down for
-//               a whistle, swipe up for a trill, a quick scrub up and down for a buzz. Each touch
-//               sings one syllable, the row answering in its own way, and two thumbs can sing.
-//   beside it   the Legend of those four touches, written sideways; it folds to its title
-//   bottom left the song card: the bird you imitate, its name (or a moment's cheer), the song's
-//               words and its score (each syllable's kind and pitch, the next one boxed). Its
-//               chevron opens the birds you know, the whole height of the screen, to pick one to
-//               imitate (a mark on those singing nearby). Above it, the stop button (the sing
-//               icon crossed out)
+//               is the pitch and the touch is the kind of syllable: swipe up for a note sliding
+//               up, down for one sliding down, right for a steady whistle, left for a trill, and
+//               tap for a chip. Each touch sings one syllable, the row answering in its own way,
+//               and two thumbs can sing.
+//   bottom left the song card: the bird you imitate, its name (or a moment's cheer) and its
+//               score (each syllable's arrow at its pitch, the next one boxed). Tap it to open the
+//               birds you know, the whole height of the screen, to pick one to imitate (a mark on
+//               those singing nearby). Above it, the stop button (the sing icon crossed out)
 // Pick a bird and you sing in its voice, imitating it: play its score through and a bird of that
 // kind answers (once you have learned it). Each syllable sung, yours or a songbird's, rises from
 // its beak as a little coloured drawing of its kind. Left-handed, the sides swap. Everything sits
@@ -21,27 +20,25 @@
 export const NOTE_COLS = ['#2f4a74', '#3e7c88', '#608842', '#c49234', '#b04e3a'];
 // the same notes lighter, to draw on black and on the sky
 const NOTE_LIT = ['#6f93d6', '#5fc0cf', '#8fcf5a', '#f2c14e', '#f0745a'];
-export const KINDS = [['w', 'Whistle'], ['c', 'Chip'], ['t', 'Trill'], ['b', 'Buzz']];
-// a little drawing of each kind of syllable, as on a sonogram: the trill shakes up and down, the
-// buzz rubs left and right
+export const KINDS = [['u', 'Up'], ['d', 'Down'], ['l', 'Left'], ['r', 'Right'], ['c', 'Tap']];
+// a little drawing of each kind of syllable: a line ending in an arrowhead the way the touch goes
+// (and the way the note slides, as on a sonogram), and a dot for a tap
+const ARROW = '<path class="ln" d="M12 21V10" stroke-width="3.2" stroke-linecap="round"/><path d="M6.5 11L12 3.5 17.5 11Z" stroke-width="1.6" stroke-linejoin="round"/>';
 const GLYPH = {
-  w: '<path d="M5 13 Q20 5 35 10" stroke-width="3.2" fill="none" stroke-linecap="round"/>',
-  c: '<path d="M17 5 L23 15" stroke-width="3.6" fill="none" stroke-linecap="round"/>',
-  t: '<path d="M4 10 l4 -5 l4 10 l4 -10 l4 10 l4 -10 l4 10 l4 -10 l4 5" stroke-width="2.2" fill="none" stroke-linejoin="round"/>',
-  b: '<path d="M11 3 L29 5 L11 7.5 L29 10 L11 12.5 L29 15 L11 17" stroke-width="1.7" fill="none" stroke-linejoin="round" stroke-linecap="round"/>',
+  u: ARROW,
+  d: `<g transform="rotate(180 12 12)">${ARROW}</g>`,
+  r: `<g transform="rotate(90 12 12)">${ARROW}</g>`,
+  l: `<g transform="rotate(-90 12 12)">${ARROW}</g>`,
+  c: '<circle cx="12" cy="12" r="5.5" stroke-width="1.6"/>',
 };
-export const glyph = k => `<svg viewBox="0 0 40 20" aria-hidden="true">${GLYPH[k] || GLYPH.w}</svg>`;
-// the touches, in the Legend's order: [kind, words]
-const TOUCHES = [['c', 'tap'], ['w', 'swipe down'], ['t', 'swipe up'], ['b', 'swipe up/down']];
+export const glyph = k => `<svg viewBox="0 0 24 24" aria-hidden="true">${GLYPH[k] || GLYPH.r}</svg>`;
 const CHEVRON = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 12.5l5-5 5 5" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-// a touch on the pad: a path shorter than MOVE px is a tap. A quick scrub up and down (turning back
-// by TURN px) is a buzz at once, as is a rub sideways (DECIDE px); one way only is a swipe, up or
-// down, once it has gone SWIPE px or on release
-const MOVE = 10, DECIDE = 18, TURN = 6, SWIPE = 36;
+// a touch on the pad: a path shorter than MOVE px is a tap; otherwise a swipe, its way the one it
+// has gone furthest, once it is SWIPE px from where it began or on release
+const MOVE = 10, SWIPE = 30;
 
 import { songbirdPic } from '../pics.js';
 import { project } from '../shot.js';
-import { store } from '../util.js';
 import { icon, ICONS } from '../icons.js';
 // stop singing: the sing icon, crossed out
 const UNSING = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS.sing}<path d="M3.5 3.5l17 17"/></svg>`;
@@ -53,24 +50,20 @@ export function createSingUI(ui, { audio, voice, onSyll, onPick, onCall }) {
   ui.insertAdjacentHTML('beforeend', `<div class="rise3"></div><div class="sing3 hidden">
       <button class="singbtn3"><span class="pic3"></span><b>Sing</b></button>
       <div class="notepad3">${NOTE_COLS.map((c, i) => `<i data-lane="${i}" style="--note:${c};--lit:${NOTE_LIT[i]}"></i>`).reverse().join('')}</div>
-      <div class="sglegend3"><div class="sgkeys3">${TOUCHES.map(([k, w]) => `<div data-kind="${k}">${glyph(k)}<span>${w}</span></div>`).join('')}</div>
-        <button class="sgfold3" aria-label="Hide the legend"><span>Legend</span>${CHEVRON}</button></div>
       <div class="sgleft3"><button class="sgdone3" aria-label="Stop singing" title="Stop singing">${UNSING}</button>
-      <div class="songcard3">
-        <div class="sghead3"><span class="pic3"></span><span class="txt3"><b></b><i></i></span><button class="sgmore3" aria-label="Imitate a bird">${CHEVRON}</button></div>
-        <div class="score3"></div>
+      <div class="songcard3" role="button" aria-label="Imitate a bird">
+        <span class="pic3"></span><span class="txt3"><b></b><i></i><span class="score3"></span></span><span class="sgmore3">${CHEVRON}</span>
       </div>
       </div>
       <div class="birds3"><header><span>Imitate a bird</span><button class="sgless3" aria-label="Close">${CHEVRON}</button></header><div class="cards3"></div></div>
     </div>
     <button class="call3" aria-label="Hawk call" title="Call">${icon('call')}</button>`);
   const root = [...ui.querySelectorAll('.sing3')].at(-1), q = s => root.querySelector(s);
-  const pad = q('.notepad3'), card = q('.songcard3'), legend = q('.sglegend3'), score = q('.score3'), cards = q('.cards3');
-  const name = card.querySelector('b'), words = card.querySelector('i'), pic = card.querySelector('.pic3'), singPic = q('.singbtn3 .pic3');
+  const pad = q('.notepad3'), card = q('.songcard3'), score = q('.score3'), cards = q('.cards3');
+  const name = card.querySelector('b'), line = card.querySelector('i'), pic = card.querySelector('.pic3'), singPic = q('.singbtn3 .pic3');
   const callBtn = [...ui.querySelectorAll('.call3')].at(-1), rise = [...ui.querySelectorAll('.rise3')].at(-1);
   const rows = [...pad.children].sort((a, b) => a.dataset.lane - b.dataset.lane);
-  const keys = [...legend.querySelectorAll('[data-kind]')];
-  const S = { ready: false, on: false, kind: 'w', species: '', score: '', name: '', cheer: '' };
+  const S = { ready: false, on: false, kind: 'r', species: '', score: '', name: '', cheer: '' };
   let cheerTimer = 0;
   const flash = (el, cls = 'hit') => { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); };
 
@@ -79,32 +72,27 @@ export function createSingUI(ui, { audio, voice, onSyll, onPick, onCall }) {
     for (const r of rows) { const b = r.getBoundingClientRect(); if (y >= b.top - 3 && y <= b.bottom + 3) return +r.dataset.lane; }
     const b = pad.getBoundingClientRect(); return y < b.top + b.height / 2 ? 4 : 0;
   };
-  // the row answers the touch: a tap pulses, a swipe sweeps light down or up, a rub shakes
-  const ANSWER = { c: 'k-c', w: 'k-w', t: 'k-t', b: 'k-b' };
+  // the row answers the touch: a tap pulses, a swipe sweeps light the way it went
+  const ANSWER = { c: 'k-c', u: 'k-u', d: 'k-d', l: 'k-l', r: 'k-r' };
   function sound(lane, kind) {
     const r = rows[lane]; r.classList.remove(...Object.values(ANSWER)); void r.offsetWidth; r.classList.add(ANSWER[kind]);
-    const key = keys.find(d => d.dataset.kind === kind); if (key) flash(key, 'hit');
     audio.note(lane, voice(), .18, kind); onSyll(lane, kind);
   }
   const touches = new Map();
+  const way = t => { const dx = t.x - t.x0, dy = t.y - t.y0; return Math.abs(dy) >= Math.abs(dx) ? (dy < 0 ? 'u' : 'd') : dx < 0 ? 'l' : 'r'; };
   function decide(t, kind) {
     if (t.done) return; t.done = true;
-    sound(t.lane, kind || (t.sx + t.sy <= MOVE ? 'c' : t.sy >= t.sx ? (t.y < t.y0 ? 't' : 'w') : 'b'));
+    sound(t.lane, kind || (t.sx + t.sy <= MOVE ? 'c' : way(t)));
   }
   pad.addEventListener('pointerdown', e => {
     e.preventDefault(); pad.setPointerCapture?.(e.pointerId); audio.unlock();
-    const t = { lane: laneAt(e.clientY), x: e.clientX, y: e.clientY, y0: e.clientY, lo: e.clientY, hi: e.clientY, sx: 0, sy: 0, done: false };
+    const t = { lane: laneAt(e.clientY), x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY, sx: 0, sy: 0, done: false };
     touches.set(e.pointerId, t); rows[t.lane].classList.add('down');
   });
   pad.addEventListener('pointermove', e => {
     const t = touches.get(e.pointerId); if (!t || t.done) return;
     t.sx += Math.abs(e.clientX - t.x); t.sy += Math.abs(e.clientY - t.y); t.x = e.clientX; t.y = e.clientY;
-    t.lo = Math.min(t.lo, t.y); t.hi = Math.max(t.hi, t.y);
-    // turned back after going some way up (or down): a scrub
-    const went = t.y0 - t.lo > TURN ? t.y - t.lo : t.hi - t.y0 > TURN ? t.hi - t.y : 0;
-    if (went > TURN && t.hi - t.lo > TURN + 4) decide(t, 'b');
-    else if (t.sx > DECIDE && t.sx > t.sy) decide(t, 'b');
-    else if (Math.abs(t.y - t.y0) > SWIPE) decide(t, t.y < t.y0 ? 't' : 'w');
+    if (Math.hypot(t.x - t.x0, t.y - t.y0) > SWIPE) decide(t, way(t));
   });
   const lift = e => {
     const t = touches.get(e.pointerId); if (!t) return;
@@ -114,18 +102,15 @@ export function createSingUI(ui, { audio, voice, onSyll, onPick, onCall }) {
   };
   pad.addEventListener('pointerup', lift); pad.addEventListener('pointercancel', lift);
 
-  // ---- open and close: Sing, stop, the Legend's fold, the birds ---------------------------------
+  // ---- open and close: Sing, stop, the birds ---------------------------------
   const setOn = on => {
     S.on = on; root.classList.toggle('on', on);
     if (!on) { big(false); touches.clear(); rows.forEach(r => r.classList.remove('down')); }
   };
   const big = on => root.classList.toggle('big', on);
-  const fold = off => { root.classList.toggle('fold', off); legend.querySelector('.sgfold3').setAttribute('aria-label', off ? 'Show the legend' : 'Hide the legend'); store.set('singLegendOff', off); };
-  fold(store.get('singLegendOff', false));
   q('.singbtn3').addEventListener('click', () => { audio.unlock(); setOn(true); });
   q('.sgdone3').addEventListener('click', () => setOn(false));
-  legend.querySelector('.sgfold3').addEventListener('click', () => fold(!root.classList.contains('fold')));
-  card.querySelector('.sghead3').addEventListener('click', () => { audio.unlock(); big(true); });
+  card.addEventListener('click', () => { audio.unlock(); big(true); });
   q('.sgless3').addEventListener('click', () => big(false));
   cards.addEventListener('click', e => {
     const b = e.target.closest('[data-sp]'); if (!b) return;
@@ -150,11 +135,11 @@ export function createSingUI(ui, { audio, voice, onSyll, onPick, onCall }) {
   // syllable at its pitch; the bird's own half of a duet is dimmed. With no bird, an invitation.
   const setName = () => { name.textContent = S.cheer || S.name; card.classList.toggle('cheer', !!S.cheer); };
   function setScore(sc) {
-    const key = sc ? [sc.sp.id, sc.title, sc.done, sc.bird, sc.state, sc.hidden, sc.words].join() : S.idle;
+    const key = sc ? [sc.sp.id, sc.title, sc.done, sc.bird, sc.state, sc.hidden, sc.note].join() : S.idle;
     if (key === S.score) return;
     S.score = key; card.classList.toggle('idle', !sc);
     S.name = sc ? sc.title : 'Imitate a bird'; setName();
-    words.textContent = sc?.words || '';
+    line.textContent = sc?.note && !sc.hidden ? sc.note : '';
     pic.innerHTML = sc ? `<img src="${songbirdPic(sc.sp, 64)}" alt="">` : icon('sing');
     if (sc && !singPic.querySelector('img')) singPic.innerHTML = `<img src="${songbirdPic(sc.sp, 64)}" alt="">`;
     if (!sc || sc.hidden) { score.innerHTML = `<small>${sc ? sc.note : S.idle}</small>`; return; }
@@ -170,9 +155,9 @@ export function createSingUI(ui, { audio, voice, onSyll, onPick, onCall }) {
     if (!S3 || rise.childElementCount > 40) return;
     const at = project(S3, p, innerWidth, innerHeight);
     if (!at || at.z > 70 || at.x < -40 || at.x > innerWidth + 40 || at.y < -40 || at.y > innerHeight + 40) return;
-    const g = GLYPH[kind] || GLYPH.w, size = Math.max(.55, Math.min(1.25, 14 / at.z));
+    const g = GLYPH[kind] || GLYPH.r, size = Math.max(.55, Math.min(1.25, 14 / at.z));
     const el = document.createElement('i');
-    el.innerHTML = `<svg viewBox="0 0 40 20" aria-hidden="true"><g class="edge">${g}</g><g style="stroke:${NOTE_LIT[lane]}">${g}</g></svg>`;
+    el.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><g class="edge">${g}</g><g style="stroke:${NOTE_LIT[lane]};fill:${NOTE_LIT[lane]}">${g}</g></svg>`;
     el.style.cssText = `left:${at.x}px;top:${at.y}px;--s:${size};--dx:${(Math.random() - .5) * 50}px;--up:${80 + lane * 10}px`;
     rise.append(el); el.addEventListener('animationend', () => el.remove());
   }
@@ -200,9 +185,9 @@ export function createSingUI(ui, { audio, voice, onSyll, onPick, onCall }) {
     // the hawk can sing here (the Sing button shows)
     get ready() { return S.ready; },
     sing(on) { setOn(on); },
-    // the kind the keys 1 to 5 sing (keys 6 to 9 choose it)
+    // the kind the keys 1 to 5 sing (keys 6 to 0 choose it)
     get kind() { return S.kind; },
-    setKind(k) { S.kind = k; for (const d of keys) d.classList.toggle('on', d.dataset.kind === k); },
+    setKind(k) { S.kind = k; },
     // per frame: whether the hawk can sing, the birds you know, who you imitate, the score
     update({ available, known, learned, picked, sc, nearby = new Set(), lefty, resting }) {
       root.classList.toggle('lefty', lefty); S.lefty = lefty;
