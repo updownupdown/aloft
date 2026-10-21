@@ -81,6 +81,8 @@ export function aimsSystem(G) {
   const KEYS = Object.keys(BIOMES);
   const landOf = (x, z) => { let best = null; for (const e of blend(x, z)) if (!best || e.w > best.w) best = e; return best?.name; };
   const seenAll = () => KEYS.every(k => A.seen[k]);
+  // for the Map: the lands seen, of how many, and the feathers for aims kept
+  G.collection = () => ({ lands: KEYS.filter(k => A.seen[k]).length, of: KEYS.length, sights: Object.keys(A.sights).length, feathers: A.feathers });
   let landT = 0;
   // a found landmark counts as its land's sight when it is the kind that land is known for
   G.on('landmark', l => {
