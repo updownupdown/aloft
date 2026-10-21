@@ -7,9 +7,10 @@
 // that sees you coming bolts and digs down out of reach, leaving a scrape of earth.
 // Catching is forgiving: come down low over one and the feet reach for it; dive with wings
 // tucked (the aim tightens, see aim.js) and the reach is longer.
-import { height, normalAt, forest, WATER, ih } from '../world.js';
+import { height, normalAt, forest, WATER, ih, fbm } from '../world.js';
+import { mouseRich } from '../settle.js';
 import { builder, blob, reseed } from '../shapes.js';
-import { clamp } from '../util.js';
+import { clamp, smooth } from '../util.js';
 import { BIRD } from '../hawk.js';
 
 export const FOOD = {
@@ -103,9 +104,21 @@ export function foodSystem(G) {
     },
   };
 
-  // which mice live in a cell (fixed by hash), where their burrow is
+  // which mice live in a cell (fixed by hash, cached), where their burrow is. Mice gather where
+  // people kept grain: thick round the old barns and farmyards, the folds and village gardens
+  // (settle.js mouseRich), thin in the open country but for a few good meadow patches; the
+  // valley where you start keeps plenty so nobody begins hungry
+  const cellCache = new Map();
   function cellMice(cx, cz) {
-    const out = [], x0 = cx * FOOD.cell, z0 = cz * FOOD.cell, n = ih(cx, cz, 71) < .55 ? 1 + (ih(cx, cz, 72) < .3) : 0;
+    const key = cx * 100003 + cz; let c = cellCache.get(key); if (c) return c;
+    c = cellMiceOf(cx, cz); cellCache.set(key, c); if (cellCache.size > 4000) cellCache.delete(cellCache.keys().next().value);
+    return c;
+  }
+  function cellMiceOf(cx, cz) {
+    const x0 = cx * FOOD.cell, z0 = cz * FOOD.cell, mx = x0 + FOOD.cell / 2, mz = z0 + FOOD.cell / 2;
+    const rich = mouseRich(mx, mz), patch = smooth(.15, .45, fbm(mx / 400, mz / 400, 73, 2)), home = 1 - smooth(250, 450, Math.hypot(mx, mz + 60));
+    const p = Math.max(.16 + .3 * patch + .75 * rich, .55 * home), r = ih(cx, cz, 71);
+    const out = [], n = r < p ? 1 + (ih(cx, cz, 72) < .3 + rich * .5) + (rich > .6 && ih(cx, cz, 74) < rich - .4) : 0;
     // a few tries per mouse for a dry, open, fairly flat spot in the cell (glades count)
     for (let k = 0; k < n; k++) for (let tr = 0; tr < 4; tr++) {
       const x = x0 + (.1 + ih(cx, cz, 73 + k * 7 + tr) * .8) * FOOD.cell, z = z0 + (.1 + ih(cx, cz, 75 + k * 7 + tr) * .8) * FOOD.cell;
