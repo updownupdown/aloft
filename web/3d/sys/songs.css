@@ -6,10 +6,10 @@
 .sing3 { position: absolute; inset: 0; pointer-events: none; --side: calc(14px + env(safe-area-inset-left)); --side2: calc(14px + env(safe-area-inset-right));
   --blk: rgba(14, 19, 24, .86); --blkedge: rgba(255, 255, 255, .14); --dim: rgba(255, 255, 255, .68); --shadow: 0 4px 16px rgba(10, 20, 28, .28);
   --top: calc(92px + env(safe-area-inset-top)); --bot: calc(22px + env(safe-area-inset-bottom));
-  --padw: 120px; --gap: 8px; }
+  --padw: 96px; --gap: 8px; }
 .sing3 button { font-family: var(--text); color: #fff; touch-action: manipulation; }
 .songcard3, .sgdone3, .singbtn3, .notepad3, .sglegend3, .birds3 { -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); }
-.sing3:not(.on) :is(.notepad3, .sgdone3, .sglegend3, .songcard3, .birds3), .sing3.on .singbtn3, .sing3:not(.big) .birds3 { display: none; }
+.sing3:not(.on) :is(.notepad3, .sglegend3, .sgleft3, .birds3), .sing3.on .singbtn3, .sing3:not(.big) .birds3 { display: none; }
 .sing3 svg { flex: none; }
 /* a bird's picture in a white round */
 .sing3 .pic3 { flex: none; display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; background: #fff; overflow: hidden; }
@@ -41,29 +41,36 @@
 .notepad3 i.glow { animation: glow3 .6s ease-out; }
 @keyframes glow3 { 0% { filter: brightness(1.7); } 100% { filter: none; } }
 
-/* stop singing: a crossed-out note, left of the pad at its top */
-.sgdone3 { pointer-events: auto; position: absolute; right: calc(var(--side2) + var(--padw) + var(--gap)); top: var(--top); width: 48px; height: 48px; padding: 0;
+/* the Legend: the four touches written sideways, in a column left of the pad; its tab (Legend
+   and a chevron, beside the pad) folds the touches away */
+.sglegend3 { pointer-events: auto; position: absolute; right: calc(var(--side2) + var(--padw) + var(--gap)); top: var(--top); bottom: var(--bot); box-sizing: border-box; display: flex;
+  border: 1px solid var(--blkedge); border-radius: 18px; background: var(--blk); box-shadow: var(--shadow); color: #fff; font-size: 12px; font-weight: 600; }
+.sgkeys3 { display: flex; flex-direction: column; justify-content: space-around; gap: 4px; padding: 6px 2px 6px 4px; }
+.sgkeys3 div { display: flex; align-items: center; justify-content: center; gap: 2px; padding: 6px 3px; border-radius: 14px; white-space: nowrap; user-select: none; -webkit-user-select: none; }
+.sgkeys3 div svg { width: 30px; height: 15px; margin: 0 -7px; stroke: #fff; transform: rotate(90deg); }
+.sgkeys3 span, .sgfold3 span { writing-mode: vertical-rl; }
+.sgkeys3 div.hit { animation: key3 .4s ease-out; }
+@keyframes key3 { 0% { background: rgba(255, 255, 255, .28); } }
+.sgkeys3 div.on { background: rgba(255, 255, 255, .14); }
+.sgfold3 { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; width: 34px; padding: 0; border: 0; border-left: 1px solid var(--blkedge); background: none; cursor: pointer;
+  font-size: 12.5px; font-weight: 700; letter-spacing: .04em; }
+.sgfold3 svg { width: 18px; height: 18px; stroke: #fff; transform: rotate(90deg); transition: transform .2s; }
+.sing3.fold .sgkeys3 { display: none; }
+.sing3.fold .sgfold3 { border-left: 0; }
+.sing3.fold .sgfold3 svg { transform: rotate(-90deg); }
+
+/* bottom left: the stop button (the sing icon crossed out) over the song card; hidden while the
+   birds are open */
+.sgleft3 { position: absolute; left: var(--side); bottom: var(--bot); display: flex; flex-direction: column; align-items: flex-start; gap: 8px; pointer-events: none; }
+.sgdone3 { pointer-events: auto; width: 48px; height: 48px; padding: 0;
   display: grid; place-items: center; border: 1px solid var(--blkedge); border-radius: 24px; background: var(--blk); box-shadow: var(--shadow); cursor: pointer; }
 .sgdone3 svg { width: 24px; height: 24px; color: #fff; }
+.sing3.big .sgdone3 { display: none; }
 
-/* the Legend: the four touches, left of the pad at its foot; it folds down to its title */
-.sglegend3 { pointer-events: auto; position: absolute; right: calc(var(--side2) + var(--padw) + var(--gap)); bottom: var(--bot); box-sizing: border-box; display: flex; flex-direction: column; gap: 1px;
-  padding: 3px 4px 4px; border: 1px solid var(--blkedge); border-radius: 18px; background: var(--blk); box-shadow: var(--shadow); color: #fff; font-size: 12.5px; font-weight: 600; }
-.sglegend3 div { display: flex; align-items: center; gap: 7px; height: 32px; padding: 0 10px 0 6px; border-radius: 14px; white-space: nowrap; user-select: none; -webkit-user-select: none; }
-.sglegend3 div svg { width: 30px; height: 15px; stroke: #fff; }
-.sglegend3 div.hit { animation: key3 .4s ease-out; }
-@keyframes key3 { 0% { background: rgba(255, 255, 255, .28); } }
-.sglegend3 div.on { background: rgba(255, 255, 255, .14); }
-.sgfold3 { display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 32px; padding: 0 6px 0 8px; border: 0; background: none; cursor: pointer;
-  font-size: 12.5px; font-weight: 700; letter-spacing: .02em; }
-.sgfold3 svg { width: 18px; height: 18px; stroke: #fff; transform: rotate(180deg); transition: transform .2s; }
-.sing3.fold .sglegend3 div { display: none; }
-.sing3.fold .sgfold3 svg { transform: none; }
-
-/* the song card, bottom left: the bird, its name (or a cheer) and words, its score; the bird or
-   the chevron opens the birds to imitate */
-.songcard3 { pointer-events: auto; position: absolute; left: var(--side); bottom: var(--bot); box-sizing: border-box; display: flex; flex-direction: column; gap: 5px; padding: 6px 8px 8px 6px;
-  max-width: min(44vw, 400px); border: 1px solid var(--blkedge); border-radius: 20px; background: var(--blk); box-shadow: var(--shadow); color: #fff; }
+/* the song card: the bird, its name (or a cheer) and words, its score; the bird or the chevron
+   opens the birds to imitate */
+.songcard3 { pointer-events: auto; box-sizing: border-box; display: flex; flex-direction: column; gap: 5px; padding: 6px 8px 8px 6px;
+  max-width: min(46vw, 440px); border: 1px solid var(--blkedge); border-radius: 20px; background: var(--blk); box-shadow: var(--shadow); color: #fff; }
 .sghead3 { display: flex; align-items: center; gap: 9px; cursor: pointer; min-width: 0; }
 .txt3 { display: flex; flex-direction: column; min-width: 0; flex: 1; }
 .txt3 b { font-weight: 700; font-size: 13.5px; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -76,12 +83,13 @@
 .sgmore3 svg, .sgless3 svg { width: 18px; height: 18px; stroke: #fff; }
 .sgless3 svg { transform: rotate(180deg); }
 /* the score: one glyph per syllable at its pitch, the next one in a pale box */
-.score3 { --g: 34px; display: flex; gap: 3px; align-items: flex-end; min-height: 18px; padding-left: 4px; }
+.score3 { --g: 42px; display: flex; gap: 3px; align-items: flex-end; min-height: 18px; padding-left: 4px; }
 .score3:has(span) { height: calc(var(--g) * .5 + 26px); }
 .score3 small { font-size: 12px; font-weight: 500; color: var(--dim); white-space: nowrap; }
-.score3 span { width: var(--g); height: calc(var(--g) / 2); padding: 2px 1px; margin-bottom: calc(var(--lane) * var(--g) * .15); opacity: .4; border-radius: 7px; flex: none; }
+.score3 span { width: var(--g); height: calc(var(--g) / 2); padding: 2px 1px; margin-bottom: calc(var(--lane) * var(--g) * .15); opacity: .72; border-radius: 8px; flex: none;
+  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--note) 55%, transparent)); }
 .score3 svg { width: 100%; height: 100%; stroke: var(--note); display: block; }
-.score3 span.done { opacity: 1; }
+.score3 span.done { opacity: 1; filter: drop-shadow(0 0 5px var(--note)); }
 .score3 span.wrong { opacity: 1; filter: saturate(0) brightness(.7); }
 .score3 span.next { opacity: 1; background: rgba(255, 255, 255, .2); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .25); }
 .score3 span.bird { opacity: .6; filter: saturate(.3); }
@@ -105,8 +113,12 @@
 
 /* left-handed: the sides swap */
 .sing3.lefty .notepad3 { right: auto; left: var(--side); }
-.sing3.lefty :is(.sgdone3, .sglegend3) { right: auto; left: calc(var(--side) + var(--padw) + var(--gap)); }
-.sing3.lefty :is(.songcard3, .singbtn3, .birds3) { left: auto; right: var(--side2); }
+.sing3.lefty .sglegend3 { right: auto; left: calc(var(--side) + var(--padw) + var(--gap)); flex-direction: row-reverse; }
+.sing3.lefty .sgfold3 { border-left: 0; border-right: 1px solid var(--blkedge); }
+.sing3.lefty .sgfold3 svg { transform: rotate(-90deg); }
+.sing3.lefty.fold .sgfold3 svg { transform: rotate(90deg); }
+.sing3.lefty .sgleft3 { left: auto; right: var(--side2); align-items: flex-end; }
+.sing3.lefty :is(.singbtn3, .birds3) { left: auto; right: var(--side2); }
 
 /* notes rising from a beak: each syllable's drawing in its colour, edged in white with a soft
    dark halo so it reads on sky, leaves or snow */
