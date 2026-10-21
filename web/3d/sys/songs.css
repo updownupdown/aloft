@@ -1,5 +1,4 @@
-/* Song controls (songs system): the Sing button, the note pad, the Legend of touches, the song
-   card with its score, the birds to imitate, the notes rising from a beak and the Call button.
+/* Song controls (songs system): the Sing button, the note pad, the song card with its score, the birds to imitate, the notes rising from a beak and the Call button.
    The song controls sit in black frames with white text, so the note colours stand out; bird
    pictures sit in white rounds. Colours: --note and --lit on each row, --note on each score glyph.
    Everything here can be restyled without touching singui.js. */
@@ -8,8 +7,8 @@
   --top: calc(92px + env(safe-area-inset-top)); --bot: calc(22px + env(safe-area-inset-bottom));
   --padw: 96px; --gap: 8px; }
 .sing3 button { font-family: var(--text); color: #fff; touch-action: manipulation; }
-.songcard3, .sgdone3, .singbtn3, .notepad3, .sglegend3, .birds3 { -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); }
-.sing3:not(.on) :is(.notepad3, .sglegend3, .sgleft3, .birds3), .sing3.on .singbtn3, .sing3:not(.big) .birds3 { display: none; }
+.songcard3, .sgdone3, .singbtn3, .notepad3, .birds3 { -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); }
+.sing3:not(.on) :is(.notepad3, .sgleft3, .birds3), .sing3.on .singbtn3, .sing3:not(.big) .birds3 { display: none; }
 .sing3 svg { flex: none; }
 /* a bird's picture in a white round */
 .sing3 .pic3 { flex: none; display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; background: #fff; overflow: hidden; }
@@ -28,36 +27,20 @@
 .notepad3 i::after { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 60%; opacity: 0; pointer-events: none;
   background: linear-gradient(transparent, rgba(255, 255, 255, .75), transparent); }
 .notepad3 i.down { filter: brightness(1.2); }
-/* how a row answers each touch: a tap pulses, a swipe down sweeps light down, a swipe up sweeps
-   it up, a rub shakes side to side */
+/* how a row answers each touch: a tap pulses, a swipe sweeps light the way it went */
 .notepad3 i.k-c { animation: tap3 .28s ease-out; }
-.notepad3 i.k-w::after { animation: sweepdown3 .45s ease-out; }
-.notepad3 i.k-t::after { animation: sweepup3 .45s ease-out; }
-.notepad3 i.k-b { animation: rub3 .36s linear; }
+.notepad3 i:is(.k-l, .k-r)::after { top: 0; bottom: 0; left: 0; width: 60%; height: auto; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .75), transparent); }
+.notepad3 i.k-d::after { animation: sweepdown3 .45s ease-out; }
+.notepad3 i.k-u::after { animation: sweepup3 .45s ease-out; }
+.notepad3 i.k-r::after { animation: sweepright3 .4s ease-out; }
+.notepad3 i.k-l::after { animation: sweepleft3 .4s ease-out; }
 @keyframes tap3 { 0% { transform: scale(.94); filter: brightness(1.6); } 100% { transform: none; filter: none; } }
 @keyframes sweepdown3 { 0% { opacity: 1; transform: translateY(-100%); } 100% { opacity: 1; transform: translateY(170%); } }
 @keyframes sweepup3 { 0% { opacity: 1; transform: translateY(170%); } 100% { opacity: 1; transform: translateY(-100%); } }
-@keyframes rub3 { 0%, 100% { transform: none; filter: brightness(1.4); } 20% { transform: translateX(-5px); } 40% { transform: translateX(5px); } 60% { transform: translateX(-4px); } 80% { transform: translateX(3px); } }
+@keyframes sweepright3 { 0% { opacity: 1; transform: translateX(-100%); } 100% { opacity: 1; transform: translateX(170%); } }
+@keyframes sweepleft3 { 0% { opacity: 1; transform: translateX(170%); } 100% { opacity: 1; transform: translateX(-100%); } }
 .notepad3 i.glow { animation: glow3 .6s ease-out; }
 @keyframes glow3 { 0% { filter: brightness(1.7); } 100% { filter: none; } }
-
-/* the Legend: the four touches written sideways, in a column left of the pad; its tab (Legend
-   and a chevron, beside the pad) folds the touches away */
-.sglegend3 { pointer-events: auto; position: absolute; right: calc(var(--side2) + var(--padw) + var(--gap)); top: var(--top); bottom: var(--bot); box-sizing: border-box; display: flex;
-  border: 1px solid var(--blkedge); border-radius: 18px; background: var(--blk); box-shadow: var(--shadow); color: #fff; font-size: 12px; font-weight: 600; }
-.sgkeys3 { display: flex; flex-direction: column; justify-content: space-around; gap: 4px; padding: 6px 2px 6px 4px; }
-.sgkeys3 div { display: flex; align-items: center; justify-content: center; gap: 2px; padding: 6px 3px; border-radius: 14px; white-space: nowrap; user-select: none; -webkit-user-select: none; }
-.sgkeys3 div svg { width: 30px; height: 15px; margin: 0 -7px; stroke: #fff; transform: rotate(90deg); }
-.sgkeys3 span, .sgfold3 span { writing-mode: vertical-rl; }
-.sgkeys3 div.hit { animation: key3 .4s ease-out; }
-@keyframes key3 { 0% { background: rgba(255, 255, 255, .28); } }
-.sgkeys3 div.on { background: rgba(255, 255, 255, .14); }
-.sgfold3 { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; width: 34px; padding: 0; border: 0; border-left: 1px solid var(--blkedge); background: none; cursor: pointer;
-  font-size: 12.5px; font-weight: 700; letter-spacing: .04em; }
-.sgfold3 svg { width: 18px; height: 18px; stroke: #fff; transform: rotate(90deg); transition: transform .2s; }
-.sing3.fold .sgkeys3 { display: none; }
-.sing3.fold .sgfold3 { border-left: 0; }
-.sing3.fold .sgfold3 svg { transform: rotate(-90deg); }
 
 /* bottom left: the stop button (the sing icon crossed out) over the song card; hidden while the
    birds are open */
@@ -67,32 +50,36 @@
 .sgdone3 svg { width: 24px; height: 24px; color: #fff; }
 .sing3.big .sgdone3 { display: none; }
 
-/* the song card: the bird, its name (or a cheer) and words, its score; the bird or the chevron
-   opens the birds to imitate */
-.songcard3 { pointer-events: auto; box-sizing: border-box; display: flex; flex-direction: column; gap: 5px; padding: 6px 8px 8px 6px;
-  max-width: min(46vw, 440px); border: 1px solid var(--blkedge); border-radius: 20px; background: var(--blk); box-shadow: var(--shadow); color: #fff; }
-.sghead3 { display: flex; align-items: center; gap: 9px; cursor: pointer; min-width: 0; }
-.txt3 { display: flex; flex-direction: column; min-width: 0; flex: 1; }
-.txt3 b { font-weight: 700; font-size: 13.5px; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.txt3 i { font-style: normal; font-size: 12px; font-weight: 500; color: var(--dim); line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* the song card, small: the bird, its name (or a cheer) over its score, and a chevron; a tap
+   anywhere on it opens the birds to imitate */
+.songcard3 { pointer-events: auto; box-sizing: border-box; display: flex; align-items: center; gap: 7px; padding: 5px 5px 5px 5px; cursor: pointer;
+  max-width: min(46vw, 400px); border: 1px solid var(--blkedge); border-radius: 18px; background: var(--blk); box-shadow: var(--shadow); color: #fff; }
+.songcard3 > .pic3 { width: 34px; height: 34px; align-self: flex-start; }
+.songcard3 > .pic3 img { width: 32px; height: 24px; }
+.songcard3 > .pic3 svg { width: 18px; height: 18px; }
+.txt3 { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.txt3 b { font-weight: 700; font-size: 12.5px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.txt3 i { font-style: normal; font-size: 11.5px; font-weight: 500; color: var(--dim); line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .txt3 i:empty { display: none; }
 .songcard3.cheer b { color: #9be7a9; }
 .songcard3.pop { animation: pop3 .4s ease-out; }
 @keyframes pop3 { 40% { transform: scale(1.04); } }
-.sgmore3, .sgless3 { flex: none; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 18px; background: rgba(255, 255, 255, .12); display: grid; place-items: center; cursor: pointer; }
-.sgmore3 svg, .sgless3 svg { width: 18px; height: 18px; stroke: #fff; }
+.sgmore3, .sgless3 { flex: none; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 15px; background: rgba(255, 255, 255, .12); display: grid; place-items: center; cursor: pointer; }
+.sgless3 { width: 36px; height: 36px; border-radius: 18px; }
+.sgmore3 svg, .sgless3 svg { width: 16px; height: 16px; stroke: #fff; }
 .sgless3 svg { transform: rotate(180deg); }
-/* the score: one glyph per syllable at its pitch, the next one in a pale box */
-.score3 { --g: 42px; display: flex; gap: 3px; align-items: flex-end; min-height: 18px; padding-left: 4px; }
-.score3:has(span) { height: calc(var(--g) * .5 + 26px); }
-.score3 small { font-size: 12px; font-weight: 500; color: var(--dim); white-space: nowrap; }
-.score3 span { width: var(--g); height: calc(var(--g) / 2); padding: 2px 1px; margin-bottom: calc(var(--lane) * var(--g) * .15); opacity: .72; border-radius: 8px; flex: none;
+/* the score: one arrow per syllable, raised by its pitch, the next one in a pale box */
+.score3 { --g: 24px; --step: 4px; display: flex; gap: 2px; align-items: flex-end; }
+.score3:has(span) { height: calc(var(--g) + var(--step) * 4); }
+.score3 small { font-size: 11.5px; font-weight: 500; color: var(--dim); white-space: nowrap; }
+.score3 span { width: var(--g); height: var(--g); box-sizing: border-box; padding: 2px; margin-bottom: calc(var(--lane) * var(--step)); opacity: .72; border-radius: 7px; flex: none;
   filter: drop-shadow(0 0 3px color-mix(in srgb, var(--note) 55%, transparent)); }
-.score3 svg { width: 100%; height: 100%; stroke: var(--note); display: block; }
+.score3 svg { width: 100%; height: 100%; stroke: var(--note); fill: var(--note); display: block; }
 .score3 span.done { opacity: 1; filter: drop-shadow(0 0 5px var(--note)); }
 .score3 span.wrong { opacity: 1; filter: saturate(0) brightness(.7); }
 .score3 span.next { opacity: 1; background: rgba(255, 255, 255, .2); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .25); }
 .score3 span.bird { opacity: .6; filter: saturate(.3); }
+.sing3 svg .ln { fill: none; }
 
 /* the birds to imitate: just the list, four to a row, the whole height of the screen */
 .birds3 { pointer-events: auto; position: absolute; z-index: 3; left: var(--side); top: calc(10px + env(safe-area-inset-top)); bottom: calc(10px + env(safe-area-inset-bottom));
@@ -113,21 +100,18 @@
 
 /* left-handed: the sides swap */
 .sing3.lefty .notepad3 { right: auto; left: var(--side); }
-.sing3.lefty .sglegend3 { right: auto; left: calc(var(--side) + var(--padw) + var(--gap)); flex-direction: row-reverse; }
-.sing3.lefty .sgfold3 { border-left: 0; border-right: 1px solid var(--blkedge); }
-.sing3.lefty .sgfold3 svg { transform: rotate(-90deg); }
-.sing3.lefty.fold .sgfold3 svg { transform: rotate(90deg); }
 .sing3.lefty .sgleft3 { left: auto; right: var(--side2); align-items: flex-end; }
 .sing3.lefty :is(.singbtn3, .birds3) { left: auto; right: var(--side2); }
 
 /* notes rising from a beak: each syllable's drawing in its colour, edged in white with a soft
    dark halo so it reads on sky, leaves or snow */
 .rise3 { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
-.rise3 i { position: absolute; width: 40px; height: 20px; margin: -10px 0 0 -20px; animation: rise3 1.9s ease-out forwards;
+.rise3 i { position: absolute; width: 26px; height: 26px; margin: -13px 0 0 -13px; animation: rise3 1.9s ease-out forwards;
   filter: drop-shadow(0 0 2px rgba(10, 20, 28, .55)); }
 .rise3 svg { width: 100%; height: 100%; display: block; overflow: visible; }
-.rise3 .edge { stroke: #fff; }
-.rise3 .edge > * { stroke-width: 6; }
+.rise3 .edge { stroke: #fff; fill: #fff; }
+.rise3 svg .ln { fill: none; }
+.rise3 .edge * { stroke-width: 6; }
 @keyframes rise3 {
   0% { opacity: 0; transform: translate(0, 0) scale(calc(var(--s) * .6)); }
   12% { opacity: 1; }

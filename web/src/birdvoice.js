@@ -142,23 +142,26 @@ export function createBirdVoice(ctx, dest, noiseBuf) {
       default: return syll([.9, 1.1, .95, 1.06], .21, { vib: .035, vibF: 21 });
     }
   }
-  // one syllable of a kind (w whistle, c chip, t trill, b buzz) in a species' voice. A whistle is
-  // the species' own note where that is tonal; the other kinds share shapes, coloured by the
-  // voice's register and roughness.
-  const TONAL = new Set([0, 1, 4, 6, 8, 9, 11, 14, 17, 20, 21, 22, 23]), ROUGH = new Set([10, 12, 16, 18]);
+  // one syllable of a kind (u sliding up, d sliding down, r a steady whistle, l a trill or buzz,
+  // c a chip) in a species' voice. Where the species' own note already has that shape (OWN), it
+  // sings that; the rest share shapes, coloured by the voice's register and roughness.
+  const OWN = { r: new Set([0, 4, 6, 9, 11, 14, 20, 21, 23]), d: new Set([8, 12, 17]), u: new Set([22]) }, ROUGH = new Set([10, 12, 16, 18]);
   function kindTemplate(kind, voice) {
-    const rough = ROUGH.has(voice % NV), soft = !!REG[voice % NV];
+    const rough = ROUGH.has(voice % NV), soft = !!REG[voice % NV], tone = { pure: !rough, harsh: rough, soft };
     switch (kind) {
       case 'c': return [{ at: 0, dur: .05, c: [[0, 1.25], [1, .86]], atk: .004, harsh: rough }];
-      case 't': return Array.from({ length: 6 }, (_, i) => ({ at: i * .045, dur: .032, c: i % 2 ? [[0, 1.1], [1, .92]] : [[0, .94], [1, 1.08]], v: 1 - i * .06, soft }));
-      case 'b': return [{ at: 0, dur: .24, c: [[0, 1.04], [.5, 1], [1, .96]], atk: .01, am: .9, amF: 88, harsh: true, soft }];
-      default: return [{ at: 0, dur: .24, c: [[0, .97], [.3, 1.02], [1, .99]], atk: .02, pure: !rough, harsh: rough, soft }];
+      case 'u': return [{ at: 0, dur: .2, c: [[0, .84], [.7, 1.1], [1, 1.14]], atk: .015, ...tone }];
+      case 'd': return [{ at: 0, dur: .2, c: [[0, 1.18], [.3, 1.12], [1, .86]], atk: .01, ...tone }];
+      case 'l': return rough
+        ? [{ at: 0, dur: .24, c: [[0, 1.04], [.5, 1], [1, .96]], atk: .01, am: .9, amF: 88, harsh: true, soft }]
+        : Array.from({ length: 6 }, (_, i) => ({ at: i * .045, dur: .032, c: i % 2 ? [[0, 1.1], [1, .92]] : [[0, .94], [1, 1.08]], v: 1 - i * .06, soft }));
+      default: return [{ at: 0, dur: .24, c: [[0, .99], [.3, 1.01], [1, .99]], atk: .02, ...tone }];
     }
   }
   // one song note at pitch f (the game's pitch for that note), in a species' voice; `kind` picks
   // a syllable shape (left out: the species' own note, as the bird song lab plays it)
   V.sing = (f, voice = 0, vol = .16, kind = null) => {
-    if (kind && !(kind === 'w' && TONAL.has(voice % NV))) {
+    if (kind && !OWN[kind]?.has(voice % NV)) {
       const t = ctx.currentTime + .005, prev = V.engine, reg = REG[voice % NV], pitch = (reg ? f * reg : f * V.octave) * (1 + (Math.random() - .5) * .03);
       if (V.engine === 'whistle') V.engine = 'natural';
       for (const e of kindTemplate(kind, voice)) element(t + e.at, e, pitch, vol * (e.v ?? 1) * (reg ? 1.3 : 1.1));
