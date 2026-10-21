@@ -52,6 +52,9 @@ const compass = (dx, dz) => ['north', 'north-east', 'east', 'south-east', 'south
 
 export function songsSystem(G) {
   const b = G.b, A = G.audio, H = G.hud, store = G.store;
+  // song news and how-to go on the message line at the bottom middle, marked as song messages;
+  // a place waking or a bird of other lands is an event
+  const say = (msg, secs = 3) => H.toast(msg, secs, 'song'), news = (msg, secs = 5) => H.toast(msg, secs, 'event');
   registerSongbirds(G.R);
   G.learned = new Set(store.get('learned', []));
   G.heard = new Set(store.get('heard', []));
@@ -68,7 +71,7 @@ export function songsSystem(G) {
   let visitor = null, flock = [], trailT = 0;
   const powerCD = {};                // species id -> G.clock when its gift works again
   // the song you are copying: `target` (a species), with its bird beside you (`bird`) or not
-  const S = { target: null, bird: null, tries: [], errs: [], lastTry: -9, wrongT: 0, doneT: 0, duet: false };
+  const S = { target: null, bird: null, tries: [], errs: [], lastTry: -9, wrongT: 0, doneT: 0, duet: false, hintAt: -9, listening: null, told: null };
   const lefty = () => store.get('lefty', false);
 
   // things that happen a moment later, on the game clock (so a pause holds them)
@@ -101,7 +104,7 @@ export function songsSystem(G) {
     const half = Math.ceil(sp.notes.length / 2), tune = mix ? { notes: [...sp.notes.slice(0, half), ...mix.notes.slice(Math.floor(mix.notes.length / 2))], kinds: sp.kinds.slice(0, half) + mix.kinds.slice(Math.floor(mix.notes.length / 2)) } : sp;
     if (mix && v > .04 && !mixHeard[o.id]) {
       mixHeard[o.id] = 1;
-      later(tune.notes.length * sp.gap, () => H.toast(`Listen: the ${sp.name.toLowerCase()} you taught sings its own song, then ends it with the ${mix.name}'s phrase.`, 5));
+      later(tune.notes.length * sp.gap, () => say(`Listen: the ${sp.name.toLowerCase()} you taught sings its own song, then ends it with the ${mix.name}'s phrase.`, 5));
     }
     const count = duet ? half : tune.notes.length;
     o.singT = count * sp.gap + .2;
@@ -117,6 +120,7 @@ export function songsSystem(G) {
   // ---- your singing: copying a songbird, or imitating one you know ------------------------
   // a syllable on the strip (or the keys): right if both its pitch and its kind match the next
   // one in the score. Wrong ones only flash; a pause starts over.
+  const HOW = { u: 'swipe up', d: 'swipe down', l: 'swipe left', r: 'swipe right', c: 'tap' };
   function singNote(lane, kind) {
     const sp = S.target; if (!sp) return;
     if (G.t - S.lastTry > 6 || S.doneT > 0) { S.tries = []; S.wrongT = 0; S.doneT = 0; S.errs = []; }
@@ -125,7 +129,11 @@ export function songsSystem(G) {
     const off = S.duet ? Math.ceil(sp.notes.length / 2) : 0, i = off + S.tries.length;
     S.tries.push(lane);
     const quality = () => 1 - S.errs.reduce((a, v) => a + v, 0) / Math.max(1, S.errs.length) * 2.5;
-    if (sp.notes[i] !== lane || sp.kinds[i] !== kind) { S.wrongT = .5; S.tries.pop(); S.errs[S.errs.length - 1] = 1; }
+    if (sp.notes[i] !== lane || sp.kinds[i] !== kind) {
+      S.wrongT = .5; S.tries.pop(); S.errs[S.errs.length - 1] = 1;
+      // what was off, on the message line now and then
+      if (G.t - S.hintAt > 4) { S.hintAt = G.t; say(sp.notes[i] !== lane ? (sp.kinds[i] === kind ? 'Right sound, wrong row: match the colour' : 'Try the boxed note: its colour is the row') : `Right row: now ${HOW[sp.kinds[i]]}`, 2); }
+    }
     else if (i + 1 === sp.notes.length) {
       S.doneT = 2.5;
       if (!G.learned.has(sp.id)) learn(sp);
@@ -137,8 +145,7 @@ export function songsSystem(G) {
     if (S.bird) S.duet = true;
     songLog[sp.id] = `Learned on day ${G.day} ${PHRASE[period(G.tod)]}, in ${PLACE[habitat(b.p[0], b.p[2])]}.`;
     store.set('songlog', songLog);
-    H.toast(`You learned the ${sp.name}'s song. Sing it from any perch and a ${sp.name.toLowerCase()} answers with a gift.`, 5);
-    ui.cheer(`Song learned: the ${sp.name}`);
+    say(`Song learned: the ${sp.name}. Sing it from any perch and a ${sp.name.toLowerCase()} answers with a gift.`, 5);
     H.did('song');
     for (let k = 0; k < 14; k++) G.part([b.p[0], b.p[1] + .4, b.p[2]], [(Math.random() - .5) * 3, 1 + Math.random() * 2, (Math.random() - .5) * 3], 1.4, [1, .85, .45], .1);
     G.emit('learn', sp);
@@ -148,9 +155,9 @@ export function songsSystem(G) {
   function pick(id) {
     picked = id === null ? null : SPECIES[id]; voice = id;
     S.tries = []; S.errs = []; S.doneT = 0;
-    if (!picked) { ui.cheer('You sing as yourself'); return; }
-    if (!G.learned.has(id)) { ui.cheer(`You sing in the ${picked.name}'s voice`); return; }
-    ui.cheer(`Imitate the ${picked.name}`); H.did('imitate');
+    if (!picked) { say('You sing as yourself'); return; }
+    if (!G.learned.has(id)) { say(`You sing in the ${picked.name}'s voice`); return; }
+    say(`Imitate the ${picked.name}: sing its score back`); H.did('imitate');
     picked.notes.forEach((n, i) => later(.5 + i * picked.gap, () => { A.note(n, picked.voice, .07, picked.kinds[i]); ui.glow(n); }));
   }
 
@@ -161,7 +168,7 @@ export function songsSystem(G) {
     const y = S.close;
     if (!y || !young(y) || y.sp === sp || taught[y.id]?.from === sp.id) return;
     taught[y.id] = { from: sp.id, day: G.day };
-    H.toast(`The young ${y.sp.name.toLowerCase()} leans in and listens to your ${sp.name.toLowerCase()} song. Come back in a few days.`, 5);
+    say(`The young ${y.sp.name.toLowerCase()} leans in and listens to your ${sp.name.toLowerCase()} song. Come back in a few days.`, 5);
     for (let k = 0; k < 8; k++) G.part([y.x, y.y + .3, y.z], [(Math.random() - .5) * 1.5, 1 + Math.random(), (Math.random() - .5) * 1.5], 1.2, [.7, .9, 1], .08);
   }
 
@@ -180,13 +187,13 @@ export function songsSystem(G) {
     G.emit('placeSong', ev);
     if (ev.handled) return;
     wonder = { kind, l, t: kind === 'rare' ? 0 : 90 };
-    if (kind === 'lights') H.toast(S3night > .5 ? `Your song rings off ${l.name}, and the sky answers: the northern lights unroll overhead.` : `Your song rings off ${l.name}, and a pale halo opens round the sun.`, 6);
-    if (kind === 'thermal') H.toast(`Your song rings under ${l.name}, and warm air begins to rise through it: a hidden thermal.`, 6);
-    if (kind === 'bow') H.toast(`Your song carries over ${l.name}, and a rainbow stands in its spray.`, 6);
+    if (kind === 'lights') news(S3night > .5 ? `Your song rings off ${l.name}, and the sky answers: the northern lights unroll overhead.` : `Your song rings off ${l.name}, and a pale halo opens round the sun.`, 6);
+    if (kind === 'thermal') news(`Your song rings under ${l.name}, and warm air begins to rise through it: a hidden thermal.`, 6);
+    if (kind === 'bow') news(`Your song carries over ${l.name}, and a rainbow stands in its spray.`, 6);
     if (kind === 'rare') {
       const rare = SPECIES.filter(q2 => !G.learned.has(q2.id) && q2 !== sp && !q2.spot);
       const r = rare[Math.floor(Math.random() * rare.length)] || SPECIES[Math.floor(Math.random() * 16)];
-      later(2.5, () => { callVisitor(r); H.toast(`Something answers from far off: a ${r.name.toLowerCase()}, a bird of other lands, comes down into ${l.name}.`, 6); });
+      later(2.5, () => { callVisitor(r); news(`Something answers from far off: a ${r.name.toLowerCase()}, a bird of other lands, comes down into ${l.name}.`, 6); });
     }
   }
 
@@ -194,23 +201,21 @@ export function songsSystem(G) {
   function respond(sp, bird, q = 1) {
     // some birds of the rock answer only a song that rings back off the walls
     if (sp.echo && !S.echoed) {
-      ui.cheer(`The ${sp.name} listens, but does not answer`);
-      H.toast(`The ${sp.name} answers only a song that echoes: sing it low between rock walls, in a canyon or by a waterfall.`, 4);
+      say(`The ${sp.name} listens, but answers only a song that echoes: sing it low between rock walls, in a canyon or by a waterfall.`, 4);
       G.emit('song', sp, q); return;
     }
     if (bird) later(.7, () => sing(bird)); else callVisitor(sp);
     const scale = .6 + .6 * clamp(q, 0, 1), how = q > .85 ? ' A perfect duet.' : q < .45 ? ' (A rough one: steadier notes make the gift last.)' : '';
-    ui.cheer(q > .85 ? `A perfect song: the ${sp.name} answers` : `The ${sp.name} answers`);
     G.emit('song', sp, q);
     if (chorus) {
       const others = [...G.learned].map(id => SPECIES[id]).filter(s => s !== sp && (powerCD[s.id] ?? 0) <= G.clock);
       for (const s2 of others) { powerCD[s2.id] = G.clock + cd(s2); gift(s2, .5); }
-      if (others.length) H.toast(`The whole chorus answers: ${others.map(s => s.name).join(', ')} too.`, 4);
+      if (others.length) say(`The whole chorus answers: ${others.map(s => s.name).join(', ')} too.`, 4);
     }
-    if ((powerCD[sp.id] ?? 0) > G.clock) { H.toast(`The ${sp.name} answers your song.${how}`, 2.5); return; }
+    if ((powerCD[sp.id] ?? 0) > G.clock) { say(`The ${sp.name} answers your song.${how}`, 2.5); return; }
     powerCD[sp.id] = G.clock + cd(sp);
     const text = gift(sp, scale);
-    H.toast(`The ${sp.name} answers: ${text}.${how}`, 4);
+    say(`The ${sp.name} answers: ${text}.${how}`, 4);
   }
   const cd = sp => sp.powerKey === 'companion' ? SONG.powerCD * 4 : SONG.powerCD;
   // a song's gift; k scales how long it lasts. Returns the words for the toast.
@@ -387,7 +392,7 @@ export function songsSystem(G) {
       if (chorus) { if ((chorus.t -= dt) <= 0) chorus = null; }
       else if (chorusDay !== G.day && G.tod > .27 && G.tod < .31 && winter() < .5 && storm() < .4) {
         chorusDay = G.day; chorus = { t: SONG.chorus };
-        H.toast('The dawn chorus: for a few minutes every bird nearby sings. Join in, and all the songs you know answer at once.', 6);
+        news('The dawn chorus: for a few minutes every bird nearby sings. Join in, and all the songs you know answer at once.', 6);
       }
 
       // songbirds near the hawk: each sings now and then in its hours
@@ -396,7 +401,7 @@ export function songsSystem(G) {
         // echo places: low between rock walls in the walled lands, or by a waterfall
         const walls = ECHO_LANDS.has(land(b.p[0], b.p[2])) && echo(), falls = landmarksNear(b.p[0], b.p[2], 90).some(l => l.kind === 'falls');
         S.echoed = !!(walls && walls.delay < 3) || falls;
-        if (S.echoed && ui.open && !G.flags.echo) { G.flags.echo = 1; H.toast('Rock walls all round: your song rings back off them here. Some birds of the rock answer only a song that echoes.', 5); }
+        if (S.echoed && ui.open && !G.flags.echo) { G.flags.echo = 1; say('Rock walls all round: your song rings back off them here. Some birds of the rock answer only a song that echoes.', 5); }
       }
       placeK += ((S.echoed ? 1 : 0) - placeK) * Math.min(1, dt * .8);
       if (Math.abs(placeK - placeSent) > .05) { placeSent = placeK; A.setPlace?.(placeK); }
@@ -438,9 +443,11 @@ export function songsSystem(G) {
       const target = picked && G.learned.has(picked.id) ? picked : close ? close.sp : null, bird = close && close.sp === target ? close : null;
       if (target !== S.target || bird !== S.bird) {
         Object.assign(S, { target, bird, tries: [], errs: [], wrongT: 0, doneT: 0, duet: !!bird && G.learned.has(target.id) });
-        if (S.duet && !G.flags.duet) { G.flags.duet = 1; H.toast(`A duet with the ${target.name}: it sings the first half, you answer.`, 4); }
+        if (S.duet && !G.flags.duet) { G.flags.duet = 1; say(`A duet with the ${target.name}: it sings the first half, you answer.`, 4); }
       }
       S.wrongT = Math.max(0, S.wrongT - dt); S.doneT = Math.max(0, S.doneT - dt);
+      // how to copy a new song, once the controls are out
+      if (ui.open && target && !G.learned.has(target.id) && S.told !== target) { S.told = target; say(`Copy the ${target.name}: each arrow on the row of its colour`, 4); }
 
       const available = b.state !== 'fly' && (b.state === 'perch' || !!close) && !G.menu.open;
       const known = SPECIES.filter(q => G.heard.has(q.id) || G.learned.has(q.id));
@@ -448,8 +455,10 @@ export function songsSystem(G) {
       if (target) {
         const off = S.duet ? Math.ceil(target.notes.length / 2) : 0;
         const title = !G.learned.has(target.id) ? `Learn the ${target.name}` : S.duet ? `Duet with the ${target.name}` : target.name;
-        const listening = close && young(close) && close.sp !== target && G.learned.has(target.id) ? `a young ${close.sp.name.toLowerCase()} is listening` : '';
-        sc = { sp: target, title, note: listening, done: off + S.tries.length, bird: off, state: S.wrongT > 0 ? 'wrong' : S.doneT > 0 ? 'done' : '' };
+        const listening = close && young(close) && close.sp !== target && G.learned.has(target.id) ? close : null;
+        if (listening && listening !== S.listening && ui.open) say(`A young ${close.sp.name.toLowerCase()} is listening`);
+        S.listening = listening;
+        sc = { sp: target, title, done: off + S.tries.length, bird: off, state: S.wrongT > 0 ? 'wrong' : S.doneT > 0 ? 'done' : '' };
       } else if (picked) sc = { sp: picked, hidden: true, title: picked.name, note: 'Listen for one nearby to learn its song' };
       G.singing = ui.open;   // the sing controls are out (main.js turns the perched gyro look off)
       ui.update({ available, known, learned: G.learned, picked, sc, nearby, lefty: lefty(), resting: callT > 0 });

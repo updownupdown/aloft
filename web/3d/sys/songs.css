@@ -50,7 +50,7 @@
 .sgdone3 svg { width: 24px; height: 24px; color: #fff; }
 .sing3.big .sgdone3 { display: none; }
 
-/* the song card, small: the bird, its name (or a cheer) over its score, and a chevron; a tap
+/* the song card, small: the bird, its name over its score, and a chevron; a tap
    anywhere on it opens the birds to imitate */
 .songcard3 { pointer-events: auto; box-sizing: border-box; display: flex; align-items: center; gap: 7px; padding: 5px 5px 5px 5px; cursor: pointer;
   max-width: min(46vw, 400px); border: 1px solid var(--blkedge); border-radius: 18px; background: var(--blk); box-shadow: var(--shadow); color: #fff; }
@@ -59,11 +59,6 @@
 .songcard3 > .pic3 svg { width: 18px; height: 18px; }
 .txt3 { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
 .txt3 b { font-weight: 700; font-size: 12.5px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.txt3 i { font-style: normal; font-size: 11.5px; font-weight: 500; color: var(--dim); line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.txt3 i:empty { display: none; }
-.songcard3.cheer b { color: #9be7a9; }
-.songcard3.pop { animation: pop3 .4s ease-out; }
-@keyframes pop3 { 40% { transform: scale(1.04); } }
 .sgmore3, .sgless3 { flex: none; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 15px; background: rgba(255, 255, 255, .12); display: grid; place-items: center; cursor: pointer; }
 .sgless3 { width: 36px; height: 36px; border-radius: 18px; }
 .sgmore3 svg, .sgless3 svg { width: 16px; height: 16px; stroke: #fff; }
