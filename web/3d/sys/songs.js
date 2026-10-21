@@ -15,14 +15,16 @@
 import { SPECIES, active, timeOfDay } from '../../src/songs.js';
 import { MUSIC_MODES } from '../../src/music.js';
 import { period, DAY } from '../sky.js';
-import { height, WATER, treesNear, perchesOf, thermalsNear } from '../world.js';
+import { height, WATER, treesNear, perchesOf, thermalsNear, landmarksNear } from '../world.js';
 import { clamp, dist3 } from '../util.js';
-import { registerSongbirds, pushBird, songTreesNear, habitat } from './songbirds.js';
+import { registerSongbirds, pushBird, songTreesNear, habitat, land } from './songbirds.js';
 import { createSingUI, NOTE_COLS, KINDS } from './singui.js';
 import { journal } from '../journal.js';
 import { BIRD } from '../hawk.js';
 import { songbirdPic } from '../pics.js';
 
+// lands with rock walls to sing against (songs echo there)
+const ECHO_LANDS = new Set(['canyon', 'badlands', 'fjord', 'cliffs', 'coast', 'karst']);
 export const SONG = {
   hearR: 90,        // a songbird is heard (and joins the left pools) within this
   nearR: 24,        // close enough to learn from, sitting or standing
@@ -58,6 +60,7 @@ export function songsSystem(G) {
   G.species = SPECIES;
   G.gifts = {};
   const songLog = store.get('songlog', {});
+  let placeK = 0, placeSent = 0, practiceT = 0;   // how much the rock walls echo, eased
   const birds = new Map();          // songbird tree id -> { next, singT }
   let near = [], refreshT = 0, sightT = 0, perchT = 0, voice = null, callT = 0, chorus = null, chorusDay = 0, picked = null;
   let visitor = null, flock = [], trailT = 0;
@@ -75,10 +78,12 @@ export function songsSystem(G) {
     onSyll: (lane, kind) => { notePart(b.p, lane); G.music.echo(lane); singNote(lane, kind); },
     onPick: pick, onCall: call,
   });
+  // for the round action button (menu): Imitate a bird, while the song controls are out
+  (G.actions ||= {}).imitate = { label: 'Imitate', when: () => ui.open, run: () => ui.openBirds() };
 
   // ---- songbirds singing --------------------------------------------------------------------
   const storm = () => G.storm || 0, winter = () => G.season.winter;
-  const isOut = s => active(s.sp, G.tod, storm(), winter()) || ((G.gifts.sing > 0 || chorus && s.sp.name !== 'Owl') && storm() < .6);
+  const isOut = s => active(s.sp, G.tod, storm(), winter()) || ((G.gifts.sing > 0 || chorus && !s.sp.look.owl) && storm() < .6);
   function notePart(p, lane, col = NOTE01[lane]) {
     G.part([p[0], p[1] + .35, p[2]], [(Math.random() - .5) * .8, 2.4 + lane * .2, (Math.random() - .5) * .8], 1.5, col, .13);
   }
@@ -138,6 +143,12 @@ export function songsSystem(G) {
 
   // ---- answers and gifts ---------------------------------------------------------------------
   function respond(sp, bird, q = 1) {
+    // some birds of the rock answer only a song that rings back off the walls
+    if (sp.echo && !S.echoed) {
+      ui.cheer(`The ${sp.name} listens, but does not answer`);
+      H.toast(`The ${sp.name} answers only a song that echoes: sing it low between rock walls, in a canyon or by a waterfall.`, 4);
+      G.emit('song', sp, q); return;
+    }
     if (bird) later(.7, () => sing(bird)); else callVisitor(sp);
     const scale = .6 + .6 * clamp(q, 0, 1), how = q > .85 ? ' A perfect duet.' : q < .45 ? ' (A rough one: steadier notes make the gift last.)' : '';
     ui.cheer(q > .85 ? `A perfect song: the ${sp.name} answers` : `The ${sp.name} answers`);
@@ -177,6 +188,15 @@ export function songsSystem(G) {
       case 'sing': run(120); break;
       case 'lift': run(90); break;
       case 'dusk': run(150); break;
+      // round six: the newer lands' birds and the night singers
+      case 'juice': G.thirst = Math.min(1, (G.thirst ?? 1) + .25 * k); break;
+      case 'updraft': run(60); break;
+      case 'hardy': run(240); break;
+      case 'clear': G.hunger = Math.min(1, (G.hunger ?? 1) + .2 * k); G.thirst = Math.min(1, (G.thirst ?? 1) + .1 * k); break;
+      case 'bells': return bells() || text;
+      case 'fireflies': run(120); break;
+      case 'moths': G.hunger = Math.min(1, (G.hunger ?? 1) + .15 * k); for (let i = 0; i < 14; i++) G.part([b.p[0] + (Math.random() - .5) * 6, b.p[1] + Math.random() * 3, b.p[2] + (Math.random() - .5) * 6], [(Math.random() - .5) * 2, 1 + Math.random(), (Math.random() - .5) * 2], 2, [.85, .82, .7], .1); break;
+      case 'hush': run(25); for (const m of G.systems.food?.mice?.values() || []) { m.go = 0; m.flee = 0; m.wait = Math.max(m.wait, 25); } break;
     }
     return text;
   }
@@ -189,6 +209,16 @@ export function songsSystem(G) {
     glintAt = [pick.x, pick.y, pick.z]; G.gifts.glint = 40;
     const d = Math.hypot(pick.x - b.p[0], pick.z - b.p[2]);
     return `it scolds toward a ${pick.sp.name.toLowerCase()}, ${d < 120 ? 'close by' : d < 350 ? 'a short flight' : 'a long glide'} to the ${compass(pick.x - b.p[0], pick.z - b.p[2])}`;
+  }
+  // a bellbird's gift: its bells ring toward the nearest landmark you have not found
+  let bellAt = null;
+  function bells() {
+    const found = G.systems.journey?.save?.().found || {};
+    const l = landmarksNear(b.p[0], b.p[2], 2500).filter(l => !found[l.id])
+      .sort((p, q) => Math.hypot(p.x - b.p[0], p.z - b.p[2]) - Math.hypot(q.x - b.p[0], q.z - b.p[2]))[0];
+    if (!l) return 'its bells ring, but every place near here is one you know';
+    bellAt = [l.x, Math.max(height(l.x, l.z), WATER) + 25, l.z]; G.gifts.bells = 60;
+    return `its bells ring toward ${l.name}, to the ${compass(l.x - b.p[0], l.z - b.p[2])}`;
   }
   // a songbird that flies in to answer from a tree near you, sings, and leaves after a while
   function callVisitor(sp) {
@@ -311,7 +341,15 @@ export function songsSystem(G) {
       }
 
       // songbirds near the hawk: each sings now and then in its hours
-      if ((refreshT -= dt) <= 0) { refreshT = .5; near = songTreesNear(b.p[0], b.p[2], SONG.simR); }
+      if ((refreshT -= dt) <= 0) {
+        refreshT = .5; near = songTreesNear(b.p[0], b.p[2], SONG.simR);
+        // echo places: low between rock walls in the walled lands, or by a waterfall
+        const walls = ECHO_LANDS.has(land(b.p[0], b.p[2])) && echo(), falls = landmarksNear(b.p[0], b.p[2], 90).some(l => l.kind === 'falls');
+        S.echoed = !!(walls && walls.delay < 3) || falls;
+        if (S.echoed && ui.open && !G.flags.echo) { G.flags.echo = 1; H.toast('Rock walls all round: your song rings back off them here. Some birds of the rock answer only a song that echoes.', 5); }
+      }
+      placeK += ((S.echoed ? 1 : 0) - placeK) * Math.min(1, dt * .8);
+      if (Math.abs(placeK - placeSent) > .05) { placeSent = placeK; A.setPlace?.(placeK); }
       let close = null, cd = SONG.nearR; const nearby = new Set();   // kinds singing within earshot
       for (const s of near) {
         let st = birds.get(s.id);
@@ -326,6 +364,10 @@ export function songsSystem(G) {
         if (st.next <= 0) {
           const duet = S.duet && S.bird === s, morning = !duet && (chorus || timeOfDay(G.tod) === 'dawn');
           st.next = (chorus ? 2.5 + Math.random() * 3 : 7 + Math.random() * 5) * (morning ? 2 : 1); sing(s, duet);
+          // tawny owls call as a pair: the nearest other one answers
+          if (s.sp.name === 'Tawny owl') for (const o of near) if (o !== s && o.sp === s.sp && o.out && birds.get(o.id)) {
+            birds.get(o.id).next = s.sp.notes.length * s.sp.gap + .8 + Math.random(); break;
+          }
         }
         const d = dist3([s.x, s.y, s.z], b.p);
         if (d < SONG.hearR) nearby.add(s.sp.id);
@@ -359,6 +401,13 @@ export function songsSystem(G) {
         sc = { sp: target, title, words, done: off + S.tries.length, bird: off, state: S.wrongT > 0 ? 'wrong' : S.doneT > 0 ? 'done' : '' };
       } else if (picked) sc = { sp: picked, hidden: true, title: picked.name, note: 'Listen for one nearby to learn its song' };
       ui.update({ available, known, learned: G.learned, picked, sc, nearby, lefty: lefty(), resting: callT > 0 });
+      // slow practice: the phrase at half speed, over and over, softly; the next note lit
+      const prac = ui.practice && ui.open && target && sc && !sc.hidden;
+      ui.hint(prac ? target.notes[sc.done] ?? -1 : -1, prac ? target.kinds[sc.done] : '');
+      if (prac && (practiceT -= dt) <= 0) {
+        practiceT = target.notes.length * target.gap * 2 + 2;
+        target.notes.forEach((n, i) => later(i * target.gap * 2, () => { if (ui.practice) { A.note(n, target.voice, .06, target.kinds[i]); ui.glow(n); } }));
+      } else if (!prac) practiceT = 0;
 
       // gifts that run for a while
       const g = G.gifts;
@@ -366,14 +415,16 @@ export function songsSystem(G) {
       if (g.lift > 0 && b.state === 'fly' && b.lift > .5) b.p[1] += b.lift * .5 * dt;
       if (g.warm > 0) b.recover = (b.recover ?? 1) * 1.5;
       if (g.dusk > 0 && period(G.tod) === 'dusk') G.tod -= dt / DAY * .6;   // the evening lingers
+      if (g.updraft > 0 && b.state === 'fly') b.p[1] += .9 * dt;   // air off the warm rock
+      if (g.hardy > 0) { G.hunger = Math.min(1, (G.hunger ?? 1) + .0004 * dt); G.thirst = Math.min(1, (G.thirst ?? 1) + .0004 * dt); }
       if ((trailT -= dt) <= 0) {
         trailT = .35;
         // a trail of motes: toward rising air (thrush), toward an unknown songbird (jay)
         const to = g.companion > 0 ? (thermalsNear(b.p[0], b.p[2], 500).sort((p, q) => Math.hypot(p.x - b.p[0], p.z - b.p[2]) - Math.hypot(q.x - b.p[0], q.z - b.p[2]))[0]) : null;
-        const aim = to ? [to.x, Math.max(height(to.x, to.z), WATER) + 20, to.z] : g.glint > 0 ? glintAt : null;
+        const aim = to ? [to.x, Math.max(height(to.x, to.z), WATER) + 20, to.z] : g.glint > 0 ? glintAt : g.bells > 0 ? bellAt : null;
         if (aim) {
           const dx = aim[0] - b.p[0], dy = aim[1] - b.p[1], dz = aim[2] - b.p[2], d = Math.hypot(dx, dy, dz) || 1;
-          for (const r of [6, 12, 18]) if (r < d) G.part([b.p[0] + dx / d * r, b.p[1] + dy / d * r + .5, b.p[2] + dz / d * r], [dx / d * 2, 1.2, dz / d * 2], .9, g.companion > 0 ? [1, .9, .6] : [.45, .6, .9], .12);
+          for (const r of [6, 12, 18]) if (r < d) G.part([b.p[0] + dx / d * r, b.p[1] + dy / d * r + .5, b.p[2] + dz / d * r], [dx / d * 2, 1.2, dz / d * 2], .9, g.companion > 0 ? [1, .9, .6] : g.glint > 0 ? [.45, .6, .9] : [1, .95, .7], .12);
         }
         // a meadowlark's gift: golden flecks over every mouse near you
         if (g.mice > 0) for (const m of G.systems.food?.mice?.values() || []) G.part([m.x, m.y + .5, m.z], [0, 2.5, 0], 1, [1, .8, .3], .16);
@@ -382,13 +433,18 @@ export function songsSystem(G) {
     scene(S3) {
       for (const s of near) if (s.out) {
         const sing = (s.singT || 0) > 0, bob = sing ? Math.abs(Math.sin(G.t * 14)) * .015 : 0;
-        const look = s.heading + Math.sin(G.t * .3 + s.id) * .9 * (Math.sin(G.t * .07 + s.id) > 0 ? 1 : 0);
+        const look = s.heading + Math.sin(G.t * .3 + s.ph) * .9 * (Math.sin(G.t * .07 + s.ph) > 0 ? 1 : 0);
         pushBird(S3, s.sp, s.x, s.y + bob, s.z, look);
       }
       if (visitor) pushBird(S3, visitor.sp, visitor.x, visitor.y, visitor.z, visitor.heading, visitor.flying, G.t * 30);
       for (const f of flock) pushBird(S3, f.sp, f.x, f.y, f.z, f.heading, true, G.t * 28 + f.ph);
       // night sight: knowing the owl's song lifts the dark a little; its gift, a lot
-      const night = S3.night || 0, k = night * Math.min(.75, (G.learned.has(6) ? .3 : 0) + (G.gifts.night > 0 ? .55 : 0));
+      const night = S3.night || 0, k = night * Math.min(.75, (G.learned.has(6) ? .3 : 0) + (G.gifts.night > 0 ? .55 : 0) + (G.gifts.fireflies > 0 ? .2 : 0));
+      // a nightingale's gift: fireflies drifting and blinking round the hawk
+      if (G.gifts.fireflies > 0) for (let i = 0; i < 40; i++) {
+        const a = i * 2.39 + G.t * .05 * (1 + i % 3), r = 3 + (i * 7 % 13), on = Math.sin(G.t * (1.3 + i % 4 * .4) + i * 1.7);
+        if (on > .2) S3.motes.push(b.p[0] + Math.cos(a) * r, b.p[1] - 2 + (i * 5 % 7) + Math.sin(G.t * .7 + i) * .8, b.p[2] + Math.sin(a) * r, 1, .95, .45, .8 * on);
+      }
       if (k > 0) {
         const up = (c, to) => c.map((v, i) => v + (to[i] - v) * k);
         S3.skyAmb = up(S3.skyAmb, [.36, .4, .5]); S3.gndAmb = up(S3.gndAmb, [.24, .24, .24]); S3.sunCol = up(S3.sunCol, [.42, .46, .56]);

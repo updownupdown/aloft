@@ -33,11 +33,11 @@ import { songbirdPic } from '../pics.js';
 const css = new URL('./songs.css', import.meta.url).href;
 if (!document.querySelector(`link[href="${css}"]`)) document.head.append(Object.assign(document.createElement('link'), { rel: 'stylesheet', href: css }));
 
-export function createSingUI(ui, { audio, voice, onSyll, onPick, onCall }) {
+export function createSingUI(ui, { audio, voice, onSyll, onPick, onCall, onPractice }) {
   ui.insertAdjacentHTML('beforeend', `<div class="sing3 hidden">
       <div class="strip3">${NOTE_COLS.map((c, i) => `<i data-lane="${i}" style="--note:${c}"></i>`).reverse().join('')}</div>
       <div class="kinds3"><b class="puck3"></b>${KINDS.map(([k, name]) => `<div data-kind="${k}" aria-label="${name}">${glyph(k)}<span>${name}</span></div>`).join('')}</div>
-      <div class="rec3" role="button" tabindex="0"><span class="pic3"></span><span class="txt3"><b></b><i></i><span class="score3"></span></span><button class="x3" aria-label="Tuck the song away">✕</button></div>
+      <div class="rec3" role="button" tabindex="0"><span class="pic3"></span><span class="txt3"><b></b><i></i><span class="score3"></span></span><button class="slow3" aria-label="Slow practice">Slow</button><button class="x3" aria-label="Tuck the song away">✕</button></div>
       <button class="open3 hidden" aria-label="Imitate a bird"></button>
       <div class="birds3 hidden"></div>
     </div>
@@ -102,7 +102,7 @@ export function createSingUI(ui, { audio, voice, onSyll, onPick, onCall }) {
   const showBirds = on => { birds.classList.toggle('hidden', !on); rec.classList.toggle('on', on); };
   const tuck = on => { S.tucked = on; rec.classList.toggle('hidden', on); openBtn.classList.toggle('hidden', !on); };
   let swipe = null;
-  rec.addEventListener('pointerdown', e => { swipe = { id: e.pointerId, x: e.clientX, y: e.clientY, gone: false, x3: !!e.target.closest('.x3') }; rec.setPointerCapture?.(e.pointerId); });
+  rec.addEventListener('pointerdown', e => { swipe = { id: e.pointerId, x: e.clientX, y: e.clientY, gone: false, x3: !!e.target.closest('.x3'), slow: !!e.target.closest('.slow3') }; rec.setPointerCapture?.(e.pointerId); });
   rec.addEventListener('pointermove', e => {
     if (swipe?.id !== e.pointerId || swipe.gone) return;
     const dx = e.clientX - swipe.x, dy = e.clientY - swipe.y;
@@ -112,6 +112,8 @@ export function createSingUI(ui, { audio, voice, onSyll, onPick, onCall }) {
     const s = swipe; swipe = null; if (s?.id !== e.pointerId || s.gone) return;
     audio.unlock();
     if (s.x3) { showBirds(false); tuck(true); return; }
+    // slow practice: the bird's phrase loops at half speed, the next note lit on the strip
+    if (s.slow) { S.practice = !S.practice; rec.classList.toggle('practice', S.practice); onPractice?.(S.practice); return; }
     showBirds(birds.classList.contains('hidden'));
   });
   rec.addEventListener('pointercancel', () => { swipe = null; });
@@ -189,6 +191,14 @@ export function createSingUI(ui, { audio, voice, onSyll, onPick, onCall }) {
       setBirds(known, learned, picked, nearby); setScore(sc);
     },
     glow(lane) { if (S.open) flash(bands[lane], 'glow'); },
+    // light the band and the kind to sing next (practice), or none (-1)
+    hint(lane, kind) {
+      const key = lane + (kind || ''); if (key === S.hint) return; S.hint = key;
+      bands.forEach((b, i) => b.classList.toggle('next', i === lane));
+      for (const d of segs) d.classList.toggle('next', lane >= 0 && d.dataset.kind === kind);
+    },
+    get practice() { return !!S.practice; },
+    openBirds() { audio.unlock(); showBirds(true); },
     cheer(text) {
       // in the song box's name line for a moment: one line of news at a time
       S.cheer = text; setName(); flash(rec, 'pop');
