@@ -1,7 +1,9 @@
-// Soft aims: an intention for each day and the lands collection. Each dawn the Journal offers one
-// optional aim (fly a ring course, sing with a songbird, see a land you haven't, ...); doing it
-// earns a feather. The lands collection is a page of small faceted tiles, one for each land of the
-// world, that fill in as you fly over them, with a star when its sight is found (world.js LANDS).
+// Soft aims: an intention for each day, the bird's life goal on the Log (sys/life.js), the lands
+// collection and racing the companion. Each dawn the Journal offers one optional aim (fly a ring
+// course, sing with a songbird, see a land you haven't, ...); doing it earns a feather. The lands
+// collection is a page of small faceted tiles, one for each land of the world, that fill in as you
+// fly over them, with a star when its sight is found (world.js LANDS). Now and then the companion
+// races you round a ring course.
 import * as W from '../world.js';
 import { BIOMES, blend } from '../biomes.js';
 import { facets } from '../facet.js';
@@ -91,11 +93,16 @@ export function aimsSystem(G) {
   // ---- the Journal: the day's aim on the Log, the lands on their own page --------------------
   const today = journal(G).section(5, 'Today');
   const lands = journal(G).section(45);
+  // the chosen bird's life goal (sys/life.js G.life), as a checklist with counts
+  const life = journal(G).section(7, 'Your life');
   const tile = {};
   G.menu.onOpen(() => {
     const a = AIMS[A.aim];
     today.body.innerHTML = a ? `<p class="aim3 ${A.done ? 'done' : ''}"><i></i>${esc(a.text)}${a.n && !A.done ? ` <small>${A.count} of ${a.n}</small>` : ''}</p>
       <p class="feathers3">${A.feathers ? `Feathers for aims kept: ${A.feathers}` : 'Each day brings one aim. It is only an offer.'}</p>` : '';
+    const L = G.life;
+    life.el.classList.toggle('hidden', !L);
+    if (L) life.body.innerHTML = `<p class="life3t">${esc(L.title)}${L.done ? ' <small>Done.</small>' : ''}</p><ul class="life3">${L.steps.map(s => `<li class="${s.done ? 'done' : ''}"><i></i>${esc(s.text)}${s.need > 1 ? ` <small>${Math.min(s.n, s.need)} of ${s.need}</small>` : ''}</li>`).join('')}</ul>`;
     const n = KEYS.filter(k => A.seen[k]).length;
     lands.body.innerHTML = `<p class="lands3sum">${n} of ${KEYS.length} lands flown over${(W.LANDS || []).length ? `, ${Object.keys(A.sights).length} sights found` : ''}.</p>
       <div class="lands3">${KEYS.map(k => `<figure class="${A.seen[k] ? 'seen' : ''}"><img alt="" src="${pic(k)}"><figcaption>${A.seen[k] ? esc(cap(BIOMES[k].label)) : '?'}${A.sights[k] ? ' <b title="sight found">★</b>' : ''}</figcaption></figure>`).join('')}</div>`;
