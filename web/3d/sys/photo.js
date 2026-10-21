@@ -8,6 +8,8 @@ import { PIG, facets, hardShadow } from '../facet.js';
 import { journal, esc } from '../journal.js';
 import { clamp } from '../util.js';
 import { inSentence } from './journey.js';
+import { hourName } from '../dial.js';
+import { SEASON_DAYS } from '../sky.js';
 
 const ALBUM_MAX = 16;
 
@@ -72,11 +74,13 @@ export function photoSystem(G) {
       // copy the frame now: WebGL clears it once shown
       const copy = document.createElement('canvas'); copy.width = c.width; copy.height = c.height; copy.getContext('2d').drawImage(c, 0, 0);
       bar.classList.remove('hidden');
-      keep({ src: thumb(copy), note: G.placeNote?.() || `Day ${G.day}` });
-      const blob = await new Promise(r => copy.toBlob(r, 'image/png'));
+      const words = caption();
+      keep({ src: thumb(copy), note: words.join(' ') });
+      const card = shareCard(copy, words);
+      const blob = await new Promise(r => card.toBlob(r, 'image/jpeg', .9));
       if (!blob) return;
-      const name = `aloft-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-')}.png`, file = new File([blob], name, { type: 'image/png' });
-      try { if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], title: 'Aloft' }); return; } } catch { /* cancelled: save instead */ }
+      const name = `aloft-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-')}.jpg`, file = new File([blob], name, { type: 'image/jpeg' });
+      try { if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], title: 'Aloft', text: words.join(' ') }); return; } } catch { /* cancelled: save instead */ }
       const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
       document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
       G.hud.toast('Picture saved, and a copy is in the Journal’s album.', 2.5);
@@ -87,6 +91,32 @@ export function photoSystem(G) {
   bar.addEventListener('click', e => { const p = e.target.closest('[data-p]')?.dataset.p; if (p === 'snap') snap(); if (p === 'done') end(); });
   addEventListener('keydown', e => { if (G.photo && e.code === 'Escape') end(); });
   G.menu.button('play', { label: 'Photo mode', sub: 'hold the world still and take a picture', group: 'play', main: true, onClick: begin });
+
+  // ---- the caption: a line from the day -----------------------------------------------------
+  // where, and what the sky is doing at what hour; then the last song heard or sky seen today
+  let heard = null;
+  G.on('song', sp => { heard = { day: G.day, text: `A ${sp.name} sang back.` }; });
+  G.on('skyNote', t => { heard = { day: G.day, text: t }; });
+  G.on('catch', e => { if (!heard || heard.day !== G.day) heard = { day: G.day, text: e.kind === 'fish' ? 'A fish from the water.' : e.kind === 'worm' ? 'A worm after the rain.' : 'A mouse in the grass.' }; });
+  function caption() {
+    const sky = G.storm > .5 ? 'stormy' : G.snowing > .3 ? 'snowy' : G.rain > .3 ? 'rainy' : G.fog > .4 ? 'misty' : G.overcast > .5 ? 'grey' : 'clear';
+    const h = hourName(G.tod), place = G.placeName ? inSentence(G.placeName(G.b.p[0], G.b.p[2])) : 'the hills';
+    const first = `Over ${place}, a ${sky} ${h === 'midday' ? 'midday' : h}, day ${((G.day - 1) % SEASON_DAYS) + 1} of ${G.season.name}.`;
+    return heard?.day === G.day ? [first, heard.text] : [first];
+  }
+  // the picture to share: the photo in a white border with the caption written under it
+  function shareCard(photo, words) {
+    const W = Math.min(1600, photo.width), ph = Math.round(photo.height * W / photo.width), pad = Math.round(W * .03), lh = Math.round(W * .026);
+    const c = document.createElement('canvas'); c.width = W + pad * 2; c.height = ph + pad * 2 + lh * (words.length + 1.6);
+    const x = c.getContext('2d');
+    x.fillStyle = '#fbf8f0'; x.fillRect(0, 0, c.width, c.height);
+    x.drawImage(photo, pad, pad, W, ph);
+    x.fillStyle = '#1d2b36'; x.textBaseline = 'alphabetic';
+    words.forEach((t, i) => { x.font = `${i ? 500 : 600} ${Math.round(lh * .78)}px Outfit, system-ui, sans-serif`; x.fillStyle = i ? '#43535f' : '#1d2b36'; x.fillText(t, pad, pad + ph + lh * (1.35 + i), i ? W : W * .86); });
+    x.font = `600 ${Math.round(lh * .6)}px Outfit, system-ui, sans-serif`; x.fillStyle = '#8a8f8f'; x.textAlign = 'right';
+    x.fillText('Aloft', pad + W, pad + ph + lh * 1.35);
+    return c;
+  }
 
   // ---- postcards -----------------------------------------------------------------------------
   // the view of the moment a landmark was found, framed with a white border on a card of faceted

@@ -33,6 +33,10 @@ export function appRows(G) {
   });
   let quitting = false;
   if ('serviceWorker' in navigator && 'caches' in window) G.menu.button('play', { label: 'Update', sub: 'fetch the latest version and reload', group: 'app', onClick: () => { G.menu.set(false); update(); } });
+  // colour-blind aim colours: orange and blue for prey and perches in place of red and green
+  // (sys/aim.js reads it; each aim ring also has its own shape)
+  G.settings.cbAim = G.store.get('cbAim3d', false);
+  G.menu.toggle('play', { label: 'Colour-blind aim colours', sub: 'orange prey, blue perches', get: () => G.settings.cbAim, set: v => { G.settings.cbAim = v; G.store.set('cbAim3d', v); } });
   G.menu.toggle('play', { label: 'Quiet meters', sub: 'hide them while they are well filled', get: () => G.hud.quiet, set: v => { G.hud.quiet = v; G.store.set('quietHud3d', v); } });
 
   // Quit saves, then closes the app if the system lets a page do that; if not, it says the
@@ -55,6 +59,55 @@ export function appRows(G) {
   G.menu.button('play', { label: 'Start a new world', sub: `this is world ${WORLD.seed}`, group: 'play', onClick: el => {
     if (el.dataset.sure) { G.resetting = true; newWorld(); } else { el.dataset.sure = 1; el.firstChild.textContent = 'Tap again for a new world '; }
   } });
+  // Graphics: one row for how much the world draws. Low, Medium or High pick a level (0, 1, 2);
+  // Auto starts at Medium and lets the frame watch (G6, flight thread) move G.gfx.level. Systems
+  // listen for 'gfx' (ground detail, tree density, tree distance); the ground's view distance is set here. After a change
+  // the frame rate shows for a little while in play, so the difference can be seen
+  const PRESETS = ['auto', 'low', 'medium', 'high'], LEVEL = { low: 0, medium: 1, high: 2 }, VIEW = [.8, 1, 1.15];
+  const R = G.R, base = R.view;
+  G.gfx = { preset: PRESETS.includes(G.store.get('gfx3d')) ? G.store.get('gfx3d') : 'auto', level: 1 };
+  G.gfx.level = LEVEL[G.gfx.preset] ?? G.store.get('gfxAuto3d', 1);
+  const applyGfx = () => {
+    R.view = base * VIEW[G.gfx.level];
+    G.emit('gfx', G.gfx.level);
+  };
+  G.on('gfxAuto', lv => { if (G.gfx.preset !== 'auto' || lv === G.gfx.level) return; G.gfx.level = lv; G.store.set('gfxAuto3d', lv); applyGfx(); });
+  const gfxSub = () => G.gfx.preset === 'auto' ? `Auto, ${['low', 'medium', 'high'][G.gfx.level]} for now` : G.gfx.preset[0].toUpperCase() + G.gfx.preset.slice(1);
+  let peekFps = false;
+  const gfxRow = G.menu.button('play', { label: 'Graphics', sub: gfxSub(), group: 'app', onClick: el => {
+    G.gfx.preset = PRESETS[(PRESETS.indexOf(G.gfx.preset) + 1) % PRESETS.length]; G.store.set('gfx3d', G.gfx.preset);
+    G.gfx.level = LEVEL[G.gfx.preset] ?? G.store.get('gfxAuto3d', 1);
+    applyGfx(); el.querySelector('em').textContent = gfxSub(); peekFps = true;
+  } });
+  G.menu.onOpen(() => { gfxRow.querySelector('em').textContent = gfxSub(); });
+  G.on('resume', () => {
+    if (!peekFps || G.settings.fps) return;
+    peekFps = false; G.hud.showFps(true); G.hud.toast('The frame rate shows for a few seconds, top right.', 4);
+    setTimeout(() => { if (!G.settings.fps) G.hud.showFps(false); }, 12000);
+  });
+  applyGfx();
+  // the screen stays awake while flying (it would dim in a long glide); let go while paused
+  let lock = null;
+  const wake = async () => { if (lock || G.paused || document.hidden || !navigator.wakeLock) return; try { lock = await navigator.wakeLock.request('screen'); lock.addEventListener('release', () => { lock = null; }); } catch { lock = null; } };
+  G.on('resume', wake); G.on('gesture', wake);
+  G.on('pause', () => { lock?.release().catch(() => {}); lock = null; });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) wake(); });
+
+  // haptics: a tick for each wing beat, a thump on landing, a knock on a bump, a pulse on catching
+  // food or entering strong lift, a long buzz when a stoop reaches full speed
+  G.settings.haptics = G.store.get('haptics3d', true);
+  if (navigator.vibrate && matchMedia('(pointer: coarse)').matches) {
+    const buzz = p => { if (G.settings.haptics && !G.paused) try { navigator.vibrate(p); } catch { /* not allowed */ } };
+    G.on('flap', () => buzz(7)); G.on('land', () => buzz(28)); G.on('bump', () => buzz([18, 40, 18]));
+    G.on('catch', () => buzz([12, 50, 24])); G.on('ring', () => buzz(14));
+    let inLift = false, fast = false;
+    setInterval(() => {
+      const b = G.b; if (!b || G.paused || b.state !== 'fly') { inLift = fast = false; return; }
+      if (b.lift > 1.6 && !inLift) buzz([10, 60, 10]); inLift = b.lift > 1.2 ? inLift || b.lift > 1.6 : false;
+      if (b.s > 36 && !fast) buzz(160); fast = b.s > 31 ? fast || b.s > 36 : false;
+    }, 120);
+    G.menu.toggle('play', { label: 'Haptics', sub: 'feel wing beats, landings, lift', get: () => G.settings.haptics, set: v => { G.settings.haptics = v; G.store.set('haptics3d', v); if (v) buzz(20); } });
+  }
   G.menu.button('play', { label: 'Quit', sub: 'saves your journey, then closes', group: 'app', onClick: quit });
   G.menu.quit = quit;
 }
