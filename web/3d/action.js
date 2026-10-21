@@ -1,20 +1,19 @@
-// One action button, bottom right where Take off was: it shows the one action that fits now (Sleep
-// on a roost at night, else Take off, or Imitate a bird while the song controls are out), and a
-// swipe up or down on it turns to the others that also fit, shown as dots. Each action comes from
-// the system that owns it (G.actions: takeoff in main.js, sleep in sys/sleep.js, imitate in
-// sys/songs.js) as { run(), when() }. Settings can turn it off for the separate buttons.
+// One action button, bottom middle (placed by sys/songs.css): it shows the one action that fits now
+// (Sleep on a roost at night, else Take off), and a swipe up or down on it turns to the other when
+// both fit, shown as dots. Each action comes from the system that owns it (G.actions: takeoff in
+// main.js, sleep in sys/sleep.js) as { run(), when() }. Settings can turn it off for the separate
+// buttons.
 const ACTS = {
   sleep: ['Sleep', 'M13.5 4.5a6 6 0 1 0 2 9.5 5 5 0 0 1-2-9.5z'],
   takeoff: ['Take off', 'M10 16V4M5 9l5-5 5 5'],
-  imitate: ['Imitate', 'M8 15V5l8-2v10M8 15a2 2 0 1 1-4 0 2 2 0 0 1 4 0M16 13a2 2 0 1 1-4 0 2 2 0 0 1 4 0'],
 };
-const ORDER = ['sleep', 'takeoff', 'imitate'];   // the first that fits is shown first
+const ORDER = ['sleep', 'takeoff'];   // the first that fits is shown first
 
 export function actionButton(G, ui) {
   ui.insertAdjacentHTML('beforeend', `<button class="act3 gone" aria-label=""><svg viewBox="0 0 20 20" aria-hidden="true"><path d=""/></svg><span></span><i class="dots"></i></button>`);
   const btn = ui.querySelector('.act3'), path = btn.querySelector('path'), label = btn.querySelector('span'), dots = btn.querySelector('.dots');
   G.settings.oneAction = G.store.get('oneAction3d', true);
-  G.menu.toggle('play', { label: 'One action button', sub: 'Take off, Sleep and Imitate in one; swipe it for the others', get: () => G.settings.oneAction, set: v => { G.settings.oneAction = v; G.store.set('oneAction3d', v); refresh(); } });
+  G.menu.toggle('play', { label: 'One action button', sub: 'Take off and Sleep in one; swipe it for the other', get: () => G.settings.oneAction, set: v => { G.settings.oneAction = v; G.store.set('oneAction3d', v); refresh(); } });
   let shown = null, pick = 0, key = '', y0 = null, swiped = false;
 
   function fits() { return ORDER.filter(id => G.actions?.[id]?.when?.()); }
