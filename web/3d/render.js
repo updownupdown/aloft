@@ -125,8 +125,8 @@ void main() {
   frag = vec4(c, 1.);
 }`;
 const WATER_VS = `#version 300 es
-layout(location=0) in vec2 aP; uniform mat4 uVP; uniform vec3 uCam; out vec3 vPos;
-void main() { vPos = vec3(aP.x * 900. + uCam.x, 0., aP.y * 900. + uCam.z); gl_Position = uVP * vec4(vPos, 1.); }`;
+layout(location=0) in vec2 aP; uniform mat4 uVP; uniform vec3 uCam; uniform float uLevel; out vec3 vPos;
+void main() { vPos = vec3(aP.x * 900. + uCam.x, uLevel, aP.y * 900. + uCam.z); gl_Position = uVP * vec4(vPos, 1.); }`;
 const WATER_FS = `#version 300 es
 precision highp float;
 in vec3 vPos; out vec4 frag;
@@ -362,11 +362,17 @@ export function createRenderer(gl) {
       gl.bindVertexArray(fx.vao); gl.drawArrays(gl.TRIANGLES, 0, S.ribbon.length / 7);
     }
     gl.useProgram(water.p);
-    gl.uniformMatrix4fv(water.u.uVP, false, vp); gl.uniform3fv(water.u.uCam, S.cam);
+    gl.uniformMatrix4fv(water.u.uVP, false, vp); gl.uniform3fv(water.u.uCam, S.cam); gl.uniform1f(water.u.uLevel, S.water ?? 0);
     gl.uniform3fv(water.u.uZenith, S.zenith); gl.uniform3fv(water.u.uHorizon, S.horizon); gl.uniform3fv(water.u.uSun, S.sun);
     gl.uniform3fv(water.u.uSunCol, S.sunCol); gl.uniform3fv(water.u.uFogCol, S.horizon); gl.uniform3fv(water.u.uSkyAmb, S.skyAmb);
     gl.uniform1f(water.u.uFogDen, S.fogDen); gl.uniform1f(water.u.uTime, S.time);
     gl.bindVertexArray(plane.vao); gl.drawArrays(gl.TRIANGLES, 0, 6);
+    // on the water: strips laid on its surface (river foam), as ribbons but after the water
+    if (S.surface?.length) {
+      gl.useProgram(flat.p); gl.uniform1f(flat.u.uPoints, 0);
+      gl.bindBuffer(gl.ARRAY_BUFFER, fx.buf); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(S.surface), gl.DYNAMIC_DRAW);
+      gl.bindVertexArray(fx.vao); gl.drawArrays(gl.TRIANGLES, 0, S.surface.length / 7);
+    }
     if (S.motes.length) {
       gl.useProgram(flat.p); gl.uniform1f(flat.u.uPoints, 1);
       const md = new Float32Array(S.motes);

@@ -4,7 +4,7 @@
 // noise in noise.js. Coordinates: x east, z south, y up, metres-ish. Water level is y = 0.
 import { store } from './util.js';
 import { ih, fbm, smooth, clamp, WORLD, newWorld } from './noise.js';
-import { BIOMES, PAL, JOURNEY, blend, weightOf, share, rollBiome, cellsNear } from './biomes.js';
+import { BIOMES, PAL, JOURNEY, blend, weightOf, share, rollBiome, cellsNear, riverLine } from './biomes.js';
 export { ih, fbm, WORLD, newWorld, PAL, JOURNEY, blend };
 
 export const CHUNK = 96;
@@ -18,7 +18,10 @@ export function setGroundDetail(n) { CELLS = GROUND.some(g => g[0] === n) ? n : 
 // how many cells a side for a chunk whose middle is d metres from the bird
 export const cellsFor = d => (d < NEAR_R ? CELLS_NEAR : CELLS);
 setGroundDetail(store.get('ground', 24));
-export const WATER = 0;
+// The water level: 0 on average, but the tides, the rain and the summer move it (sys/waters.js
+// calls setWater). One level for all water, sea and lakes alike, kept within half a metre or so.
+export let WATER = 0;
+export function setWater(y) { WATER = y; }
 
 // what systems change at run time: the snowline (0 summer .. 1 deep winter, chunks must be
 // rebuilt when it moves), the thermals' strength, and extra lift (storm cells, waves, kettles)
@@ -48,10 +51,36 @@ export function height(x, z) {
   let h = 0;
   for (const e of bl) h += e.w * e.b.h(x, z, B, e);
   if (!bl[0].b.flat) h += B.fine * 1.6 * (1 - share(bl, 'saltflat'));
+  h = riverCut(x, z, h);
   // a valley floor near the start so the first flight begins over a meadow and pond
   const d0 = Math.hypot(x, z + 60);
   if (d0 < 260) h = h * smooth(30, 260, d0) + (1 - smooth(30, 260, d0)) * (6 + 10 * Math.min(1, d0 / 120) - 14 * Math.max(0, 1 - Math.hypot(x - 40, z + 150) / 55));
   return h;
+}
+// Rivers: long winding channels (where a slow noise crosses zero) cut down below the water
+// through whatever land they cross, in valleys that widen with the height of the land around,
+// with a bed deep enough for fish. They come and go with a second, slower noise: they rise
+// where it turns positive (a spring) and run until it fades (into a lake, the sea, or the
+// ground). RIVER.scale is the spacing; flow and foam are sys/rivers.js.
+export const RIVER = { scale: 1500, seed: 91, half: 7, bed: -2.2 };
+export function riverAt(x, z) {
+  const m = fbm(x / 2600, z / 2600, RIVER.seed + 7, 1);
+  if (m < .02 || Math.hypot(x, z + 60) < 320) return null;
+  const d = riverLine(x, z, RIVER.seed, RIVER.scale) * RIVER.scale * .55, w = RIVER.half * smooth(.02, .2, m);
+  return { d, w, m };
+}
+function riverCut(x, z, h) {
+  const r = riverAt(x, z); if (!r || h < RIVER.bed) return h;
+  const bank = r.w + 22 + Math.max(0, h) * 1.1; if (r.d > bank) return h;
+  // the bed: deepest mid-stream, up to the waterline at the edge; where the river fades it
+  // shallows to a dry gully
+  const k = smooth(.02, .2, r.m), u = r.w > .5 ? Math.min(1, r.d / r.w) : 1;
+  const bed = RIVER.bed * k * (1 - u * u) + (1 - k) * 1.2 + (r.d > r.w ? (r.d - r.w) * .04 : 0);
+  if (h <= bed) return h;
+  // the valley sides, and a low grassy bank a couple of metres over the water
+  const s = smooth(r.w, bank, r.d);
+  const y = bed + (h - bed) * s;
+  return r.d > r.w ? Math.max(y, Math.min(h, 2 * smooth(r.w, r.w + 4, r.d))) : y;
 }
 export function normalAt(x, z) {
   const e = 1.5, hx = height(x + e, z) - height(x - e, z), hz = height(x, z + e) - height(x, z - e);
