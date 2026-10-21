@@ -3,14 +3,14 @@
 // so the note colours stand out:
 //   right edge  the note pad, five rows from low (bottom) to high, each its own colour. The row
 //               is the pitch and the touch is the kind of syllable: tap for a chip, swipe down for
-//               a whistle, swipe up for a trill, rub left and right for a buzz. Each touch sings
-//               one syllable, the row answering in its own way, and two thumbs can sing at once.
-//   beside it   at the top the stop button (a crossed-out note); at the foot the Legend of those
-//               four touches, which folds down to its title
+//               a whistle, swipe up for a trill, a quick scrub up and down for a buzz. Each touch
+//               sings one syllable, the row answering in its own way, and two thumbs can sing.
+//   beside it   the Legend of those four touches, written sideways; it folds to its title
 //   bottom left the song card: the bird you imitate, its name (or a moment's cheer), the song's
 //               words and its score (each syllable's kind and pitch, the next one boxed). Its
-//               chevron opens the birds you know, the whole height of the screen,
-//               to pick one to imitate (a mark on those singing nearby)
+//               chevron opens the birds you know, the whole height of the screen, to pick one to
+//               imitate (a mark on those singing nearby). Above it, the stop button (the sing
+//               icon crossed out)
 // Pick a bird and you sing in its voice, imitating it: play its score through and a bird of that
 // kind answers (once you have learned it). Each syllable sung, yours or a songbird's, rises from
 // its beak as a little coloured drawing of its kind. Left-handed, the sides swap. Everything sits
@@ -32,11 +32,12 @@ const GLYPH = {
 };
 export const glyph = k => `<svg viewBox="0 0 40 20" aria-hidden="true">${GLYPH[k] || GLYPH.w}</svg>`;
 // the touches, in the Legend's order: [kind, words]
-const TOUCHES = [['c', 'tap'], ['w', 'swipe down'], ['t', 'swipe up'], ['b', 'rub']];
+const TOUCHES = [['c', 'tap'], ['w', 'swipe down'], ['t', 'swipe up'], ['b', 'swipe up/down']];
 const CHEVRON = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 12.5l5-5 5 5" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-// a touch on the pad: a path shorter than MOVE px is a tap; past DECIDE px it sings at once, a
-// swipe up or down by which way it went, else a rub
-const MOVE = 10, DECIDE = 18;
+// a touch on the pad: a path shorter than MOVE px is a tap. A quick scrub up and down (turning back
+// by TURN px) is a buzz at once, as is a rub sideways (DECIDE px); one way only is a swipe, up or
+// down, once it has gone SWIPE px or on release
+const MOVE = 10, DECIDE = 18, TURN = 6, SWIPE = 36;
 
 import { songbirdPic } from '../pics.js';
 import { project } from '../shot.js';
@@ -52,12 +53,13 @@ export function createSingUI(ui, { audio, voice, onSyll, onPick, onCall }) {
   ui.insertAdjacentHTML('beforeend', `<div class="rise3"></div><div class="sing3 hidden">
       <button class="singbtn3"><span class="pic3"></span><b>Sing</b></button>
       <div class="notepad3">${NOTE_COLS.map((c, i) => `<i data-lane="${i}" style="--note:${c};--lit:${NOTE_LIT[i]}"></i>`).reverse().join('')}</div>
-      <button class="sgdone3" aria-label="Stop singing" title="Stop singing">${UNSING}</button>
-      <div class="sglegend3"><button class="sgfold3" aria-label="Hide the legend"><span>Legend</span>${CHEVRON}</button>
-        ${TOUCHES.map(([k, w]) => `<div data-kind="${k}">${glyph(k)}<span>${w}</span></div>`).join('')}</div>
+      <div class="sglegend3"><div class="sgkeys3">${TOUCHES.map(([k, w]) => `<div data-kind="${k}">${glyph(k)}<span>${w}</span></div>`).join('')}</div>
+        <button class="sgfold3" aria-label="Hide the legend"><span>Legend</span>${CHEVRON}</button></div>
+      <div class="sgleft3"><button class="sgdone3" aria-label="Stop singing" title="Stop singing">${UNSING}</button>
       <div class="songcard3">
         <div class="sghead3"><span class="pic3"></span><span class="txt3"><b></b><i></i></span><button class="sgmore3" aria-label="Imitate a bird">${CHEVRON}</button></div>
         <div class="score3"></div>
+      </div>
       </div>
       <div class="birds3"><header><span>Imitate a bird</span><button class="sgless3" aria-label="Close">${CHEVRON}</button></header><div class="cards3"></div></div>
     </div>
@@ -85,20 +87,24 @@ export function createSingUI(ui, { audio, voice, onSyll, onPick, onCall }) {
     audio.note(lane, voice(), .18, kind); onSyll(lane, kind);
   }
   const touches = new Map();
-  function decide(t) {
+  function decide(t, kind) {
     if (t.done) return; t.done = true;
-    const kind = t.sx + t.sy <= MOVE ? 'c' : t.sy >= t.sx ? (t.y < t.y0 ? 't' : 'w') : 'b';
-    sound(t.lane, kind);
+    sound(t.lane, kind || (t.sx + t.sy <= MOVE ? 'c' : t.sy >= t.sx ? (t.y < t.y0 ? 't' : 'w') : 'b'));
   }
   pad.addEventListener('pointerdown', e => {
     e.preventDefault(); pad.setPointerCapture?.(e.pointerId); audio.unlock();
-    const t = { lane: laneAt(e.clientY), x: e.clientX, y: e.clientY, y0: e.clientY, sx: 0, sy: 0, done: false };
+    const t = { lane: laneAt(e.clientY), x: e.clientX, y: e.clientY, y0: e.clientY, lo: e.clientY, hi: e.clientY, sx: 0, sy: 0, done: false };
     touches.set(e.pointerId, t); rows[t.lane].classList.add('down');
   });
   pad.addEventListener('pointermove', e => {
     const t = touches.get(e.pointerId); if (!t || t.done) return;
     t.sx += Math.abs(e.clientX - t.x); t.sy += Math.abs(e.clientY - t.y); t.x = e.clientX; t.y = e.clientY;
-    if (t.sx + t.sy > DECIDE) decide(t);
+    t.lo = Math.min(t.lo, t.y); t.hi = Math.max(t.hi, t.y);
+    // turned back after going some way up (or down): a scrub
+    const went = t.y0 - t.lo > TURN ? t.y - t.lo : t.hi - t.y0 > TURN ? t.hi - t.y : 0;
+    if (went > TURN && t.hi - t.lo > TURN + 4) decide(t, 'b');
+    else if (t.sx > DECIDE && t.sx > t.sy) decide(t, 'b');
+    else if (Math.abs(t.y - t.y0) > SWIPE) decide(t, t.y < t.y0 ? 't' : 'w');
   });
   const lift = e => {
     const t = touches.get(e.pointerId); if (!t) return;
