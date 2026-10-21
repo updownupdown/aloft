@@ -6,6 +6,7 @@ import * as W from '../world.js';
 import { BIOMES, blend } from '../biomes.js';
 import { facets } from '../facet.js';
 import { journal, esc } from '../journal.js';
+import { FOOD } from './food.js';
 
 // the aims: a line for the Journal and the toast, and what does it (an event and a test)
 const AIMS = {
@@ -43,6 +44,29 @@ export function aimsSystem(G) {
   });
   // a thermal ride high above the ground: held for a moment and a half
   let highT = 0, high = false;
+
+  // ---- racing the companion ----------------------------------------------------------------
+  // through the first ring of a course, now and then (more often when it is with you) it races you round
+  // the rest (sys/fauna.js G.companion.fly). Finish the course first and it brings you a mouse
+  let race = null;   // { circuit, them: done?, t }
+  const RACE = { odds: .5, join: .2, speed: 15, gift: FOOD.mouse };   // odds when it is with you, or must fly in to join
+  G.on('ring', r => {
+    const C = G.companion;
+    if (race || r.k !== 0 || !C || C.busy || Math.random() > (C.here ? RACE.odds : RACE.join)) return;
+    const course = W.ringsNear(r.x, r.z, 900).filter(q => q.circuit === r.circuit && q.k > 0).sort((a, c) => a.k - c.k);
+    if (!course.length) return;
+    race = { circuit: r.circuit, them: false, t: G.clock };
+    C.fly(course.map(q => [q.x, q.y, q.z]), RACE.speed, () => { if (race?.circuit === r.circuit) race.them = true; });
+    G.hud.toast('Your companion calls and races you round the course.', 3);
+  });
+  G.on('ringLoop', e => {
+    if (!race || e.circuit !== race.circuit) return;
+    if (!race.them) {
+      G.hunger = Math.min(1, G.hunger + RACE.gift);
+      G.hud.toast('Round first! Your companion brings you a mouse.', 4); G.emit('raceWon');
+    } else G.hud.toast('Your companion finished first, and waits for you, calling.', 3.5);
+    race = null;
+  });
 
   // ---- the lands ----------------------------------------------------------------------------
   const KEYS = Object.keys(BIOMES);
@@ -85,6 +109,8 @@ export function aimsSystem(G) {
   return {
     id: 'aims',
     update(dt) {
+      // a race left behind (the course broken off) ends quietly
+      if (race && G.clock - race.t > 90) { G.companion?.stop?.(); race = null; }
       if (!A.aim || A.day !== G.day) { pick(); if (G.t > 3) offer(); }
       if ((landT -= dt) <= 0) {
         landT = 2;
