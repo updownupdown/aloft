@@ -2,6 +2,7 @@
 // world, and full screen always (asked for again on the next touch whenever the phone's bars come
 // back).
 import { WORLD, newWorld } from './world.js';
+import { actionButton } from './action.js';
 
 export function appRows(G) {
   // Update: save, fetch the newest version of every file past every cache, and start again on it,
@@ -108,6 +109,7 @@ export function appRows(G) {
     }, 120);
     G.menu.toggle('play', { label: 'Haptics', sub: 'feel wing beats, landings, lift', get: () => G.settings.haptics, set: v => { G.settings.haptics = v; G.store.set('haptics3d', v); if (v) buzz(20); } });
   }
+  actionButton(G, document.getElementById('ui3'));
   G.menu.button('play', { label: 'Quit', sub: 'saves your journey, then closes', group: 'app', onClick: quit });
   G.menu.quit = quit;
 }
