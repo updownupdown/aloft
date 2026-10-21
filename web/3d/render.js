@@ -165,7 +165,7 @@ void main() { vP = aP; gl_Position = vec4(aP, .9999, 1.); }`;
 const SKY_FS = `#version 300 es
 precision highp float;
 in vec2 vP; out vec4 frag;
-uniform mat4 uInvVP; uniform vec3 uZenith, uHorizon, uSun, uSunCol, uCloud; uniform float uNight, uTime;
+uniform mat4 uInvVP; uniform vec3 uZenith, uHorizon, uSun, uSunCol, uCloud; uniform float uNight, uTime, uAurora;
 float h21(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
 float vn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f);
   return mix(mix(h21(i), h21(i + vec2(1, 0)), f.x), mix(h21(i + vec2(0, 1)), h21(i + vec2(1, 1)), f.x), f.y); }
@@ -176,13 +176,31 @@ void main() {
   vec3 c = mix(uHorizon, uZenith, pow(up, .55));
   float sd = max(dot(d, uSun), 0.);
   c += uSunCol * (pow(sd, 12.) * .25 + pow(sd, 900.) * 1.2) * (1. - uNight * .6);
+  float cl = 0.;
   if (d.y > .02) {
     vec2 q = d.xz / (d.y + .08) * 1.6 + vec2(uTime * .004, 0.);
     float n = vn(q) * .6 + vn(q * 2.3 + 7.) * .3 + vn(q * 5.1 + 3.) * .1;
-    float cl = smoothstep(.52, .78, n) * smoothstep(.02, .25, d.y);
+    cl = smoothstep(.52, .78, n) * smoothstep(.02, .25, d.y);
     c = mix(c, uCloud, cl * .3);   // only faint high haze: the clouds themselves are meshes (sys/air.js)
     if (uNight > 0.) { vec2 g = floor(d.xz / (d.y + .3) * 140.); float st = step(.996, h21(g)) * (1. - cl) * smoothstep(.05, .3, d.y);
       c += vec3(st) * uNight * (.6 + .4 * sin(uTime * 2. + h21(g + 3.) * 40.)); }
+  }
+  // northern lights: thin curtains high in the north, added to the sky (stars show through). The
+  // view ray is stepped up through a layer of sky; where it meets a curtain's wavy line it glows,
+  // green at the foot, fading to violet and nothing at the top, in fine vertical rays
+  if (uAurora > .01 && d.y > .03) {
+    vec3 au = vec3(0.); float jit = h21(gl_FragCoord.xy * .37);
+    for (int i = 0; i < 16; i++) {
+      float k = (float(i) + jit) / 16.;
+      vec2 p = d.xz / d.y * (1. + k * 1.4);
+      for (int j = 0; j < 2; j++) {
+        float o = float(j), w = p.y + 2.4 + o * 1.3 + sin(p.x * .45 + o * 2. + uTime * .04) * .7 + sin(p.x * 1.3 - uTime * .07 + o) * .25;
+        float ray = .45 + .55 * vn(vec2(p.x * 9. + o * 5. + uTime * .15, k * .6));
+        float glow = exp(-w * w * 6.) * ray * smoothstep(0., .18, k) * pow(1. - k, 1.6) * (1. - o * .4);
+        au += mix(vec3(.25, 1., .55), vec3(.6, .35, 1.), k) * glow;
+      }
+    }
+    c += au * uAurora * .2 * smoothstep(.03, .15, d.y) * (1. - cl);
   }
   c *= .965 + .05 * h21(floor(gl_FragCoord.xy));
   frag = vec4(c, 1.);
@@ -420,7 +438,7 @@ export function createRenderer(gl) {
     const inv = invert(vp);
     gl.uniformMatrix4fv(sky.u.uInvVP, false, inv);
     gl.uniform3fv(sky.u.uZenith, S.zenith); gl.uniform3fv(sky.u.uHorizon, S.horizon); gl.uniform3fv(sky.u.uSun, S.sun);
-    gl.uniform3fv(sky.u.uSunCol, S.sunCol); gl.uniform3fv(sky.u.uCloud, S.cloud); gl.uniform1f(sky.u.uNight, S.night); gl.uniform1f(sky.u.uTime, S.time);
+    gl.uniform3fv(sky.u.uSunCol, S.sunCol); gl.uniform3fv(sky.u.uCloud, S.cloud); gl.uniform1f(sky.u.uNight, S.night); gl.uniform1f(sky.u.uTime, S.time); gl.uniform1f(sky.u.uAurora, S.aurora || 0);
     gl.bindVertexArray(tri.vao); gl.drawArrays(gl.TRIANGLES, 0, 3);
     gl.depthMask(true); gl.enable(gl.DEPTH_TEST);
 

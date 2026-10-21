@@ -274,14 +274,8 @@ export function weatherSystem(G) {
             S.motes.push(cam[0] + m.d[0] * D + m.v[0] * t, cam[1] + m.d[1] * D + m.v[1] * t, cam[2] + m.d[2] * D + m.v[2] * t, ...mix3(S.zenith, [1, .97, .9], (1 - i / 8) * (1 - f) * L.night), 2.2 - i * .2);
           }
         }
-        if (G.aurora > .03) {
-          for (let c = 0; c < 3; c++) for (let i = 0; i < 72; i++) for (let j = 0; j < 7; j++) {
-            const u = i / 71 - .5, x = u * 1700 + Math.sin(u * 7 + G.t * .15 + c * 2) * 110, z = -700 - c * 70 + Math.sin(u * 5 + c + G.t * .1) * 70;
-            const sh = .55 + .45 * Math.sin(u * 30 + G.t * (.6 + c * .2) + j * .5), h = j / 6;
-            const col = mix3([.3, .95, .55], [.65, .4, .85], h * .8);
-            S.motes.push(cam[0] + x, cam[1] + 30 + j * 26 + c * 12 + Math.sin(u * 11 + G.t * .3) * 15, cam[2] + z, ...mix3(S.zenith, col, G.aurora * sh * (1 - h * .6) * .42), 22);
-          }
-        }
+        // the northern lights are drawn by the sky itself (render.js)
+        S.aurora = G.aurora * L.night * (1 - ov);
       }
       // a sea of cloud in the high country on still mornings: the valleys fill, the peaks stand out
       const k = bands(cam[0], cam[2]), hi = Math.max(k.high, k.ridge);
