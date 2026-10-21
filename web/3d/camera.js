@@ -45,8 +45,11 @@ export function createCamera(G) {
       if (b.zoomPinch) { C.zoom = Math.max(.25, Math.min(1, C.zoom * b.zoomPinch)); b.zoomPinch = 0; store.set('groundZoom3d', C.zoom); }
       C.zm += ((b.state === 'ground' ? 1 / C.zoom : 1) - C.zm) * Math.min(1, dt * 4);
       const zm = C.zm;
-      want = [p[0] - d[0] * 2.6 * zm, p[1] + .9 * zm - lp * 1.2, p[2] - d[2] * 2.6 * zm];
-      look = [p[0] + d[0] * 1.5 * zm, p[1] + .05 + lp * 3, p[2] + d[2] * 1.5 * zm];
+      // tipping (lp, radians): the camera dips a little and the view turns up about it, up to ~70°
+      // overhead into the boughs, or down toward the ground; at 0 it is the usual view
+      want = [p[0] - d[0] * 2.6 * zm, p[1] + .9 * zm - Math.max(-.5, Math.min(.6, lp)) * .9, p[2] - d[2] * 2.6 * zm];
+      const hz = 4.1 * zm, a0 = Math.atan2(.9 * zm - .05, hz), a = Math.max(-1.1, Math.min(1.25, lp - a0));
+      look = [p[0] + d[0] * 1.5 * zm, want[1] + hz * Math.tan(a), p[2] + d[2] * 1.5 * zm];
     }
     if (!C.cam) C.cam = want.slice();
     const k = b.state === 'fly' && !C.still ? 1 : Math.min(1, dt * 2);

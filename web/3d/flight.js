@@ -167,11 +167,12 @@ function still(b, c, dt, E) {
   if (Math.abs(lk[0]) + Math.abs(lk[1]) > 1e-4) {
     b.lookT = 2.2;
     b.lookYaw = Math.max(-2.6, Math.min(2.6, (b.lookYaw || 0) + lk[0]));
-    b.lookPitch = Math.max(-.7, Math.min(.9, (b.lookPitch || 0) + lk[1]));
-  } else if ((b.lookT = (b.lookT || 0) - dt) < 0) { const k = Math.min(1, dt * 2); b.lookYaw = (b.lookYaw || 0) * (1 - k); if (b.state === 'swim') b.lookPitch = (b.lookPitch || 0) * (1 - k); }
-  // perched or standing, one finger dragged up or down tips the view and it stays tipped (down
-  // looks up); nothing walks: on the ground the bird gets about by hops
-  if ((b.state === 'perch' || b.state === 'ground') && c.dragY) b.lookPitch = Math.max(-.7, Math.min(.9, (b.lookPitch || 0) + c.dragY * 2));
+    b.lookPitch = Math.max(-.7, Math.min(1.45, (b.lookPitch || 0) + lk[1]));
+  } else if ((b.lookT = (b.lookT || 0) - dt) < 0) { const k = Math.min(1, dt * 2); b.lookYaw = (b.lookYaw || 0) * (1 - k); b.lookPitch = (b.lookPitch || 0) * (1 - Math.min(1, dt * .7)); }   // the tip comes back slowly
+  // perched or standing, one finger dragged up or down tips the view (down looks up, far enough to
+  // see into the boughs overhead), and it eases back a few seconds after; nothing walks: on the
+  // ground the bird gets about by hops
+  if ((b.state === 'perch' || b.state === 'ground') && c.dragY) { b.lookPitch = Math.max(-.7, Math.min(1.45, (b.lookPitch || 0) + c.dragY * 2.6)); b.lookT = 3.5; }
   // a tapped spot on the ground (aim.js sets b.goTo): hop there, a hop at a time, stopping at water
   if (b.state === 'ground' && b.goTo && b.settle <= 0 && !(b.eating > 0) && !b.asleep && !(b.wantOff > 0)) {
     const d = Math.hypot(b.goTo[0] - b.p[0], b.goTo[2] - b.p[2]);
