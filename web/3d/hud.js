@@ -5,7 +5,7 @@
 import { store } from './util.js';
 import { createDial } from './dial.js';
 import { createCompass } from './compass.js';
-import { tipBar } from './tips.js';
+import { tipBar, tipGroup } from './tips.js';
 import { icon } from './icons.js';
 
 // each meter's icon (icons.js)
@@ -24,13 +24,15 @@ export function createHud(G, ui, input) {
     <div class="hud3"><span class="meters"></span><span class="alt"><b class="m"></b><b class="k"></b></span></div>
     <div class="corner3"><div class="fps3 hidden"></div></div>
     <div class="pad3 L"><i></i></div><div class="pad3 R"><i></i></div>
-    <p class="toast3"><span class="ic3"></span><span class="tx3"></span></p>`);
+    <p class="toast3"><span class="ic3"></span><span class="tx3"></span><button class="set3" aria-label="Choose which messages show">${icon('settings')}</button></p>`);
   const q = s => ui.querySelector(s);
   const hud = q('.hud3'), meters = q('.meters'), toastEl = q('.toast3'), padL = q('.pad3.L'), padR = q('.pad3.R');
   const dial = createDial(q('.corner3')), compass = createCompass(G, ui);
   const altM = q('.alt .m'), altK = q('.alt .k');
   q('.corner3').prepend(q('.corner3 .dial'));
-  const H = { tips: [], done: store.get('hints3d', {}), status: '', flight: null, counter: '', hidden: false };
+  // off: the groups of tips and kinds of message turned off on How to play > Hints ('tip:food',
+  // 'say:hint'); said: the last few lines of each kind, for that page
+  const H = { off: store.get('hintsoff3d', {}), said: store.get('said3d', {}), tips: [], done: store.get('hints3d', {}), status: '', flight: null, counter: '', hidden: false };
   const bar = tipBar(G, ui, H);
   const all = [];   // every meter: { v, low }
   let toastT = 0, tipNow = null, tipT = 0, altKey = '';
@@ -63,6 +65,9 @@ export function createHud(G, ui, input) {
   const toastTx = toastEl.querySelector('.tx3'), toastIc = toastEl.querySelector('.ic3');
   let toastKey = '';
   H.say = (msg, { kind = 'event', secs = 4, icon: ic } = {}) => {
+    if (H.off['say:' + kind]) return;
+    const seen = H.said[kind] ||= [];
+    if (!seen.includes(msg)) { seen.unshift(msg); seen.length = Math.min(seen.length, 8); store.set('said3d', H.said); }
     const k = kind + '|' + msg, song = kind === 'song';
     if (toastT > 0 && !song) {
       if (k !== toastKey && !queue.some(m => m[0] === msg)) queue.push([msg, secs, kind, ic]);
@@ -76,6 +81,7 @@ export function createHud(G, ui, input) {
     ui.style.setProperty('--msgh', toastEl.offsetHeight + 'px');   // the compass steps down below it
   };
   H.toast = (msg, secs = 4, kind = 'event') => H.say(msg, { kind, secs });
+  toastEl.querySelector('.set3').addEventListener('click', () => G.menu.set(true, 'how', 'hints'));
   // a tip shows while `when()` holds, until H.did(id) is called or it is swiped away (both are
   // remembered). It shows for eight seconds at a time, then rests a minute, at most three times a
   // session; tips.js gives it its short line and icon
@@ -84,6 +90,7 @@ export function createHud(G, ui, input) {
     if (!H.done[id]) { H.done[id] = 1; store.set('hints3d', H.done); }
     if (tipNow === id) tipT = Math.min(tipT, .3);
   };
+  H.setOff = (key, off) => { if (off) H.off[key] = 1; else delete H.off[key]; store.set('hintsoff3d', H.off); };
   H.resetTips = () => { H.done = {}; store.set('hints3d', {}); };
   H.fps = n => { q('.fps3').textContent = `${Math.round(n)} FPS`; };
   H.showFps = on => q('.fps3').classList.toggle('hidden', !on);
@@ -100,7 +107,7 @@ export function createHud(G, ui, input) {
     tipT -= dt;
     if (tipT <= 0) {
       tipNow = null;
-      for (const t of H.tips) if (!H.done[t.id] && t.shown < 3 && G.t > t.rest && t.when()) { tipNow = t.id; bar.show(t); tipT = 8; t.shown++; t.rest = G.t + 68; break; }
+      for (const t of H.tips) if (!H.done[t.id] && !H.off['tip:' + tipGroup(t.id)] && t.shown < 3 && G.t > t.rest && t.when()) { tipNow = t.id; bar.show(t); tipT = 8; t.shown++; t.rest = G.t + 68; break; }
     }
     if (!tipNow || tipT <= .3 || H.done[tipNow]) bar.hide();
     // height over speed when flying, else what the hawk is doing

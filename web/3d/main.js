@@ -166,7 +166,6 @@ if (qs.has('fps')) G.settings.fpsCap = +qs.get('fps') || 60;
   // second while the flight and the camera stay smooth, like a model animated a frame at a time
   G.menu.toggle(play, { label: 'Stop-motion look', sub: 'experimental: wings and sway at 12 a second', get: () => G.settings.stopMo, set: v => { G.settings.stopMo = v; store.set('stopMo3d', v); } });
   G.menu.toggle(play, { label: 'Show frame rate', get: () => G.settings.fps, set: v => { G.settings.fps = v; store.set('fps3d', v); H.showFps(v); } });
-  G.menu.button(play, { label: 'Show the tips again', group: 'play', onClick: () => { H.resetTips(); G.menu.set(false); } });
   G.menu.button(play, { label: 'Music lab', sub: 'tune Valley', href: 'musiclab.html', group: 'sound' });
   G.menu.button(play, { label: 'Start a new journey', sub: 'from the valley', group: 'play', onClick: el => {
     if (el.dataset.sure) { G.resetting = true; store.set('save3d', null); location.reload(); } else { el.dataset.sure = 1; el.firstChild.textContent = 'Tap again to start over '; }
