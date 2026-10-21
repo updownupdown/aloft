@@ -88,7 +88,7 @@ export function createCamera(G) {
       return { flapL: .25 + bob, flapR: .25 + bob, handL: -.2, handR: -.2, fold: .35 * m + (1 - m), flare: .6 * m, legs: 1, tail: .6 * m, tailPitch: .2, t: G.t, tailRed: G.tailRed ?? 1 };
     }
     return {
-      flapL: settled ? .05 : fl, flapR: settled ? .05 : fr, handL: hl, handR: hr,
+      flapL: settled ? .05 : fl, flapR: settled ? .05 : fr, handL: settled ? 0 : hl, handR: settled ? 0 : hr,
       fold: settled ? clamp(1 - b.settle * 1.6, 0, 1) : clamp(b.tuck * .75 + b.canopy * .25, 0, 1),
       flare: settled ? clamp(b.settle * 2, 0, 1) : b.flare,
       legs: settled ? 1 : clamp(Math.max(b.flare, b.reach || 0, pm && Math.hypot(pm.x - p[0], pm.y - p[1], pm.z - p[2]) < 8 ? 1 : 0), 0, 1) * .9,
