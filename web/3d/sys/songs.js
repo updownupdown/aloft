@@ -14,7 +14,6 @@
 // berries, fish, a companion) are announced on the bus as G.emit('gift', ev): set ev.handled
 // and this system skips its own stand-in. G.gifts holds each running gift's seconds left.
 import { SPECIES, active, timeOfDay } from '../../src/songs.js';
-import { MUSIC_MODES } from '../../src/music.js';
 import { period, DAY } from '../sky.js';
 import { height, WATER, treesNear, perchesOf, thermalsNear, landmarksNear } from '../world.js';
 import { clamp, dist3 } from '../util.js';
@@ -380,12 +379,6 @@ export function songsSystem(G) {
       book.innerHTML = `<p class="sub">${G.learned.size} of ${SPECIES.length} songs learned. Perch near a singing bird to learn its song.</p><ul class="guide3 songs3">${SPECIES.map(card).join('')}</ul>`;
     });
     G.menu.toggle('play', { label: 'Left-handed singing', sub: 'notes on the left, birds on the right', get: lefty, set: v => store.set('lefty', v) });
-    const styleName = () => (MUSIC_MODES.find(m => m[0] === G.music.mode) || MUSIC_MODES[0])[1];
-    G.menu.button('play', { label: 'Music style', sub: styleName(), group: 'sound', onClick: el => {
-      const i = MUSIC_MODES.findIndex(m => m[0] === G.music.mode), next = MUSIC_MODES[(i + 1) % MUSIC_MODES.length][0];
-      G.music.setMode(next); store.set('musicMode', next); el.querySelector('em').textContent = styleName();
-    } });
-    G.menu.button('play', { label: 'Bird song lab', sub: 'choose the songbirds’ voice', href: 'lab.html', group: 'sound' });
   }
 
   // ---- each frame --------------------------------------------------------------------------------

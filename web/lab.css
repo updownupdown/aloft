@@ -14,11 +14,6 @@ a { color: var(--indigo); }
 button { font: inherit; font-size: 16px; color: var(--ink); background: transparent; border: 1px solid var(--rule); border-radius: 18px; min-height: 40px; padding: 6px 14px; cursor: pointer; }
 button.on { background: var(--indigo); border-color: var(--indigo); color: #fbf7ee; }
 button:active { transform: translateY(1px); }
-.species { list-style: none; margin: 0; padding: 0; }
-.species li { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 0; border-bottom: 1px solid var(--rule); }
-.species b { min-width: 92px; font-weight: 400; }
-.species em { color: var(--ink2); font-size: 14px; flex: 1 1 140px; }
-.now { min-height: 1.5em; font-style: italic; color: var(--berry); }
 .save { background: var(--berry); border-color: var(--berry); color: #fbf7ee; font-size: 18px; padding: 8px 20px; }
 .slider { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; padding: 8px 0; border-bottom: 1px solid var(--rule); }
 .slider label { font-size: 16px; }
@@ -27,3 +22,7 @@ button:active { transform: translateY(1px); }
 .slider small { grid-column: 1 / -1; margin: 0; }
 .log { list-style: none; margin: 4px 0; padding: 0; font-size: 15px; color: var(--ink2); font-style: italic; min-height: 7.5em; }
 .links { display: flex; gap: 14px; flex-wrap: wrap; }
+.dirs { list-style: none; margin: 0; padding: 0; }
+.dirs li { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 8px 0; border-bottom: 1px solid var(--rule); }
+.dirs button { min-width: 150px; text-align: left; }
+.dirs em { color: var(--ink2); font-size: 14px; flex: 1 1 200px; }

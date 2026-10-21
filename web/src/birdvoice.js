@@ -1,7 +1,7 @@
 // Songbird voices. Every call is built from a species template of short elements (whistles,
 // sweeps, trill notes), each a pitch contour with a fast swell, rendered by one of several
-// engines and placed in a space. The bird song lab (lab.html) plays them side by side and saves
-// the pick under aloft.birdVoice; the game reads the same key.
+// engines and placed in a space. A saved pick under aloft.birdVoice (from the old bird song lab)
+// is still read; otherwise the game sings in DEFAULT_VOICE.
 //   whistle: the first voices, long smooth sine glides (kept to compare against)
 //   natural: fast frequency sweeps with a little overtone, the way small birds actually sing
 //   syrinx:  natural, plus the second side of the syrinx singing its own quieter line

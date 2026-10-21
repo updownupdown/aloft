@@ -10,78 +10,58 @@
 </head>
 <body>
 <main>
-  <div class="top"><h1>Music lab</h1><span class="links"><a href="lab.html">Bird song lab</a><a href="./">Back to the game</a></span></div>
-  <p>Valley, taken apart. Press play, then move things while it plays: the chords, the piano and the quiet between them. Changes are heard from the next chord or note. Keep what you like and the game plays it.</p>
+  <div class="top"><h1>Music lab</h1><span class="links"><a href="./">Back to the game</a></span></div>
+  <p>Try a direction for the game's music, then shape it while it plays. Changes are heard from the next chord or note. Keep what you like and the game plays it.</p>
 
-  <div class="opts"><button class="save" data-play>Play</button><button data-skip="chord">Next chord now</button><button data-skip="piano">Piano now</button></div>
-  <h2>Hour and weather</h2>
+  <div class="opts"><button class="save" data-play>Play</button><button data-skip="chord">Next chord now</button><button data-skip="lead">Melody now</button></div>
   <div class="opts" data-k="hour"></div>
-  <div class="opts"><button data-storm>Storm</button><button data-learned>Knows two songs</button></div>
+  <div class="opts"><button data-storm>Storm</button></div>
   <ul class="log"></ul>
 
-  <h2>Chords</h2>
-  <div class="opts" data-k="voicing"></div>
-  <small>How the three notes of each chord are spread: as written, opened wide like a string section, or suspended (the third swapped for the second, unresolved).</small>
-  <div class="sliders" data-group="chords"></div>
+  <h2>Direction</h2>
+  <ul class="dirs"></ul>
 
-  <h2>Piano</h2>
-  <div class="sliders" data-group="piano"></div>
-
-  <h2>Room</h2>
-  <div class="sliders" data-group="room"></div>
+  <h2>Shape it</h2>
+  <div class="sliders"></div>
 
   <h2>Keep it</h2>
-  <div class="opts"><button class="save" data-save>Use this in the game</button><button data-reset>Back to how it was</button></div>
+  <div class="opts"><button class="save" data-save>Use this in the game</button><button data-reset>Back to the direction as it was</button></div>
   <small class="saved"></small>
 </main>
 <script type="module">
 import { createAudio } from './src/audio.js';
-import { createMusic, VALLEY_TUNE } from './src/music.js';
+import { createMusic, DIRECTIONS, directionTune } from './src/music.js';
 import { SPECIES } from './src/songs.js';
 
 const A = createAudio(), M = createMusic(A), q = s => document.querySelector(s);
 const HOURS = [['day', 'Day', 0], ['dusk', 'Dusk', .5], ['night', 'Night', 1]];
-let hour = 'day', storm = false, learned = false, playing = false;
+let hour = 'day', storm = false, playing = false;
 // [key, label, min, max, step, how to show it, a line on what it does]
-const s = v => `${(+v).toFixed(0)} s`, pc = v => `${Math.round(v * 100)}%`, x = v => `${(+v).toFixed(2)}`;
-const SLIDERS = {
-  chords: [
-    ['chordLen', 'Shortest chord', 6, 40, 1, s, 'How long each chord lasts at least.'],
-    ['chordVar', 'Up to this much longer', 0, 30, 1, s],
-    ['overlap', 'Next chord starts at', .3, 1, .02, pc, 'Of the way through the last one. Lower means more melding.'],
-    ['rest', 'Chance the strings rest', 0, .8, .05, pc],
-    ['strings', 'Strings volume', 0, .06, .002, x],
-    ['cello', 'Chance of a low cello', 0, 1, .05, pc],
-    ['bright', 'Brightness at the swell', 400, 2400, 50, v => `${v} Hz`],
-    ['vibrato', 'Vibrato', 0, 20, 1, v => `${v} cents`],
-  ],
-  piano: [
-    ['piano', 'Piano volume', 0, .1, .002, x],
-    ['pianoOct', 'Piano octave', -1, 1, 1, v => (+v > 0 ? '+' : '') + v],
-    ['phraseMin', 'Fewest notes in a phrase', 1, 8, 1, v => v],
-    ['phraseMax', 'Most notes in a phrase', 1, 10, 1, v => v],
-    ['noteGap', 'Gap between notes', .5, 12, .5, s],
-    ['noteVar', 'Up to this much more', 0, 12, .5, s],
-    ['quiet', 'Quiet after a phrase, at least', 0, 90, 1, s, 'Longer at night.'],
-    ['quietVar', 'Up to this much more', 0, 90, 1, s],
-  ],
-  room: [
-    ['echo', 'Echo', 0, .7, .02, pc],
-    ['echoTime', 'Echo delay', .1, 1.4, .02, v => `${(+v).toFixed(2)} s`],
-  ],
-};
+const s = v => `${(+v).toFixed(0)} s`, pc = v => `${Math.round(v * 100)}%`, x = v => `${(+v * 1000).toFixed(0)}`;
+const SLIDERS = [
+  ['bedVol', 'Chords volume', 0, .08, .002, x],
+  ['leadVol', 'Melody volume', 0, .12, .002, x],
+  ['chordLen', 'Chord length', 6, 40, 1, s, 'How long each chord lasts at least (up to half as long again).'],
+  ['overlap', 'Next chord starts at', .3, 1, .02, pc, 'Of the way through the last one. Lower means more melding.'],
+  ['quiet', 'Quiet between melodies', 0, 90, 1, s, 'At least this long, and longer at night.'],
+  ['leadOct', 'Melody octave', -1, 1, 1, v => (+v > 0 ? '+' : '') + v],
+  ['room', 'Room', 0, .9, .02, pc, 'How much of the music rings in a big room behind it.'],
+  ['echo', 'Valley echo', 0, .7, .02, pc],
+];
 const inputs = {};
-for (const [g, list] of Object.entries(SLIDERS)) for (const [k, label, min, max, step, show, note] of list) {
+for (const [k, label, min, max, step, show, note] of SLIDERS) {
   const row = document.createElement('div'); row.className = 'slider';
   row.innerHTML = `<label for="t-${k}">${label}</label><output></output><input id="t-${k}" type="range" min="${min}" max="${max}" step="${step}">${note ? `<small>${note}</small>` : ''}`;
   const inp = row.querySelector('input'), out = row.querySelector('output');
   inp.oninput = () => { M.setTune({ [k]: +inp.value }); out.textContent = show(inp.value); };
   inputs[k] = { inp, out, show };
-  q(`[data-group=${g}]`).append(row);
+  q('.sliders').append(row);
 }
-for (const [v, name] of [['close', 'As written'], ['open', 'Open'], ['sus', 'Suspended']]) {
-  const b = document.createElement('button'); b.textContent = name; b.dataset.v = v;
-  b.onclick = () => { M.setTune({ voicing: v }); draw(); }; q('[data-k=voicing]').append(b);
+for (const [id, name, what] of DIRECTIONS) {
+  const li = document.createElement('li');
+  li.innerHTML = `<button data-dir="${id}">${id} · ${name}</button><em>${what}</em>`;
+  li.querySelector('button').onclick = () => { M.setTune(directionTune(id)); if (playing) M.skip('chord'); draw(); };
+  q('.dirs').append(li);
 }
 for (const [v, name] of HOURS) {
   const b = document.createElement('button'); b.textContent = name; b.dataset.v = v;
@@ -89,17 +69,16 @@ for (const [v, name] of HOURS) {
 }
 function draw() {
   for (const [k, { inp, out, show }] of Object.entries(inputs)) { inp.value = M.tune[k]; out.textContent = show(M.tune[k]); }
-  for (const b of document.querySelectorAll('[data-k=voicing] button')) b.classList.toggle('on', b.dataset.v === M.tune.voicing);
+  for (const b of document.querySelectorAll('[data-dir]')) b.classList.toggle('on', b.dataset.dir === M.tune.dir);
   for (const b of document.querySelectorAll('[data-k=hour] button')) b.classList.toggle('on', b.dataset.v === hour);
-  q('[data-storm]').classList.toggle('on', storm); q('[data-learned]').classList.toggle('on', learned);
+  q('[data-storm]').classList.toggle('on', storm);
   q('[data-play]').textContent = playing ? 'Pause' : 'Play';
 }
 q('[data-storm]').onclick = () => { storm = !storm; draw(); };
-q('[data-learned]').onclick = () => { learned = !learned; draw(); };
 q('[data-play]').onclick = () => { A.unlock(); A.resume(); playing = !playing; M.setOn(playing); draw(); };
 for (const b of document.querySelectorAll('[data-skip]')) b.onclick = () => { if (playing) M.skip(b.dataset.skip); };
 
-// what Valley is doing, newest first
+// what the music is doing, newest first
 const log = q('.log'), t0 = performance.now();
 M.log = msg => {
   const li = document.createElement('li'), t = Math.round((performance.now() - t0) / 1000);
@@ -110,14 +89,14 @@ let last = performance.now();
 setInterval(() => {
   const now = performance.now(), dt = (now - last) / 1000; last = now;
   if (!playing) return;
-  M.update(dt, { night: HOURS.find(h => h[0] === hour)[2], storm: storm ? .8 : 0, learned: new Set(learned ? [1, 4] : []), species: SPECIES, speed: 60, wind: 0, height: 120 });
+  M.update(dt, { night: HOURS.find(h => h[0] === hour)[2], storm: storm ? .8 : 0, learned: new Set([1, 4]), species: SPECIES });
 }, 100);
 
 q('[data-save]').onclick = () => {
-  try { localStorage.setItem('aloft.musicTune', JSON.stringify(M.tune)); q('.saved').textContent = 'Kept. The game plays Valley this way next time it opens.'; }
+  try { localStorage.setItem('aloft.musicTune', JSON.stringify(M.tune)); q('.saved').textContent = 'Kept. The game plays it this way next time it opens.'; }
   catch { q('.saved').textContent = 'This browser would not save it (private mode?).'; }
 };
-q('[data-reset]').onclick = () => { M.setTune({ ...VALLEY_TUNE }); draw(); };
+q('[data-reset]').onclick = () => { M.setTune(directionTune(M.tune.dir)); draw(); };
 document.addEventListener('visibilitychange', () => { if (document.hidden) A.suspend(); else A.resume(); });
 draw();
 </script>
