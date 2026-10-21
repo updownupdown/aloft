@@ -3,15 +3,17 @@
 // both fit, shown as dots. Each action comes from the system that owns it (G.actions: takeoff in
 // main.js, sleep in sys/sleep.js) as { run(), when() }. Settings can turn it off for the separate
 // buttons.
+import { icon } from './icons.js';
+
 const ACTS = {
-  sleep: ['Sleep', 'M13.5 4.5a6 6 0 1 0 2 9.5 5 5 0 0 1-2-9.5z'],
-  takeoff: ['Take off', 'M10 16V4M5 9l5-5 5 5'],
+  sleep: ['Sleep', 'sleep'],
+  takeoff: ['Take off', 'takeoff'],
 };
 const ORDER = ['sleep', 'takeoff'];   // the first that fits is shown first
 
 export function actionButton(G, ui) {
-  ui.insertAdjacentHTML('beforeend', `<button class="act3 gone" aria-label=""><svg viewBox="0 0 20 20" aria-hidden="true"><path d=""/></svg><span></span><i class="dots"></i></button>`);
-  const btn = ui.querySelector('.act3'), path = btn.querySelector('path'), label = btn.querySelector('span'), dots = btn.querySelector('.dots');
+  ui.insertAdjacentHTML('beforeend', `<button class="act3 gone" aria-label=""><i class="ic"></i><span></span><i class="dots"></i></button>`);
+  const btn = ui.querySelector('.act3'), ic = btn.querySelector('.ic'), label = btn.querySelector('span'), dots = btn.querySelector('.dots');
   G.settings.oneAction = G.store.get('oneAction3d', true);
   G.menu.toggle('play', { label: 'One action button', sub: 'Take off and Sleep in one; swipe it for the other', get: () => G.settings.oneAction, set: v => { G.settings.oneAction = v; G.store.set('oneAction3d', v); refresh(); } });
   let shown = null, pick = 0, key = '', y0 = null, swiped = false;
@@ -26,8 +28,8 @@ export function actionButton(G, ui) {
     shown = list[pick % Math.max(1, list.length)] || null;
     btn.classList.toggle('gone', !shown);
     if (!shown) return;
-    const [name, d] = ACTS[shown];
-    if (label.textContent !== name) { label.textContent = name; path.setAttribute('d', d); btn.setAttribute('aria-label', name); btn.dataset.act = shown; }
+    const [name, ik] = ACTS[shown];
+    if (label.textContent !== name) { label.textContent = name; ic.innerHTML = icon(ik); btn.setAttribute('aria-label', name); btn.dataset.act = shown; }
     dots.innerHTML = list.length > 1 ? list.map((id, i) => `<b class="${i === pick % list.length ? 'on' : ''}"></b>`).join('') : '';
   }
   // a tap runs it; a swipe up or down turns to the next that fits

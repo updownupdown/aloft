@@ -3,17 +3,12 @@
 // home, landmarks found nearby). Moved only when the heading or the marks change.
 import { HOME_Z, MARSH_Z } from './sys/journey.js';
 import { pinCol } from './sys/map.js';
+import { icon } from './icons.js';
 
 const SPAN = Math.PI * .55;          // from the middle to either edge
 const POINTS = [['N', 0], ['NE', 45], ['E', 90], ['SE', 135], ['S', 180], ['SW', 225], ['W', 270], ['NW', 315]];
-const MARK = {
-  nest: '<path d="M3 9c1 3 9 3 10 0M2 9h12M5 9c0-2 1.5-3 3-3s3 1 3 3"/>',
-  south: '<path d="M8 3v10M4 9l4 4 4-4"/>',
-  home: '<path d="M3 8l5-4 5 4v5H3zM7 13v-3h2v3"/>',
-  ghost: '<path d="M1.5 8.5c2.5-1 4.5-2.5 6.5-2.5s4 1.5 6.5 2.5c-2.5 0-4.5.8-6.5 2.8-2-2-4-2.8-6.5-2.8z"/>',
-  pin: '<circle cx="8" cy="6" r="3.6"/><path d="M8 9.6V14"/>',
-  place: '<path d="M8 2l1.8 4 4.2.4-3.2 2.8 1 4.3L8 11.3 4.2 13.5l1-4.3L2 6.4l4.2-.4z"/>',
-};
+// each mark's icon (icons.js)
+const MARK = { nest: 'nest', south: 'south', home: 'home', ghost: 'ghost', pin: 'pin', place: 'landmarks' };
 
 export function createCompass(G, ui) {
   ui.insertAdjacentHTML('beforeend', `<div class="compass3" aria-hidden="true"><div class="strip"></div><i class="mid"></i></div>`);
@@ -46,7 +41,7 @@ export function createCompass(G, ui) {
     key = k; for (const m of marks) m.el.remove();
     marks = list.map(([kind, x, z, title, col]) => {
       const e = document.createElement('span'); e.className = 'mk ' + kind; e.title = title; if (col) e.style.color = col;
-      e.innerHTML = `<svg viewBox="0 0 16 16">${MARK[kind]}</svg>`; strip.append(e);
+      e.innerHTML = icon(MARK[kind]); strip.append(e);
       return { el: e, x, z };
     });
   }

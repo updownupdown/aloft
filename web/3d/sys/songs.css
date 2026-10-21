@@ -137,14 +137,12 @@
 #ui3 .takeoff3.sleep3 { left: auto !important; right: 50% !important; translate: -5px 0; }
 #ui3:has(.sleep3:not(.gone)) .takeoff3:not(.sleep3) { translate: 5px 0; }
 
-/* Call: an icon (a hawk's head calling), left of the day dial (128px wide, 12px in), white with the HUD's dark halo */
+/* Call: its icon (icons.js), left of the day dial (128px wide, 12px in), white with the HUD's dark halo */
 .call3 { pointer-events: auto; position: absolute; right: calc(12px + 128px + 10px + env(safe-area-inset-right)); top: calc(12px + env(safe-area-inset-top));
   min-width: 54px; height: 54px; padding: 0 6px; border: 0; border-radius: 27px; cursor: pointer; touch-action: none; background: none;
   font-family: var(--text); font-weight: 700; font-size: 16px; letter-spacing: .02em; color: #fff;
   filter: drop-shadow(0 1px 1.5px rgba(10, 20, 28, .55)) drop-shadow(0 0 6px rgba(10, 20, 28, .25)); -webkit-backdrop-filter: none; backdrop-filter: none; }
-.call3 svg { width: 30px; height: 30px; display: block; margin: auto; fill: currentColor; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.call3 svg .w { fill: none; }
-.call3 svg .e { fill: #1d2b36; stroke: none; }
+.call3 svg { width: 30px; height: 30px; display: block; margin: auto; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .call3:active { color: #ffe9a8; transform: scale(.94); }
 .call3.rest { opacity: .4; }
 .menu-open .sing3, .menu-open .call3, .bare3 .call3, .bare3 .sing3 { display: none; }

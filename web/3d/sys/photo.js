@@ -10,6 +10,7 @@ import { clamp } from '../util.js';
 import { inSentence } from './journey.js';
 import { hourName } from '../dial.js';
 import { SEASON_DAYS } from '../sky.js';
+import { icon } from '../icons.js';
 
 const ALBUM_MAX = 16;
 
@@ -22,7 +23,7 @@ export function photoSystem(G) {
   // ---- photo mode --------------------------------------------------------------------------
   const ui = document.getElementById('ui3');
   ui.insertAdjacentHTML('beforeend', `<div class="shoot3 hidden"></div>
-    <div class="photo3 hidden"><span>Drag to frame, pinch to come closer</span><button data-p="snap" class="main3">Take picture</button><button data-p="done">Done</button></div>`);
+    <div class="photo3 hidden"><span>Drag to frame, pinch to come closer</span><button data-p="snap" class="main3">${icon('snap')}Take picture</button><button data-p="done">${icon('done')}Done</button></div>`);
   const pad = ui.querySelector('.shoot3'), bar = ui.querySelector('.photo3');
   const pointers = new Map();
   let pinch = 0;
