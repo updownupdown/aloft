@@ -89,16 +89,15 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .dial .base { stroke: rgba(255, 255, 255, .9); stroke-width: 1.4; stroke-linecap: round; }
 .dial .sun { fill: #f2bc4a; stroke: #fff; stroke-width: 1.2; }
 .dial .moon { fill: #eef2f6; stroke: rgba(29, 43, 54, .4); stroke-width: .8; }
-/* the needle: an upright bar with a slit down it and a triangle at its top; it never moves */
+/* the needle: an upright bar with a triangle at its top; it never moves */
 .dial .needle { filter: drop-shadow(0 0 1.2px rgba(10, 20, 28, .75)); }
 .dial .needle .bar, .dial .needle .tip { fill: #fff; }
-.dial .needle .slit { stroke: #1d2b36; stroke-width: .9; stroke-linecap: round; }
 .dial .label { display: none; }
 .dial .season { margin-top: 3px; font-size: 13px; font-weight: 600; white-space: nowrap; display: flex; align-items: center; gap: 6px; filter: var(--halo); }
 .dial .season::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--sc, var(--leaf)); }
 .dial .season.summer { --sc: #8fae4c; } .dial .season.autumn { --sc: #c9782f; } .dial .season.winter { --sc: #9cb6cf; } .dial .season.spring { --sc: #e39bb4; }
 /* the frame rate, under Call (songs.css puts Call left of the dial) */
-#ui3 .fps3 { position: absolute; right: 140px; top: 62px; width: 54px; text-align: center; font: 600 15px var(--text); font-variant-numeric: tabular-nums; color: #fff; text-shadow: 0 1px 3px rgba(0, 0, 0, .55); }
+#ui3 .fps3 { position: absolute; right: 140px; top: 62px; width: 70px; white-space: nowrap; text-align: center; font: 600 15px var(--text); font-variant-numeric: tabular-nums; color: #fff; text-shadow: 0 1px 3px rgba(0, 0, 0, .55); }
 
 /* Take off, bottom right just left of the song notes (the button is main.js's; Sleep sits to its left) */
 #ui3 .takeoff3 { pointer-events: auto; position: absolute; right: calc(84px + env(safe-area-inset-right)); bottom: calc(22px + env(safe-area-inset-bottom));
@@ -257,17 +256,35 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
   .glass3 .panes3 { padding: 6px 16px 14px; }
 }
 
-/* Settings: the switches in a narrow column on the left, the groups of buttons beside them */
-.settings3 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 4px 26px; align-items: start; }
-.settings3 h3 { margin: 10px 0 4px; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--ink2); }
-.settings3 .group3 + .group3 { margin-top: 10px; }
-.settings3 .sw { min-height: 46px; font-size: 14px; }
-.settings3 .btn { min-height: 46px; font-size: 14px; }
-.settings3 .group3 .main3 { min-height: 44px; margin: 6px 0 4px; gap: 8px; }
-.settings3 .group3 .main3::before { content: ''; width: 18px; height: 14px; background: #fff;
+/* Game and Settings: one column of sections, each a pale panel with its heading (and icon); the
+   rows are switches, or buttons that look like buttons */
+.stack3 { display: grid; gap: 14px; max-width: 720px; margin: 4px auto 0; }
+.stack3 .group3 { padding: 6px 16px 12px; border-radius: 20px; background: rgba(255, 255, 255, .38); border: 1px solid rgba(255, 255, 255, .5); }
+.stack3 h3 { display: flex; align-items: center; gap: 8px; margin: 8px 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--ink2); }
+.stack3 h3 svg { width: 20px; height: 20px; fill: none; stroke: var(--ink); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.stack3 .sw { min-height: 50px; font-size: 14.5px; }
+.stack3 .sw:last-child { border-bottom: 0; }
+.card3 .btn { min-height: 50px; margin: 8px 0 0; padding: 8px 14px 8px 16px; border: 0; border-radius: 15px; background: rgba(255, 255, 255, .78); box-shadow: 0 1px 4px rgba(20, 40, 50, .1); font-size: 14.5px; }
+.card3 .btn::before { content: none; }
+.card3 .btn::after { content: ''; flex: none; width: 7px; height: 7px; margin-left: 4px; border: solid var(--ink2); border-width: 2px 2px 0 0; transform: rotate(45deg); }
+.card3 .btn:active { transform: scale(.98); background: #fff; }
+.card3 .btn em { text-align: right; }
+.stack3 .sw + .btn { margin-top: 12px; }
+.stack3 .group3 .main3 { min-height: 50px; margin: 6px 0 2px; gap: 10px; font-size: 16px; }
+.stack3 .group3 .main3::before { content: ''; width: 20px; height: 15px; background: #fff;
   clip-path: polygon(0 22%, 28% 22%, 36% 0, 64% 0, 72% 22%, 100% 22%, 100% 100%, 0 100%); }
-.settings3 .group3 .main3 em { display: none; }
-@media (max-width: 620px) { .settings3 { grid-template-columns: 1fr; } }
+.stack3 .group3 .main3 em { display: none; }
+/* Game > Play: the buttons as tiles, two a row, the label over its note */
+.game3 [data-group=play] { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-content: start; }
+.game3 [data-group=play] > h3, .game3 [data-group=play] > .main3 { grid-column: 1 / -1; }
+.game3 [data-group=play] .btn { margin: 0; flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px; min-height: 64px; position: relative; padding-right: 30px; }
+.game3 [data-group=play] .btn em { margin: 0; text-align: left; }
+.game3 [data-group=play] .btn::after { position: absolute; right: 14px; top: 50%; margin-top: -4px; }
+@media (max-width: 520px) { .game3 [data-group=play] { grid-template-columns: 1fr; } }
+/* the bird card takes the column's full width: with room, its stats beside its traits */
+.game3 .birdcard3 .pic { aspect-ratio: 2.6 / 1; }
+.game3 .birdmore3 { max-width: 560px; }
+@media (min-width: 900px) { .game3 .birdmore3 { grid-template-columns: 1fr 1fr; column-gap: 22px; } .game3 .birdmore3 .stats3 { grid-row: span 2; align-self: start; } }
 /* Your bird: one card, the bird flying through its poses, arrows either side */
 .birdpick3 { display: flex; align-items: center; gap: 6px; margin: 4px 0; }
 .birdcard3 { position: relative; flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 6px 6px 8px; border-radius: 18px;

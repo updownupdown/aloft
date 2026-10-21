@@ -65,7 +65,7 @@ export function createHud(G, ui, input) {
     if (tipNow === id) tipT = Math.min(tipT, .3);
   };
   H.resetTips = () => { H.done = {}; store.set('hints3d', {}); };
-  H.fps = n => { q('.fps3').textContent = Math.round(n); };
+  H.fps = n => { q('.fps3').textContent = `${Math.round(n)} FPS`; };
   H.showFps = on => q('.fps3').classList.toggle('hidden', !on);
   // photo mode hides the whole layer
   H.hide = on => { H.hidden = on; ui.classList.toggle('bare3', on); };
