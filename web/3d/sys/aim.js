@@ -11,9 +11,10 @@ import { FLY, fwd, hopPerches, hopTo } from '../flight.js';
 import { clamp, smooth } from '../util.js';
 
 const T = 2.6, STEPS = 16, g = 9.8;
-const COL0 = { ring: [.3, .58, 1], near: [.9, .9, .84], prey: [.8, .24, .16], perch: [.28, .64, .34], soft: [.36, .52, .3], fast: [.72, .52, .18], ink: [.2, .18, .16] };
-// colour-blind aim colours (Settings, G.settings.cbAim): orange prey, blue perches, violet rings
-const COLCB = { ...COL0, prey: [1, .6, .24], perch: [.25, .63, 1], ring: [.72, .5, 1] };
+const COL0 = { ring: [1, .84, .4], near: [.9, .9, .84], prey: [.8, .24, .16], perch: [.28, .64, .34], soft: [.36, .52, .3], fast: [.72, .52, .18], ink: [.2, .18, .16] };
+// colour-blind aim colours (Settings, G.settings.cbAim): orange prey, blue perches, pale lemon rings
+// (told from the orange by lightness, and by the chevron)
+const COLCB = { ...COL0, prey: [1, .6, .24], perch: [.25, .63, 1], ring: [1, .96, .72] };
 let COL = COL0;
 
 // shape cues so the marks read without colour: a camera-facing triangle (corners in the view's
@@ -131,7 +132,7 @@ export function aimSystem(G) {
       }
       A.perches = ahead.slice(0, 3);
       if (bestP && !A.perches.includes(bestP)) A.perches[2] = bestP;
-      // a ring the path flies through (crosses its plane inside its radius): blue
+      // a ring the path flies through (crosses its plane inside its radius): a soft yellow
       const live = G.systems.rings?.live;
       for (const r of ringsNear(b.p[0], b.p[2], 80)) {
         if (live && !live(r)) continue;
@@ -159,18 +160,18 @@ export function aimSystem(G) {
     },
     scene(S) {
       const A = G.aim, cam = S.cam, f = A.focus;
-      COL = G.settings?.cbAim ? COLCB : COL0;
+      COL = G.settings?.cbAim ? COLCB : COL0; A.ringCol = COL.ring;   // rings.js warms the aimed ring with it
       // rings on the nearest perches ahead, green on the one you are lined up with; perched, green
       // rings on the perches a hop away
       const ring = (q, on, col, k = 1) => flatRing(S, q.x, q.y + .1, q.z, (on ? .55 : .4) * k * (1 + Math.sin(G.t * 4) * (on ? .06 : 0)), (on ? .14 : .1) * k, col, on ? .95 : .55, .7);
       for (const q of A.perches || []) ring(q, q === A.perch && A.mode === 'perch', q === A.perch && A.mode === 'perch' ? COL.perch : COL.near);
       for (const h of A.hops || []) { ring(h.p, true, COL.perch, 1.6); notch(S, [h.p.x, h.p.y + 1.05, h.p.z], .2, COL.perch, .9); }   // bigger: they are to be tapped
       if (A.perch && A.mode === 'perch') notch(S, [A.perch.x, A.perch.y + .85, A.perch.z], .16, COL.perch, .95);
-      if (A.ring && A.mode === 'ring') { const r = A.ring; chevron(S, [r.x, r.y + r.r * .15, r.z], Math.max(.5, r.r * .22), COL.ring, .9); }
+      if (A.ring && A.mode === 'ring') { const r = A.ring; chevron(S, [r.x, r.y + r.r * .15, r.z], Math.max(.4, r.r * .16), COL.ring, .5); }
       if (A.path.length < 2) return;
       // the line: a thin ribbon facing the camera, fading in near the hawk and out at the far end
       const col = COL[A.mode], P = A.path, R = S.ribbon ||= [];
-      const strong = A.mode === 'prey' || A.mode === 'perch' || A.mode === 'ring' ? 1 : .55 + f * .3;
+      const strong = A.mode === 'prey' || A.mode === 'perch' ? 1 : A.mode === 'ring' ? .6 : .55 + f * .3;
       let prev = null;
       for (let i = 0; i < P.length; i++) {
         const p = P[i], q = P[Math.min(P.length - 1, i + 1)], o = P[Math.max(0, i - 1)];
