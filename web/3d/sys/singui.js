@@ -6,7 +6,7 @@
 //               up, down for one sliding down, right for a steady whistle, left for a trill, and
 //               tap for a chip. Each touch sings one syllable, the row answering in its own way,
 //               and two thumbs can sing.
-//   bottom left the song card: the bird you imitate, its name (or a moment's cheer) and its
+//   bottom left the song card: the bird you imitate, its name and its
 //               score (each syllable's arrow at its pitch, the next one boxed). Tap it to open the
 //               birds you know, the whole height of the screen, to pick one to imitate (a mark on
 //               those singing nearby). Above it, the stop button (the sing icon crossed out)
@@ -52,7 +52,7 @@ export function createSingUI(ui, { audio, voice, onSyll, onPick, onCall }) {
       <div class="notepad3">${NOTE_COLS.map((c, i) => `<i data-lane="${i}" style="--note:${c};--lit:${NOTE_LIT[i]}"></i>`).reverse().join('')}</div>
       <div class="sgleft3"><button class="sgdone3" aria-label="Stop singing" title="Stop singing">${UNSING}</button>
       <div class="songcard3" role="button" aria-label="Imitate a bird">
-        <span class="pic3"></span><span class="txt3"><b></b><i></i><span class="score3"></span></span><span class="sgmore3">${CHEVRON}</span>
+        <span class="pic3"></span><span class="txt3"><b></b><span class="score3"></span></span><span class="sgmore3">${CHEVRON}</span>
       </div>
       </div>
       <div class="birds3"><header><span>Imitate a bird</span><button class="sgless3" aria-label="Close">${CHEVRON}</button></header><div class="cards3"></div></div>
@@ -60,11 +60,10 @@ export function createSingUI(ui, { audio, voice, onSyll, onPick, onCall }) {
     <button class="call3" aria-label="Hawk call" title="Call">${icon('call')}</button>`);
   const root = [...ui.querySelectorAll('.sing3')].at(-1), q = s => root.querySelector(s);
   const pad = q('.notepad3'), card = q('.songcard3'), score = q('.score3'), cards = q('.cards3');
-  const name = card.querySelector('b'), line = card.querySelector('i'), pic = card.querySelector('.pic3'), singPic = q('.singbtn3 .pic3');
+  const name = card.querySelector('b'), pic = card.querySelector('.pic3'), singPic = q('.singbtn3 .pic3');
   const callBtn = [...ui.querySelectorAll('.call3')].at(-1), rise = [...ui.querySelectorAll('.rise3')].at(-1);
   const rows = [...pad.children].sort((a, b) => a.dataset.lane - b.dataset.lane);
-  const S = { ready: false, on: false, kind: 'r', species: '', score: '', name: '', cheer: '' };
-  let cheerTimer = 0;
+  const S = { ready: false, on: false, kind: 'r', species: '', score: '', name: '', };
   const flash = (el, cls = 'hit') => { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); };
 
   // ---- the note pad ----------------------------------------------------------------------------
@@ -131,15 +130,13 @@ export function createSingUI(ui, { audio, voice, onSyll, onPick, onCall }) {
     S.idle = list.length ? `${learned.size} known` : 'Listen to the birds';
     singPic.innerHTML = picked ? `<img src="${songbirdPic(picked, 64)}" alt="">` : icon('sing');
   }
-  // the card: the bird, its name (or a cheer for a moment), and the score, one glyph per
+  // the card: the bird, its name, and the score, one arrow per
   // syllable at its pitch; the bird's own half of a duet is dimmed. With no bird, an invitation.
-  const setName = () => { name.textContent = S.cheer || S.name; card.classList.toggle('cheer', !!S.cheer); };
   function setScore(sc) {
-    const key = sc ? [sc.sp.id, sc.title, sc.done, sc.bird, sc.state, sc.hidden, sc.note].join() : S.idle;
+    const key = sc ? [sc.sp.id, sc.title, sc.done, sc.bird, sc.state, sc.hidden].join() : S.idle;
     if (key === S.score) return;
     S.score = key; card.classList.toggle('idle', !sc);
-    S.name = sc ? sc.title : 'Imitate a bird'; setName();
-    line.textContent = sc?.note && !sc.hidden ? sc.note : '';
+    name.textContent = sc ? sc.title : 'Imitate a bird';
     pic.innerHTML = sc ? `<img src="${songbirdPic(sc.sp, 64)}" alt="">` : icon('sing');
     if (sc && !singPic.querySelector('img')) singPic.innerHTML = `<img src="${songbirdPic(sc.sp, 64)}" alt="">`;
     if (!sc || sc.hidden) { score.innerHTML = `<small>${sc ? sc.note : S.idle}</small>`; return; }
@@ -203,11 +200,6 @@ export function createSingUI(ui, { audio, voice, onSyll, onPick, onCall }) {
     // a syllable rising from a beak at world point p (the scene S3 gives the camera)
     rise: riseAt,
     openBirds() { audio.unlock(); setOn(true); big(true); },
-    cheer(text) {
-      // in the card's name line for a moment: one line of news at a time
-      S.cheer = text; setName(); flash(card, 'pop');
-      clearTimeout(cheerTimer); cheerTimer = setTimeout(() => { S.cheer = ''; setName(); }, 2600);
-    },
     // where a row sits on screen (for test scripts)
     lanePt(lane) { const r = rows[lane].getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; },
   };
