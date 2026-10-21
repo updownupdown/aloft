@@ -6,13 +6,10 @@ import { store } from './util.js';
 import { createDial } from './dial.js';
 import { createCompass } from './compass.js';
 import { tipBar } from './tips.js';
+import { icon } from './icons.js';
 
-// each meter's icon, a 16-unit line drawing
-const ICONS = {
-  hunger: 'M3 12c0-3.5 2.5-6 6-6 2.5 0 4 1.5 4 3.5 0 1.5-1 2.5-3 2.5zM13 9.5l2 .5M3 12c-1 1-1.5 2-2 2.5M10 8.5h.01',
-  thirst: 'M8 2.5C6 6 4 8 4 10.5a4 4 0 0 0 8 0C12 8 10 6 8 2.5z',
-  wings: 'M1 9c3-1 5-3 7-3s4 2 7 3c-3 0-5 1-7 3-2-2-4-3-7-3z',
-};
+// each meter's icon (icons.js)
+const ICON_OF = { hunger: 'hunger', thirst: 'thirst', wings: 'stamina' };
 
 export function createHud(G, ui, input) {
   ui.insertAdjacentHTML('beforeend', `
@@ -35,7 +32,7 @@ export function createHud(G, ui, input) {
   // nearly empty (that is the whole warning: no message gets in the way)
   H.meter = (id, { label, colour, low = .2 }) => {
     const col = (colour.match(/#[0-9a-f]{6}/gi) || ['#8a7a6a']).pop();
-    meters.insertAdjacentHTML('beforeend', `<span class="m3" data-m="${id}" title="${label}" style="--m:${col}"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="${ICONS[id] || 'M8 8h.01'}"/></svg><span class="bar"><i></i><b></b></span><span class="nm">${label[0].toUpperCase() + label.slice(1)}</span></span>`);
+    meters.insertAdjacentHTML('beforeend', `<span class="m3" data-m="${id}" title="${label}" style="--m:${col}">${icon(ICON_OF[id] || id)}<span class="bar"><i></i><b></b></span><span class="nm">${label[0].toUpperCase() + label.slice(1)}</span></span>`);
     const el = meters.lastElementChild, fill = el.querySelector('.bar i'), cap = el.querySelector('.bar b'), m = { v: 1, low };
     all.push(m);
     let key = '';

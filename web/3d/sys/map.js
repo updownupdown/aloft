@@ -9,6 +9,7 @@ import { PIG, C, shade, poly, facets } from '../facet.js';
 import { clamp } from '../util.js';
 import { esc } from '../journal.js';
 import { createDial } from '../dial.js';
+import { icon } from '../icons.js';
 import { SEASON_DAYS, SEASONS } from '../sky.js';
 
 const CELL = 100;                        // fog cells, metres
@@ -47,7 +48,7 @@ export function mapView(G, J, { HOME_Z, MARSH_Z }) {
   const pane = G.menu.tab('map', 'Map');
   pane.classList.add('mappane3', 'flush3');
   pane.innerHTML = `<div class="mapbox3"><canvas></canvas><div class="mapsum3"></div><div class="mapday3"><div class="mapseason3"></div></div>
-      <div class="mapbtn3"><button data-z="in" aria-label="Zoom in"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button><button data-z="out" aria-label="Zoom out"><svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button><button data-z="me" aria-label="Centre on the hawk"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="6.5"/><circle cx="12" cy="12" r="2" class="dot"/><path d="M12 2v3.5M12 18.5V22M2 12h3.5M18.5 12H22"/></svg></button></div>
+      <div class="mapbtn3"><button data-z="in" aria-label="Zoom in">${icon('zoomin')}</button><button data-z="out" aria-label="Zoom out">${icon('zoomout')}</button><button data-z="me" aria-label="Centre on the hawk">${icon('me')}</button></div>
       <p class="maptip3">Hold the map to drop a pin.</p><div class="mapnote3 hidden"></div></div>`;
   const sum = pane.querySelector('.mapsum3'), box = pane.querySelector('.mapbox3'), cv = box.querySelector('canvas'), note = box.querySelector('.mapnote3');
   // top right, the same day dial as in flight, and the season in more detail beneath it

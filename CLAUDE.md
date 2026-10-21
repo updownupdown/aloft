@@ -39,6 +39,7 @@ web/3d/compass.js       the linear compass, top middle (N/E/S/W, nest, the way s
 web/3d/menu.js          G.menu: tab(), page() (sub-tabs), group() (Settings columns), toggle(), button({ group, main }), onOpen(), subtitle(), set(on, tab, page); ORDER/TITLES/ICONS/GROUPS
 web/3d/letter.js        the menu's frame (frosted glass, .glass3 in 3d.css); swap it to restyle
 web/3d/facet.js         low-poly helpers (map land, postcards) (PIG colours, poly, facets, gem, chamfer, hardShadow, lit)
+web/3d/icons.js         every UI icon (James's picks, 2026-10-21): ICONS and icon(key) -> a 24x24 SVG in currentColor
 web/3d/logo.js          Aloft's mark, a hawk over the hills (menu title, app icons via tools/icon.html)
 web/3d/dial.js          the day dial, top right
 web/3d/tips.js          tips as a short line and an icon (SHORT, keyed by tip id), swipe to dismiss, i to pause and read more

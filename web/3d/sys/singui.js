@@ -43,6 +43,7 @@ const MOVE = 10, DECIDE = 18;
 import { songbirdPic } from '../pics.js';
 import { project } from '../shot.js';
 import { store } from '../util.js';
+import { icon } from '../icons.js';
 
 const css = new URL('./songs.css', import.meta.url).href;
 if (!document.querySelector(`link[href="${css}"]`)) document.head.append(Object.assign(document.createElement('link'), { rel: 'stylesheet', href: css }));
@@ -61,7 +62,7 @@ export function createSingUI(ui, { audio, voice, onSyll, onPick, onCall, onPract
       </div>
       <div class="birds3"><header><span>Imitate a bird</span><button class="sgless3" aria-label="Close">${CHEVRON}</button></header><div class="cards3"></div></div>
     </div>
-    <button class="call3" aria-label="Hawk call" title="Call"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12.5a5.5 5.5 0 0 1 10-3.2l4 1.3-3.6.9 3.6 1.6-4 .8a5.5 5.5 0 0 1-10-1.4z"/><circle class="e" cx="8.6" cy="10.6" r="1.1"/><path class="w" d="M18.6 9a4.5 4.5 0 0 1 0 6M21 6.6a8 8 0 0 1 0 10.8"/></svg></button>`);
+    <button class="call3" aria-label="Hawk call" title="Call">${icon('call')}</button>`);
   const root = [...ui.querySelectorAll('.sing3')].at(-1), q = s => root.querySelector(s);
   const pad = q('.notepad3'), card = q('.songcard3'), legend = q('.sglegend3'), score = q('.score3'), cards = q('.cards3');
   const name = card.querySelector('b'), words = card.querySelector('i'), pic = card.querySelector('.pic3'), singPic = q('.singbtn3 .pic3');
