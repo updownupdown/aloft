@@ -111,7 +111,8 @@ export function createInput(el) {
       break;
     }
     const dragX = I.drag / size(), dragY = I.dragY / size(), pinch = I.pinch; I.drag = I.dragY = 0; I.pinch = 1;
-    const look = [-I.lk[0] / size() * 3 + I.gyro[0], I.lk[1] / size() * 2 + I.gyro[1]];   // drag grabs the view; the gyro turns it I.lk = [0, 0]; I.gyro = [0, 0];
+    const look = [-I.lk[0] / size() * 3 + I.gyro[0], I.lk[1] / size() * 2 + I.gyro[1]];   // drag grabs the view; the gyro turns it
+    I.lk = [0, 0]; I.gyro = [0, 0];   // used up each frame (left running, a flight's two-thumb moves piled up and the view stuck looking up)
     return { pitch: clampU(pitch), roll: clampU(roll), yaw, keyRoll, dragX, dragY, pinch, look, spread: clampU(spread), flap, held: l || rr || K.size > 0, both: l && rr };
   };
   return I;
