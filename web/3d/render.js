@@ -2,7 +2,7 @@
 // water, thermal motes. One lit shader with two-sided faces, hemisphere light, haze toward the
 // horizon colour and a paper grain, so it stays in Aloft's palette at very little cost.
 import { program, mesh, perspective, lookAt, mul, basis, IDENT } from './gl.js';
-import { CHUNK, chunkMesh, treesNear, ringsNear, height, normalAt, thermalsNear, thermalCentre, TREE, perchesOf } from './world.js';
+import { CHUNK, chunkMesh, cellsFor, treesNear, ringsNear, height, normalAt, thermalsNear, thermalCentre, TREE, perchesOf } from './world.js';
 import { ring, cloud, TREE_LOOKS } from './shapes.js';
 import { buildHawk, HAWK_SCALE } from './hawk.js';
 
@@ -195,18 +195,22 @@ export function createRenderer(gl) {
 
   function updateChunks(cam, budget = 2) {
     const r = Math.ceil(R.view / CHUNK), ccx = Math.floor(cam[0] / CHUNK), ccz = Math.floor(cam[2] / CHUNK);
-    const want = [];
+    const want = [], finer = [];
     for (let j = -r; j <= r; j++) for (let i = -r; i <= r; i++) {
       const cx = ccx + i, cz = ccz + j, d = Math.hypot((cx + .5) * CHUNK - cam[0], (cz + .5) * CHUNK - cam[2]);
       if (d > R.view + CHUNK) continue;
-      const k = cx + ',' + cz;
-      if (!chunks.has(k)) want.push([d, cx, cz, k]);
+      const k = cx + ',' + cz, c = chunks.get(k), cells = cellsFor(d);
+      if (!c) want.push([d, cx, cz, k, cells]);
+      else if (c.cells !== cells) finer.push([d, cx, cz, k, cells]);   // near chunks get finer cells (world.js cellsFor)
     }
-    want.sort((a, b) => a[0] - b[0]);
-    for (let n = 0; n < Math.min(budget, want.length); n++) {
-      const [, cx, cz, k] = want[n];
-      chunks.set(k, { cx, cz, m: mesh(gl, chunkMesh(cx, cz), LAYOUT) });
-    }
+    want.sort((a, b) => a[0] - b[0]); finer.sort((a, b) => a[0] - b[0]);
+    const build = ([, cx, cz, k, cells]) => {
+      const old = chunks.get(k); if (old) { gl.deleteBuffer(old.m.buf); gl.deleteVertexArray(old.m.vao); }
+      chunks.set(k, { cx, cz, cells, m: mesh(gl, chunkMesh(cx, cz, cells), LAYOUT) });
+    };
+    for (let n = 0; n < Math.min(budget, want.length); n++) build(want[n]);
+    // one re-detail a frame, once nothing is missing (a fine chunk takes a few ms to build)
+    if (!want.length && finer.length) build(finer[0]);
     for (const [k, c] of chunks) {
       if (Math.hypot((c.cx + .5) * CHUNK - cam[0], (c.cz + .5) * CHUNK - cam[2]) > R.view + CHUNK * 3) {
         gl.deleteBuffer(c.m.buf); gl.deleteVertexArray(c.m.vao); chunks.delete(k);
