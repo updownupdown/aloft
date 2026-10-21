@@ -46,6 +46,7 @@ import { windsSystem } from './sys/winds.js';
 import { floraSystem } from './sys/flora.js';
 import { sleepSystem } from './sys/sleep.js';
 import { feelSystem } from './sys/feel.js';
+import { batterySystem } from './sys/battery.js';
 import { speciesSystem } from './sys/species.js';
 import { aimsSystem } from './sys/aims.js';
 import { movesSystem } from './sys/moves.js';
@@ -53,7 +54,7 @@ import { lifeSystem } from './sys/life.js';
 import { seasonSystem } from './sys/season.js';
 import { ghostSystem } from './sys/ghost.js';
 
-const SYSTEMS = [speciesSystem, movesSystem, lifeSystem, clockSystem, weatherSystem, watersSystem, windsSystem, floraSystem, airSystem, ringsSystem, foodSystem, aimSystem, sleepSystem, feelSystem, songsSystem,
+const SYSTEMS = [speciesSystem, movesSystem, lifeSystem, clockSystem, weatherSystem, watersSystem, windsSystem, floraSystem, airSystem, ringsSystem, foodSystem, aimSystem, sleepSystem, feelSystem, batterySystem, songsSystem,
   guideSystem, journeySystem, nestSystem, storySystem, photoSystem, howtoSystem, faunaSystem, landsSystem, seasonsSystem, glowSystem, landAirSystem, crittersSystem, huntersSystem, aimsSystem, seasonSystem, ghostSystem];
 
 export function start(canvas, ui) {
@@ -69,7 +70,7 @@ export function start(canvas, ui) {
   const listeners = new Map();
   const G = {
     b, R, audio, music, input, store, t: 0, clock: 0, paused: false, parts: [], flags: store.get('flags3d', {}),
-    settings: { sound: audio.on, music: store.get('music', true), invert: store.get('invert3d', false), fps: store.get('fps3d', false), full: store.get('fullRate3d', false) },
+    settings: { sound: audio.on, music: store.get('music', true), invert: store.get('invert3d', false), fps: store.get('fps3d', false), fpsCap: store.get('fpsCap3d', store.get('fullRate3d', false) ? 90 : 60), stopMo: store.get('stopMo3d', false) },
     res: 1, systems: {},
     on: (name, fn) => { if (!listeners.has(name)) listeners.set(name, []); listeners.get(name).push(fn); },
     emit: (name, ...a) => { for (const fn of listeners.get(name) || []) fn(...a); },
@@ -101,7 +102,8 @@ export function start(canvas, ui) {
 
   // ?res=1&full=1 pins the resolution and lifts the cap, for measuring
   const qs = new URLSearchParams(location.search);
-  if (qs.has('full')) G.settings.full = qs.get('full') !== '0';
+  if (qs.has('full')) G.settings.fpsCap = qs.get('full') !== '0' ? 240 : 60;
+if (qs.has('fps')) G.settings.fpsCap = +qs.get('fps') || 60;
   G.pinRes = qs.has('res') ? +qs.get('res') : null; if (G.pinRes) G.res = G.pinRes;
   input.invert = G.settings.invert;
   music.setOn(G.settings.music);
@@ -154,7 +156,15 @@ export function start(canvas, ui) {
   G.menu.toggle(play, { label: 'Sound', get: () => G.settings.sound, set: v => { G.settings.sound = v; audio.setOn(v); store.set('sound', v); } });
   G.menu.toggle(play, { label: 'Music', get: () => G.settings.music, set: v => { G.settings.music = v; music.setOn(v); store.set('music', v); } });
   G.menu.toggle(play, { label: 'Invert climb and dive', sub: 'thumbs up to dive', get: () => G.settings.invert, set: v => { G.settings.invert = input.invert = v; store.set('invert3d', v); } });
-  G.menu.toggle(play, { label: 'Full refresh rate', sub: 'smoother, more battery', get: () => G.settings.full, set: v => { G.settings.full = v; store.set('fullRate3d', v); } });
+  // Frame rate: a cap of 15, 30, 60 or 90 frames a second; fewer frames, less battery
+  const CAPS = [15, 30, 60, 90], capSub = () => `${G.settings.fpsCap} a second${G.settings.fpsCap <= 30 ? ', saves battery' : G.settings.fpsCap >= 90 ? ', smoothest, most battery' : ''}`;
+  G.menu.button(play, { label: 'Frame rate', sub: capSub(), group: 'app', onClick: el => {
+    G.settings.fpsCap = CAPS[(CAPS.indexOf(G.settings.fpsCap) + 1) % CAPS.length] || 60; store.set('fpsCap3d', G.settings.fpsCap);
+    el.querySelector('em').textContent = capSub();
+  } });
+  // stop motion (experimental): the bird's wings and the swaying world move on twelve drawings a
+  // second while the flight and the camera stay smooth, like a model animated a frame at a time
+  G.menu.toggle(play, { label: 'Stop-motion look', sub: 'experimental: wings and sway at 12 a second', get: () => G.settings.stopMo, set: v => { G.settings.stopMo = v; store.set('stopMo3d', v); } });
   G.menu.toggle(play, { label: 'Show frame rate', get: () => G.settings.fps, set: v => { G.settings.fps = v; store.set('fps3d', v); H.showFps(v); } });
   G.menu.button(play, { label: 'Show the tips again', group: 'play', onClick: () => { H.resetTips(); G.menu.set(false); } });
   G.menu.button(play, { label: 'Music lab', sub: 'tune Valley', href: 'musiclab.html', group: 'sound' });
@@ -184,7 +194,7 @@ export function start(canvas, ui) {
     canvas.width = Math.round(innerWidth * dpr); canvas.height = Math.round(innerHeight * dpr);
   }
   addEventListener('resize', resize); resize();
-  let last = performance.now(), saveT = 0, resT = 0, frames = 0, skipT = 0;
+  let last = performance.now(), saveT = 0, resT = 0, frames = 0, owe = 1e9, prevRaf = 0;
   // Auto graphics (Settings > Graphics: Auto): when the resolution has already dropped as far as it
   // goes and the frames are still slow, step the level down; long smooth at full resolution, step it
   // up. Quick in the first 20 seconds, gentle after, and never twice within 20 seconds.
@@ -205,16 +215,19 @@ export function start(canvas, ui) {
 
   function frame(now) {
     requestAnimationFrame(frame);
-    // cap at 60 on faster screens unless asked: half the battery for little loss
-    if (!G.settings.full && now - skipT < 1000 / 61) return;
-    skipT = now;
-    const dt = Math.min(.05, (now - last) / 1000); last = now;
+    // the frame rate cap (Settings > Frame rate): frames are owed at the cap's pace and drawn on the
+    // screen refresh that comes due, so 60 on a 90 Hz screen is 60, not every other refresh (45)
+    const gap = 1000 / G.settings.fpsCap;
+    owe = Math.min(gap * 2, owe + now - (prevRaf || now)); prevRaf = now;
+    if (owe < gap - 1.5) return;
+    owe = Math.max(0, owe - gap);
+    const dt = Math.min(.075, (now - last) / 1000); last = now;   // room for 15 fps (.067) so the game keeps time
     if (G.paused) return;
     G.t += dt; G.clock += dt;
     frames++; resT += dt;
     if (resT > 1.5) {
       const fps = frames / resT; frames = 0; resT = 0;
-      const target = G.settings.full ? 80 : 55;
+      const target = Math.min(G.settings.fpsCap, 90) * .9 - 1;   // 60: 53, 90: 80, 30: 26
       if (G.pinRes) { /* pinned */ } else if (fps < target && G.res > .5) { G.res = Math.max(.5, G.res - .1); resize(); }
       else if (fps > target + 4 && G.res < 1) { G.res = Math.min(1, G.res + .05); resize(); }
       H.fps(fps); G.stats = { fps, res: G.res, chunks: R.stats.chunks, tris: R.stats.tris };
@@ -237,7 +250,7 @@ export function start(canvas, ui) {
     G.parts = G.parts.filter(p => p.life > 0);
 
     // the scene: light, camera and hawk, then whatever each system adds
-    const S = { ...G.light, time: G.t, wind: (G.windK ?? .3) + (G.gustWind || 0), fogDen: .0042 + .0012 * (G.light.night || 0), autumnCol: [.8, .5, .22], props: {}, motes: [] };
+    const S = { ...G.light, time: G.settings.stopMo ? Math.floor(G.t * 12) / 12 : G.t, wind: (G.windK ?? .3) + (G.gustWind || 0), fogDen: .0042 + .0012 * (G.light.night || 0), autumnCol: [.8, .5, .22], props: {}, motes: [] };
     camera.update(dt, S);
     for (const s of systems) s.scene?.(S);
     for (const q of G.parts) S.motes.push(...q.p, ...q.col, q.size * Math.min(1, q.life / q.max * 2));

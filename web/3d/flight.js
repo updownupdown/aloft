@@ -13,6 +13,9 @@ export const FLY = {
   // flared with both thumbs up (float): flare drag falls by up to floatDrag, the stall speed by
   // floatStall, and perches are caught from floatReach metres farther and at floatLand m/s more
   floatDrag: .45, floatStall: 1.2, floatReach: .7, floatLand: 3,
+  // flared without the thumbs up (spread wide, level): the wings dump lift and the hawk sinks by up
+  // to flareSink/1.6 m/s more, to come down gently where it is rather than float on and on
+  flareSink: 3.2,
   // flared, thumbs up and slow (under hoverS): the hawk hangs on beating wings (hoverBeat seconds
   // a beat), for hoverCost stamina a second; spent, it drops at hoverDrop m/s² more
   hoverS: 5.5, hoverBeat: .3, hoverCost: .075, hoverDrop: 5,
@@ -102,7 +105,7 @@ export function step(b, c, dt, E) {
 
   // stall sink and flap lift live in vy, which settles back to zero
   const st = stallness(b, sStall);
-  b.vy += (-g * st * .85 - b.vy * 1.6 + b.skim * 1.2) * dt;
+  b.vy += (-g * st * .85 - b.vy * 1.6 + b.skim * 1.2 - FLY.flareSink * Math.max(0, b.flare - .2) / .8 * Math.max(0, 1 - 2 * b.float)) * dt;
   hover(b, c, dt, E);
 
   // steer softly round trunks a moment ahead, so threading a wood is about lines, not luck

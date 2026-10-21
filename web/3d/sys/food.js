@@ -62,7 +62,7 @@ export function foodSystem(G) {
   const setThirst = G.hud.meter('thirst', { label: 'water', colour: 'linear-gradient(90deg,#3f6f9a,#6c9ac0)' });
   G.hud.tip('hunt', () => G.hunger < .7 && b.state === 'fly' && G.aim?.target, 'A mouse in the grass! Tuck your wings (thumbs together) and dive at it. Come in low and your feet reach.');
   G.hud.tip('drink', () => G.thirst < .6 && b.state !== 'fly', 'Thirsty? Land at the water’s edge, or on the water, to drink.');
-  let sipT = 0, rustleT = 0;
+  let drinking = false, sipT = 0, rustleT = 0;
 
   // which mice live in a cell (fixed by hash), where their burrow is
   function cellMice(cx, cz) {
@@ -232,7 +232,11 @@ export function foodSystem(G) {
       // drinking: floating, or standing at the edge of water
       const g = height(b.p[0], b.p[2]);
       const shore = b.state === 'ground' && [[2, 0], [-2, 0], [0, 2], [0, -2]].some(([x, z]) => height(b.p[0] + x, b.p[2] + z) < WATER);
-      if ((b.state === 'swim' || shore) && G.thirst < 1) {
+      // drinking starts once a little thirsty and goes on until full, then stops (thirst creeps back
+      // a hair every frame, so without the margin it never stopped sipping)
+      if (!(b.state === 'swim' || shore) || G.thirst >= 1) drinking = false;
+      else if (G.thirst < .97) drinking = true;
+      if (drinking) {
         G.thirst = Math.min(1, G.thirst + FOOD.drink * dt);
         if ((sipT -= dt) <= 0) { sipT = 1.1; G.audio.drink(); }
         G.hud.did('drink');
