@@ -50,30 +50,45 @@
 .sgdone3 svg { width: 24px; height: 24px; color: #fff; }
 .sing3.big .sgdone3 { display: none; }
 
-/* the song card, small: the bird, its name over its score, and a chevron; a tap
-   anywhere on it opens the birds to imitate */
-.songcard3 { pointer-events: auto; box-sizing: border-box; display: flex; align-items: center; gap: 7px; padding: 5px 5px 5px 5px; cursor: pointer;
+/* the song card, small: the bird, its name over its score, and top right what you are doing
+   (and who else is singing); a tap anywhere on it opens the birds to imitate */
+.songcard3 { pointer-events: auto; box-sizing: border-box; display: flex; align-items: center; gap: 7px; padding: 5px 7px 5px 5px; cursor: pointer;
   max-width: min(46vw, 400px); border: 1px solid var(--blkedge); border-radius: 18px; background: var(--blk); box-shadow: var(--shadow); color: #fff; }
 .songcard3 > .pic3 { width: 34px; height: 34px; align-self: flex-start; }
 .songcard3 > .pic3 img { width: 32px; height: 24px; }
 .songcard3 > .pic3 svg { width: 18px; height: 18px; }
-.txt3 { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
-.txt3 b { font-weight: 700; font-size: 12.5px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sgmore3, .sgless3 { flex: none; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 15px; background: rgba(255, 255, 255, .12); display: grid; place-items: center; cursor: pointer; }
-.sgless3 { width: 36px; height: 36px; border-radius: 18px; }
-.sgmore3 svg, .sgless3 svg { width: 16px; height: 16px; stroke: #fff; }
-.sgless3 svg { transform: rotate(180deg); }
-/* the score: one arrow per syllable, raised by its pitch, the next one in a pale box */
+.txt3 { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+.txt3 b { font-weight: 700; font-size: 12.5px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 4px; }
+.sgless3 { flex: none; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 18px; background: rgba(255, 255, 255, .12); display: grid; place-items: center; cursor: pointer; }
+.sgless3 svg { width: 16px; height: 16px; stroke: #fff; transform: rotate(180deg); }
+/* top right: the state (white free, amber learning, green imitating; it pulses while the bird you
+   copy sings) and, beside it, another bird singing nearby */
+.sgstate3 { align-self: flex-start; display: flex; flex-direction: row-reverse; align-items: center; gap: 4px; }
+.sgstate3 i { display: grid; place-items: center; width: 22px; height: 22px; }
+.sgstate3 i svg { width: 19px; height: 19px; }
+.sgstate3 .st-free { color: #fff; }
+.sgstate3 .st-learn { color: #f2c14e; }
+.sgstate3 .st-imitate { color: #8fcf5a; }
+.sgstate3 i.hear { animation: hear3 .9s ease-in-out infinite; }
+@keyframes hear3 { 50% { transform: scale(1.25); filter: drop-shadow(0 0 4px currentColor); } }
+.sgstate3 em { display: flex; align-items: center; gap: 1px; opacity: .75; }
+.sgstate3 em:empty { display: none; }
+.sgstate3 em img { width: 20px; height: 15px; border-radius: 50%; background: #fff; padding: 2px 0; }
+.sgstate3 .near3 { position: static; width: 12px; height: 12px; }
+/* the score: one arrow per note, raised by its pitch; a question mark for a note not found yet;
+   each note of this try in a box: green good, blue fair, orange rough, red wrong */
 .score3 { --g: 24px; --step: 4px; display: flex; gap: 2px; align-items: flex-end; }
 .score3:has(span) { height: calc(var(--g) + var(--step) * 4); }
 .score3 small { font-size: 11.5px; font-weight: 500; color: var(--dim); white-space: nowrap; }
-.score3 span { width: var(--g); height: var(--g); box-sizing: border-box; padding: 2px; margin-bottom: calc(var(--lane) * var(--step)); opacity: .72; border-radius: 7px; flex: none;
+.score3 span { width: var(--g); height: var(--g); box-sizing: border-box; padding: 2px; margin-bottom: calc(var(--lane) * var(--step)); border-radius: 7px; flex: none;
   filter: drop-shadow(0 0 3px color-mix(in srgb, var(--note) 55%, transparent)); }
 .score3 svg { width: 100%; height: 100%; stroke: var(--note); fill: var(--note); display: block; }
-.score3 span.done { opacity: 1; filter: drop-shadow(0 0 5px var(--note)); }
-.score3 span.wrong { opacity: 1; filter: saturate(0) brightness(.7); }
-.score3 span.next { opacity: 1; background: rgba(255, 255, 255, .2); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .25); }
-.score3 span.bird { opacity: .6; filter: saturate(.3); }
+.score3 span.q { opacity: .45; filter: none; }
+.score3 span:is(.r-good, .r-ok, .r-meh, .r-wrong) { opacity: 1; background: color-mix(in srgb, var(--r) 30%, transparent); box-shadow: inset 0 0 0 1.5px var(--r); }
+.score3 span.r-good { --r: #5fd47e; }
+.score3 span.r-ok { --r: #5fa8f0; }
+.score3 span.r-meh { --r: #f2a23a; }
+.score3 span.r-wrong { --r: #f0584a; }
 .sing3 svg .ln { fill: none; }
 
 /* the birds to imitate: just the list, four to a row, the whole height of the screen */
@@ -105,6 +120,8 @@
   filter: drop-shadow(0 0 2px rgba(10, 20, 28, .55)); }
 .rise3 svg { width: 100%; height: 100%; display: block; overflow: visible; }
 .rise3 .edge { stroke: #fff; fill: #fff; }
+/* another bird's notes: smaller and fainter than the hawk's */
+.rise3 i.faint svg { opacity: .45; }
 .rise3 svg .ln { fill: none; }
 .rise3 .edge * { stroke-width: 6; }
 @keyframes rise3 {

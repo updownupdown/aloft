@@ -6,10 +6,13 @@
 //               up, down for one sliding down, right for a steady whistle, left for a trill, and
 //               tap for a chip. Each touch sings one syllable, the row answering in its own way,
 //               and two thumbs can sing.
-//   bottom left the song card: the bird you imitate, its name and its
-//               score (each syllable's arrow at its pitch, the next one boxed). Tap it to open the
-//               birds you know, the whole height of the screen, to pick one to imitate (a mark on
-//               those singing nearby). Above it, the stop button (the sing icon crossed out)
+//   bottom left the song card: the bird whose song you sing, its name, its score (each note's
+//               arrow at its pitch, a question mark for a note of an unlearned song not found yet,
+//               each note sung in a try boxed by how it went) and, top right, what you are doing
+//               (singing freely, learning a song, imitating one you know) and any other bird
+//               singing within earshot. Tap it to open the birds you know, the whole height of
+//               the screen, to pick one to imitate (a mark on those singing nearby); tap outside
+//               the list to close it. Above the card, the stop button (the sing icon crossed out)
 // Pick a bird and you sing in its voice, imitating it: play its score through and a bird of that
 // kind answers (once you have learned it). Each syllable sung, yours or a songbird's, rises from
 // its beak as a little coloured drawing of its kind. Left-handed, the sides swap. Everything sits
@@ -30,6 +33,8 @@ const GLYPH = {
   r: `<g transform="rotate(90 12 12)">${ARROW}</g>`,
   l: `<g transform="rotate(-90 12 12)">${ARROW}</g>`,
   c: '<circle cx="12" cy="12" r="5.5" stroke-width="1.6"/>',
+  // a note not found yet
+  q: '<path class="ln" d="M8.6 8.6a3.4 3.4 0 1 1 4.9 3.1c-.9.4-1.5 1.2-1.5 2.1v.9" stroke-width="2.8" stroke-linecap="round"/><circle cx="12" cy="19.3" r="1.6" stroke-width="1"/>',
 };
 export const glyph = k => `<svg viewBox="0 0 24 24" aria-hidden="true">${GLYPH[k] || GLYPH.r}</svg>`;
 const CHEVRON = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 12.5l5-5 5 5" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
@@ -42,6 +47,13 @@ import { project } from '../shot.js';
 import { icon, ICONS, birdIcon } from '../icons.js';
 import { BIRD } from '../hawk.js';
 // stop singing: the sing icon, crossed out
+// what you are doing, top right of the card: singing freely, learning a song, imitating one
+const STATE = {
+  free: ['Singing freely', ICONS.sing],
+  learn: ['Learning this song: listen, then sing it back', '<path d="M6.5 9.5a5.5 5.5 0 0 1 11 0c0 3.2-3.2 4.2-3.2 7.2a2.8 2.8 0 0 1-5.2 1.4"/><path d="M9.6 10a2.4 2.4 0 0 1 4.8 0c0 1.2-1 1.7-1.9 2.3"/>'],
+  imitate: ['Imitating a song you know', '<path d="M4.5 11a7 7 0 0 1 12.3-4.6M19.5 13a7 7 0 0 1-12.3 4.6"/><path d="M17.5 3v3.8h-3.8M6.5 21v-3.8h3.8"/>'],
+};
+const svg24 = body => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
 const UNSING = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS.sing}<path d="M3.5 3.5l17 17"/></svg>`;
 
 const css = new URL('./songs.css', import.meta.url).href;
@@ -53,7 +65,7 @@ export function createSingUI(ui, { audio, voice, onSyll, onPick, onCall }) {
       <div class="notepad3">${NOTE_COLS.map((c, i) => `<i data-lane="${i}" style="--note:${c};--lit:${NOTE_LIT[i]}"></i>`).reverse().join('')}</div>
       <div class="sgleft3"><button class="sgdone3" aria-label="Stop singing" title="Stop singing">${UNSING}</button>
       <div class="songcard3" role="button" aria-label="Imitate a bird">
-        <span class="pic3"></span><span class="txt3"><b></b><span class="score3"></span></span><span class="sgmore3">${CHEVRON}</span>
+        <span class="pic3"></span><span class="txt3"><b></b><span class="score3"></span></span><span class="sgstate3"><i></i><em></em></span>
       </div>
       </div>
       <div class="birds3"><header><span>Imitate a bird</span><button class="sgless3" aria-label="Close">${CHEVRON}</button></header><div class="cards3"></div></div>
@@ -61,7 +73,7 @@ export function createSingUI(ui, { audio, voice, onSyll, onPick, onCall }) {
     <button class="call3" aria-label="Call" title="Call">${birdIcon(BIRD)}</button>`);
   const root = [...ui.querySelectorAll('.sing3')].at(-1), q = s => root.querySelector(s);
   const pad = q('.notepad3'), card = q('.songcard3'), score = q('.score3'), cards = q('.cards3');
-  const name = card.querySelector('b'), pic = card.querySelector('.pic3'), singPic = q('.singbtn3 .pic3');
+  const name = card.querySelector('b'), pic = card.querySelector('.pic3'), stateEl = card.querySelector('.sgstate3 i'), otherEl = card.querySelector('.sgstate3 em'), singPic = q('.singbtn3 .pic3');
   const callBtn = [...ui.querySelectorAll('.call3')].at(-1), rise = [...ui.querySelectorAll('.rise3')].at(-1);
   const rows = [...pad.children].sort((a, b) => a.dataset.lane - b.dataset.lane);
   const S = { ready: false, on: false, kind: 'r', species: '', score: '', name: '', };
@@ -110,7 +122,14 @@ export function createSingUI(ui, { audio, voice, onSyll, onPick, onCall }) {
   const big = on => root.classList.toggle('big', on);
   q('.singbtn3').addEventListener('click', () => { audio.unlock(); setOn(true); });
   q('.sgdone3').addEventListener('click', () => setOn(false));
-  card.addEventListener('click', () => { audio.unlock(); big(true); });
+  card.addEventListener('click', () => { if (performance.now() - S.shut < 400) return; audio.unlock(); big(true); });
+  // a touch anywhere outside the open list closes it (and does nothing else)
+  S.shut = 0;
+  addEventListener('pointerdown', e => {
+    if (!root.classList.contains('big') || e.target.closest?.('.birds3')) return;
+    big(false); S.shut = performance.now();
+    if (e.target.closest?.('.sing3')) { e.stopPropagation(); e.preventDefault(); }
+  }, true);
   q('.sgless3').addEventListener('click', () => big(false));
   cards.addEventListener('click', e => {
     const b = e.target.closest('[data-sp]'); if (!b) return;
@@ -128,33 +147,36 @@ export function createSingUI(ui, { audio, voice, onSyll, onPick, onCall }) {
     cards.innerHTML = list.map(sp => `<button data-sp="${sp.id}" class="${learned.has(sp.id) ? '' : 'heard'}${picked === sp ? ' on' : ''}" title="${learned.has(sp.id) ? sp.name : sp.name + ': heard, not learned'}">${nearby.has(sp.id) ? NEAR : ''}<span class="pic3"><img src="${songbirdPic(sp, 64)}" alt=""></span><span>${sp.name}</span></button>`).join('')
       + (picked ? '<button data-sp="none" class="stop"><span>Sing as yourself</span></button>' : '')
       + (list.length ? '' : '<p>No songs yet. Perch near a singing bird and listen.</p>');
-    S.idle = list.length ? `${learned.size} known` : 'Listen to the birds';
     singPic.innerHTML = picked ? `<img src="${songbirdPic(picked, 64)}" alt="">` : icon('sing');
   }
-  // the card: the bird, its name, and the score, one arrow per
-  // syllable at its pitch; the bird's own half of a duet is dimmed. With no bird, an invitation.
+  // the card: the bird, its name, its score (found notes in their colours, the rest question
+  // marks; this try's notes boxed green, blue, orange or red), what you are doing and who else sings
   function setScore(sc) {
-    const key = sc ? [sc.sp.id, sc.title, sc.done, sc.bird, sc.state, sc.hidden].join() : S.idle;
+    const sp = sc.sp, key = [sp?.id, sc.state, sc.seen, sc.res.join(''), sc.hear, sc.other?.id].join();
     if (key === S.score) return;
-    S.score = key; card.classList.toggle('idle', !sc);
-    name.textContent = sc ? sc.title : 'Imitate a bird';
-    pic.innerHTML = sc ? `<img src="${songbirdPic(sc.sp, 64)}" alt="">` : icon('sing');
-    if (sc && !singPic.querySelector('img')) singPic.innerHTML = `<img src="${songbirdPic(sc.sp, 64)}" alt="">`;
-    if (!sc || sc.hidden) { score.innerHTML = `<small>${sc ? sc.note : S.idle}</small>`; return; }
-    score.innerHTML = sc.sp.notes.map((n, i) => {
-      const st = i < sc.bird ? 'bird' : i < sc.done ? 'done' : i === sc.done ? (sc.state === 'wrong' ? 'next wrong' : 'next') : '';
-      return `<span class="${st}" style="--note:${NOTE_LIT[n]};--lane:${n}">${glyph(sc.sp.kinds[i])}</span>`;
+    S.score = key;
+    name.textContent = sp ? sp.name : 'Free song';
+    pic.innerHTML = sp ? `<img src="${songbirdPic(sp, 64)}" alt="">` : icon('sing');
+    if (sp && !singPic.querySelector('img')) singPic.innerHTML = `<img src="${songbirdPic(sp, 64)}" alt="">`;
+    const [title, body] = STATE[sc.state];
+    stateEl.innerHTML = svg24(body); stateEl.className = `st-${sc.state}${sc.hear ? ' hear' : ''}`; stateEl.title = title;
+    otherEl.innerHTML = sc.other ? `${NEAR}<img src="${songbirdPic(sc.other, 32)}" alt="">` : '';
+    otherEl.title = sc.other ? `A ${sc.other.name.toLowerCase()} is singing nearby` : '';
+    if (!sp) { score.innerHTML = `<small>Sing anything, or tap to pick a bird</small>`; return; }
+    score.innerHTML = sp.notes.map((n, i) => {
+      const r = sc.res[i], shown = i < sc.seen;
+      return `<span class="${shown ? '' : 'q'}${r ? ' r-' + r : ''}" style="--note:${shown ? NOTE_LIT[n] : '#d8dee3'};--lane:${shown ? n : 0}">${glyph(shown ? sp.kinds[i] : 'q')}</span>`;
     }).join('');
   }
 
   // ---- notes rising from a beak: the syllable's drawing in its note's colour, edged in white,
   // drifting up and away. At most a few dozen at once.
-  function riseAt(S3, p, lane, kind) {
+  function riseAt(S3, p, lane, kind, faint = false) {
     if (!S3 || rise.childElementCount > 40) return;
     const at = project(S3, p, innerWidth, innerHeight);
     if (!at || at.z > 70 || at.x < -40 || at.x > innerWidth + 40 || at.y < -40 || at.y > innerHeight + 40) return;
-    const g = GLYPH[kind] || GLYPH.r, size = Math.max(.55, Math.min(1.25, 14 / at.z));
-    const el = document.createElement('i');
+    const g = GLYPH[kind] || GLYPH.r, size = Math.max(.55, Math.min(1.25, 14 / at.z)) * (faint ? .7 : 1);
+    const el = document.createElement('i'); if (faint) el.className = 'faint';
     el.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><g class="edge">${g}</g><g style="stroke:${NOTE_LIT[lane]};fill:${NOTE_LIT[lane]}">${g}</g></svg>`;
     el.style.cssText = `left:${at.x}px;top:${at.y}px;--s:${size};--dx:${(Math.random() - .5) * 50}px;--up:${80 + lane * 10}px`;
     rise.append(el); el.addEventListener('animationend', () => el.remove());
