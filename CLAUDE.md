@@ -44,7 +44,8 @@ web/3d/dial.js          the day dial, top right
 web/3d/tips.js          tips as a short line and an icon (SHORT, keyed by tip id), swipe to dismiss, i to pause and read more
 web/3d/journal.js       the Journal tab and its pages (Log, Songs, Landmarks, Field guide, Album): journal(G).section(order, title), .page(id); shot.js: project(), afterDraw(), portraits
 web/3d/pics.js          still pictures of the game's own meshes (songbirdPic(sp, px)), cached data URLs
-web/3d/app.js           Update, Quiet meters and Quit rows; asks for full screen on each touch while not full screen
+web/3d/app.js           Update, Graphics, Haptics, Quiet meters and Quit rows; wake lock; asks for full screen on each touch while not full screen
+web/3d/action.js        the one action button (Take off, Sleep, Imitate from G.actions; swipe for the others)
 web/src/                audio.js (Web Audio synth), music.js (four styles), birdvoice.js, songs.js (songbird species)
 web/birds.html          bird lab: every species side by side (3d/birdlab.js)
 web/lab.html            bird song lab; web/musiclab.html music lab (both share lab.css)
