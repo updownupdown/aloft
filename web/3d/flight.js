@@ -2,13 +2,14 @@
 // diving speeds you up), drag depends on the wing shape (tucked, gliding, flared), banking
 // turns, and below stall speed the nose drops. Rising air (thermals, ridges) lifts the whole
 // air mass, so it never changes airspeed. With no input the hawk trims to its best glide.
-import { height, WATER, treesNear, TREE, perchesOf, airLift, thermalsNear, thermalCentre, solidsNear } from './world.js';
+import { height, normalAt, WATER, treesNear, TREE, perchesOf, airLift, thermalsNear, thermalCentre, solidsNear } from './world.js';
 
 const g = 9.8;
 export const FLY = {
   best: 12, maxS: 46, cd: .0058, cdTuck: .0024, cdFlare: .03, stall: 7.5, stallFlare: 3.6,
   climb: .55, dive: .9, roll: 1.0, yaw: 1.2, flapS: 3.0, flapUp: 1.3, flapHover: 3.2, flapCost: .065,
   perchR: 1.6, landS: 10.5,
+  skimH: 2.6, skimDrag: .45,   // ground effect: within skimH metres of water or flat ground, drag falls by up to skimDrag
 };
 
 export function createHawk(x, z) {
@@ -52,7 +53,12 @@ export function step(b, c, dt, E) {
   }
 
   const sStall = FLY.stall + (FLY.stallFlare - FLY.stall) * b.flare + 2 * b.tuck;
-  const cd = FLY.cd + (FLY.cdTuck - FLY.cd) * b.tuck + FLY.cdFlare * b.flare + .004 * Math.sin(b.roll) ** 2;
+  // ground effect: skimming low over water or a flat field, the air cushions the wings and you carry
+  const gy = height(b.p[0], b.p[2]), wet = gy < WATER, agl = b.p[1] - Math.max(gy, WATER) - .35;
+  const flat = wet ? 1 : Math.max(0, (normalAt(b.p[0], b.p[2])[1] - .94) / .05);
+  b.skim = agl < FLY.skimH ? Math.min(1, flat) * (1 - Math.max(0, agl) / FLY.skimH) * (1 - b.tuck) * (1 - b.flare) : 0;
+  b.skimWet = wet;
+  const cd = (FLY.cd + (FLY.cdTuck - FLY.cd) * b.tuck + .004 * Math.sin(b.roll) ** 2) * (1 - FLY.skimDrag * b.skim) * (1 - .3 * (b.slip || 0)) + FLY.cdFlare * b.flare;
   const trim = Math.asin(Math.max(-1, -FLY.cd * FLY.best * FLY.best / g));
   let gT = trim + (b.s - FLY.best) * .022 + (c.pitch > 0 ? c.pitch * FLY.climb : c.pitch * FLY.dive) - b.tuck * .55 + b.flare * .12;
   if (b.s < sStall) gT = Math.min(gT, -(sStall - b.s) * .13);
@@ -87,7 +93,7 @@ export function step(b, c, dt, E) {
 
   // stall sink and flap lift live in vy, which settles back to zero
   const st = stallness(b, sStall);
-  b.vy += (-g * st * .85 - b.vy * 1.6) * dt;
+  b.vy += (-g * st * .85 - b.vy * 1.6 + b.skim * 1.2) * dt;
 
   // steer softly round trunks a moment ahead, so threading a wood is about lines, not luck
   avoid(b, dt);
@@ -122,7 +128,14 @@ function still(b, c, dt, E) {
     b.yaw += Math.atan2(Math.sin(b.view - b.yaw), Math.cos(b.view - b.yaw)) * Math.min(1, dt * .9) + turn * .1;
   } else { b.yaw += turn; b.view = null; }
   b.sPrev = 0; b.acc = 0;
-  if (b.state === 'ground' && Math.abs(c.pitch) > .3) {
+  // look round (two fingers, or the gyro): the view swings, then drifts back after a pause
+  const lk = c.look || [0, 0];
+  if (Math.abs(lk[0]) + Math.abs(lk[1]) > 1e-4) {
+    b.lookT = 2.2;
+    b.lookYaw = Math.max(-2.6, Math.min(2.6, (b.lookYaw || 0) + lk[0]));
+    b.lookPitch = Math.max(-.7, Math.min(.9, (b.lookPitch || 0) + lk[1]));
+  } else if ((b.lookT = (b.lookT || 0) - dt) < 0) { const k = Math.min(1, dt * 2); b.lookYaw = (b.lookYaw || 0) * (1 - k); b.lookPitch = (b.lookPitch || 0) * (1 - k); }
+  if (b.state === 'ground' && Math.abs(c.pitch) > .3 && !c.both) {
     const sp = c.pitch * 1.4 * dt; b.p[0] += Math.sin(b.yaw) * sp; b.p[2] -= Math.cos(b.yaw) * sp;
     b.p[1] = Math.max(height(b.p[0], b.p[2]), WATER) + .35;
   }
@@ -136,7 +149,7 @@ function still(b, c, dt, E) {
     b.wantOff = 0; b.noPerch = 1.6; b.settle = 0; b.hop = 0;
     // take off: a strong stroke forward and up
     const wet = b.state === 'swim';
-    b.state = 'fly'; b.perch = null; b.tree = null; b.view = null;
+    b.state = 'fly'; b.perch = null; b.tree = null; b.view = null; b.lookYaw = b.lookPitch = 0;
     b.s = 8; b.gamma = .35; b.vy = wet ? 3.5 : 4.5;
     if (wet) b.p[1] = WATER + .5;   // clear of the surface, or the first frame would settle back onto it b.flapL = b.flapR = 0; b.ampL = b.ampR = 1;
     b.stamina = Math.max(0, b.stamina - FLY.flapCost);
@@ -183,8 +196,10 @@ function trees(b, dt, E) {
   b.canopy = Math.max(0, b.canopy - dt * 2);
   if (b.noPerch > 0) b.noPerch -= dt;
   const mayPerch = canPerch(b);
+  let below = 0;
   for (const t of treesNear(b.p[0], b.p[2], 14)) {
     const dx = b.p[0] - t.x, dz = b.p[2] - t.z, hd = Math.hypot(dx, dz), y = b.p[1] - t.y;
+    if (hd < 13 && y > 0 && y < t.s * .8) below++;
     // the trunk is hard
     const tr = t.s * TREE.trunkR[t.kind] + .35;
     if (hd < tr && y > 0 && y < t.s * (t.kind ? .55 : TREE.trunkH[0])) {
@@ -213,6 +228,8 @@ function trees(b, dt, E) {
       if (Math.hypot(p.x - b.p[0], p.y + PERCH_Y - b.p[1], p.z - b.p[2]) < FLY.perchR + b.flare * .8) { settleOn(b, p, t, E); return; }
     }
   }
+  // under the canopy: three or more trees round you whose crowns are above you
+  b.under = (b.under || 0) + ((below >= 3 ? 1 : 0) - (b.under || 0)) * Math.min(1, dt * 2);
 }
 // towers, standing stones and cairns: hard sides, a perch on top
 // not right after taking off, nor while speeding up or tucked in a dive

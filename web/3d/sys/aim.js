@@ -11,7 +11,25 @@ import { FLY, fwd, hopPerches, hopTo } from '../flight.js';
 import { clamp, smooth } from '../util.js';
 
 const T = 2.6, STEPS = 16, g = 9.8;
-const COL = { ring: [.3, .58, 1], near: [.9, .9, .84], prey: [.8, .24, .16], perch: [.28, .64, .34], soft: [.36, .52, .3], fast: [.72, .52, .18], ink: [.2, .18, .16] };
+const COL0 = { ring: [.3, .58, 1], near: [.9, .9, .84], prey: [.8, .24, .16], perch: [.28, .64, .34], soft: [.36, .52, .3], fast: [.72, .52, .18], ink: [.2, .18, .16] };
+// colour-blind aim colours (Settings, G.settings.cbAim): orange prey, blue perches, violet rings
+const COLCB = { ...COL0, prey: [1, .6, .24], perch: [.25, .63, 1], ring: [.72, .5, 1] };
+let COL = COL0;
+
+// shape cues so the marks read without colour: a camera-facing triangle (corners in the view's
+// right/up units round c), into the ribbon
+function flat(S, c, pts, col, a) {
+  const R = S.ribbon ||= [], cam = S.cam, tx = cam[0] - c[0], tz = cam[2] - c[2], l = Math.hypot(tx, tz) || 1;
+  const rx = tz / l, rz = -tx / l;
+  const at = ([u, v]) => [c[0] + rx * u, c[1] + v, c[2] + rz * u, ...col, a];
+  for (let i = 1; i + 1 < pts.length; i++) R.push(...at(pts[0]), ...at(pts[i]), ...at(pts[i + 1]));
+}
+const dot = (S, c, r, col, a) => { const P = []; for (let i = 0; i < 8; i++) P.push([Math.cos(i / 8 * 6.283) * r, Math.sin(i / 8 * 6.283) * r]); flat(S, c, P, col, a); };
+const notch = (S, c, r, col, a) => flat(S, c, [[-r, r * 1.3], [r, r * 1.3], [0, 0]], col, a);   // points down at the limb
+function chevron(S, c, r, col, a) {   // an upward chevron: two strokes meeting at the top
+  flat(S, c, [[-r, -r * .5], [0, r * .5], [0, r * .1], [-r, -r * .9]], col, a);
+  flat(S, c, [[r, -r * .5], [r, -r * .9], [0, r * .1], [0, r * .5]], col, a);
+}
 
 // a flat ring lying level (or, with y null, draped on the ground), drawn into the ribbon. With
 // tilt it leans up toward the camera so that from level with it, it still reads as a ring
@@ -140,11 +158,14 @@ export function aimSystem(G) {
     },
     scene(S) {
       const A = G.aim, cam = S.cam, f = A.focus;
+      COL = G.settings?.cbAim ? COLCB : COL0;
       // rings on the nearest perches ahead, green on the one you are lined up with; perched, green
       // rings on the perches a hop away
       const ring = (q, on, col, k = 1) => flatRing(S, q.x, q.y + .1, q.z, (on ? .55 : .4) * k * (1 + Math.sin(G.t * 4) * (on ? .06 : 0)), (on ? .14 : .1) * k, col, on ? .95 : .55, .7);
       for (const q of A.perches || []) ring(q, q === A.perch && A.mode === 'perch', q === A.perch && A.mode === 'perch' ? COL.perch : COL.near);
-      for (const h of A.hops || []) ring(h.p, true, COL.perch, 1.6);   // bigger: they are to be tapped
+      for (const h of A.hops || []) { ring(h.p, true, COL.perch, 1.6); notch(S, [h.p.x, h.p.y + 1.05, h.p.z], .2, COL.perch, .9); }   // bigger: they are to be tapped
+      if (A.perch && A.mode === 'perch') notch(S, [A.perch.x, A.perch.y + .85, A.perch.z], .16, COL.perch, .95);
+      if (A.ring && A.mode === 'ring') { const r = A.ring; chevron(S, [r.x, r.y + r.r * .15, r.z], Math.max(.5, r.r * .22), COL.ring, .9); }
       if (A.path.length < 2) return;
       // the line: a thin ribbon facing the camera, fading in near the hawk and out at the far end
       const col = COL[A.mode], P = A.path, R = S.ribbon ||= [];
@@ -167,6 +188,7 @@ export function aimSystem(G) {
       if (A.mode === 'perch' || A.mode === 'ring' || !c) return;
       const prey = A.mode === 'prey', r = (prey ? 1.1 : 2.2) * (1 - f * .55) * (prey ? 1 + Math.sin(G.t * 6) * .08 : 1);
       flatRing(S, c[0], prey ? c[1] + .12 : null, c[2], r, prey ? .22 : .12 + f * .1, col, prey ? .9 : .5 + f * .3);
+      if (prey) dot(S, [c[0], c[1] + .5, c[2]], .12 + Math.hypot(c[0] - cam[0], c[2] - cam[2]) * .004, col, .95);
     },
   };
 }

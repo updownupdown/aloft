@@ -25,7 +25,8 @@ export function createCamera(G) {
       const fo = G.aim?.focus || 0;
       C.pitch += (b.gamma * (.45 + .4 * fo) - C.pitch) * Math.min(1, dt * 2.5);
       const cp = C.pitch, d = [Math.sin(C.yaw) * Math.cos(cp), Math.sin(cp), -Math.cos(C.yaw) * Math.cos(cp)];
-      const dist = 2.4 + Math.min(b.s, 40) * .03 + fo * .8, h = 1.35 + Math.min(b.s, 40) * .005 + fo * 1.2;
+      const tight = 1 - .2 * (b.under || 0);   // under the canopy the camera tucks in closer, clear of trunks
+      const dist = (2.4 + Math.min(b.s, 40) * .03 + fo * .8) * tight, h = (1.35 + Math.min(b.s, 40) * .005 + fo * 1.2) * tight;
       want = [p[0] - d[0] * dist, p[1] - d[1] * dist + h, p[2] - d[2] * dist];
       look = [p[0] + d[0] * 3, p[1] + d[1] * 3 + .2, p[2] + d[2] * 3];
       // diving at something: the view leans toward it so it is not hidden under the bird
@@ -36,10 +37,11 @@ export function createCamera(G) {
       if (b.state === 'ground' && b.view != null) C.yaw += angleTo(C.yaw, b.view) * Math.min(1, dt * 8);
       else C.yaw += angleTo(C.yaw, vyaw + Math.sin(G.t * .15) * .3) * Math.min(1, dt * .8);
       C.pitch = 0;
-      const d = [Math.sin(C.yaw), 0, -Math.cos(C.yaw)];
+      // looking round (b.lookYaw/lookPitch): the camera swings about the bird and tips up or down
+      const ly = C.yaw + (b.lookYaw || 0), lp = b.lookPitch || 0, d = [Math.sin(ly), 0, -Math.cos(ly)];
       // a little above and behind, the hawk just under the middle of the view (clear of the song box)
-      want = [p[0] - d[0] * 2.6, p[1] + .9, p[2] - d[2] * 2.6];
-      look = [p[0] + d[0] * 1.5, p[1] + .05, p[2] + d[2] * 1.5];
+      want = [p[0] - d[0] * 2.6, p[1] + .9 - lp * 1.2, p[2] - d[2] * 2.6];
+      look = [p[0] + d[0] * 1.5, p[1] + .05 + lp * 3, p[2] + d[2] * 1.5];
     }
     if (!C.cam) C.cam = want.slice();
     const k = b.state === 'fly' && !C.still ? 1 : Math.min(1, dt * 2);

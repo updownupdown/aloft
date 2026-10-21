@@ -11,12 +11,13 @@
 // Keyboard for desktop: W/S or Up/Down pitch, A/D or Left/Right bank, Shift or Q tuck,
 // E flare, Space flap.
 // Perched or standing, a drag sideways turns the bird (read as dragX) and a tap may be taken by
-// onTap (a perch ring to hop to) before it counts as a flap.
+// onTap (a perch ring to hop to) before it counts as a flap. Two fingers dragging together, or
+// turning the phone (gyro, while I.gyroOn), look round instead (read as look: [x, y]).
 
 const TAP_TIME = .3, TAP_MOVE = .06, PAIR = .2;
 
 export function createInput(el) {
-  const I = { L: pad(), R: pad(), keys: new Set(), taps: [], invert: false, onAny: null, onTap: null, radius: 70, drag: 0 };
+  const I = { L: pad(), R: pad(), keys: new Set(), taps: [], invert: false, onAny: null, onTap: null, radius: 70, drag: 0, lk: [0, 0], gyroOn: false };
   function pad() { return { id: null, x0: 0, y0: 0, x: 0, y: 0, t0: 0, moved: 0, dx: 0, dy: 0 }; }
   const size = () => Math.min(innerWidth, innerHeight);
   el.addEventListener('touchstart', e => {
@@ -29,8 +30,9 @@ export function createInput(el) {
   }, { passive: false });
   el.addEventListener('touchmove', e => {
     e.preventDefault();
+    const two = I.L.id !== null && I.R.id !== null;
     for (const t of e.changedTouches) for (const P of [I.L, I.R]) if (P.id === t.identifier) {
-      I.drag += t.clientX - P.x;
+      if (two) { I.lk[0] += (t.clientX - P.x) / 2; I.lk[1] += (t.clientY - P.y) / 2; } else I.drag += t.clientX - P.x;
       P.x = t.clientX; P.y = t.clientY;
       P.moved = Math.max(P.moved, Math.hypot(P.x - P.x0, P.y - P.y0));
     }
@@ -53,6 +55,16 @@ export function createInput(el) {
   });
   addEventListener('keyup', e => I.keys.delete(e.code));
   addEventListener('blur', () => I.keys.clear());
+  // the gyro: in landscape, turning the phone left/right spins it about its own x axis, tilting it
+  // up/down about its y axis; the sign flips with which way round it is held
+  addEventListener('devicemotion', e => {
+    const r = e.rotationRate, dt = (e.interval || 16) / (e.interval > 1 ? 1000 : 1);
+    if (!I.gyroOn || !r || r.alpha == null) return;
+    const ang = screen.orientation?.angle ?? 0, sg = ang === 270 ? -1 : 1, d2r = Math.PI / 180;
+    if (ang === 90 || ang === 270) { I.gyro[0] += -sg * r.beta * d2r * dt; I.gyro[1] += sg * r.gamma * d2r * dt; }
+    else { I.gyro[0] += -r.gamma * d2r * dt; I.gyro[1] += r.beta * d2r * dt; }
+  });
+  I.gyro = [0, 0];
 
   // what the wings are asking for this frame: { pitch, roll, spread, flap, held }
   I.read = () => {
@@ -94,7 +106,8 @@ export function createInput(el) {
       break;
     }
     const dragX = I.drag / size(); I.drag = 0;
-    return { pitch: clampU(pitch), roll: clampU(roll), yaw, keyRoll, dragX, spread: clampU(spread), flap, held: l || rr || K.size > 0, both: l && rr };
+    const look = [-I.lk[0] / size() * 3 + I.gyro[0], I.lk[1] / size() * 2 + I.gyro[1]];   // drag grabs the view; the gyro turns it I.lk = [0, 0]; I.gyro = [0, 0];
+    return { pitch: clampU(pitch), roll: clampU(roll), yaw, keyRoll, dragX, look, spread: clampU(spread), flap, held: l || rr || K.size > 0, both: l && rr };
   };
   return I;
 }
