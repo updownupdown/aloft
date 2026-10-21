@@ -70,7 +70,7 @@ export function start(canvas, ui) {
   const listeners = new Map();
   const G = {
     b, R, audio, music, input, store, t: 0, clock: 0, paused: false, parts: [], flags: store.get('flags3d', {}),
-    settings: { sound: audio.on, music: store.get('music', true), invert: store.get('invert3d', false), fps: store.get('fps3d', false), fpsCap: store.get('fpsCap3d', store.get('fullRate3d', false) ? 90 : 60), stopMo: store.get('stopMo3d', false) },
+    settings: { sound: audio.on, music: store.get('music', true), invert: store.get('invert3d', false), fps: store.get('fps3d', false), fpsCap: store.get('fpsCap3d', store.get('fullRate3d', false) ? 90 : 60) },
     res: 1, systems: {},
     on: (name, fn) => { if (!listeners.has(name)) listeners.set(name, []); listeners.get(name).push(fn); },
     emit: (name, ...a) => { for (const fn of listeners.get(name) || []) fn(...a); },
@@ -156,15 +156,11 @@ if (qs.has('fps')) G.settings.fpsCap = +qs.get('fps') || 60;
   G.menu.toggle(play, { label: 'Sound', get: () => G.settings.sound, set: v => { G.settings.sound = v; audio.setOn(v); store.set('sound', v); } });
   G.menu.toggle(play, { label: 'Music', get: () => G.settings.music, set: v => { G.settings.music = v; music.setOn(v); store.set('music', v); } });
   G.menu.toggle(play, { label: 'Invert climb and dive', sub: 'thumbs up to dive', get: () => G.settings.invert, set: v => { G.settings.invert = input.invert = v; store.set('invert3d', v); } });
-  // Frame rate: a cap of 15, 30, 60 or 90 frames a second; fewer frames, less battery
-  const CAPS = [15, 30, 60, 90], capSub = () => `${G.settings.fpsCap} a second${G.settings.fpsCap <= 30 ? ', saves battery' : G.settings.fpsCap >= 90 ? ', smoothest, most battery' : ''}`;
-  G.menu.button(play, { label: 'Frame rate', sub: capSub(), group: 'app', onClick: el => {
-    G.settings.fpsCap = CAPS[(CAPS.indexOf(G.settings.fpsCap) + 1) % CAPS.length] || 60; store.set('fpsCap3d', G.settings.fpsCap);
-    el.querySelector('em').textContent = capSub();
-  } });
-  // stop motion (experimental): the bird's wings and the swaying world move on twelve drawings a
-  // second while the flight and the camera stay smooth, like a model animated a frame at a time
-  G.menu.toggle(play, { label: 'Stop-motion look', sub: 'experimental: wings and sway at 12 a second', get: () => G.settings.stopMo, set: v => { G.settings.stopMo = v; store.set('stopMo3d', v); } });
+  // Frame rate: a cap of 30, 60 or 90 frames a second; fewer frames, less battery
+  if (G.settings.fpsCap < 30) G.settings.fpsCap = 30;
+  G.menu.choice(play, { label: 'Frame rate', options: [[30, '30'], [60, '60'], [90, '90']], get: () => G.settings.fpsCap,
+    set: v => { G.settings.fpsCap = v; store.set('fpsCap3d', v); },
+    sub: v => v <= 30 ? 'frames a second: 30 saves the most battery' : v >= 90 ? 'frames a second: 90 is smoothest, uses the most battery' : 'frames a second: smooth, a fair battery' });
   G.menu.toggle(play, { label: 'Show frame rate', get: () => G.settings.fps, set: v => { G.settings.fps = v; store.set('fps3d', v); H.showFps(v); } });
   G.menu.button(play, { label: 'Music lab', sub: 'tune Valley', href: 'musiclab.html', group: 'sound' });
   G.menu.button(play, { label: 'Start a new journey', sub: 'from the valley', group: 'play', onClick: el => {
@@ -249,7 +245,7 @@ if (qs.has('fps')) G.settings.fpsCap = +qs.get('fps') || 60;
     G.parts = G.parts.filter(p => p.life > 0);
 
     // the scene: light, camera and hawk, then whatever each system adds
-    const S = { ...G.light, time: G.settings.stopMo ? Math.floor(G.t * 12) / 12 : G.t, wind: (G.windK ?? .3) + (G.gustWind || 0), fogDen: .0042 + .0012 * (G.light.night || 0), autumnCol: [.8, .5, .22], props: {}, motes: [] };
+    const S = { ...G.light, time: G.t, wind: (G.windK ?? .3) + (G.gustWind || 0), fogDen: .0042 + .0012 * (G.light.night || 0), autumnCol: [.8, .5, .22], props: {}, motes: [] };
     camera.update(dt, S);
     for (const s of systems) s.scene?.(S);
     for (const q of G.parts) S.motes.push(...q.p, ...q.col, q.size * Math.min(1, q.life / q.max * 2));

@@ -3,7 +3,7 @@
 // their icons; then the open section's pages (sub-tabs) stacked down a column of their own, when it
 // has any; then the open page. Systems add their own section with G.menu.tab(id, title) (it returns
 // the pane element), pages inside it with G.menu.page(tab, id, title), and rows with
-// G.menu.toggle() / G.menu.button(). Settings (tab 'play') is one column of sections with icons
+// G.menu.toggle() / G.menu.button() / G.menu.choice() (radio buttons). Settings (tab 'play') is one column of sections with icons
 // (audio, graphics, gameplay, dev tools; each row goes by its label, SECTION_OF); the groups 'bird'
 // and 'play' sit in the Game section instead (G.menu.group). G.menu.onOpen(fn) refreshes a pane each time the menu opens; G.menu.subtitle(fn)
 // gives the date line that the Map shows.
@@ -32,10 +32,12 @@ const GROUPS = {
 // else gameplay
 const SECTION_OF = {
   Sound: 'audio', Music: 'audio', 'Music style': 'audio',
-  Graphics: 'graphics', 'Ground detail': 'graphics', 'Full refresh rate': 'graphics',
+  Graphics: 'graphics', 'Ground detail': 'graphics', 'Frame rate': 'graphics', 'Battery use': 'graphics',
   'Show frame rate': 'dev', Update: 'dev', 'Music lab': 'dev', 'Bird song lab': 'dev',
 };
 const OLD = { sound: 'audio', app: 'dev', switch: 'gameplay' };
+// rows that keep a set order within their section, whichever system adds them first; the rest follow
+const ROW_ORDER = { Graphics: 1, 'Frame rate': 2, 'Ground detail': 3, 'Battery use': 4 };
 
 export function createMenu(G, ui) {
   ui.insertAdjacentHTML('beforeend', `
@@ -120,14 +122,35 @@ export function createMenu(G, ui) {
     c.insertBefore(g, [...c.children].find(x => +x.dataset.rank > +g.dataset.rank) || null);
     return g;
   };
+  const seat = (el, label) => {
+    el.dataset.row = ROW_ORDER[label] ?? 99;
+    el.parentNode.insertBefore(el, [...el.parentNode.children].find(x => x.dataset.row && +x.dataset.row > +el.dataset.row) || null);
+  };
   const where = (tab, group, label) => tab !== 'play' ? M.tab(tab) : M.group(group === 'bird' || group === 'play' ? group : SECTION_OF[label] || OLD[group] || group || 'gameplay');
   M.toggle = (tab, { label, sub = '', get, set, group = 'switch' }) => {
     const act = 'a' + n++;
     where(tab, group, label).insertAdjacentHTML('beforeend', `<button data-act="${act}" class="sw" role="switch"><span>${label}${sub ? ` <small>${sub}</small>` : ''}</span><i></i></button>`);
     const el = card.querySelector(`[data-act=${act}]`), refresh = () => { el.classList.toggle('on', !!get()); el.setAttribute('aria-checked', !!get()); };
+    seat(el, label);
     M.acts.set(act, () => { set(!get()); refresh(); });
     M.opens.push(refresh); refresh();
     return el;
+  };
+  // a row of choices with one picked (radio buttons): options [[value, label]...]; sub(value) says
+  // what the pick means
+  M.choice = (tab, { label, sub = () => '', options, get, set, group }) => {
+    const act = 'a' + n++;
+    where(tab, group, label).insertAdjacentHTML('beforeend', `<div class="choice3" role="radiogroup" aria-label="${label}"><span>${label}<small></small></span>` +
+      `<div>${options.map(([, t], i) => `<button data-act="${act}" data-i="${i}" role="radio">${t}</button>`).join('')}</div></div>`);
+    const btns = [...card.querySelectorAll(`[data-act=${act}]`)], el = btns[0].closest('.choice3');
+    seat(el, label);
+    const refresh = () => {
+      const v = get(); el.querySelector('small').textContent = sub(v);
+      btns.forEach((b, i) => { const on = options[i][0] === v; b.classList.toggle('on', on); b.setAttribute('aria-checked', on); });
+    };
+    M.acts.set(act, b => { set(options[+b.dataset.i][0]); refresh(); });
+    M.opens.push(refresh); refresh();
+    return { el, refresh };
   };
   // a button row; main: a dark pill (one per group at most); group: where it sits in Settings
   M.button = (tab, { label, sub = '', onClick, href, quiet = false, main = false, group }) => {
@@ -136,6 +159,7 @@ export function createMenu(G, ui) {
       ? `<a data-act="${act}" class="${cls}" href="${href}">${label}${sub ? ` <em>${sub}</em>` : ''}</a>`
       : `<button data-act="${act}" class="${cls}">${label}${sub ? ` <em>${sub}</em>` : ''}</button>`);
     const el = card.querySelector(`[data-act=${act}]`);
+    seat(el, label);
     if (onClick) M.acts.set(act, () => onClick(el));
     return el;
   };
@@ -162,7 +186,7 @@ export function createMenu(G, ui) {
     const t = e.target.closest('[data-tab]'); if (t) { show(t.dataset.tab); return; }
     const pg = e.target.closest('[data-page]'); if (pg?.tagName === 'BUTTON') { showPage(pg.closest('[data-for]').dataset.for, pg.dataset.page); return; }
     const a = e.target.closest('[data-act]')?.dataset.act; if (!a) return;
-    if (a === 'resume') M.set(false); else if (a === 'quit') M.quit?.(); else M.acts.get(a)?.();
+    if (a === 'resume') M.set(false); else if (a === 'quit') M.quit?.(); else M.acts.get(a)?.(e.target.closest('[data-act]'));
   });
   addEventListener('keydown', e => { if ((e.code === 'Escape' || e.code === 'KeyP') && !G.photo) M.set(!M.open); });
   return M;

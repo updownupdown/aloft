@@ -72,14 +72,17 @@ export function appRows(G) {
     G.emit('gfx', G.gfx.level);
   };
   G.on('gfxAuto', lv => { if (G.gfx.preset !== 'auto' || lv === G.gfx.level) return; G.gfx.level = lv; G.store.set('gfxAuto3d', lv); applyGfx(); });
-  const gfxSub = () => G.gfx.preset === 'auto' ? `Auto, ${['low', 'medium', 'high'][G.gfx.level]} for now` : G.gfx.preset[0].toUpperCase() + G.gfx.preset.slice(1);
+  // what each level draws, in words (VIEW above; tree distances in main.js treeGfx; ground in lands.js)
+  const SAYS = ['you see 20% less far, trees to 270 m, full trees within 80 m',
+    'trees to 360 m, full trees within 110 m', 'you see 15% farther, trees to 415 m, full trees within 130 m'];
+  const gfxSub = p => 'How far you see and how many trees are drawn. ' + (p === 'auto'
+    ? `Auto starts at Medium and steps down when frames drop, up when there is room (now ${['Low', 'Medium', 'High'][G.gfx.level]})` : `${p[0].toUpperCase() + p.slice(1)}: ${SAYS[LEVEL[p]]}`);
   let peekFps = false;
-  const gfxRow = G.menu.button('play', { label: 'Graphics', sub: gfxSub(), group: 'app', onClick: el => {
-    G.gfx.preset = PRESETS[(PRESETS.indexOf(G.gfx.preset) + 1) % PRESETS.length]; G.store.set('gfx3d', G.gfx.preset);
-    G.gfx.level = LEVEL[G.gfx.preset] ?? G.store.get('gfxAuto3d', 1);
-    applyGfx(); el.querySelector('em').textContent = gfxSub(); peekFps = true;
+  G.menu.choice('play', { label: 'Graphics', options: PRESETS.map(p => [p, p[0].toUpperCase() + p.slice(1)]), get: () => G.gfx.preset, sub: gfxSub, set: p => {
+    G.gfx.preset = p; G.store.set('gfx3d', p);
+    G.gfx.level = LEVEL[p] ?? G.store.get('gfxAuto3d', 1);
+    applyGfx(); peekFps = true;
   } });
-  G.menu.onOpen(() => { gfxRow.querySelector('em').textContent = gfxSub(); });
   G.on('resume', () => {
     if (!peekFps || G.settings.fps) return;
     peekFps = false; G.hud.showFps(true); G.hud.toast('The frame rate shows for a few seconds, top right.', 4);
