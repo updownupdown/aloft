@@ -74,21 +74,25 @@ void main() {
 const INST_VS = `#version 300 es
 layout(location=0) in vec3 aPos; layout(location=1) in vec3 aNrm; layout(location=2) in vec3 aCol; layout(location=3) in vec3 aColB;
 layout(location=4) in vec4 iA; layout(location=5) in vec4 iB;
-uniform mat4 uVP; uniform float uTime, uSway; uniform vec3 uAutumn;
+uniform mat4 uVP; uniform float uTime, uSway, uSnowLine; uniform vec3 uAutumn;
 
 out vec3 vPos, vNrm, vCol, vColB; out float vLeaf;
 void main() {
   float c = cos(iB.x), s = sin(iB.x);
+  float leafy = step(aCol.r * 1.05, aCol.g);
   vec3 p = aPos * iA.w;
   p.xz = vec2(c * p.x - s * p.z, s * p.x + c * p.z);
+  // a turn past 1.5 means bare (winter broadleaves): the leaves fold to nothing on the trunk's axis
+  p.xz *= 1. - step(1.5, iB.z) * leafy;
   float sway = sin(uTime * 1.1 + iB.w) * aPos.y * aPos.y * uSway * iA.w;
   p.x += sway; p.z += sway * .6;
   vPos = p + iA.xyz;
   vec3 n = aNrm; n.xz = vec2(c * n.x - s * n.z, s * n.x + c * n.z); vNrm = n;
   // leaves (greenish vertices) take a per-tree tint and the season's turn
-  float leafy = step(aCol.r * 1.05, aCol.g);
   vec3 col = aCol * (.88 + iB.y * .24);
   col = mix(col, uAutumn * (.85 + iB.y * .3), leafy * clamp(iB.z, 0., 1.));
+  // snow lies on the upturned leaves and needles above the snowline (world.js env.snow)
+  col = mix(col, vec3(.93, .95, .98), leafy * smoothstep(uSnowLine - 8., uSnowLine + 12., vPos.y) * smoothstep(.05, .45, n.y) * .85);
   vCol = col; vColB = col; vLeaf = leafy;
   gl_Position = uVP * vec4(vPos, 1.);
 }`;
@@ -221,12 +225,12 @@ export function createRenderer(gl) {
   // tree instances are rebuilt when the hawk has moved a little: near ones detailed, far ones simple
   let treeFrom = null;
   function updateTrees(p, season) {
-    if (treeFrom && Math.hypot(p[0] - treeFrom[0], p[2] - treeFrom[2]) < 20 && treeFrom[3] === season.key) return;
-    treeFrom = [p[0], 0, p[2], season.key];
+    if (treeFrom && Math.hypot(p[0] - treeFrom[0], p[2] - treeFrom[2]) < 20 && treeFrom[3] === season.key && treeFrom[4] === season.bare) return;
+    treeFrom = [p[0], 0, p[2], season.key, season.bare];
     const all = treesNear(p[0], p[2], R.treeView), buckets = kinds.map(() => [[], []]);
     for (const t of all) {
       const d = Math.hypot(t.x - p[0], t.z - p[2]); if (d > R.treeView) continue;
-      const k = t.look ?? t.kind, turn = season.autumn * (.5 + t.tint) * kinds[k].autumn;
+      const k = t.look ?? t.kind, turn = season.bare && kinds[k].autumn >= .5 ? 2 : season.autumn * (.5 + t.tint) * kinds[k].autumn;   // 2: bare
       buckets[k][d < R.nearTrees ? 0 : 1].push(t.x, t.y, t.z, t.s, t.yaw, t.tint, turn, t.id % 97);
     }
     R.stats.trees = all.length;
@@ -279,7 +283,7 @@ export function createRenderer(gl) {
 
     // trees and rings
     gl.useProgram(inst.p); setLight(inst, S);
-    gl.uniformMatrix4fv(inst.u.uVP, false, vp); gl.uniform1f(inst.u.uTime, S.time); gl.uniform3fv(inst.u.uAutumn, S.autumnCol);
+    gl.uniformMatrix4fv(inst.u.uVP, false, vp); gl.uniform1f(inst.u.uTime, S.time); gl.uniform3fv(inst.u.uAutumn, S.autumnCol); gl.uniform1f(inst.u.uSnowLine, S.snowLine ?? 999);
     gl.uniform1f(inst.u.uSway, .012 + S.wind * .02); gl.uniform1f(inst.u.uDither, 1);
     for (const k of kinds) for (const m of [k.near, k.far]) {
       if (!m.icount) continue;

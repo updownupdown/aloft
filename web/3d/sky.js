@@ -26,7 +26,11 @@ export function light(tod) {
 export const period = tod => (tod < .2 || tod > .8 ? 'night' : tod < .33 ? 'dawn' : tod > .68 ? 'dusk' : 'day');
 
 export function clockSystem(G) {
-  const seasonOf = () => { const i = Math.floor((G.day - 1) / SEASON_DAYS) % 4; return { i, name: SEASONS[i], key: i, autumn: i === 1 ? 1 : 0, winter: i === 2 ? 1 : 0 }; };
+  // d: the day within the season (0..7); bare: broadleaves leafless (winter and the first days of spring)
+  const seasonOf = () => {
+    const i = Math.floor((G.day - 1) / SEASON_DAYS) % 4, d = (G.day - 1) % SEASON_DAYS;
+    return { i, d, name: SEASONS[i], key: i, autumn: i === 1 ? 1 : 0, winter: i === 2 ? 1 : 0, bare: i === 2 || (i === 3 && d < 2) ? 1 : 0 };
+  };
   G.tod = .34; G.day = 1; G.light = light(G.tod); G.season = seasonOf();
   return {
     id: 'clock',

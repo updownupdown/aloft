@@ -22,7 +22,7 @@ export const WATER = 0;
 
 // what systems change at run time: the snowline (0 summer .. 1 deep winter, chunks must be
 // rebuilt when it moves), the thermals' strength, and extra lift (storm cells, waves, kettles)
-export const env = { snow: 0, thermal: 1, lifts: [] };
+export const env = { snow: 0, season: 'summer', seasonDay: 0, thermal: 1, lifts: [] };
 
 // how much of each kind of country a point is, 0..1 each (older callers read these)
 export function bands(x, z, bl = blend(x, z)) {
@@ -97,6 +97,17 @@ function groundColour(x, y, z, ny, bl = blend(x, z)) {
   if (y < 1.8 && sandy < .5) c = mixc(PAL.sand, c, smooth(.4, 1.8, y) * (marsh > .5 ? .6 : 1) + (marsh > .5 ? .4 : 0));
   if (y < 0) c = mixc(PAL.mud, PAL.sand, clamp(1 + y / 6, 0, 1));
   c = mixc(c, mixc(PAL.rock, PAL.rock2, ih(x | 0, z | 0, 3)), smooth(.22, .42, steep) * (1 - own));
+  // the season on the ground: fresh green in spring; in autumn leaf litter under the trees and
+  // tired, bare patches in the open (chunks are rebuilt when the season or snowline moves)
+  if (env.season === 'spring' || env.season === 'autumn') {
+    const grassy = smooth(.0, .08, c[1] - c[0]) * (1 - own) * (y > 1.8 ? 1 : 0), f = forestOf(x, z, bl);
+    if (env.season === 'spring') c = mixc(c, [c[0] * .9, c[1] * 1.05 + .015, c[2] * .85], grassy * smooth(0, 3, env.seasonDay + 1) * .5);
+    else {
+      const patch = smooth(.05, .4, fbm(x / 18, z / 18, 61, 2)), turn = smooth(0, 6, env.seasonDay + 1);
+      c = mixc(c, mixc(PAL.wood, [.62, .4, .2], .55), grassy * smooth(.05, .35, f) * turn * .55);
+      c = mixc(c, [.62, .58, .38], grassy * (1 - f) * patch * turn * .4);
+    }
+  }
   // snow on the heights, and in winter right down to the meadows (not on cliffs, not below water)
   const line = 185 - env.snow * 200;
   c = mixc(c, PAL.snow, smooth(line - 5, line + 25, y + fbm(x / 40, z / 40, 7, 2) * 12) * smooth(.45, .25, steep) * (y > .3 ? 1 : 0) * (1 - noSnow * .85));
