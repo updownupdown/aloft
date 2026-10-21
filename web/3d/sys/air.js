@@ -1,5 +1,5 @@
-// Rising air made visible: a cumulus cap over each thermal, leaves and dust carried up the
-// column in a slow spiral, thickest low down where the air is gathering.
+// Rising air made visible: a cumulus cap over each thermal, and leaves carried up the column
+// in a slow spiral (seen when you are near; no dust or dots, James 2026-10-21).
 // The vario beeps while the hawk climbs in it. (The lift itself is world.js airLift().)
 // Fair-weather clouds drift across the sky between them, more of them, and greyer, when overcast.
 import { height, WATER, thermalsNear, thermalCentre, WIND, ih } from '../world.js';
@@ -38,26 +38,15 @@ export function airSystem(G) {
       for (const t of thermalsNear(S.cam[0], S.cam[2], 650)) {
         const [cx, cz] = thermalCentre(t, t.top);
         clouds.push(cx, t.top + 18, cz, 20 + t.r * .7, t.id % 7, .6, 0, 0);
-        const dist = Math.hypot(t.x - S.cam[0], t.z - S.cam[2]); if (dist > 420) continue;
+        const dist = Math.hypot(t.x - S.cam[0], t.z - S.cam[2]); if (dist > 260) continue;
         const g0 = Math.max(height(t.x, t.z), WATER), span = Math.min(170, t.top - g0), day = .35 + .65 * G.light.daylight;
-        // dust and seed fluff: warm specks rising and turning, bigger the farther off (so the
-        // column still reads at a distance)
-        const grow = 1 + dist / 160;
-        for (let i = 0; i < 90; i++) {
-          const h1 = ((i * 97 + t.id) % 101) / 101, h2 = ((i * 61 + t.id * 3) % 89) / 89;
-          const y = g0 + ((G.t * t.w * .9 * day + h1 * h1 * span) % span);
-          const [mx, mz] = thermalCentre(t, y), a = h2 * 6.283 + G.t * .35 * (i & 1 ? 1 : -1), rr = t.r * .7 * Math.sqrt((h1 * 7.3) % 1);
-          const fade = smooth(0, 8, y - g0) * smooth(span, span - 40, y - g0);
-          S.motes.push(mx + Math.cos(a) * rr, y, mz + Math.sin(a) * rr, 1, .94, .72, (.45 + h2 * .35) * grow * fade);
-        }
         // leaves lifted off the ground, spiralling up and tumbling
-        if (dist > 300) continue;
         const L = S.props.leaf ||= [];
-        for (let i = 0; i < 22; i++) {
+        for (let i = 0; i < 28; i++) {
           const h1 = ((i * 53 + t.id * 7) % 97) / 97, h2 = ((i * 31 + t.id) % 83) / 83, top = Math.min(span, 90);
           const up = (G.t * t.w * .6 * day + h1 * top) % top, y = g0 + 1 + up;
           const [mx, mz] = thermalCentre(t, y), a = h2 * 6.283 + G.t * (.5 + h1 * .4), rr = t.r * (.25 + .5 * h2) * (1 - up / top * .4);
-          const sz = (.7 + h1 * .5) * smooth(0, 4, up) * smooth(top, top - 15, up) * (1 + dist / 220);
+          const sz = (.7 + h1 * .5) * smooth(0, 4, up) * smooth(top, top - 15, up) * (1 + dist / 300);
           L.push(mx + Math.cos(a) * rr, y, mz + Math.sin(a) * rr, sz, a * 2.3 + G.t * 3 * (h2 - .5), h2, (G.season?.autumn || 0) * .5, 0);
         }
       }

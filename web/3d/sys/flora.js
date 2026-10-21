@@ -34,22 +34,22 @@ function flower(col) {
 // a sagebrush or desert scrub: low grey-green lumps
 function scrub() {
   reseed(43); const B = builder(), c1 = [.55, .58, .44], c2 = [.64, .63, .5];
-  blob(B, 0, .18, 0, .3, c1, c2, [1.2, .6, 1]); blob(B, .22, .14, .1, .2, c2, c1, [1, .7, 1]);
+  blob(B, 0, .18, 0, .3, c1, c2, [1.2, .6, 1], 2); blob(B, .22, .14, .1, .2, c2, c1, [1, .7, 1], 2);
   return B.out();
 }
 // a small barrel cactus
 function barrel() {
   reseed(47); const B = builder();
-  blob(B, 0, .2, 0, .22, PAL.cactus, PAL.cactus2, [1, 1.1, 1]);
+  blob(B, 0, .2, 0, .22, PAL.cactus, PAL.cactus2, [1, 1.1, 1], 2);
   B.tri([-.04, .43, 0], [.04, .43, 0], [0, .48, .03], [.9, .45, .45]);
   return B.out();
 }
-function stone() { reseed(31); const B = builder(); blob(B, 0, .05, 0, .3, PAL.rock, PAL.rock2, [1.2, .55, .9]); return B.out(); }
+function stone() { reseed(31); const B = builder(); blob(B, 0, .05, 0, .3, PAL.rock, PAL.rock2, [1.2, .55, .9], 2); return B.out(); }
 function bush() {
   reseed(37); const B = builder();
-  blob(B, 0, .32, 0, .42, PAL.leaf2, PAL.leaf, [1, .75, 1]);
-  blob(B, .3, .22, .12, .3, PAL.leaf2, PAL.leaf, [1, .8, 1]);
-  blob(B, -.28, .2, -.1, .28, PAL.moss, PAL.leaf2, [1, .8, 1]);
+  blob(B, 0, .32, 0, .42, PAL.leaf2, PAL.leaf, [1, .75, 1], 2);
+  blob(B, .3, .22, .12, .3, PAL.leaf2, PAL.leaf, [1, .8, 1], 2);
+  blob(B, -.28, .2, -.1, .28, PAL.moss, PAL.leaf2, [1, .8, 1], 2);
   return B.out();
 }
 function reeds() {

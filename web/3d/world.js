@@ -2,11 +2,18 @@
 // stand, where thermals rise and rings hang. Only small caches are kept. The lands themselves
 // (which biome is where, and each one's ground and colours) are in biomes.js; the seed and the
 // noise in noise.js. Coordinates: x east, z south, y up, metres-ish. Water level is y = 0.
+import { store } from './util.js';
 import { ih, fbm, smooth, clamp, WORLD, newWorld } from './noise.js';
 import { BIOMES, PAL, JOURNEY, blend, weightOf, share, rollBiome, cellsNear } from './biomes.js';
 export { ih, fbm, WORLD, newWorld, PAL, JOURNEY, blend };
 
-export const CHUNK = 96, CELLS = 16, CELL = CHUNK / CELLS;
+export const CHUNK = 96;
+// Ground detail (Settings > Ground detail): cells per chunk side. 16 is 6 m facets, 24 (the
+// default) 4 m, 32 3 m, 48 2 m. Triangles grow with the square: 1x, 2.25x, 4x, 9x.
+export const GROUND = [[16, 'Coarse', '6 m facets'], [24, 'Fine', '4 m facets'], [32, 'Finer', '3 m facets, more for the GPU'], [48, 'Finest', '2 m facets, heavy: try it on a fast phone']];
+export let CELLS = 24, CELL = CHUNK / CELLS;
+export function setGroundDetail(n) { CELLS = GROUND.some(g => g[0] === n) ? n : 24; CELL = CHUNK / CELLS; }
+setGroundDetail(store.get('ground', 24));
 export const WATER = 0;
 
 // what systems change at run time: the snowline (0 summer .. 1 deep winter, chunks must be
@@ -318,6 +325,10 @@ const LM_KIND = {
   savanna: ['tower', 'redstones'], cliffs: ['falls'], mountains: ['cairn', 'falls'], alpine: ['cairn'], fjord: ['falls'], moor: ['stones', 'cairn', 'tower'],
   coast: ['stones', 'tower'], marsh: ['willow', 'stones'], swamp: ['willow'], desert: ['redstones'], canyon: ['redstones', 'falls'], badlands: ['redstones'],
 };
+// every land for the Journal's lands collection: its key, its name and its one sight to find
+// (a landmark kind; 'summit' is the summit cairn, 'sight' the land itself, seen from the middle)
+const SIGHT_OF = { coast: 'lighthouse', volcano: 'volcano', alpine: 'summit', canyon: 'arch', redwood: 'giant', fjord: 'falls', cliffs: 'falls', karst: 'sight', saltflat: 'sight', badlands: 'sight', desert: 'sight' };
+export const LANDS = Object.keys(BIOMES).map(key => ({ key, label: BIOMES[key].label, sight: SIGHT_OF[key] || LM_KIND[key]?.[0] || null }));
 function landmarkCell(gx, gz) {
   const key = gx + ',' + gz; if (lmCache.has(key)) return lmCache.get(key);
   let l = null;

@@ -14,54 +14,68 @@ export function builder() {
 }
 let seed = 1; export const reseed = n => { seed = n; }; const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
 
-export function prism(B, x, z, r0, r1, y0, y1, sides, col) {
+// an upright prism; rib < 1 pulls every other corner in (a fluted cactus, a ribbed trunk)
+export function prism(B, x, z, r0, r1, y0, y1, sides, col, rib = 1) {
+  const k = i => (i & 1 ? rib : 1);
   for (let i = 0; i < sides; i++) {
-    const a = i / sides * Math.PI * 2, b = (i + 1) / sides * Math.PI * 2;
-    const p0 = [x + Math.cos(a) * r0, y0, z + Math.sin(a) * r0], p1 = [x + Math.cos(b) * r0, y0, z + Math.sin(b) * r0];
-    const q0 = [x + Math.cos(a) * r1, y1, z + Math.sin(a) * r1], q1 = [x + Math.cos(b) * r1, y1, z + Math.sin(b) * r1];
+    const a = i / sides * Math.PI * 2, b = (i + 1) / sides * Math.PI * 2, ka = k(i), kb = k(i + 1);
+    const p0 = [x + Math.cos(a) * r0 * ka, y0, z + Math.sin(a) * r0 * ka], p1 = [x + Math.cos(b) * r0 * kb, y0, z + Math.sin(b) * r0 * kb];
+    const q0 = [x + Math.cos(a) * r1 * ka, y1, z + Math.sin(a) * r1 * ka], q1 = [x + Math.cos(b) * r1 * kb, y1, z + Math.sin(b) * r1 * kb];
     B.tri(p0, q1, p1, col, (rnd() - .5) * .08); B.tri(p0, q0, q1, col, (rnd() - .5) * .08);
   }
 }
-export function cone(B, y0, y1, r, sides, col, twist = 0) {
+// a cone of needles; serr > 0 gives it a ragged skirt: every other point tucked in and up, the
+// rest drooping, with a fold halfway up each facet so the tier reads as layered boughs
+export function cone(B, y0, y1, r, sides, col, twist = 0, serr = 0) {
+  const P = Array.from({ length: sides }, (_, i) => {
+    const a = i / sides * Math.PI * 2 + twist, tuck = serr && i & 1, rr = r * (tuck ? 1 - serr : .88 + rnd() * .24);
+    return [Math.cos(a) * rr, y0 + (tuck ? serr * .25 * (y1 - y0) : -rnd() * .03 - (serr ? .04 * (y1 - y0) : 0)), Math.sin(a) * rr];
+  });
   for (let i = 0; i < sides; i++) {
-    const a = i / sides * Math.PI * 2 + twist, b = (i + 1) / sides * Math.PI * 2 + twist, rr = r * (.85 + rnd() * .3);
-    const p0 = [Math.cos(a) * rr, y0 - rnd() * .03, Math.sin(a) * rr], p1 = [Math.cos(b) * r, y0, Math.sin(b) * r];
-    B.tri(p0, [0, y1, 0], p1, col, (rnd() - .5) * .14);
+    const p0 = P[i], p1 = P[(i + 1) % sides], j = (rnd() - .5) * .14;
+    if (serr) {
+      // the facet folds at a ring 40% of the way up, pushed out a little
+      const m = t => [t[0] * .66, y0 + (y1 - y0) * .4, t[2] * .66], m0 = m(p0), m1 = m(p1);
+      B.tri(p0, m0, p1, col, j); B.tri(p1, m0, m1, col, j + .03); B.tri(m0, [0, y1, 0], m1, col, j + .06);
+    } else B.tri(p0, [0, y1, 0], p1, col, j);
     B.tri(p0, p1, [0, y0 + .02, 0], col, -.25);
   }
 }
-// a lumpy low-poly ball: an octahedron split once, pushed out to a sphere and jittered
-export function blob(B, cx, cy, cz, r, col, col2, sc = [1, .85, 1]) {
+// a lumpy low-poly ball: an octahedron split lv times (1: 32 facets, 2: 128), pushed out to a
+// sphere and jittered (finer balls are jittered less, so they read as rounder, not spikier)
+export function blob(B, cx, cy, cz, r, col, col2, sc = [1, .85, 1], lv = 1) {
   const V = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
-  const F = [[0, 2, 4], [4, 2, 1], [1, 2, 5], [5, 2, 0], [0, 4, 3], [4, 1, 3], [1, 5, 3], [5, 0, 3]];
-  const cache = new Map();
+  let F = [[0, 2, 4], [4, 2, 1], [1, 2, 5], [5, 2, 0], [0, 4, 3], [4, 1, 3], [1, 5, 3], [5, 0, 3]].map(f => f.map(i => V[i]));
+  const cache = new Map(), jit = lv > 1 ? .18 : .3;
   const norm = v => { const l = Math.hypot(...v); return [v[0] / l, v[1] / l, v[2] / l]; };
+  const mid = (a, b) => norm([(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2]);
   const key = v => v.map(x => x.toFixed(3)).join();
-  const pt = v => { const k = key(v); if (!cache.has(k)) { const j = .85 + rnd() * .3; cache.set(k, [cx + v[0] * r * j * sc[0], cy + v[1] * r * j * sc[1], cz + v[2] * r * j * sc[2]]); } return cache.get(k); };
-  for (const [i, j, k] of F) {
-    const a = V[i], b = V[j], c = V[k];
-    const ab = norm([(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2]), bc = norm([(b[0] + c[0]) / 2, (b[1] + c[1]) / 2, (b[2] + c[2]) / 2]), ca = norm([(c[0] + a[0]) / 2, (c[1] + a[1]) / 2, (c[2] + a[2]) / 2]);
-    for (const [p, q, s] of [[a, ab, ca], [ab, b, bc], [ca, bc, c], [ab, bc, ca]]) B.tri(pt(p), pt(s), pt(q), rnd() < .5 ? col : col2, (rnd() - .5) * .12);
-  }
+  const pt = v => { const k = key(v); if (!cache.has(k)) { const j = 1 - jit / 2 + rnd() * jit; cache.set(k, [cx + v[0] * r * j * sc[0], cy + v[1] * r * j * sc[1], cz + v[2] * r * j * sc[2]]); } return cache.get(k); };
+  for (let l = 0; l < lv; l++) F = F.flatMap(([a, b, c]) => { const ab = mid(a, b), bc = mid(b, c), ca = mid(c, a); return [[a, ab, ca], [ab, b, bc], [ca, bc, c], [ab, bc, ca]]; });
+  for (const [p, q, s] of F) B.tri(pt(p), pt(s), pt(q), rnd() < .5 ? col : col2, (rnd() - .5) * .12);
 }
 
 export function broadleaf() {
-  seed = 7; const B = builder();
-  prism(B, 0, 0, TREE.trunkR[0], TREE.trunkR[0] * .6, -.05, TREE.trunkH[0] + .1, 5, PAL.bark);
+  seed = 7; const B = builder(), r = TREE.trunkR[0];
+  prism(B, 0, 0, r * 1.7, r, -.05, .05, 8, PAL.bark, .7);   // root flare
+  prism(B, 0, 0, r, r * .8, .05, TREE.trunkH[0] * .6, 8, PAL.bark, .9);
+  prism(B, 0, 0, r * .8, r * .6, TREE.trunkH[0] * .6, TREE.trunkH[0] + .1, 8, PAL.bark, .9);
   // the limbs (perches under the canopy, see TREE.limbs), each with a tuft at its tip
   for (const [o, y, l] of TREE.limbs[0]) limb(B, o, y, l, TREE.limbR[0], PAL.leaf, PAL.leaf2);
   const R = TREE.crownR;
-  blob(B, 0, TREE.crownY, 0, R, PAL.leaf, PAL.leaf2);
-  blob(B, R * .55, TREE.crownY - .08, R * .3, R * .62, PAL.leaf2, PAL.leaf);
-  blob(B, -R * .5, TREE.crownY - .05, -R * .35, R * .6, PAL.leaf, PAL.leaf2);
-  blob(B, 0, TREE.crownY + R * .55, 0, R * .5, PAL.leaf2, PAL.leaf);
+  blob(B, 0, TREE.crownY, 0, R, PAL.leaf, PAL.leaf2, undefined, 2);
+  blob(B, R * .55, TREE.crownY - .08, R * .3, R * .62, PAL.leaf2, PAL.leaf, undefined, 2);
+  blob(B, -R * .5, TREE.crownY - .05, -R * .35, R * .6, PAL.leaf, PAL.leaf2, undefined, 2);
+  blob(B, 0, TREE.crownY + R * .55, 0, R * .5, PAL.leaf2, PAL.leaf, undefined, 2);
+  blob(B, -R * .2, TREE.crownY - .02, R * .62, R * .5, PAL.leaf2, PAL.leaf);
+  blob(B, R * .35, TREE.crownY + .1, -R * .55, R * .45, PAL.leaf, PAL.leaf2);
   return B.out();
 }
 // a limb from the trunk at height y, turned o from +x, l long, r thick, rising a little to a tuft
 function limb(B, o, y, l, r, leaf, leaf2, bark = PAL.bark) {
   const c = Math.cos(o), s = Math.sin(o);
-  for (let i = 0; i < 4; i++) {
-    const a = i / 4 * Math.PI * 2, b = (i + 1) / 4 * Math.PI * 2;
+  for (let i = 0; i < 6; i++) {
+    const a = i / 6 * Math.PI * 2, b = (i + 1) / 6 * Math.PI * 2;
     const p = (t, ang) => { const u = t * l, w = Math.cos(ang) * r * (1 - t * .5); return [u * c - w * s, y - .04 + t * .06 + Math.sin(ang) * r * (1 - t * .5), u * s + w * c]; };
     B.tri(p(0, a), p(1, b), p(1, a), bark); B.tri(p(0, a), p(0, b), p(1, b), bark);
   }
@@ -69,11 +83,14 @@ function limb(B, o, y, l, r, leaf, leaf2, bark = PAL.bark) {
 }
 export function pine() {
   seed = 11; const B = builder();
-  prism(B, 0, 0, TREE.trunkR[1], TREE.trunkR[1] * .5, -.05, .5, 5, PAL.bark);
+  prism(B, 0, 0, TREE.trunkR[1] * 1.5, TREE.trunkR[1], -.05, .04, 7, PAL.bark, .7);
+  prism(B, 0, 0, TREE.trunkR[1], TREE.trunkR[1] * .5, .04, .5, 7, PAL.bark);
   for (const [o, y, l] of TREE.limbs[1]) limb(B, o, y, l, TREE.limbR[1]);   // bare limbs reaching out past the needles
-  cone(B, .18, .62, .26, 7, PAL.pine, 0);
-  cone(B, .42, .82, .2, 7, PAL.pine2, .4);
-  cone(B, .64, 1.0, .13, 6, PAL.pine, .8);
+  cone(B, .16, .5, .27, 12, PAL.pine, 0, .3);
+  cone(B, .32, .66, .23, 12, PAL.pine2, .4, .3);
+  cone(B, .48, .8, .18, 10, PAL.pine, .8, .3);
+  cone(B, .64, .92, .13, 10, PAL.pine2, 1.2, .3);
+  cone(B, .8, 1.0, .08, 8, PAL.pine, 1.6, .25);
   return B.out();
 }
 export function ring() {
@@ -110,51 +127,54 @@ export function tube(B, p, q, r, col) {
 const limbsOf = (B, look, leaf, leaf2, bark) => { for (const [o, y, l] of LOOKS[look].limbs) limb(B, o, y, l, LOOKS[look].limbR, leaf, leaf2, bark); };
 export function birch() {
   seed = 13; const B = builder(), dark = [.25, .24, .22];
-  prism(B, 0, 0, .03, .018, -.05, .8, 5, PAL.birch);
-  for (const y of [.12, .27, .4, .58]) prism(B, 0, 0, .031, .029, y, y + .018, 5, dark);
+  prism(B, 0, 0, .03, .018, -.05, .8, 8, PAL.birch);
+  for (const y of [.08, .12, .2, .27, .34, .4, .5, .58]) prism(B, 0, 0, .031 - y * .014, .03 - y * .014, y, y + .012 + (y * 97 % 1) * .01, 8, dark);
   limbsOf(B, 2, PAL.birchLeaf, PAL.birchLeaf2, PAL.birch);
-  blob(B, 0, .74, 0, .19, PAL.birchLeaf, PAL.birchLeaf2, [.9, 1.4, .9]);
-  blob(B, .07, .56, .05, .14, PAL.birchLeaf2, PAL.birchLeaf, [1, 1.2, 1]);
-  blob(B, -.06, .62, -.06, .13, PAL.birchLeaf, PAL.birchLeaf2, [1, 1.2, 1]);
+  blob(B, 0, .74, 0, .19, PAL.birchLeaf, PAL.birchLeaf2, [.9, 1.4, .9], 2);
+  blob(B, .07, .56, .05, .14, PAL.birchLeaf2, PAL.birchLeaf, [1, 1.2, 1], 2);
+  blob(B, -.06, .62, -.06, .13, PAL.birchLeaf, PAL.birchLeaf2, [1, 1.2, 1], 2);
+  blob(B, -.04, .86, .05, .1, PAL.birchLeaf2, PAL.birchLeaf, [1, 1.3, 1]);
   return B.out();
 }
 export function redwood() {
   seed = 17; const B = builder();
-  prism(B, 0, 0, .075, .04, -.05, .1, 6, PAL.redBark);
-  prism(B, 0, 0, .04, .016, .1, .92, 6, PAL.redBark);
+  prism(B, 0, 0, .075, .04, -.05, .1, 10, PAL.redBark, .75);
+  prism(B, 0, 0, .04, .028, .1, .5, 10, PAL.redBark, .85);
+  prism(B, 0, 0, .028, .016, .5, .92, 8, PAL.redBark, .85);
   limbsOf(B, 3, null, null, PAL.redBark);
-  cone(B, .4, .64, .15, 7, PAL.redLeaf, 0);
-  cone(B, .54, .78, .13, 7, PAL.pine, .5);
-  cone(B, .68, .9, .1, 6, PAL.redLeaf, 1);
-  cone(B, .8, 1.0, .07, 6, PAL.pine, 1.5);
+  cone(B, .4, .64, .15, 11, PAL.redLeaf, 0, .3);
+  cone(B, .54, .78, .13, 11, PAL.pine, .5, .3);
+  cone(B, .68, .9, .1, 9, PAL.redLeaf, 1, .3);
+  cone(B, .8, 1.0, .07, 8, PAL.pine, 1.5, .25);
   return B.out();
 }
 export function acacia() {
   seed = 23; const B = builder();
-  prism(B, 0, 0, .04, .03, -.05, .55, 5, PAL.bark);
+  prism(B, 0, 0, .04, .03, -.05, .55, 8, PAL.bark, .85);
   limbsOf(B, 4, PAL.acacia, PAL.acacia2);
   for (const [o, y, l] of LOOKS[4].limbs) tube(B, [Math.cos(o) * l * .5, y, Math.sin(o) * l * .5], [Math.cos(o) * l * .8, .8, Math.sin(o) * l * .8], .012, PAL.bark);
-  blob(B, 0, .84, 0, .42, PAL.acacia, PAL.acacia2, [1.25, .22, 1.25]);
-  blob(B, .18, .9, .08, .26, PAL.acacia2, PAL.acacia, [1.2, .25, 1.2]);
+  blob(B, 0, .84, 0, .42, PAL.acacia, PAL.acacia2, [1.25, .22, 1.25], 2);
+  blob(B, .18, .9, .08, .26, PAL.acacia2, PAL.acacia, [1.2, .25, 1.2], 2);
+  blob(B, -.2, .88, -.1, .22, PAL.acacia2, PAL.acacia, [1.2, .25, 1.2]);
   return B.out();
 }
 export function saguaro() {
   seed = 29; const B = builder(), L = LOOKS[5];
-  prism(B, 0, 0, .05, .045, -.05, .94, 8, PAL.cactus);
-  blob(B, 0, .95, 0, .05, PAL.cactus2, PAL.cactus, [1, .9, 1]);
+  prism(B, 0, 0, .05, .045, -.05, .94, 16, PAL.cactus, .82);
+  blob(B, 0, .95, 0, .05, PAL.cactus2, PAL.cactus, [1, .9, 1], 2);
   for (const [o, y, l] of L.limbs) {
     limb(B, o, y, l, L.limbR, null, null, PAL.cactus2);
     const x = Math.cos(o) * l, z = Math.sin(o) * l;
-    prism(B, x, z, .032, .028, y - .01, y + .26, 6, PAL.cactus);
-    blob(B, x, y + .26, z, .03, PAL.cactus2, PAL.cactus);
+    prism(B, x, z, .032, .028, y - .01, y + .26, 12, PAL.cactus, .82);
+    blob(B, x, y + .26, z, .03, PAL.cactus2, PAL.cactus, undefined, 2);
   }
   return B.out();
 }
 export function joshua() {
   seed = 31; const B = builder(), bark = [.5, .43, .33], L = LOOKS[6];
-  prism(B, 0, 0, .05, .035, -.05, .55, 5, bark);
-  prism(B, 0, 0, .03, .02, .55, .92, 5, bark);
-  const spikes = (x, y, z) => { blob(B, x, y, z, .07, PAL.joshua, PAL.acacia2, [1, .8, 1]); for (let i = 0; i < 5; i++) { const a = i * 1.26; B.tri([x + Math.cos(a) * .04, y, z + Math.sin(a) * .04], [x + Math.cos(a + .5) * .04, y, z + Math.sin(a + .5) * .04], [x + Math.cos(a) * .1, y + .07, z + Math.sin(a) * .1], PAL.joshua); } };
+  prism(B, 0, 0, .05, .035, -.05, .55, 8, bark, .8);
+  prism(B, 0, 0, .03, .02, .55, .92, 7, bark, .8);
+  const spikes = (x, y, z) => { blob(B, x, y, z, .07, PAL.joshua, PAL.acacia2, [1, .8, 1]); for (let i = 0; i < 9; i++) { const a = i * .7; B.tri([x + Math.cos(a) * .04, y, z + Math.sin(a) * .04], [x + Math.cos(a + .5) * .04, y, z + Math.sin(a + .5) * .04], [x + Math.cos(a) * .1, y + .07, z + Math.sin(a) * .1], PAL.joshua); } };
   for (const [o, y, l] of L.limbs) {
     limb(B, o, y, l, L.limbR, null, null, bark);
     const x = Math.cos(o) * l, z = Math.sin(o) * l;
@@ -171,11 +191,11 @@ export function mangrove() {
     tube(B, [Math.cos(a) * .02, .24, Math.sin(a) * .02], [Math.cos(a) * r * .6, .2, Math.sin(a) * r * .6], .012, PAL.bark);
     tube(B, [Math.cos(a) * r * .6, .2, Math.sin(a) * r * .6], [Math.cos(a) * r, -.08, Math.sin(a) * r], .012, PAL.bark);
   }
-  prism(B, 0, 0, .04, .028, .15, .58, 5, PAL.bark);
+  prism(B, 0, 0, .04, .028, .15, .58, 8, PAL.bark, .85);
   limbsOf(B, 7, PAL.mangrove, PAL.leaf);
-  blob(B, 0, .7, 0, .33, PAL.mangrove, PAL.leaf, [1.3, .75, 1.3]);
-  blob(B, .26, .62, .1, .2, PAL.leaf, PAL.mangrove);
-  blob(B, -.22, .63, -.16, .2, PAL.mangrove, PAL.leaf);
+  blob(B, 0, .7, 0, .33, PAL.mangrove, PAL.leaf, [1.3, .75, 1.3], 2);
+  blob(B, .26, .62, .1, .2, PAL.leaf, PAL.mangrove, undefined, 2);
+  blob(B, -.22, .63, -.16, .2, PAL.mangrove, PAL.leaf, undefined, 2);
   return B.out();
 }
 // far versions: a trunk and one lump
