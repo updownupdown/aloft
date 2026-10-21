@@ -125,6 +125,5 @@
 .call3.rest { opacity: .4; }
 .menu-open .sing3, .menu-open .call3, .bare3 .call3, .bare3 .sing3 { display: none; }
 
-/* while the song controls are out, the message line rises over the song card and keeps clear of
-   the note pad */
-#ui3:has(.sing3.on:not(.hidden)) .toast3 { bottom: calc(108px + env(safe-area-inset-bottom)); max-width: min(560px, calc(100vw - 2 * (var(--padw, 96px) + 40px))); }
+/* while the song controls are out, the message line (top centre) keeps clear of the note pad */
+#ui3:has(.sing3.on:not(.hidden)) .toast3 { max-width: min(560px, calc(100vw - 2 * (var(--padw, 96px) + 40px))); }
