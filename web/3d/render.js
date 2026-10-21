@@ -10,8 +10,8 @@ import { buildHawk, HAWK_SCALE } from './hawk.js';
 const CLOUDY = new Set(['cloud', 'storm', 'puff', 'lens', 'devil']);
 const COMMON_FS = `
 uniform vec3 uCam, uSun, uSunCol, uSkyAmb, uGndAmb, uFogCol, uFocus;
-uniform float uFogDen, uDither, uSeek;
-in vec3 vPos, vNrm, vCol, vColB; in float vLeaf;
+uniform float uFogDen, uDither, uSeek, uCut, uFade;
+in vec3 vPos, vNrm, vCol, vColB; in float vLeaf, vFade, vGone;
 out vec4 frag;
 float h21(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
 vec3 shade(vec3 col, vec3 n) {
@@ -20,7 +20,8 @@ vec3 shade(vec3 col, vec3 n) {
   return col * (amb + uSunCol * wrap);
 }
 vec3 haze(vec3 c) {
-  float d = length(vPos - uCam);
+  // the haze lies low: high ground thins it, so far hills and peaks stand out on the skyline
+  float d = length(vPos - uCam) * mix(1., .2, smoothstep(20., 250., vPos.y));
   float f = 1. - exp(-pow(d * uFogDen, 1.6));
   return mix(c, uFogCol, f);
 }
@@ -30,6 +31,16 @@ const LIT_FS = `#version 300 es
 precision highp float;
 ${COMMON_FS}
 void main() {
+  // far tiles give way to the near ground inside uCut metres
+  if (uCut > 0. && length(vPos.xz - uCam.xz) < uCut) discard;
+  // trees changing detail (uFade 1 the near mesh, 2 the far one) dissolve through each other
+  // on an ordered dither, by vFade (0 near .. 1 far)
+  if (uFade > .5) {
+    ivec2 q = ivec2(gl_FragCoord.xy) & 3; int i = q.x + q.y * 4;
+    float bayer[16] = float[16](0., 8., 2., 10., 12., 4., 14., 6., 3., 11., 1., 9., 15., 7., 13., 5.);
+    float h = (bayer[i] + .5) / 16.;
+    if (uFade < 1.5 ? h < vFade : h >= vFade) discard;
+  }
   if (uDither > 1.5) {
     // clouds: thin to a screen as the camera nears them, almost gone inside one
     float k = mix(.08, 1., smoothstep(10., 90., length(vPos - uCam)));
@@ -65,10 +76,10 @@ void main() {
 const LIT_VS = `#version 300 es
 layout(location=0) in vec3 aPos; layout(location=1) in vec3 aNrm; layout(location=2) in vec3 aCol; layout(location=3) in vec3 aColB;
 uniform mat4 uVP, uModel;
-out vec3 vPos, vNrm, vCol, vColB; out float vLeaf;
+out vec3 vPos, vNrm, vCol, vColB; out float vLeaf, vFade, vGone;
 void main() {
   vec4 w = uModel * vec4(aPos, 1.);
-  vPos = w.xyz; vNrm = mat3(uModel) * aNrm; vCol = aCol; vColB = aColB; vLeaf = 0.;
+  vPos = w.xyz; vNrm = mat3(uModel) * aNrm; vCol = aCol; vColB = aColB; vLeaf = 0.; vFade = 0.; vGone = 0.;
   gl_Position = uVP * w;
 }`;
 const INST_VS = `#version 300 es
@@ -76,11 +87,14 @@ layout(location=0) in vec3 aPos; layout(location=1) in vec3 aNrm; layout(locatio
 layout(location=4) in vec4 iA; layout(location=5) in vec4 iB;
 uniform mat4 uVP; uniform float uTime, uSway, uSnowLine; uniform vec3 uAutumn;
 
-out vec3 vPos, vNrm, vCol, vColB; out float vLeaf;
+out vec3 vPos, vNrm, vCol, vColB; out float vLeaf, vFade, vGone;
 void main() {
+  // trees carry their detail fade in the phase's fraction (render.js updateTrees): tenths are
+  // how far from near to far (vFade), hundredths how far grown in at the edge of the view (vGone)
+  float fr = fract(iB.w); vFade = floor(fr * 10.) / 9.; vGone = floor(fract(fr * 10.) * 10.) / 9.;
   float c = cos(iB.x), s = sin(iB.x);
   float leafy = step(aCol.r * 1.05, aCol.g);
-  vec3 p = aPos * iA.w;
+  vec3 p = aPos * iA.w * (1. - vGone);   // at the edge of the view they grow up out of the ground
   p.xz = vec2(c * p.x - s * p.z, s * p.x + c * p.z);
   // a turn past 1.5 means bare (winter broadleaves): the leaves fold to nothing on the trunk's axis
   p.xz *= 1. - step(1.5, iB.z) * leafy;
@@ -126,7 +140,7 @@ void main() {
 }`;
 const WATER_VS = `#version 300 es
 layout(location=0) in vec2 aP; uniform mat4 uVP; uniform vec3 uCam; uniform float uLevel; out vec3 vPos;
-void main() { vPos = vec3(aP.x * 900. + uCam.x, uLevel, aP.y * 900. + uCam.z); gl_Position = uVP * vec4(vPos, 1.); }`;
+void main() { vPos = vec3(aP.x * 2700. + uCam.x, uLevel, aP.y * 2700. + uCam.z); gl_Position = uVP * vec4(vPos, 1.); }`;
 const WATER_FS = `#version 300 es
 precision highp float;
 in vec3 vPos; out vec4 frag;
@@ -180,13 +194,48 @@ function lod(kind) {
   return new Float32Array(a);
 }
 
+// The far version of a tree should look like the near one from afar: scale its leaf colours so
+// their lit average (by area, over a ring of sun directions) matches the near mesh's, or a dark
+// crown turns pale as it changes detail
+function toneMatch(near, far) {
+  const SUNS = Array.from({ length: 8 }, (_, i) => [Math.cos(i * .785) * .77, .64, Math.sin(i * .785) * .77]);
+  const lit = d => {
+    const sum = [0, 0, 0]; let area = 0;
+    for (let o = 0; o < d.length; o += 36) {
+      const r = d[o + 6], g = d[o + 7], b = d[o + 8]; if (!(g > r * 1.05)) continue;
+      const ux = d[o + 12] - d[o], uy = d[o + 13] - d[o + 1], uz = d[o + 14] - d[o + 2], vx = d[o + 24] - d[o], vy = d[o + 25] - d[o + 1], vz = d[o + 26] - d[o + 2];
+      const a = Math.hypot(uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx); if (!a) continue;
+      const nx = d[o + 3], ny = d[o + 4], nz = d[o + 5];
+      let L = 0; for (const s of SUNS) L += Math.max((nx * s[0] + ny * s[1] + nz * s[2] + .3) / 1.3, 0);
+      L = L / SUNS.length + .35 + .25 * (ny * .5 + .5);
+      sum[0] += r * L * a; sum[1] += g * L * a; sum[2] += b * L * a; area += a;
+    }
+    return area ? sum.map(v => v / area) : null;
+  };
+  // faces wound against their normals would be lit from behind (the shader flips back faces)
+  far = far.slice();
+  for (let o = 0; o < far.length; o += 36) {
+    const ux = far[o + 12] - far[o], uy = far[o + 13] - far[o + 1], uz = far[o + 14] - far[o + 2], vx = far[o + 24] - far[o], vy = far[o + 25] - far[o + 1], vz = far[o + 26] - far[o + 2];
+    if ((uy * vz - uz * vy) * far[o + 3] + (uz * vx - ux * vz) * far[o + 4] + (ux * vy - uy * vx) * far[o + 5] < 0) {
+      const t = far.slice(o + 12, o + 24); far.copyWithin(o + 12, o + 24, o + 36); far.set(t, o + 24);
+    }
+  }
+  const n = lit(near), f = lit(far); if (!n || !f) return far;
+  const k = n.map((v, i) => Math.min(2, Math.max(.5, v / (f[i] || 1)))), out = far.slice();
+  for (let o = 0; o < out.length; o += 12) if (out[o + 7] > out[o + 6] * 1.05) for (let c = 0; c < 3; c++) { out[o + 6 + c] *= k[c]; out[o + 9 + c] *= k[c]; }
+  return out;
+}
+
 export function createRenderer(gl) {
   const lit = program(gl, LIT_VS, LIT_FS), inst = program(gl, INST_VS, LIT_FS), sky = program(gl, SKY_VS, SKY_FS);
   const water = program(gl, WATER_VS, WATER_FS), flat = program(gl, FLAT_VS, FLAT_FS);
   const tri = mesh(gl, new Float32Array([-1, -1, 3, -1, -1, 3]), [[0, 2]]);
   const plane = mesh(gl, new Float32Array([-1, -1, 1, -1, 1, 1, -1, -1, 1, 1, -1, 1]), [[0, 2]]);
   // one pair of meshes (near, far) per tree look (shapes.js TREE_LOOKS; a tree's look ?? kind)
-  const kinds = TREE_LOOKS.map((L, i) => ({ near: mesh(gl, L.near(), LAYOUT, { instLayout: ILAYOUT }), far: mesh(gl, L.far ? L.far() : lod(i), LAYOUT, { instLayout: ILAYOUT }), autumn: L.autumn }));
+  const kinds = TREE_LOOKS.map((L, i) => {
+    const nd = L.near(), fd = toneMatch(nd, L.far ? L.far() : lod(i));
+    return { near: mesh(gl, nd, LAYOUT, { instLayout: ILAYOUT }), far: mesh(gl, fd, LAYOUT, { instLayout: ILAYOUT }), autumn: L.autumn };
+  });
   // instanced shapes by name; systems register their own with R.shape(name, triangles)
   const shapes = new Map();
   const shape = (key, data) => { const old = shapes.get(key); if (old) { gl.deleteBuffer(old.buf); gl.deleteBuffer(old.ibuf); gl.deleteVertexArray(old.vao); } shapes.set(key, mesh(gl, data, LAYOUT, { instLayout: ILAYOUT })); };
@@ -206,7 +255,8 @@ export function createRenderer(gl) {
   try {
     worker = new Worker(new URL('./chunkwork.js', import.meta.url), { type: 'module' });
     worker.onmessage = e => {
-      const { k, cx, cz, cells, gen: g, data } = e.data;
+      const { k, cx, cz, cells, gen: g, data, far: isFar } = e.data;
+      if (isFar) { farBusy.delete(k); if (g === gen) placeFar(k, cx, cz, data); return; }
       busy.delete(k);
       if (g !== gen) return;   // the season (or the detail) changed while it was built
       place(k, cx, cz, cells, data);
@@ -218,6 +268,35 @@ export function createRenderer(gl) {
     let y0 = 1e9, y1 = -1e9;   // its height range, for culling against the view
     for (let i = 1; i < data.length; i += 12) { const y = data[i]; if (y < y0) y0 = y; if (y > y1) y1 = y; }
     chunks.set(k, { cx, cz, cells, gen, y0, y1, m: mesh(gl, data, LAYOUT) });
+  }
+  // Far tiles: past the near ground, out to FAR_VIEW, the land in big coarse tiles (FAR_TILE
+  // metres, FAR_CELLS a side) sunk a little under the near ground, which they give way to inside
+  // the near view (uCut). The haze thins over high ground, so it is the far hills and peaks that show.
+  const FAR_TILE = 384, FAR_CELLS = 12, FAR_DROP = 2;
+  R.farView = 2400;
+  const far = new Map(), farBusy = new Set();
+  function placeFar(k, tx, tz, data) {
+    const old = far.get(k); if (old) { gl.deleteBuffer(old.m.buf); gl.deleteVertexArray(old.m.vao); }
+    let y0 = 1e9, y1 = -1e9;
+    for (let i = 1; i < data.length; i += 12) { const y = data[i]; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+    far.set(k, { tx, tz, gen, y0, y1, m: mesh(gl, data, LAYOUT) });
+  }
+  function updateFar(cam, near) {
+    const fv = R.farView, r = Math.ceil(fv / FAR_TILE), cx = Math.floor(cam[0] / FAR_TILE), cz = Math.floor(cam[2] / FAR_TILE), want = [];
+    const span = (a, b, c) => Math.max(a - c, 0, c - b);   // distance from c to the span [a, b]
+    for (let j = -r; j <= r; j++) for (let i = -r; i <= r; i++) {
+      const tx = cx + i, tz = cz + j, x0 = tx * FAR_TILE, z0 = tz * FAR_TILE;
+      const dn = Math.hypot(span(x0, x0 + FAR_TILE, cam[0]), span(z0, z0 + FAR_TILE, cam[2])), df = Math.hypot(Math.max(Math.abs(x0 - cam[0]), Math.abs(x0 + FAR_TILE - cam[0])), Math.max(Math.abs(z0 - cam[2]), Math.abs(z0 + FAR_TILE - cam[2])));
+      const k = tx + ',' + tz, t = far.get(k);
+      if (dn > fv || df < near * .9) { if (t) { gl.deleteBuffer(t.m.buf); gl.deleteVertexArray(t.m.vao); far.delete(k); } continue; }
+      if ((!t || t.gen !== gen) && !farBusy.has(k)) want.push([dn, tx, tz, k]);
+    }
+    want.sort((a, b) => a[0] - b[0]);
+    for (const [, tx, tz, k] of want) {
+      if (farBusy.size >= 2) break;
+      if (worker) { farBusy.add(k); worker.postMessage({ k, cx: tx, cz: tz, cells: FAR_CELLS, size: FAR_TILE, drop: FAR_DROP, far: true, gen, seed: WORLD.seed, snow: env.snow, season: env.season, seasonDay: env.seasonDay }); }
+      else { placeFar(k, tx, tz, chunkMesh(tx, tz, FAR_CELLS, FAR_TILE, FAR_DROP)); break; }
+    }
   }
   function updateChunks(cam, budget = 2) {
     const view = Math.min(R.view, R.fogView || 1e9);
@@ -251,21 +330,28 @@ export function createRenderer(gl) {
         gl.deleteBuffer(c.m.buf); gl.deleteVertexArray(c.m.vao); chunks.delete(k);
       }
     }
+    updateFar(cam, view);
     return want.length;
   }
   // tree instances are rebuilt when the hawk has moved a little: near ones detailed, far ones simple
   // and only those in front of the camera (a cone a little wider than the view), re-sorted when the
   // view turns; the list round the hawk is fetched again only after it moves
-  let treeFrom = null, treeAll = [], treeYaw = 0, treeSteep = false;
+  // Trees change detail across a band (TREE_BAND metres round R.nearTrees) drawn twice, the near
+  // mesh dissolving into the far one on a dither, and grow up out of the ground over the last
+  // TREE_EDGE metres of the view (in the haze), so none pops; the buckets are redone every few metres to keep it smooth
+  const TREE_BAND = 26, TREE_EDGE = 45;
+  let treeFrom = null, treeAt = null, treeAll = [], treeYaw = 0, treeSteep = false;
   function updateTrees(p, season) {
     const v = R.viewInfo, tv = Math.min(R.treeView, (R.fogView || 1e9) * .85);
     const moved = !treeFrom || Math.hypot(p[0] - treeFrom[0], p[2] - treeFrom[2]) >= 20 || treeFrom[3] !== season.key || treeFrom[4] !== season.bare || treeFrom[5] !== tv;
+    const stepped = !treeAt || Math.hypot(p[0] - treeAt[0], p[2] - treeAt[1]) >= 4;
     let yaw = treeYaw, steep = treeSteep;
     if (v) { yaw = Math.atan2(v.f[0], -v.f[2]); steep = v.f[1] < -.55; }
     const turned = Math.abs(Math.atan2(Math.sin(yaw - treeYaw), Math.cos(yaw - treeYaw))) > .3 || steep !== treeSteep;
-    if (!moved && !turned) return;
-    if (moved) { treeFrom = [p[0], 0, p[2], season.key, season.bare, tv]; treeAll = treesNear(p[0], p[2], tv); }
-    treeYaw = yaw; treeSteep = steep;
+    if (!moved && !turned && !stepped) return;
+    if (moved) { treeFrom = [p[0], 0, p[2], season.key, season.bare, tv]; treeAll = treesNear(p[0], p[2], tv + 22); }
+    treeAt = [p[0], p[2]]; treeYaw = yaw; treeSteep = steep;
+    const lo = R.nearTrees - TREE_BAND / 2, hi = R.nearTrees + TREE_BAND / 2;
     const buckets = kinds.map(() => [[], []]);
     const fx = Math.sin(yaw), fz = -Math.cos(yaw), cone = v && !steep ? Math.cos(Math.min(Math.PI, Math.atan(Math.tan(v.fov / 2) * v.aspect) + .75)) : -2;
     const cx = v ? v.cam[0] : p[0], cz = v ? v.cam[2] : p[2];
@@ -275,7 +361,11 @@ export function createRenderer(gl) {
       const dx = t.x - cx, dz = t.z - cz, dc = Math.hypot(dx, dz);
       if (dc > 40 && (dx * fx + dz * fz) / dc < cone) continue;   // well off to the side or behind
       const k = t.look ?? t.kind, turn = season.bare && kinds[k].autumn >= .5 ? 2 : season.autumn * (.5 + t.tint) * kinds[k].autumn;   // 2: bare
-      buckets[k][d < R.nearTrees ? 0 : 1].push(t.x, t.y, t.z, t.s, t.yaw, t.tint, turn, t.id % 97); drawn++;
+      const f = Math.round(Math.min(1, Math.max(0, (d - lo) / (hi - lo))) * 9), g = Math.round(Math.min(1, Math.max(0, (d - tv + TREE_EDGE) / TREE_EDGE)) * 9);
+      const ph = Math.floor(Math.abs(t.id)) % 97 + f * .1 + g * .01 + .005;
+      if (f < 9) buckets[k][0].push(t.x, t.y, t.z, t.s, t.yaw, t.tint, turn, ph);
+      if (f > 0) buckets[k][1].push(t.x, t.y, t.z, t.s, t.yaw, t.tint, turn, ph);
+      drawn++;
     }
     R.stats.trees = drawn;
     for (let k = 0; k < kinds.length; k++) for (let l = 0; l < 2; l++) {
@@ -287,13 +377,13 @@ export function createRenderer(gl) {
   function setLight(P, S) {
     gl.uniform3fv(P.u.uCam, S.cam); gl.uniform3fv(P.u.uSun, S.sun); gl.uniform3fv(P.u.uSunCol, S.sunCol);
     gl.uniform3fv(P.u.uSkyAmb, S.skyAmb); gl.uniform3fv(P.u.uGndAmb, S.gndAmb); gl.uniform3fv(P.u.uFogCol, S.horizon);
-    gl.uniform1f(P.u.uFogDen, S.fogDen); gl.uniform3fv(P.u.uFocus, S.focus); gl.uniform1f(P.u.uDither, 0); if (P.u.uSeek) gl.uniform1f(P.u.uSeek, S.seek || 0);
+    gl.uniform1f(P.u.uFogDen, S.fogDen); gl.uniform3fv(P.u.uFocus, S.focus); gl.uniform1f(P.u.uDither, 0); gl.uniform1f(P.u.uCut, 0); gl.uniform1f(P.u.uFade, 0); if (P.u.uSeek) gl.uniform1f(P.u.uSeek, S.seek || 0);
   }
 
   R.draw = (S, W, cw, ch) => {
     const w = cw, h = ch;
     gl.viewport(0, 0, w, h);
-    const proj = perspective(S.fov, w / h, .15, 1400), view = lookAt(S.cam, S.look, S.camUp);
+    const proj = perspective(S.fov, w / h, .15, R.farView + 300), view = lookAt(S.cam, S.look, S.camUp);
     const vp = mul(proj, view);
     R.vp = vp;
     { const fx = S.look[0] - S.cam[0], fy = S.look[1] - S.cam[1], fz = S.look[2] - S.cam[2], l = Math.hypot(fx, fy, fz) || 1; R.viewInfo = { cam: S.cam, f: [fx / l, fy / l, fz / l], fov: S.fov, aspect: w / h }; }
@@ -319,6 +409,13 @@ export function createRenderer(gl) {
       gl.bindVertexArray(c.m.vao); gl.drawArrays(gl.TRIANGLES, 0, c.m.count); n++; tris += c.m.count / 3;
     }
     R.stats.chunks = n;
+    gl.uniform1f(lit.u.uCut, Math.min(R.view, R.fogView || 1e9));
+    let nf = 0;
+    for (const t of far.values()) {
+      if (!boxIn(P, t.tx * FAR_TILE, t.y0 - 30, t.tz * FAR_TILE, (t.tx + 1) * FAR_TILE, t.y1, (t.tz + 1) * FAR_TILE)) continue;
+      gl.bindVertexArray(t.m.vao); gl.drawArrays(gl.TRIANGLES, 0, t.m.count); tris += t.m.count / 3; nf++;
+    }
+    gl.uniform1f(lit.u.uCut, 0); R.stats.far = nf + '/' + far.size;
 
     // hawk
     const hm = buildHawk(S.pose);
@@ -332,9 +429,10 @@ export function createRenderer(gl) {
     gl.uniform1f(inst.u.uSway, .012 + S.wind * .02); gl.uniform1f(inst.u.uDither, 1);
     for (const k of kinds) for (const m of [k.near, k.far]) {
       if (!m.icount) continue;
+      gl.uniform1f(inst.u.uFade, m === k.near ? 1 : 2);
       gl.bindVertexArray(m.vao); gl.drawArraysInstanced(gl.TRIANGLES, 0, m.count, m.icount); tris += m.count / 3 * m.icount;
     }
-    gl.uniform1f(inst.u.uDither, 0); gl.uniform1f(inst.u.uSway, 0);
+    gl.uniform1f(inst.u.uDither, 0); gl.uniform1f(inst.u.uSway, 0); gl.uniform1f(inst.u.uFade, 0);
     // props: anything instanced that a system adds (rings, clouds, mice, marks...)
     for (const key in S.props) {
       const d = S.props[key], m = shapes.get(key); if (!m || !d.length) continue;
