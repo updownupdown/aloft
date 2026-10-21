@@ -7,7 +7,7 @@
 // get green rings: tap one to hop across. Aiming is forgiving: a dive leans toward its mouse, and a slow
 // approach lined up with a perch is drawn onto it.
 import { height, WATER, treesNear, perchesOf, solidsNear, ringsNear } from '../world.js';
-import { FLY, fwd, hopPerches, hopTo } from '../flight.js';
+import { FLY, fwd, hopPerches, hopTo, hopDown } from '../flight.js';
 import { clamp, smooth } from '../util.js';
 
 const T = 2.6, STEPS = 16, g = 9.8;
@@ -53,7 +53,7 @@ export function aimSystem(G) {
   G.aim = { focus: 0, target: null, impact: null, path: [], perches: [], perch: null, mode: 'ink' };
   G.hud.tip('aim', () => b.state === 'fly' && G.t > 20, 'The line shows where you are headed: red on a mouse you dive at, green on a perch. Tuck your wings to dive and it focuses.');
   // tap a hop ring (on screen, within a thumb's width) to hop to it
-  // standing, tap a spot on the ground near by (a worm, the water's edge) to hop over to it
+  // standing (or perched: glide down to it), tap a spot on the ground near by (a worm, the water's edge) to hop over to it
   const screen = (x, y, z) => {
     const m = G.R.vp, X = m[0] * x + m[4] * y + m[8] * z + m[12], Y = m[1] * x + m[5] * y + m[9] * z + m[13], w = m[3] * x + m[7] * y + m[11] * z + m[15];
     return w < .3 ? null : [(X / w * .5 + .5) * innerWidth, (.5 - Y / w * .5) * innerHeight];
@@ -67,7 +67,7 @@ export function aimSystem(G) {
       if (d < bd) { bd = d; best = h; }
     }
     if (best) return hopTo(b, best, G.E);
-    if (b.state !== 'ground' || b.settle > 0) return false;
+    if ((b.state !== 'ground' && b.state !== 'perch') || b.settle > 0) return false;   // perched, a tap on the ground glides down to it
     // the ground point under the tap: the nearest on screen of a ring of points round the bird
     let to = null, td = Math.min(innerWidth, innerHeight) * .06;
     for (let r = .8; r < 30; r *= 1.12) for (let i = 0; i < 48; i++) {
@@ -77,6 +77,7 @@ export function aimSystem(G) {
       if (d < td) { td = d; to = [px, py, pz]; }
     }
     if (!to) return false;
+    if (b.state === 'perch') { if (to[1] <= WATER) return false; G.part([to[0], to[1] + .1, to[2]], [0, .5, 0], .5, [1, 1, .95], .1); return hopDown(b, to, G.E); }
     if (b.hopAim && Math.hypot(b.hopAim[0] - to[0], b.hopAim[2] - to[2]) < 1.5) to = b.hopAim;   // a worm by the tap
     b.goTo = to; G.part([to[0], to[1] + .1, to[2]], [0, .5, 0], .5, [1, 1, .95], .1);
     return true;

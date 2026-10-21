@@ -345,6 +345,19 @@ export function hopTo(b, h, E) {
   return true;
 }
 
+// from a perch, down to a tapped spot on the ground (aim.js): a glide like a hop between perches
+export function hopDown(b, to, E) {
+  if (b.settle > 0 || b.eating > 0 || b.state !== 'perch') return false;
+  const d = Math.hypot(to[0] - b.p[0], to[1] + .35 - b.p[1], to[2] - b.p[2]), dur = Math.min(1.4, .45 + d * .05);
+  b.from = [...b.p]; b.fromYaw = b.yaw;
+  b.view = b.yaw = Math.atan2(to[0] - b.p[0], -(to[2] - b.p[2]));
+  b.state = 'ground'; b.perch = null; b.tree = null; b.settle = b.settleT = dur; b.s = 0; b.vy = 0; b.goTo = null;
+  b.p = [to[0], to[1] + .35, to[2]];
+  b.flapL = b.flapR = 0; b.ampL = b.ampR = 1; b.hop = Math.min(2.2, .4 + d * .1);
+  E.flap(.6, 0); E.land('ground');
+  return true;
+}
+
 // the closest perch within reach, for the landing mark
 export function perchAhead(b) {
   if (b.state !== 'fly' || b.s > 14) return null;
