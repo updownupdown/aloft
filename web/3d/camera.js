@@ -45,11 +45,11 @@ export function createCamera(G) {
       if (b.zoomPinch) { C.zoom = Math.max(.25, Math.min(1, C.zoom * b.zoomPinch)); b.zoomPinch = 0; store.set('groundZoom3d', C.zoom); }
       C.zm += ((b.state === 'ground' ? 1 / C.zoom : 1) - C.zm) * Math.min(1, dt * 4);
       // singing (G.camSing, songs.js): in close, the bird low in the view, so the notes rising from
-      // its beak have room above it
+      // its beak have room above it (the bird about 70% of the way down, just above Take off)
       C.sg = (C.sg || 0) + ((G.camSing || 0) - (C.sg || 0)) * Math.min(1, dt * 2.5);
       const sg = C.sg, zm = C.zm * (1 - .4 * sg);
       want = [p[0] - d[0] * 2.6 * zm, p[1] + .9 * zm - lp * 1.2, p[2] - d[2] * 2.6 * zm];
-      look = [p[0] + d[0] * 1.5 * zm, p[1] + .05 + lp * 3 + .5 * sg, p[2] + d[2] * 1.5 * zm];
+      look = [p[0] + d[0] * 1.5 * zm, p[1] + .05 + lp * 3 + .12 * sg, p[2] + d[2] * 1.5 * zm];
     }
     if (!C.cam) C.cam = want.slice();
     const k = b.state === 'fly' && !C.still ? 1 : Math.min(1, dt * 2);
