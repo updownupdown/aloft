@@ -133,8 +133,8 @@
 
 
 /* Call: the bird's silhouette (icons.js) on a white disc in the round cut-out at the day dial's hub
-   (dial.js, hub): the dial is 128px wide, 10px in, its hub 62px down */
-.call3 { pointer-events: auto; position: absolute; right: calc(10px + 64px - 18px + env(safe-area-inset-right)); top: calc(44px + env(safe-area-inset-top));
+   (dial.js, hub): the dial is 128px wide, 10px in, its hub 66px down */
+.call3 { pointer-events: auto; position: absolute; right: calc(10px + 64px - 18px + env(safe-area-inset-right)); top: calc(48px + env(safe-area-inset-top));
   width: 36px; height: 36px; padding: 0; border: 0; border-radius: 50%; cursor: pointer; touch-action: none; display: flex; align-items: center; justify-content: center;
   color: var(--ink); background: rgba(255, 255, 255, .85); box-shadow: 0 2px 6px rgba(10, 20, 28, .22); -webkit-backdrop-filter: none; backdrop-filter: none; }
 .call3 svg { width: 22px; height: 22px; display: block; }
