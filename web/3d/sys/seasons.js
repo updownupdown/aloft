@@ -48,6 +48,7 @@ export function seasonsSystem(G) {
       // puddles in level hollows while the ground is wet
       else if (wet && h > 1 && ih(gx, gz, 507) < .06 && groundNormal(x, z)[1] > .97) puddles.push(x, groundAt(x, z) + .03, z, .8 + ih(gx, gz, 508) * 1.2, ih(gx, gz, 509) * 6.28, ih(gx, gz, 510), 0, 0);
     }
+    G.puddles = puddles;   // food.js: a puddle can be drunk from
     // under the broadleaves: litter in autumn (and leaves coming down), petals in spring
     if (s.name === 'autumn' || (s.name === 'spring' && s.d >= 2 && s.d < 6)) {
       for (const t of treesNear(x0, z0, R)) {
