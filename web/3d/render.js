@@ -40,6 +40,7 @@ void main() {
     float bayer[16] = float[16](0., 8., 2., 10., 12., 4., 14., 6., 3., 11., 1., 9., 15., 7., 13., 5.);
     float h = (bayer[i] + .5) / 16.;
     if (uFade < 1.5 ? h < vFade : h >= vFade) discard;
+    if (h < vGone) discard;   // at the edge of the view, full size, dissolving in
   }
   if (uDither > 1.5) {
     // clouds: thin to a screen as the camera nears them, almost gone inside one
@@ -104,11 +105,11 @@ uniform mat4 uVP; uniform float uTime, uSway, uSnowLine; uniform vec3 uAutumn;
 out vec3 vPos, vNrm, vCol, vColB; out float vLeaf, vFade, vGone;
 void main() {
   // trees carry their detail fade in the phase's fraction (render.js updateTrees): tenths are
-  // how far from near to far (vFade), hundredths how far grown in at the edge of the view (vGone)
+  // how far from near to far (vFade), hundredths how far dissolved at the edge of the view (vGone)
   float fr = fract(iB.w); vFade = floor(fr * 10.) / 9.; vGone = floor(fract(fr * 10.) * 10.) / 9.;
   float c = cos(iB.x), s = sin(iB.x);
   float leafy = step(aCol.r * 1.05, aCol.g);
-  vec3 p = aPos * iA.w * (1. - vGone);   // at the edge of the view they grow up out of the ground
+  vec3 p = aPos * iA.w;
   p.xz = vec2(c * p.x - s * p.z, s * p.x + c * p.z);
   // a turn past 1.5 means bare (winter broadleaves): the leaves fold to nothing on the trunk's axis
   p.xz *= 1. - step(1.5, iB.z) * leafy;
@@ -234,6 +235,10 @@ function toneMatch(near, far) {
       const t = far.slice(o + 12, o + 24); far.copyWithin(o + 12, o + 24, o + 36); far.set(t, o + 24);
     }
   }
+  // and as wide: scale the far mesh across to the near one's reach
+  const reach = d => { let m = 0; for (let o = 0; o < d.length; o += 12) m = Math.max(m, Math.hypot(d[o], d[o + 2])); return m; };
+  const wk = reach(near) / (reach(far) || 1);
+  if (Math.abs(wk - 1) > .03) for (let o = 0; o < far.length; o += 12) { far[o] *= wk; far[o + 2] *= wk; }
   const n = lit(near), f = lit(far); if (!n || !f) return far;
   const k = n.map((v, i) => Math.min(2, Math.max(.5, v / (f[i] || 1)))), out = far.slice();
   for (let o = 0; o < out.length; o += 12) if (out[o + 7] > out[o + 6] * 1.05) for (let c = 0; c < 3; c++) { out[o + 6 + c] *= k[c]; out[o + 9 + c] *= k[c]; }
@@ -351,8 +356,8 @@ export function createRenderer(gl) {
   // and only those in front of the camera (a cone a little wider than the view), re-sorted when the
   // view turns; the list round the hawk is fetched again only after it moves
   // Trees change detail across a band (TREE_BAND metres round R.nearTrees) drawn twice, the near
-  // mesh dissolving into the far one on a dither, and grow up out of the ground over the last
-  // TREE_EDGE metres of the view (in the haze), so none pops; the buckets are redone every few metres to keep it smooth
+  // mesh dissolving into the far one on a dither, and dissolve in at full size over the last
+  // TREE_EDGE metres of the view (never scaled, so nothing seems to grow), so none pops; the buckets are redone every few metres to keep it smooth
   const TREE_BAND = 26, TREE_EDGE = 45;
   let treeFrom = null, treeAt = null, treeAll = [], treeYaw = 0, treeSteep = false;
   function updateTrees(p, season) {
