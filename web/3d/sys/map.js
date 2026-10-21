@@ -78,7 +78,7 @@ export function mapView(G, J, { HOME_Z, MARSH_Z }) {
     const where = G.placeNote().replace(/^Day \d+, \w+, /, ''), L = G.collection?.(), found = Object.keys(J.found || {}).length;
     sum.innerHTML = `<p class="here3">${esc(cap(where))}</p>
       <div class="far3"><span><i style="width:${Math.max(2, pct)}%"></i></span><small>${pct}% of the way south known</small></div>
-      <ul class="tally3"><li><b>${J.year || 1}</b>${J.year > 1 ? 'years' : 'year'}</li><li><b>${found}</b>${found === 1 ? 'landmark' : 'landmarks'}</li>${L ? `<li><b>${L.lands}<small>/${L.of}</small></b>lands</li><li><b>${L.feathers}</b>${L.feathers === 1 ? 'feather' : 'feathers'}</li>` : ''}${J.pins?.length ? `<li><b>${J.pins.length}</b>${J.pins.length === 1 ? 'pin' : 'pins'}</li>` : ''}</ul>`;
+      <ul class="tally3"><li><b>${J.year || 1}</b>${J.year > 1 ? 'years' : 'year'}</li><li><b>${found}</b>${found === 1 ? 'landmark' : 'landmarks'}</li>${L ? `<li><b>${L.lands}<span>/${L.of}</span></b>lands</li><li><b>${L.feathers}</b>${L.feathers === 1 ? 'feather' : 'feathers'}</li>` : ''}${J.pins?.length ? `<li><b>${J.pins.length}</b>${J.pins.length === 1 ? 'pin' : 'pins'}</li>` : ''}</ul>`;
     requestAnimationFrame(() => { fit(); cache = null; draw(); });
   });
   addEventListener('resize', () => { if (open) { fit(); cache = null; soon(); } });
