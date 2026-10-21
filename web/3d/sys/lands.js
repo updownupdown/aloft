@@ -219,6 +219,12 @@ export function landsSystem(G) {
     setGroundDetail(n); store.set('ground', n); R.dropChunks(); el.querySelector('em').textContent = gname();
   } });
   G.menu.onOpen(() => { gEl.querySelector('em').textContent = gname(); });
+  // Settings > Water: how the water's surface is drawn (render.js waterAt)
+  const LOOKS = ['Soft waves', 'Low-poly facets', 'Painted depths'];
+  R.waterLook = store.get('water', R.waterLook) | 0;
+  G.menu.button('play', { label: 'Water', sub: LOOKS[R.waterLook], group: 'app', onClick: el => {
+    R.waterLook = (R.waterLook + 1) % LOOKS.length; store.set('water', R.waterLook); el.querySelector('em').textContent = LOOKS[R.waterLook];
+  } });
   // Settings > Graphics (G.gfx level 0..2) picks the ground too, until the row above is used
   G.on('gfx', lv => {
     if (store.get('ground', null) !== null) return;
