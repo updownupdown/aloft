@@ -287,6 +287,14 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .card3 .btn::before { content: none; }
 .card3 .btn::after { content: ''; flex: none; width: 7px; height: 7px; margin-left: 4px; border: solid var(--ink2); border-width: 2px 2px 0 0; transform: rotate(45deg); }
 .card3 .btn:active { transform: scale(.98); background: #fff; }
+/* a choice row (G.menu.choice): the label and what the pick means, then pill radio buttons */
+.card3 .choice3 { margin: 8px 0 0; padding: 10px 12px 10px 16px; border-radius: 15px; background: rgba(255, 255, 255, .78); box-shadow: 0 1px 4px rgba(20, 40, 50, .1);
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; color: var(--ink); font-size: 14.5px; font-weight: 600; }
+.card3 .choice3 > span { flex: 1 1 200px; display: flex; flex-direction: column; gap: 2px; }
+.card3 .choice3 small { font-size: 12.5px; font-weight: 500; line-height: 1.4; color: var(--ink2); }
+.card3 .choice3 > div { flex: none; display: flex; padding: 3px; gap: 2px; border-radius: 20px; background: rgba(29, 43, 54, .08); }
+.card3 .choice3 button { min-width: 48px; min-height: 34px; padding: 0 12px; border: 0; border-radius: 17px; background: none; font: inherit; font-size: 13.5px; font-weight: 600; color: var(--ink2); cursor: pointer; }
+.card3 .choice3 button.on { background: var(--ink); color: #fff; }
 .card3 .btn em { text-align: right; }
 .stack3 .sw + .btn { margin-top: 12px; }
 .stack3 .group3 .main3 { min-height: 50px; margin: 6px 0 2px; gap: 10px; font-size: 16px; }

@@ -212,13 +212,10 @@ function fenceMesh(f) {
 
 export function landsSystem(G) {
   const R = G.R;
-  // Settings > Ground detail: steps through the facet sizes and rebuilds the ground
-  const gname = () => { const g = GROUND.find(g => g[0] === GROUND_SET); return `${g[1]}: ${g[2]}`; };
-  const gEl = G.menu.button('play', { label: 'Ground detail', sub: gname(), group: 'app', onClick: el => {
-    const i = GROUND.findIndex(g => g[0] === GROUND_SET), n = GROUND[(i + 1) % GROUND.length][0];
-    setGroundDetail(n); store.set('ground', n); R.dropChunks(); el.querySelector('em').textContent = gname();
-  } });
-  G.menu.onOpen(() => { gEl.querySelector('em').textContent = gname(); });
+  // Settings > Ground detail: Low, Medium or High facets (GROUND); a pick rebuilds the ground
+  G.menu.choice('play', { label: 'Ground detail', options: GROUND.map(g => [g[0], g[1]]), get: () => GROUND_SET,
+    sub: n => `The ground's facets: ${GROUND.find(g => g[0] === n)?.[2] ?? ''}`,
+    set: n => { setGroundDetail(n); store.set('ground', n); R.dropChunks(); } });
   // Settings > Graphics (G.gfx level 0..2) picks the ground too, until the row above is used
   G.on('gfx', lv => {
     if (store.get('ground', null) !== null) return;

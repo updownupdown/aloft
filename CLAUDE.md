@@ -36,7 +36,7 @@ web/3d/birds.js         other birds: Settings > Bird picks red-tail, osprey, bar
 web/3d/sky.js           clock (G.tod, G.day, G.season) and light (G.light)
 web/3d/hud.js           G.hud: meter() (bars that flash when low), tip()/did(), say(msg, { kind, secs, icon }) / toast(msg, secs, kind): the message line top centre above the compass, kinds in SAY (event, song, tutorial, hint, warn); flight/status, hide(), thumb pads
 web/3d/compass.js       the linear compass, top middle (N/E/S/W, nest, the way south or home, landmarks found)
-web/3d/menu.js          G.menu: tab(), page() (sub-tabs), group() (Settings columns), toggle(), button({ group, main }), onOpen(), subtitle(), set(on, tab, page); ORDER/TITLES/ICONS/GROUPS
+web/3d/menu.js          G.menu: tab(), page() (sub-tabs), group() (Settings columns), toggle(), button({ group, main }), choice() (radio buttons), onOpen(), subtitle(), set(on, tab, page); ORDER/TITLES/ICONS/GROUPS
 web/3d/letter.js        the menu's frame (frosted glass, .glass3 in 3d.css); swap it to restyle
 web/3d/facet.js         low-poly helpers (map land, postcards) (PIG colours, poly, facets, gem, chamfer, hardShadow, lit)
 web/3d/icons.js         every UI icon (James's picks, 2026-10-21): ICONS and icon(key) -> a 24x24 SVG in currentColor
