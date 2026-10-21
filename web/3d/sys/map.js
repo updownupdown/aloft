@@ -189,7 +189,7 @@ export function mapView(G, J, { HOME_Z, MARSH_Z }) {
       const k = e.target.closest('[data-pin]')?.dataset.pin; if (!k) return;
       (J.pins ||= []).push({ id: Date.now().toString(36), kind: k, x: Math.round(at[0]), z: Math.round(at[1]) });
       if (J.pins.length > 40) J.pins.shift();
-      note.classList.add('hidden'); note.onclick = null; soon(); G.hud.did('pin');
+      note.classList.add('hidden'); note.onclick = null; soon(); G.hud.did('pin'); G.emit('pin');
     };
   };
   cv.addEventListener('pointerdown', e => {
