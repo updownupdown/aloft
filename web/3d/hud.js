@@ -25,10 +25,10 @@ export function createHud(G, ui, input) {
   const dial = createDial(q('.corner3')), compass = createCompass(G, ui);
   const altM = q('.alt .m'), altK = q('.alt .k');
   q('.corner3').prepend(q('.corner3 .dial'));
-  const H = { tips: [], done: store.get('hints3d', {}), status: '', flight: null, counter: '', quiet: store.get('quietHud3d', false), hidden: false };
+  const H = { tips: [], done: store.get('hints3d', {}), status: '', flight: null, counter: '', hidden: false };
   const bar = tipBar(G, ui, H);
   const all = [];   // every meter: { v, low }
-  let toastT = 0, tipNow = null, tipT = 0, wake = -9, altKey = '';
+  let toastT = 0, tipNow = null, tipT = 0, altKey = '';
   const queue = [];
 
   // a meter: an icon and a bar that empties as the need grows; it flashes when low, faster when
@@ -69,8 +69,6 @@ export function createHud(G, ui, input) {
   H.showFps = on => q('.fps3').classList.toggle('hidden', !on);
   // photo mode hides the whole layer
   H.hide = on => { H.hidden = on; ui.classList.toggle('bare3', on); };
-  // a touch on the meters brings quiet meters back for a few seconds
-  hud.addEventListener('pointerdown', () => { wake = G.t; });
   hud.style.pointerEvents = 'auto';
 
   // until the weather can say what is coming: the weather now, for the next minute or so
@@ -93,9 +91,6 @@ export function createHud(G, ui, input) {
       altM.className = 'm' + (f?.lift ? ' ' + f.lift : '');
     }
     compass.update(dt, G.menu?.open);
-    // quiet meters: fade while every meter is well filled, back as soon as one runs lower
-    const lowest = Math.min(...all.map(m => m.v)), quiet = H.quiet && G.t - wake > 4 && lowest > (hud.classList.contains('quiet') ? .5 : .7);
-    hud.classList.toggle('quiet', quiet);
     dial.update(G.tod, G.day, false, G.season, G.forecast || nowOnly);
     for (const [el, P] of [[padL, input.L], [padR, input.R]]) {
       // perched or standing, a drag turns the bird: no sticks then

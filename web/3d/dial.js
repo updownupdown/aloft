@@ -29,10 +29,10 @@ export function createDial(parent) {
   const night = NIGHT.map(([a, c, col]) => wedge(nightF(a), c === 1 ? .5 : nightF(c) || 1, col)).join('');
   const slices = Array.from({ length: SLICES }, (_, i) => `<path d="${band(i / SLICES, (i + 1) / SLICES)}"/>`).join('');
   el.innerHTML = `<svg viewBox="0 0 88 46" aria-hidden="true"><path class="track" d="${band(0, 1)}"/><g class="ring">${slices}</g><g class="dayw">${day}</g><g class="nightw">${night}</g>
-    <path class="shade" d=""/><path class="rim" d="M${CX - R} ${CY}A${R} ${R} 0 0 1 ${CX + R} ${CY}"/><path class="base" d="M${CX - R - 7} ${CY}H${CX + R + 7}"/><circle class="sun" r="5"/></svg>
+    <path class="shade" d=""/><path class="rim" d="M${CX - R} ${CY}A${R} ${R} 0 0 1 ${CX + R} ${CY}"/><path class="base" d="M${CX - R - 7} ${CY}H${CX + R + 7}"/><path class="hand" d=""/><circle class="hub" cx="${CX}" cy="${CY}" r="2.6"/><circle class="sun" r="5"/></svg>
     <div class="season"></div>`;
   parent.append(el);
-  const sun = el.querySelector('.sun'), shade = el.querySelector('.shade'), seasonEl = el.querySelector('.season');
+  const sun = el.querySelector('.sun'), hand = el.querySelector('.hand'), shade = el.querySelector('.shade'), seasonEl = el.querySelector('.season');
   const ring = [...el.querySelectorAll('.ring path')];
   let key = '';
   return {
@@ -46,6 +46,8 @@ export function createDial(parent) {
       const f = isNight ? nightF(tod) : dayF(tod);
       const [x, y] = pt(f);
       sun.setAttribute('cx', x.toFixed(2)); sun.setAttribute('cy', y.toFixed(2)); sun.classList.toggle('moon', isNight);
+      // a hand from the middle to the sun (or moon) so the time reads at a glance
+      hand.setAttribute('d', `M${CX} ${CY}L${(CX + (x - CX) * .82).toFixed(2)} ${(CY + (y - CY) * .82).toFixed(2)}`);
       // the part of the arc still to come is veiled, so the flown part reads at a glance
       shade.setAttribute('d', f < .995 ? `M${CX} ${CY}L${P(pt(f))}A${R} ${R} 0 0 1 ${CX + R} ${CY}Z` : '');
       el.classList.toggle('night', isNight);
