@@ -18,7 +18,9 @@ export const WEATHER = {
   bolt: [5, 14],                                 // seconds between lightning strokes in a storm
   cell: { r: 220, speed: 7, lift: 4.5, sink: 3.2 },   // storm cell: radius, drift (m/s), gust-front lift, core sink
 };
-const SNOW = { summer: 0, autumn: .12, winter: 1, spring: .3 };
+// the snowline by season and day in it (0 summer .. 1 deep winter): it creeps down through
+// autumn and winter, a step each day, and climbs back through spring
+const SNOW = { summer: () => 0, autumn: d => .04 + d * .045, winter: d => .5 + d * .072, spring: d => .62 - d * .075 };
 
 function dropShape() {
   const B = builder(), c = [.74, .79, .86];
@@ -179,11 +181,12 @@ export function weatherSystem(G) {
       if (G.aurora > .5) note(`Day ${G.day}: northern lights.`);
       if (G.snowing > .3) once('snow', 'Snow. Mice are harder to spot under it: look for the faint stir in the white.', 5);
       // the snowline follows the season; repaint the ground when it moves
-      const snow = SNOW[G.season?.name] ?? 0;
-      if (Math.abs(env.snow - snow) > .01) { env.snow = snow; G.R.dropChunks?.(); }
+      const sn = G.season?.name || 'summer', snow = Math.max(0, SNOW[sn]?.(G.season.d || 0) ?? 0);
+      if (Math.abs(env.snow - snow) > .01 || env.season !== sn) { env.snow = snow; env.season = sn; env.seasonDay = G.season.d || 0; G.R.dropChunks?.(); }
       if (G.storm > .3 && b.state === 'fly') G.hud.did?.('storm');
     },
     scene(S) {
+      S.snowLine = 185 - env.snow * 200;   // render.js lays snow on leaves and needles above it
       const ov = G.overcast, st = G.storm, L = G.light;
       // greyer, flatter light under cloud; darker in a storm; a flash of lightning lifts it all
       const grey = [.7, .71, .72].map(v => v * (.25 + .75 * (1 - L.night)) * (1 - .4 * st));
