@@ -285,8 +285,10 @@ const LM_NAMES = {
   giant: ['The Grandfather Redwood', 'The Tallest Tree', 'The Cathedral Tree'],
   karst: ['The Stone Forest', 'The Hundred Towers'], saltflat: ['The White Pan', 'The Salt Mirror'],
   badlands: ['The Painted Hills', 'The Striped Hills'], desert: ['The Singing Dunes', 'The Golden Sea'],
+  barn: ['The Old Barn', 'The Red Barn', 'The Owl Barn', 'The Hay Barn'], lookout: ['The Fire Lookout', 'The Ranger\'s Lookout', 'Pine Watch'],
+  windmill: ['The Old Windmill', 'The Iron Mill', 'The Wind Pump'], stack: ['The Old Man', 'The Needle', 'The Gull Stack', 'The Lone Stack'],
 };
-const SIZE = { oak: [40, 14], willow: [30, 12], giant: [70, 12], stones: [4, 9], cairn: [3, 2], tower: [22, 5], falls: [0, 6], lighthouse: [26, 4], volcano: [0, 240], arch: [30, 16], sight: [0, 260] };
+const SIZE = { oak: [40, 14], willow: [30, 12], giant: [70, 12], stones: [4, 9], cairn: [3, 2], tower: [22, 5], falls: [0, 6], lighthouse: [26, 4], volcano: [0, 240], arch: [30, 16], sight: [0, 260], barn: [9, 8], lookout: [17, 4], windmill: [13, 3], stack: [30, 4] };
 const lmCache = new Map();
 const nameOf = (kind, a, b) => { const n = LM_NAMES[kind]; return n[Math.floor(ih(a, b, 85) * n.length)]; };
 function fixedLandmarks() {
@@ -298,7 +300,7 @@ function fixedLandmarks() {
 }
 function finishLandmark(l, seed) {
   // nudge off water and onto fairly level ground
-  const fixed = l.kind === 'falls' || l.kind === 'volcano' || l.kind === 'sight' || l.kind === 'lighthouse';
+  const fixed = l.kind === 'falls' || l.kind === 'volcano' || l.kind === 'sight' || l.kind === 'lighthouse' || l.kind === 'stack';
   for (let n = 0; n < 12 && !fixed && (height(l.x, l.z) < 1.5 || normalAt(l.x, l.z)[1] < .8); n++) { l.x += Math.cos(n * 2.4) * 30; l.z += Math.sin(n * 2.4) * 30; }
   l.y = height(l.x, l.z); l.yaw = ih(l.x | 0, l.z | 0, seed) * 6.283;
   [l.h, l.r] = SIZE[l.kind];
@@ -347,11 +349,19 @@ function cellSight(c) {
   lmCache.set(key, l);
   return l;
 }
+// the old human traces too (no people): barns on farmland, fire lookouts over the woods,
+// wind pumps on the open country, and sea stacks off the coasts (where the osprey nests)
 const LM_KIND = {
-  forest: ['oak', 'oak', 'stones'], lakeland: ['oak', 'oak', 'stones'], birch: ['oak', 'stones'], meadow: ['tower', 'stones', 'oak'],
-  savanna: ['tower', 'redstones'], cliffs: ['falls'], mountains: ['cairn', 'falls'], alpine: ['cairn'], fjord: ['falls'], moor: ['stones', 'cairn', 'tower'],
-  coast: ['stones', 'tower'], marsh: ['willow', 'stones'], swamp: ['willow'], desert: ['redstones'], canyon: ['redstones', 'falls'], badlands: ['redstones'],
+  forest: ['oak', 'oak', 'stones', 'lookout'], lakeland: ['oak', 'oak', 'stones', 'barn'], birch: ['oak', 'stones', 'lookout'], meadow: ['tower', 'stones', 'oak', 'barn', 'barn', 'windmill'],
+  savanna: ['tower', 'redstones', 'windmill', 'barn'], cliffs: ['falls'], mountains: ['cairn', 'falls', 'lookout'], alpine: ['cairn'], fjord: ['falls', 'stack'], moor: ['stones', 'cairn', 'tower', 'windmill'],
+  coast: ['stones', 'tower', 'stack', 'stack'], marsh: ['willow', 'stones'], swamp: ['willow'], desert: ['redstones'], canyon: ['redstones', 'falls'], badlands: ['redstones'],
+  redwood: ['lookout'], saltflat: ['windmill'],
 };
+// a sea stack wants open water 4 to 12 m deep near the shore
+function stackSpot(x, z) {
+  for (let i = 0; i < 60; i++) { const a = i * 2.39996, r = 10 + i * 9, px = x + Math.cos(a) * r, pz = z + Math.sin(a) * r, h = height(px, pz); if (h < -4 && h > -12) return [px, pz]; }
+  return null;
+}
 // every land for the Journal's lands collection: its key, its name and its one sight to find
 // (a landmark kind; 'summit' is the summit cairn, 'sight' the land itself, seen from the middle)
 const SIGHT_OF = { coast: 'lighthouse', volcano: 'volcano', alpine: 'summit', canyon: 'arch', redwood: 'giant', fjord: 'falls', cliffs: 'falls', karst: 'sight', saltflat: 'sight', badlands: 'sight', desert: 'sight' };
@@ -366,8 +376,10 @@ function landmarkCell(gx, gz) {
     if (kind) {
       l = { id: 'l' + gx + '_' + gz, name: nameOf(kind, gx, gz), kind: kind === 'redstones' ? 'stones' : kind, x, z };
       if (kind === 'falls') { const f = fallsSpot(x, z); if (f) Object.assign(l, { x: f.x, z: f.z, drop: f.drop, dx: f.dx, dz: f.dz }); else { l.kind = 'cairn'; l.name = LM_NAMES.cairn[0]; } }
-      finishLandmark(l, 86);
-      if (l.y < 1) l = null;
+      if (kind === 'stack') { const p = stackSpot(x, z); if (p) [l.x, l.z] = p; else l.kind = null; }
+      if (l.kind) finishLandmark(l, 86);
+      if (l.kind === 'stack') l.h = -l.y + 16 + ih(gx, gz, 87) * 14;   // its top stands this far over its foot
+      else if (!l.kind || l.y < 1) l = null;
     }
   }
   lmCache.set(key, l);
@@ -383,6 +395,38 @@ export function landmarksNear(x, z, r) {
     // the great sights keep their country to themselves
     if (inBox(l) && !out.some(o => o.kind !== 'sight' && Math.hypot(o.x - l.x, o.z - l.z) < 350)) out.push(l);
   }
+  return out;
+}
+
+// Fence lines and dry-stone walls across the open farmland, maybe one run per 170 m cell:
+// a rusted wire fence on posts (red-tails love fence posts) or a low wall of stacked stones.
+// { id, kind: 'fence' | 'wall', posts: [[x, y, z], ...] } with a post every STEP metres along
+// the drawn ground; a run stops at water, a steep bank or a tree line.
+export const FENCE_CELL = 170;
+const FENCE_LANDS = { meadow: .5, lakeland: .3, moor: .45, savanna: .3, birch: .12 };
+const fenceCache = new Map();
+function fenceCell(gx, gz) {
+  const key = gx + ',' + gz; if (fenceCache.has(key)) return fenceCache.get(key);
+  let f = null;
+  const x = (gx + .2 + ih(gx, gz, 171) * .6) * FENCE_CELL, z = (gz + .2 + ih(gx, gz, 172) * .6) * FENCE_CELL, land = blend(x, z)[0].name;
+  if (Math.hypot(x, z) > 160 && ih(gx, gz, 173) < (FENCE_LANDS[land] || 0)) {
+    const kind = land === 'moor' || ih(gx, gz, 174) < .3 ? 'wall' : 'fence', step = kind === 'wall' ? 3 : 4;
+    const a = ih(gx, gz, 175) * 6.283, bend = (ih(gx, gz, 176) - .5) * .012, n = 10 + Math.floor(ih(gx, gz, 177) * 20), posts = [];
+    let px = x, pz = z, h = a;
+    for (let i = 0; i < n; i++) {
+      const y = groundAt(px, pz);
+      if (y < 1 || groundNormal(px, pz)[1] < .8 || forest(px, pz) > .25) { if (posts.length > 3) break; posts.length = 0; }
+      else posts.push([px, y, pz]);
+      px += Math.cos(h) * step; pz += Math.sin(h) * step; h += bend * step;
+    }
+    if (posts.length > 3) f = { id: 'f' + gx + '_' + gz, kind, posts };
+  }
+  fenceCache.set(key, f); if (fenceCache.size > 1500) fenceCache.delete(fenceCache.keys().next().value);
+  return f;
+}
+export function fencesNear(x, z, r) {
+  const out = [], a = Math.floor((x - r - 120) / FENCE_CELL), b = Math.floor((x + r + 120) / FENCE_CELL), c = Math.floor((z - r - 120) / FENCE_CELL), d = Math.floor((z + r + 120) / FENCE_CELL);
+  for (let gz = c; gz <= d; gz++) for (let gx = a; gx <= b; gx++) { const f = fenceCell(gx, gz); if (f && f.posts.some(p => Math.abs(p[0] - x) < r && Math.abs(p[2] - z) < r)) out.push(f); }
   return out;
 }
 
@@ -445,12 +489,19 @@ export function solidsNear(x, z, r) {
       pillar(l.x, l.z, 1.9, l.y + 18.8, l.y + 23.7, { x: l.x - 2.25, y: l.y + 18.8, z: l.z });
     }
     if (l.kind === 'cairn') pillar(l.x, l.z, .9, l.y - 1, l.y + 2.33);
+    // the barn's roof ridge, the lookout's cabin roof, the wind pump's platform, the stack's turf
+    if (l.kind === 'barn') { const c = Math.cos(l.yaw), s = Math.sin(l.yaw); for (const k of [-3.5, 0, 3.5]) pillar(l.x + c * k, l.z + s * k, 3.6, l.y - 1, l.y + 7.6, { x: l.x + c * k, y: l.y + 8.25, z: l.z + s * k }); }
+    if (l.kind === 'lookout') pillar(l.x, l.z, 2.4, l.y - 1, l.y + 16.4, { x: l.x + 1.6, y: l.y + 16.4, z: l.z });
+    if (l.kind === 'windmill') pillar(l.x, l.z, 1, l.y - 1, l.y + 11.2);
+    if (l.kind === 'stack') pillar(l.x, l.z, .12 * l.h, l.y - 1, l.y - .3 + l.h);
     if (l.kind === 'arch') for (const g of archLegs(l, l.h)) pillar(g.x, g.z, .12 * l.h, l.y - 1, l.y - .5 + l.h * .68);
     if (l.kind === 'stones') for (let i = 0; i < 9; i++) {
       const a = i / 9 * 6.283, c = Math.cos(l.yaw), s = Math.sin(l.yaw), lx = Math.cos(a) * 8, lz = Math.sin(a) * 8, h = 2.6 + (i * 37 % 10) / 10 * 1.8;
       pillar(l.x + c * lx - s * lz, l.z + s * lx + c * lz, .55, l.y - 1, l.y + h);
     }
   }
+  // fence posts (perch on top) and the walls' coping stones
+  for (const f of fencesNear(x, z, r + 4)) for (const p of f.posts) if (Math.abs(p[0] - x) < r + 4 && Math.abs(p[2] - z) < r + 4) pillar(p[0], p[2], f.kind === 'wall' ? .5 : .09, p[1] - 1, p[1] + (f.kind === 'wall' ? .95 : 1.3));
   return out;
 }
 
