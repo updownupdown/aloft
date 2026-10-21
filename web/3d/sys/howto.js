@@ -1,9 +1,10 @@
-// How to play, in four pages: Controls (each move as the thumbs doing it beside the hawk doing it,
+// How to play, in five pages (the fifth, Hints, is hints.js): Controls (each move as the thumbs doing it beside the hawk doing it,
 // both moving), Food, water and rest, The air, and The journey (small animated scenes beside the
 // words). Keep the moves in step with input.js and flight.js. The scenes are SVG, moved by the
 // .how3 keyframes in 3d.css; the hawks in Controls are the bird lab's renderer (birdlab.js), drawn
 // only while that page shows.
 import { startLab } from '../birdlab.js';
+import { hintsPage } from '../hints.js';
 
 const INK = '#1d2b36';
 const PIG = { water: '#4f7fa6', berry: '#a8483a', ochre: '#b8862f', leaf: '#6f8a4a', indigo: '#4f6f9e', stone: '#8a7a6a' };
@@ -88,7 +89,7 @@ export function howtoSystem(G) {
   food.innerHTML = `<div class="hows3">
     ${card('mice', 'Mice', 'Mice twitch the grass in open meadows. Dive at one and come in low; your feet reach for it. The aim line turns berry-red when you are lined up.')}
     ${card('drink', 'Drink', 'Land at the water’s edge or on the water. Food lasts about five minutes, water about seven. When one runs low its bar flashes; your wings then recover more slowly.')}
-    ${card('perch', 'Perch and rest', 'Slow down into a tree’s crown and you settle on one of its limbs. Trunks are hard. Tap Take off, top centre, to fly again.')}
+    ${card('perch', 'Perch and rest', 'Slow down into a tree’s crown and you settle on one of its limbs. Trunks are hard. Tap Take off, bottom right, to fly again.')}
   </div>`;
   air.innerHTML = `<div class="hows3">
     ${card('thermal', 'Thermals', 'Motes under a cloud mark rising air. Fly into it and hold a thumb still: you circle up on it.')}
@@ -101,6 +102,7 @@ export function howtoSystem(G) {
     ${card('mate', 'A mate', 'Keep well fed and watered and your hawk grows healthy: after the first migration its tail turns deep red. In the marsh a hawk may come to look you over. A red tail, keepsakes, songs and acrobatics (a full stoop, a wingover) win it as your mate.')}
     ${card('keepsake', 'Keepsakes and pictures', 'Rare keepsakes glint in the grass: land beside one to keep it. Animals seen up close get a page in the field guide. Photo mode (Settings) holds the world still for a picture.')}
   </div>`;
+  hintsPage(G);
   // the hawks of the controls page fly only while it shows
   let shown = false, tab = '';
   const look = () => { shown = G.menu.open && tab === 'how' && !controls.classList.contains('hidden'); };

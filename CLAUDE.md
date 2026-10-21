@@ -42,7 +42,8 @@ web/3d/facet.js         low-poly helpers (map land, postcards) (PIG colours, pol
 web/3d/icons.js         every UI icon (James's picks, 2026-10-21): ICONS and icon(key) -> a 24x24 SVG in currentColor
 web/3d/logo.js          Aloft's mark, a hawk over the hills (menu title, app icons via tools/icon.html)
 web/3d/dial.js          the day dial, top right
-web/3d/tips.js          tips as a short line and an icon (SHORT, keyed by tip id), swipe to dismiss, i to pause and read more
+web/3d/tips.js          tips as a short line and an icon (SHORT, keyed by tip id; TIP_GROUPS), swipe to dismiss, i to pause and read more, gear to Hints
+web/3d/hints.js         How to play > Hints: every tip and message kind with on/off switches (G.hud.off), Show the tips again
 web/3d/journal.js       the Journal tab and its pages (Log, Songs, Landmarks, Field guide, Album): journal(G).section(order, title), .page(id); shot.js: project(), afterDraw(), portraits
 web/3d/pics.js          still pictures of the game's own meshes (songbirdPic(sp, px)), cached data URLs
 web/3d/app.js           Update, Graphics, Haptics, Quiet meters and Quit rows; wake lock; asks for full screen on each touch while not full screen
