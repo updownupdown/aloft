@@ -5,12 +5,13 @@
 .sing3 { position: absolute; inset: 0; pointer-events: none; --side: calc(14px + env(safe-area-inset-left)); --side2: calc(14px + env(safe-area-inset-right));
   --pane: rgba(255, 255, 255, .5); --edge: rgba(255, 255, 255, .66); --shadow: 0 4px 16px rgba(20, 40, 50, .14);
   --top: max(34%, calc(162px + env(safe-area-inset-top))); --bot: calc(22px + env(safe-area-inset-bottom));
-  --kw: 58px; --rec: calc(var(--side) + var(--kw) + 10px); }
+  --kw: 58px; --rec: calc(var(--side) + var(--kw) - 1px);
+  --frost: rgba(255, 255, 255, .58); }
 .sing3 button { font-family: var(--text); color: var(--ink); touch-action: none; }
 .kinds3, .rec3, .birds3 { -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); }
 
 /* the pitch strip: five bands of glass tinted by their note, high at the top */
-.strip3 { pointer-events: auto; position: absolute; right: var(--side2); bottom: var(--bot); top: var(--top); width: 100px;
+.strip3 { pointer-events: auto; position: absolute; right: var(--side2); bottom: var(--bot); top: var(--top); width: var(--kw);
   display: flex; flex-direction: column; gap: 5px; touch-action: none; }
 .strip3 i { flex: 1; border-radius: 14px; background: color-mix(in srgb, var(--note) 55%, rgba(255, 255, 255, .6)); opacity: .85; box-shadow: var(--shadow);
   border: 1px solid rgba(255, 255, 255, .7); transition: opacity .2s, transform .2s; }
@@ -23,9 +24,9 @@
    while held (.slide) it widens to show the names, the pill follows the thumb and springs onto a
    kind when let go */
 .kinds3 { pointer-events: auto; position: absolute; z-index: 2; left: var(--side); bottom: var(--bot); top: var(--top); width: var(--kw); padding: 4px; box-sizing: border-box;
-  display: flex; flex-direction: column; gap: 4px; touch-action: none; border-radius: 22px; background: var(--pane); border: 1px solid var(--edge); box-shadow: var(--shadow);
-  transition: width .18s ease-out, background .18s; overflow: hidden; }
-.kinds3.slide { width: 124px; background: rgba(255, 255, 255, .82); }
+  display: flex; flex-direction: column; gap: 4px; touch-action: none; border-radius: 22px 22px 0 22px; background: var(--frost); border: 1px solid var(--edge); box-shadow: var(--shadow);
+  transition: width .18s ease-out, background .18s, border-radius .18s; overflow: hidden; }
+.kinds3.slide { width: 124px; background: rgba(255, 255, 255, .8); border-radius: 22px; }
 .kinds3 div { position: relative; flex: 1; display: flex; align-items: center; gap: 8px; padding: 0 9px; border-radius: 18px; white-space: nowrap;
   font-size: 12.5px; font-weight: 600; color: var(--ink); transition: color .15s; user-select: none; -webkit-user-select: none; }
 .kinds3 span { opacity: 0; transition: opacity .15s; }
@@ -36,21 +37,21 @@
   transition: transform .22s cubic-bezier(.3, 1.35, .5, 1), height .2s; }
 .kinds3.slide .puck3 { transition: none; }
 
-/* the song box, bottom left beside the kinds: the bird, its name (or a cheer), its score; tap
-   it to open Imitate a bird just above */
+/* the song box, joined to the foot of the kinds column as one frosted piece (an L): the bird,
+   its name (or a cheer), its words, its score; tap it to open Imitate a bird */
 .rec3 { pointer-events: auto; position: absolute; left: var(--rec); bottom: var(--bot); display: flex; align-items: center; gap: 8px; max-width: min(46vw, 420px);
-  padding: 5px 30px 5px 6px; touch-action: none; user-select: none; -webkit-user-select: none; border: 1px solid var(--edge); border-radius: 18px; background: rgba(255, 255, 255, .82); box-shadow: var(--shadow); cursor: pointer; text-align: left; }
+  padding: 5px 30px 5px 8px; touch-action: none; user-select: none; -webkit-user-select: none; border: 1px solid var(--edge); border-left: 0; border-radius: 0 18px 18px 0; background: var(--frost); box-shadow: 6px 4px 14px rgba(20, 40, 50, .12); cursor: pointer; text-align: left; }
 .x3 { position: absolute; top: 3px; right: 3px; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 12px; background: rgba(29, 43, 54, .07);
   font-size: 11px; line-height: 24px; color: var(--ink2); cursor: pointer; }
 .txt3 i { font-size: 11px; font-weight: 500; color: var(--ink2); line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .txt3 i:empty { display: none; }
 /* the song box tucked away: a round button in its place that opens Imitate a bird */
 .open3 { pointer-events: auto; position: absolute; left: var(--rec); bottom: var(--bot); width: 52px; height: 52px; padding: 0; display: grid; place-items: center;
-  border: 1px solid var(--edge); border-radius: 26px; background: rgba(255, 255, 255, .82); box-shadow: var(--shadow); cursor: pointer;
+  border: 1px solid var(--edge); border-left: 0; border-radius: 0 26px 26px 0; background: var(--frost); box-shadow: 6px 4px 14px rgba(20, 40, 50, .12); cursor: pointer;
   -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); }
 .open3 img { width: 44px; height: 33px; }
 .open3 svg { width: 28px; height: 14px; stroke: var(--ink); }
-.rec3.on { background: #fff; border-color: rgba(29, 43, 54, .3); }
+.rec3.on { background: rgba(255, 255, 255, .8); }
 .rec3.pop { animation: pop3 .4s ease-out; }
 @keyframes pop3 { 40% { transform: scale(1.04); } }
 .pic3 { flex: none; display: grid; place-items: center; width: 48px; height: 36px; border-radius: 12px; background: rgba(29, 43, 54, .06); }
@@ -91,7 +92,11 @@
 /* left-handed: the sides swap */
 .sing3.lefty .strip3 { right: auto; left: var(--side); }
 .sing3.lefty .kinds3 { left: auto; right: var(--side2); }
-.sing3.lefty .rec3, .sing3.lefty .open3 { left: auto; right: calc(var(--side2) + var(--kw) + 10px); }
+.sing3.lefty .kinds3:not(.slide) { border-radius: 22px 22px 22px 0; }
+.sing3.lefty .rec3, .sing3.lefty .open3 { left: auto; right: calc(var(--side2) + var(--kw) - 1px); border-left: 1px solid var(--edge); border-right: 0; }
+.sing3.lefty .rec3 { border-radius: 18px 0 0 18px; padding: 5px 8px 5px 30px; }
+.sing3.lefty .rec3 .x3 { right: auto; left: 3px; }
+.sing3.lefty .open3 { border-radius: 26px 0 0 26px; }
 .sing3.lefty .birds3 { left: auto; right: var(--side2); }
 
 /* Call sits left of the day dial (128px wide, 12px in) */
