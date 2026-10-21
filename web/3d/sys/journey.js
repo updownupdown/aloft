@@ -116,7 +116,7 @@ export function journeySystem(G) {
       trace(); map.update(dt);
       if ((findT -= dt) <= 0) { findT = .5; landmarks(); arrive(); }
     },
-    save: () => ({ goal: J.goal, journeys: J.journeys, loops: J.loops || 0, year: J.year, family: J.family, yearChicks: J.yearChicks, found: J.found, route: J.route, box: J.box.map(Math.round), fog: map.save() }),
+    save: () => ({ goal: J.goal, journeys: J.journeys, loops: J.loops || 0, year: J.year, family: J.family, yearChicks: J.yearChicks, found: J.found, pins: J.pins || [], route: J.route, box: J.box.map(Math.round), fog: map.save() }),
     load(o) { const { fog, ...rest } = o; Object.assign(J, rest); if (!J.box) J.box = [b.p[0], b.p[2], b.p[0], b.p[2]]; map.load(fog); },
   };
 }

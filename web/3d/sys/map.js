@@ -16,6 +16,8 @@ const SEE = [160, 2.2, 520];             // clearing radius: base, per metre of 
 const ZOOM = [1.2, 24], ZOOM0 = 5;       // metres per CSS pixel: closest, farthest, at first
 const FOG = 'rgba(0, 0, 0, .6)';
 const key = (i, j) => i + ',' + j;
+// your own pins: a long press drops one, of a kind (each with its colour); they show on the compass
+export const PINS = { thermal: ['A thermal', '#e8a33a'], water: ['Water', '#3f8fd0'], perch: ['A perch', '#5f9a4a'], food: ['Food', '#c0533f'], mark: ['A place', '#8a6fc0'] };
 
 export function mapView(G, J, { HOME_Z, MARSH_Z }) {
   const b = G.b, seen = new Set();
@@ -68,7 +70,8 @@ export function mapView(G, J, { HOME_Z, MARSH_Z }) {
     sum.innerHTML = `<div class="when3"><span class="sky3 ${h}"></span><b>${cap(h)}</b></div>
       <div class="day3"><b>Day ${G.day}</b><span>${cap(G.season.name)}, ${into} of ${SEASON_DAYS}</span><span class="pips3s">${pips}</span></div>
       <p>${esc(cap(where))}</p>
-      <div class="far3"><span><i style="width:${Math.max(2, pct)}%"></i></span><small>${pct}% of the way south known</small></div>`;
+      <div class="far3"><span><i style="width:${Math.max(2, pct)}%"></i></span><small>${pct}% of the way south known</small></div>
+      <small class="tip3">Hold the map to drop a pin.</small>`;
     requestAnimationFrame(() => { fit(); cache = null; draw(); });
   });
   addEventListener('resize', () => { if (open) { fit(); cache = null; soon(); } });
@@ -121,6 +124,7 @@ export function mapView(G, J, { HOME_Z, MARSH_Z }) {
     const out = [{ x: 0, z: HOME_Z, name: 'Home, the forest edge', note: 'Where the journey starts and ends.', col: PIG.wood }];
     if (G.nest) out.push({ x: G.nest.x, z: G.nest.z, name: 'Your nest', note: G.nest.egg || G.nest.chick ? 'Someone is waiting for you here.' : 'A nest of twigs, in a tree.', col: PIG.bark });
     for (const l of Object.values(J.found)) out.push({ x: l.x, z: l.z, name: l.name, note: l.note, col: PIG.ring });
+    for (const p of J.pins || []) out.push({ x: p.x, z: p.z, name: PINS[p.kind]?.[0] || 'A pin', note: '', pin: p });
     return out;
   }
 
@@ -143,6 +147,7 @@ export function mapView(G, J, { HOME_Z, MARSH_Z }) {
     else if (mz >= V.h) { const km = ((MARSH_Z - V.z) / 1000).toFixed(1), t = `The wintering marsh, ${km} km south`; label(V.w / 2 - x.measureText(t).width / 2, V.h - 22, t); poly(x, [[V.w / 2 - 6, V.h - 13], [V.w / 2 + 6, V.h - 13], [V.w / 2, V.h - 4]], C(PIG.ink, .7)); }
     for (const p of places()) {
       const px = sx(p.x), py = sz(p.z); if (px < -20 || py < -20 || px > V.w + 20 || py > V.h + 20) continue;
+      if (p.pin) { pin(x, px, py, PINS[p.pin.kind]?.[1] || '#8a6fc0'); continue; }
       mark(x, px, py, p.col); label(px + 9, py - 6, p.name);
     }
     // you: a little hawk, pointing the way you face
@@ -153,6 +158,12 @@ export function mapView(G, J, { HOME_Z, MARSH_Z }) {
     poly(x, [[V.w - 18, 12], [V.w - 13, 26], [V.w - 18, 23], [V.w - 23, 26]], C(PIG.ink, .7));
     x.fillStyle = C(PIG.ink, .75); x.textAlign = 'center'; x.fillText('N', V.w - 18, 40); x.textAlign = 'left';
   }
+  // a pin: a round head on a short stem, its point on the place
+  const pin = (x, px, py, col) => {
+    x.strokeStyle = C(PIG.ink, .7); x.lineWidth = 1.6; x.beginPath(); x.moveTo(px, py); x.lineTo(px, py - 10); x.stroke();
+    x.fillStyle = col; x.beginPath(); x.arc(px, py - 14, 6, 0, 6.283); x.fill(); x.strokeStyle = '#fff'; x.lineWidth = 1.5; x.stroke();
+    x.fillStyle = 'rgba(255,255,255,.7)'; x.beginPath(); x.arc(px - 2, py - 16, 1.8, 0, 6.283); x.fill();
+  };
   const mark = (x, px, py, col) => { const P = [[px, py - 6], [px + 5, py], [px, py + 6], [px - 5, py]]; poly(x, P, C(shade(col, .85))); poly(x, [P[0], P[2], P[3]], C(shade(col, 1.15))); x.strokeStyle = C(PIG.ink, .6); x.lineWidth = 1; x.stroke(); };
   // ---- touch: drag to pan, pinch to zoom, tap a place, double tap to fly there (play testing) ---
   const pts = new Map();
@@ -168,7 +179,23 @@ export function mapView(G, J, { HOME_Z, MARSH_Z }) {
     const ax = wx(px), az = wz(py); V.sc = sc; V.x = ax - (px - V.w / 2) * sc; V.z = az - (py - V.h / 2) * sc; soon();
   };
   const local = e => { const r = cv.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
-  cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); pts.set(e.pointerId, local(e)); moved = 0; pinch = 0; });
+  // a long press (still for half a second) offers a pin there
+  let pressT = 0;
+  const offerPin = p => {
+    const at = [wx(p[0]), wz(p[1])]; lastTap = null; moved = 99;
+    note.classList.remove('hidden');
+    note.innerHTML = `<b>Drop a pin here</b><span class="pins3">${Object.entries(PINS).map(([k, [name, col]]) => `<button data-pin="${k}" style="--pc:${col}">${name}</button>`).join('')}</span>`;
+    note.onclick = e => {
+      const k = e.target.closest('[data-pin]')?.dataset.pin; if (!k) return;
+      (J.pins ||= []).push({ id: Date.now().toString(36), kind: k, x: Math.round(at[0]), z: Math.round(at[1]) });
+      if (J.pins.length > 40) J.pins.shift();
+      note.classList.add('hidden'); note.onclick = null; soon(); G.hud.did('pin');
+    };
+  };
+  cv.addEventListener('pointerdown', e => {
+    cv.setPointerCapture(e.pointerId); pts.set(e.pointerId, local(e)); moved = 0; pinch = 0;
+    clearTimeout(pressT); if (pts.size === 1) { const p0 = local(e); pressT = setTimeout(() => { if (moved < 6 && pts.size === 1) offerPin(p0); }, 550); }
+  });
   cv.addEventListener('pointermove', e => {
     const p = pts.get(e.pointerId); if (!p) return;
     const q = local(e);
@@ -181,15 +208,18 @@ export function mapView(G, J, { HOME_Z, MARSH_Z }) {
     }
   });
   const up = e => {
-    const p = pts.get(e.pointerId); pts.delete(e.pointerId); pinch = 0;
+    const p = pts.get(e.pointerId); pts.delete(e.pointerId); pinch = 0; clearTimeout(pressT);
     if (!p || moved > 6 || pts.size) return;
     const now = performance.now();
     if (lastTap && now - lastTap.t < 350 && Math.hypot(p[0] - lastTap.p[0], p[1] - lastTap.p[1]) < 24) { lastTap = null; teleport(wx(p[0]), wz(p[1])); return; }
     lastTap = { t: now, p };
     let best = null, bd = 22;
     for (const pl of places()) { const d = Math.hypot(sx(pl.x) - p[0], sz(pl.z) - p[1]); if (d < bd) { bd = d; best = pl; } }
-    note.classList.toggle('hidden', !best);
-    if (best) note.innerHTML = `<b>${esc(best.name)}</b><small>${esc(best.note || '')}</small>`;
+    note.classList.toggle('hidden', !best); note.onclick = null;
+    if (best?.pin) {
+      note.innerHTML = `<b>${esc(best.name)}</b><small>Your pin. It shows on the compass when you are near.</small><span class="pins3"><button data-un="1">Remove pin</button></span>`;
+      note.onclick = e => { if (!e.target.closest('[data-un]')) return; J.pins = J.pins.filter(q => q !== best.pin); note.classList.add('hidden'); soon(); };
+    } else if (best) note.innerHTML = `<b>${esc(best.name)}</b><small>${esc(best.note || '')}</small>`;
   };
   cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
   cv.addEventListener('wheel', e => { e.preventDefault(); const [px, py] = local(e); zoomAt(e.deltaY > 0 ? 1.15 : 1 / 1.15, px, py); }, { passive: false });

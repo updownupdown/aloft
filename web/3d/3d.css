@@ -75,6 +75,7 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .compass3 .mk.nest { background: #8a5a32; }
 .compass3 .mk.place { background: #b0791f; }
 .compass3 .mk.south, .compass3 .mk.home { background: var(--water); }
+.compass3 .mk.pin { background: currentColor; }
 .compass3 .mid { position: absolute; left: 50%; top: 0; width: 2px; height: 6px; margin-left: -1px; border-radius: 1px; background: #fff; box-shadow: 0 0 3px rgba(10, 20, 28, .5); }
 
 /* top right: the day dial, and the frame rate under it when asked */
@@ -356,6 +357,7 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .mapsum3 .far3 span { height: 4px; border-radius: 2px; background: rgba(29, 43, 54, .13); overflow: hidden; }
 .mapsum3 .far3 i { display: block; height: 100%; border-radius: 2px; background: var(--water); }
 .mapsum3 .far3 small { font-size: 11.5px; }
+.mapsum3 .tip3 { font-size: 11.5px; color: var(--ink2); opacity: .8; }
 .mapbtn3 { position: absolute; right: 12px; bottom: 12px; display: flex; flex-direction: column; gap: 8px; }
 .mapbtn3 button { width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: 14px; background: rgba(255, 255, 255, .85); box-shadow: 0 1px 4px rgba(20, 40, 50, .15); cursor: pointer; }
 .mapbtn3 svg { width: 28px; height: 28px; fill: none; stroke: var(--ink); stroke-width: 2; stroke-linecap: round; }
@@ -363,6 +365,9 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .mapbtn3 button:active { background: #fff; transform: scale(.95); }
 .mapnote3 { position: absolute; left: 12px; bottom: 12px; max-width: min(280px, 64%); padding: 10px 14px; border-radius: 14px; background: rgba(255, 255, 255, .88); box-shadow: 0 2px 8px rgba(20, 40, 50, .15); font-size: 12.5px; line-height: 1.45; }
 .mapnote3 b { display: block; font-size: 15px; }
+.pins3 { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.pins3 button { min-height: 34px; padding: 0 12px 0 10px; display: flex; align-items: center; gap: 6px; border: 0; border-radius: 17px; background: rgba(29, 43, 54, .07); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.pins3 button[data-pin]::before { content: ''; width: 10px; height: 10px; border-radius: 50%; background: var(--pc); }
 
 /* the journal: landmarks, the field guide and the album */
 .list3 { list-style: none; padding: 0; margin: 2px 0 10px; }

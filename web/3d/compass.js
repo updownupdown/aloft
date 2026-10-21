@@ -2,6 +2,7 @@
 // N, E, S and W, ticks between, and marks for the places that matter (the nest, the way south or
 // home, landmarks found nearby). Moved only when the heading or the marks change.
 import { HOME_Z, MARSH_Z } from './sys/journey.js';
+import { PINS } from './sys/map.js';
 
 const SPAN = Math.PI * .55;          // from the middle to either edge
 const POINTS = [['N', 0], ['NE', 45], ['E', 90], ['SE', 135], ['S', 180], ['SW', 225], ['W', 270], ['NW', 315]];
@@ -9,6 +10,7 @@ const MARK = {
   nest: '<path d="M3 9c1 3 9 3 10 0M2 9h12M5 9c0-2 1.5-3 3-3s3 1 3 3"/>',
   south: '<path d="M8 3v10M4 9l4 4 4-4"/>',
   home: '<path d="M3 8l5-4 5 4v5H3zM7 13v-3h2v3"/>',
+  pin: '<circle cx="8" cy="6" r="3.6"/><path d="M8 9.6V14"/>',
   place: '<path d="M8 2l1.8 4 4.2.4-3.2 2.8 1 4.3L8 11.3 4.2 13.5l1-4.3L2 6.4l4.2-.4z"/>',
 };
 
@@ -31,14 +33,17 @@ export function createCompass(G, ui) {
     if (J?.goal === 'north' && z > HOME_Z + 200) out.push(['home', x, HOME_Z, 'Home']);
     const found = Object.values(J?.found || {}).map(l => [l, Math.hypot(l.x - x, l.z - z)]).filter(([, d]) => d > 60 && d < 3000).sort((a, c) => a[1] - c[1]).slice(0, 3);
     for (const [l] of found) out.push(['place', l.x, l.z, l.name]);
+    // your own pins, the two nearest within 4 km, each in its colour
+    const pins = (J?.pins || []).map(p => [p, Math.hypot(p.x - x, p.z - z)]).filter(([, d]) => d > 40 && d < 4000).sort((a, c) => a[1] - c[1]).slice(0, 2);
+    for (const [p] of pins) out.push(['pin', p.x, p.z, PINS[p.kind]?.[0] || 'Your pin', PINS[p.kind]?.[1]]);
     return out;
   }
   function setMarks(list) {
     const k = list.map(m => m[0] + m[3]).join('|');
     if (k === key) { list.forEach((m, i) => { marks[i].x = m[1]; marks[i].z = m[2]; }); return; }
     key = k; for (const m of marks) m.el.remove();
-    marks = list.map(([kind, x, z, title]) => {
-      const e = document.createElement('span'); e.className = 'mk ' + kind; e.title = title;
+    marks = list.map(([kind, x, z, title, col]) => {
+      const e = document.createElement('span'); e.className = 'mk ' + kind; e.title = title; if (col) e.style.color = col;
       e.innerHTML = `<svg viewBox="0 0 16 16">${MARK[kind]}</svg>`; strip.append(e);
       return { el: e, x, z };
     });
