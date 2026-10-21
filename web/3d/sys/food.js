@@ -17,11 +17,24 @@ export const FOOD = {
   catchR: 1.5, catchDive: 1.6, catchH: 2.6,  // reach, extra reach diving, how low to be
 };
 
+// a worm: one rough tapered tube, gently curved, with the pale saddle band near its head
 function wormShape() {
-  reseed(9); const B = builder(), pink = [.78, .5, .5], dark = [.62, .38, .4];
-  for (let i = 0; i < 6; i++) {
-    const x = (i - 2.5) * .028, w = .011 - Math.abs(i - 2.5) * .0012, z = Math.sin(i * 1.3) * .012;
-    blob(B, x, .012, z, w, i % 2 ? pink : dark, dark, [1.6, 1, 1]);
+  const B = builder(), pink = [.78, .5, .5], dark = [.64, .4, .42], band = [.86, .62, .6];
+  const N = 9, SIDES = 6, len = .17, pts = [];
+  for (let i = 0; i <= N; i++) {
+    const t = i / N, x = (t - .5) * len, z = Math.sin(t * Math.PI * 1.4 - .4) * .018;
+    const r = .0035 + .0085 * Math.sin(Math.min(1, t * 1.15) * Math.PI) ** .6 * (1 - Math.sin(i * 2.7) * .12);   // tapered, a little lumpy
+    pts.push({ x, z, r: i === 0 || i === N ? .0015 : r });
+  }
+  const ring = (q, i) => Array.from({ length: SIDES }, (_, k) => {
+    const g = k / SIDES * Math.PI * 2 + i * .3, prev = pts[Math.max(0, i - 1)], next = pts[Math.min(N, i + 1)];
+    const dx = next.x - prev.x, dz = next.z - prev.z, l = Math.hypot(dx, dz) || 1;   // the side direction, across the body
+    return [q.x - dz / l * Math.cos(g) * q.r, q.r * .85 + Math.sin(g) * q.r * .85, q.z + dx / l * Math.cos(g) * q.r];
+  });
+  const rings = pts.map(ring);
+  for (let i = 0; i < N; i++) for (let k = 0; k < SIDES; k++) {
+    const k2 = (k + 1) % SIDES, col = i === 6 ? band : (i + k) % 2 ? pink : dark;
+    B.tri(rings[i][k], rings[i + 1][k], rings[i + 1][k2], col); B.tri(rings[i][k], rings[i + 1][k2], rings[i][k2], col);
   }
   return B.out();
 }
