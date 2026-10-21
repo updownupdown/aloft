@@ -2,8 +2,8 @@
 // cairns, a ruined tower, the lighthouse on the sea cliffs (its lamp turns at night), and
 // waterfalls spilling over the cliffs with mist at their feet. The giant oaks and willows are
 // trees (world.js treesIn). Finding them, postcards and the journal belong to journey.js.
-import { landmarksNear, rocksNear, height, WATER, PAL } from '../world.js';
-import { mix3 } from '../util.js';
+import { landmarksNear, rocksNear, height, WATER, PAL, GROUND, CELLS, setGroundDetail } from '../world.js';
+import { mix3, store } from '../util.js';
 import { builder, blob, prism, tube, reseed } from '../shapes.js';
 
 const STONE = [.6, .59, .56], STONE2 = [.5, .5, .49], MOSS = [.45, .52, .36];
@@ -12,14 +12,14 @@ function stones() {
   reseed(61); const B = builder();
   for (let i = 0; i < 9; i++) {
     const a = i / 9 * 6.283, h = 2.6 + (i * 37 % 10) / 10 * 1.8, x = Math.cos(a) * 8, z = Math.sin(a) * 8;
-    prism(B, x, z, .55, .42, -.4, h, 4, i % 3 ? STONE : STONE2);
+    prism(B, x, z, .55, .42, -.4, h, 7, i % 3 ? STONE : STONE2);
   }
-  prism(B, 0, 0, .9, .8, -.3, .5, 5, MOSS);     // the low altar stone
+  prism(B, 0, 0, .9, .8, -.3, .5, 8, MOSS);     // the low altar stone
   return B.out();
 }
 function cairn() {
   reseed(62); const B = builder();
-  for (let i = 0; i < 6; i++) blob(B, Math.sin(i * 2.1) * .2, .35 + i * .42, Math.cos(i * 1.7) * .2, .75 - i * .09, STONE, STONE2, [1, .6, 1]);
+  for (let i = 0; i < 6; i++) blob(B, Math.sin(i * 2.1) * .2, .35 + i * .42, Math.cos(i * 1.7) * .2, .75 - i * .09, STONE, STONE2, [1, .6, 1], 2);
   return B.out();
 }
 function tower() {
@@ -67,47 +67,59 @@ function fallsMesh(l) {
 // slabs, a red hoodoo (a stepped pillar with a pale cap stone), a lumpy boulder
 function tor() {
   reseed(65); const B = builder(), g = PAL.granite, g2 = [.52, .51, .5];
-  prism(B, 0, 0, .75, .66, -.1, .3, 6, g); prism(B, .05, .02, .62, .55, .3, .55, 6, g2);
-  prism(B, -.04, .03, .5, .42, .55, .78, 5, g); prism(B, .02, -.02, .36, .3, .78, 1, 5, g2);
+  prism(B, 0, 0, .75, .66, -.1, .3, 10, g); prism(B, .05, .02, .62, .55, .3, .55, 10, g2);
+  prism(B, -.04, .03, .5, .42, .55, .78, 8, g); prism(B, .02, -.02, .36, .3, .78, 1, 8, g2);
   return B.out();
 }
 function hoodoo() {
   reseed(66); const B = builder(), r = PAL.redrock, o = PAL.ochre;
-  prism(B, 0, 0, .3, .2, -.05, .35, 6, r); prism(B, 0, 0, .2, .14, .35, .62, 6, o); prism(B, 0, 0, .15, .12, .62, .88, 6, r);
-  prism(B, .02, 0, .28, .22, .88, 1, 6, PAL.buff);
+  prism(B, 0, 0, .3, .2, -.05, .35, 10, r); prism(B, 0, 0, .2, .14, .35, .62, 10, o); prism(B, 0, 0, .15, .12, .62, .88, 10, r);
+  prism(B, .02, 0, .28, .22, .88, 1, 10, PAL.buff);
   return B.out();
 }
 function boulder() {
   reseed(67); const B = builder();
-  blob(B, 0, .3, 0, .5, PAL.granite, [.55, .55, .53], [1.1, .9, .9]);
+  blob(B, 0, .3, 0, .5, PAL.granite, [.55, .55, .53], [1.1, .9, .9], 2);
   return B.out();
 }
 
 // a lava rock: a dark, sharp lump
 function lava() {
   reseed(68); const B = builder();
-  blob(B, 0, .3, 0, .5, PAL.lava, PAL.lava2, [1.2, .8, 1]);
+  blob(B, 0, .3, 0, .5, PAL.lava, PAL.lava2, [1.2, .8, 1], 2);
   return B.out();
 }
 // a natural arch (world.js archLegs: legs .42 either side of the middle, the span on top to .85)
 function arch() {
   reseed(69); const B = builder(), r = PAL.redrock, o = PAL.ochre;
-  for (const k of [-1, 1]) { prism(B, .42 * k, 0, .15, .12, -.1, .3, 6, r); prism(B, .42 * k, 0, .12, .11, .3, .6, 6, o); }
+  for (const k of [-1, 1]) { prism(B, .42 * k, 0, .15, .12, -.1, .3, 10, r); prism(B, .42 * k, 0, .12, .11, .3, .6, 10, o); }
   const P = t => [Math.cos(t) * .42, .58 + Math.sin(t) * .22, 0];
   for (let i = 0; i < 9; i++) { const a = Math.PI * i / 9, b = Math.PI * (i + 1) / 9; tube(B, P(a), P(b), .1 - Math.sin(a) * .02, i % 3 ? r : o); }
-  blob(B, 0, .82, 0, .1, PAL.buff, o, [2.4, .5, 1.1]);
+  blob(B, 0, .82, 0, .1, PAL.buff, o, [2.4, .5, 1.1], 2);
   return B.out();
 }
 // a sea stack: a pillar of rock standing in the water, a cap of turf on top
 function stack() {
   reseed(70); const B = builder();
-  prism(B, 0, 0, .15, .13, -.05, .5, 6, PAL.rock); prism(B, .01, 0, .13, .11, .5, .96, 6, PAL.granite);
-  prism(B, .01, 0, .112, .09, .96, 1, 6, PAL.moss);
+  prism(B, 0, 0, .15, .13, -.05, .5, 10, PAL.rock); prism(B, .01, 0, .13, .11, .5, .96, 10, PAL.granite);
+  prism(B, .01, 0, .112, .09, .96, 1, 10, PAL.moss);
   return B.out();
 }
 
 export function landsSystem(G) {
   const R = G.R;
+  // Settings > Ground detail: steps through the facet sizes and rebuilds the ground
+  const gname = () => { const g = GROUND.find(g => g[0] === CELLS); return `${g[1]}: ${g[2]}`; };
+  const gEl = G.menu.button('play', { label: 'Ground detail', sub: gname(), group: 'app', onClick: el => {
+    const i = GROUND.findIndex(g => g[0] === CELLS), n = GROUND[(i + 1) % GROUND.length][0];
+    setGroundDetail(n); store.set('ground', n); R.dropChunks(); el.querySelector('em').textContent = gname();
+  } });
+  G.menu.onOpen(() => { gEl.querySelector('em').textContent = gname(); });
+  // Settings > Graphics (G.gfx level 0..2) picks the ground too, until the row above is used
+  G.on('gfx', lv => {
+    if (store.get('ground', null) !== null) return;
+    const n = [16, 24, 32][lv] ?? 24; if (n !== CELLS) { setGroundDetail(n); R.dropChunks(); }
+  });
   R.shape('lm_stones', stones()); R.shape('lm_cairn', cairn()); R.shape('lm_tower', tower()); R.shape('lm_lighthouse', lighthouse());
   R.shape('rock_tor', tor()); R.shape('rock_hoodoo', hoodoo()); R.shape('rock_boulder', boulder());
   R.shape('rock_lava', lava()); R.shape('rock_arch', arch()); R.shape('rock_stack', stack());
