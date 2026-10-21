@@ -98,15 +98,15 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 /* the frame rate, under Call (songs.css puts Call left of the dial) */
 #ui3 .fps3 { position: absolute; right: 140px; top: 62px; width: 54px; text-align: center; font: 600 15px var(--text); font-variant-numeric: tabular-nums; color: #fff; text-shadow: 0 1px 3px rgba(0, 0, 0, .55); }
 
-/* Take off, bottom right just left of the song notes (the button is main.js's; Sleep stacks above it) */
-#ui3 .takeoff3 { pointer-events: auto; position: absolute; right: calc(126px + env(safe-area-inset-right)); bottom: calc(22px + env(safe-area-inset-bottom));
+/* Take off, bottom right just left of the song notes (the button is main.js's; Sleep sits to its left) */
+#ui3 .takeoff3 { pointer-events: auto; position: absolute; right: calc(84px + env(safe-area-inset-right)); bottom: calc(22px + env(safe-area-inset-bottom));
   display: flex; align-items: center; gap: 8px; min-height: 46px; padding: 0 22px 0 18px; border-radius: 23px; cursor: pointer; touch-action: manipulation;
   font-family: var(--text); font-style: normal; font-weight: 700; font-size: 15px; letter-spacing: .02em; color: var(--ink); background: var(--glass2); transition: opacity .4s; }
 #ui3 .takeoff3::before { content: ''; width: 14px; height: 14px; background: var(--ink);
   clip-path: polygon(50% 0, 100% 50%, 64% 50%, 64% 100%, 36% 100%, 36% 50%, 0 50%); }
 #ui3 .takeoff3.gone { opacity: 0; pointer-events: none; }
 /* left-handed singing puts the notes on the left: Take off follows them */
-#ui3:has(.sing3.lefty) .takeoff3 { right: auto; left: calc(126px + env(safe-area-inset-left)); }
+#ui3:has(.sing3.lefty) .takeoff3 { right: auto; left: calc(84px + env(safe-area-inset-left)); }
 /* a phone held upright: the compass and the toasts drop below the top row */
 @media (max-width: 620px) {
   .hud3 { gap: 10px; padding-right: 12px; }

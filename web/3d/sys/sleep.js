@@ -1,4 +1,4 @@
-// Sleep: perched at night, a Sleep button above Take off. Sleeping, the screen dims and the night
+// Sleep: perched at night, a Sleep button left of Take off. Sleeping, the screen dims and the night
 // runs by quickly to first light, and the wings fill. On the ground it is too exposed: the button
 // says so instead. A touch or Take off wakes you early.
 import { period } from '../sky.js';
@@ -9,7 +9,8 @@ export function sleepSystem(G) {
   const b = G.b, H = G.hud, ui = document.getElementById('ui3') || document.body;
   ui.insertAdjacentHTML('beforeend', `<button class="takeoff3 sleep3 gone" aria-label="Sleep">Sleep</button><div class="night3"></div>
   <style>
-    #ui3 .takeoff3.sleep3 { bottom: calc(80px + env(safe-area-inset-bottom)); }
+    #ui3 .takeoff3.sleep3 { right: calc(84px + 168px + env(safe-area-inset-right)); }
+    #ui3:has(.sing3.lefty) .takeoff3.sleep3 { right: auto; left: calc(84px + 168px + env(safe-area-inset-left)); }
     #ui3 .takeoff3.sleep3::before { clip-path: none; border-radius: 50%; background: transparent; box-shadow: inset -4px -2px 0 0 var(--ink); }
     .night3 { position: fixed; inset: 0; background: #070b14; opacity: 0; pointer-events: none; transition: opacity 1.2s; z-index: 1; }
     .night3.on { opacity: .62; }
