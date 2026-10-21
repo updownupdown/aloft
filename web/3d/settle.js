@@ -315,3 +315,12 @@ export function bridgeSolids(g, pillar) {
 export const clearOf = b => DIM[b.kind].clear;
 export const saplingIn = b => b.v === 2 && (b.kind === 'cottage' || b.kind === 'hut' || b.kind === 'farmhouse');
 export const nearRoad = (x, z) => roadShade(x, z) > .2;
+
+// how good a place is for mice (0..1): barns, granary corners and farmyards above all, then the
+// folds, the village gardens and the shells of cottages; nothing past 90 m from them
+const RICH = { barn: 1, farmhouse: .8, cart: .7, well: .55, hut: .7, cottage: .6, chapel: .45, keeper: .4, pump: .5 };
+export function mouseRich(x, z) {
+  let v = 0;
+  for (const bd of buildingsNear(x, z, 90)) v = Math.max(v, (RICH[bd.kind] || 0) * smooth(90, 18, Math.hypot(bd.x - x, bd.z - z)));
+  return v;
+}
