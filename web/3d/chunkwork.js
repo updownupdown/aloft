@@ -4,9 +4,9 @@ import { chunkMesh, env } from './world.js';
 import { setSeed, WORLD } from './noise.js';
 
 onmessage = e => {
-  const { k, cx, cz, cells, gen, seed, snow, season, seasonDay } = e.data;
+  const { k, cx, cz, cells, gen, seed, snow, season, seasonDay, size, drop, far } = e.data;
   if (seed !== WORLD.seed) setSeed(seed);
   env.snow = snow; env.season = season; env.seasonDay = seasonDay;
-  const data = chunkMesh(cx, cz, cells).slice();
-  postMessage({ k, cx, cz, cells, gen, data }, [data.buffer]);
+  const data = chunkMesh(cx, cz, cells, size, drop).slice();
+  postMessage({ k, cx, cz, cells, gen, data, far }, [data.buffer]);
 };

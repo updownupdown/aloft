@@ -9,14 +9,22 @@ export { ih, fbm, WORLD, newWorld, PAL, JOURNEY, blend };
 
 export const CHUNK = 96;
 // Ground detail (Settings > Ground detail): cells per chunk side. 16 is 6 m facets, 24 (the
-// default) 4 m, 32 3 m, 48 2 m. Triangles grow with the square: 1x, 2.25x, 4x, 9x. Chunks near
-// the bird (NEAR_R) get twice as many a side, up to 48 (CELLS_NEAR; see cellsFor()).
-export const GROUND = [[16, 'Coarse', '6 m facets'], [24, 'Fine', '4 m facets'], [32, 'Finer', '3 m facets, more for the GPU'], [48, 'Finest', '2 m facets, heavy: try it on a fast phone']];
-export const NEAR_R = 160;
-export let CELLS = 24, CELLS_NEAR = 48, CELL = CHUNK / CELLS_NEAR;
-export function setGroundDetail(n) { CELLS = GROUND.some(g => g[0] === n) ? n : 24; CELLS_NEAR = Math.min(48, CELLS * 2); CELL = CHUNK / CELLS_NEAR; }
+// default) 4 m, 32 3 m, 48 2 m, 96 1 m, 192 0.5 m. Triangles grow with the square. Detail falls
+// off in rings round the bird (RINGS: out to so many metres, so many cells), so the finest steps
+// only build the few chunks close by; past the last ring it is the base step (CELLS).
+export const GROUND = [[16, 'Coarse', '6 m facets'], [24, 'Fine', '4 m facets'], [32, 'Finer', '3 m facets, more for the GPU'], [48, 'Finest', '2 m facets, heavy: try it on a fast phone'],
+  [96, '1 m', 'very heavy: ~15 MB more memory, may stutter as ground loads'], [192, '0.5 m', 'extreme: ~90 MB more memory, may stutter or run out']];
+export let CELLS = 24, CELL = CHUNK / 48, RINGS = [], GROUND_SET = 24;   // GROUND_SET: the step picked
+export function setGroundDetail(n) {
+  if (!GROUND.some(g => g[0] === n)) n = 24;
+  GROUND_SET = n;
+  RINGS = n <= 48 ? [[160, Math.min(48, n * 2)], [1e9, n]]
+    : n === 96 ? [[120, 96], [1e9, 48]]
+    : [[90, 192], [200, 96], [1e9, 48]];
+  CELLS = RINGS[RINGS.length - 1][1]; CELL = CHUNK / RINGS[0][1];
+}
 // how many cells a side for a chunk whose middle is d metres from the bird
-export const cellsFor = d => (d < NEAR_R ? CELLS_NEAR : CELLS);
+export const cellsFor = d => RINGS.find(r => d < r[0])[1];
 setGroundDetail(store.get('ground', 24));
 // The water level: 0 on average, but the tides, the rain and the summer move it (sys/waters.js
 // calls setWater). One level for all water, sea and lakes alike, kept within half a metre or so.
@@ -150,10 +158,11 @@ export function mapColour(x, z) {
 }
 
 // A chunk of ground as flat-shaded triangles: pos, normal, colour, colour (two-sided slot).
-export function chunkMesh(cx, cz, N = CELLS) {
-  const C = CHUNK / N, x0 = cx * CHUNK, z0 = cz * CHUNK;
+// size: a far tile (render.js) is one big coarse chunk, sunk a little (drop) under the near ground
+export function chunkMesh(cx, cz, N = CELLS, size = CHUNK, drop = 0) {
+  const C = size / N, x0 = cx * size, z0 = cz * size;
   const H = new Float32Array((N + 1) * (N + 1));
-  for (let j = 0; j <= N; j++) for (let i = 0; i <= N; i++) H[j * (N + 1) + i] = height(x0 + i * C, z0 + j * C);
+  for (let j = 0; j <= N; j++) for (let i = 0; i <= N; i++) H[j * (N + 1) + i] = height(x0 + i * C, z0 + j * C) - drop;
   // the biomes are looked up once per few cells for colouring (they change over 100s of m)
   const BL = [], bs = N >= 36 ? 4 : 2, bn = N / bs;
   for (let j = 0; j < N; j += bs) for (let i = 0; i < N; i += bs) BL.push(blend(x0 + (i + bs / 2) * C, z0 + (j + bs / 2) * C));
@@ -177,7 +186,7 @@ export function chunkMesh(cx, cz, N = CELLS) {
     else { tri(xa, a, za, xa, c, zb, xb, d, zb); tri(xa, a, za, xb, d, zb, xb, b, za); }
   }
   // skirts: a short wall down from each edge, hiding the cracks where a finer chunk meets a coarser one
-  const S = 3; skirt = true;
+  const S = drop ? 30 : 3; skirt = true;
   for (let e = 0; e < N; e++) {
     for (const [i0, j0, i1, j1] of [[e, 0, e + 1, 0], [e + 1, N, e, N], [0, e + 1, 0, e], [N, e, N, e + 1]]) {
       bl = BL[Math.floor(Math.min(j0, N - 1) / bs) * bn + Math.floor(Math.min(i0, N - 1) / bs)];

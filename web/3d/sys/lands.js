@@ -2,7 +2,7 @@
 // cairns, a ruined tower, the lighthouse on the sea cliffs (its lamp turns at night), and
 // waterfalls spilling over the cliffs with mist at their feet. The giant oaks and willows are
 // trees (world.js treesIn). Finding them, postcards and the journal belong to journey.js.
-import { landmarksNear, rocksNear, fencesNear, height, WATER, WIND, PAL, GROUND, CELLS, setGroundDetail } from '../world.js';
+import { landmarksNear, rocksNear, fencesNear, height, WATER, WIND, PAL, GROUND, GROUND_SET, setGroundDetail } from '../world.js';
 import { mix3, store } from '../util.js';
 import { builder, blob, prism, tube, reseed } from '../shapes.js';
 
@@ -197,16 +197,16 @@ function fenceMesh(f) {
 export function landsSystem(G) {
   const R = G.R;
   // Settings > Ground detail: steps through the facet sizes and rebuilds the ground
-  const gname = () => { const g = GROUND.find(g => g[0] === CELLS); return `${g[1]}: ${g[2]}`; };
+  const gname = () => { const g = GROUND.find(g => g[0] === GROUND_SET); return `${g[1]}: ${g[2]}`; };
   const gEl = G.menu.button('play', { label: 'Ground detail', sub: gname(), group: 'app', onClick: el => {
-    const i = GROUND.findIndex(g => g[0] === CELLS), n = GROUND[(i + 1) % GROUND.length][0];
+    const i = GROUND.findIndex(g => g[0] === GROUND_SET), n = GROUND[(i + 1) % GROUND.length][0];
     setGroundDetail(n); store.set('ground', n); R.dropChunks(); el.querySelector('em').textContent = gname();
   } });
   G.menu.onOpen(() => { gEl.querySelector('em').textContent = gname(); });
   // Settings > Graphics (G.gfx level 0..2) picks the ground too, until the row above is used
   G.on('gfx', lv => {
     if (store.get('ground', null) !== null) return;
-    const n = [16, 24, 32][lv] ?? 24; if (n !== CELLS) { setGroundDetail(n); R.dropChunks(); }
+    const n = [16, 24, 32][lv] ?? 24; if (n !== GROUND_SET) { setGroundDetail(n); R.dropChunks(); }
   });
   R.shape('lm_stones', stones()); R.shape('lm_cairn', cairn()); R.shape('lm_tower', tower()); R.shape('lm_lighthouse', lighthouse());
   R.shape('rock_tor', tor()); R.shape('rock_hoodoo', hoodoo()); R.shape('rock_boulder', boulder());
