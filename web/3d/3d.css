@@ -22,8 +22,7 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .glass, #ui3 .takeoff3, .tipmore3, .photo3 {
   background: var(--glass); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); border: 1px solid var(--edge); box-shadow: var(--shadow); }
 
-/* top left: one pill holding the menu button, the meters (short bars stacked) and the height over
-   the speed */
+/* top left: the menu button, the three bubble meters beside it, the height ladder under it */
 .menu3 { pointer-events: auto; position: absolute; left: calc(16px + env(safe-area-inset-left)); top: calc(16px + env(safe-area-inset-top)); z-index: 1;
   width: 40px; height: 40px; border: 0; border-radius: 50%; padding: 0; cursor: pointer; background: rgba(255, 255, 255, .75);
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; }
@@ -32,34 +31,40 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
   min-height: 52px; padding: 7px 16px 7px 58px; font-size: 11.5px; color: #fff; transition: opacity 1.6s ease; }
 /* no panes behind the HUD: white ink with a soft dark halo reads on sky, land and water alike */
 .hud3, .dial, .compass3, .toast3 { --halo: drop-shadow(0 1px 1.5px rgba(10, 20, 28, .55)) drop-shadow(0 0 6px rgba(10, 20, 28, .25)); }
-.meters { display: flex; flex-direction: column; gap: 4px; transition: opacity 1.2s; }
-.m3 { display: flex; align-items: center; gap: 6px; height: 12px; }
-.m3 svg { width: 15px; height: 15px; flex: none; fill: none; stroke: #fff; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; filter: var(--halo); }
-.m3 .bar { position: relative; width: 74px; height: 6px; border-radius: 3px; overflow: hidden; background: rgba(20, 32, 40, .32); box-shadow: 0 0 0 1px rgba(255, 255, 255, .55), 0 1px 4px rgba(10, 20, 28, .3); }
-.m3 .bar i { position: absolute; inset: 0; border-radius: 3px; background: var(--m); transform-origin: left; transition: transform .4s; }
+.meters { display: flex; gap: 9px; transition: opacity 1.2s; }
+/* a meter: a round bubble that fills from the bottom like a glass, a white ring inside its edge, the icon on top */
+.m3 { position: relative; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; }
+.m3 svg { position: relative; width: 18px; height: 18px; flex: none; fill: none; stroke: #fff; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 1px 1px rgba(10, 20, 28, .5)); }
+.m3 .bar { position: absolute; inset: 0; border-radius: 50%; overflow: hidden; background: rgba(20, 32, 40, .34); box-shadow: 0 1px 4px rgba(10, 20, 28, .3); transition: box-shadow .5s; }
+.m3 .bar::after { content: ''; position: absolute; inset: 0; border-radius: 50%; box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .75); }
+.m3 .bar i { position: absolute; inset: 0; background: var(--m); transform-origin: bottom; transition: transform .4s; }
 .m3 .nm { display: none; }
-/* the part of the bar out of reach for now (max stamina lowered), hatched, with a white mark */
-.m3 .bar b { position: absolute; top: 0; bottom: 0; right: 0; left: 100%; display: none; border-left: 2px solid #fff;
-  background: repeating-linear-gradient(135deg, rgba(10, 20, 28, .55) 0 2px, rgba(255, 255, 255, .18) 2px 4px); transition: left .4s; }
+/* the part of the bubble out of reach for now (max stamina lowered), hatched, under a white line */
+.m3 .bar b { position: absolute; left: 0; right: 0; top: 0; bottom: 100%; display: none; border-bottom: 2px solid #fff;
+  background: repeating-linear-gradient(135deg, rgba(10, 20, 28, .55) 0 2px, rgba(255, 255, 255, .18) 2px 4px); transition: bottom .4s; }
 .m3.capped .bar b { display: block; }
-.m3 .bar { transition: box-shadow .5s; }
-.m3.glow .bar { box-shadow: 0 0 0 1px var(--glow), 0 0 8px 2px var(--glow); }
-.m3.glow svg { stroke: var(--glow); }
-.m3.low svg { stroke: #ff8a6e; }
+.m3.glow .bar { box-shadow: 0 0 0 1.5px var(--glow), 0 0 8px 2px var(--glow); }
 .m3.low .bar i { background: #ff6a4a; }
 .m3.low { animation: flash3 1.1s ease-in-out infinite; }
 .m3.urgent { animation-duration: .55s; }
 @keyframes flash3 { 50% { opacity: .35; } }
-/* height and speed, under the menu button */
-.alt { position: absolute; left: 6px; top: 60px; display: flex; flex-direction: column; align-items: flex-start; gap: 1px; font-variant-numeric: tabular-nums; }
-.alt b { font-size: 16px; font-weight: 600; line-height: 1.1; white-space: nowrap; filter: var(--halo); }
+/* the height ladder, under the menu button: a tape of ticks that slides with the height and a small
+   pointer, then the height, the rise or sink and the speed; perched or on the ground the tape dims
+   and the height sits over what the hawk is doing */
+.alt { position: absolute; left: 10px; top: 54px; display: flex; align-items: center; gap: 9px; font-variant-numeric: tabular-nums; filter: var(--halo); }
+.alt .tape { position: relative; flex: none; width: 9px; height: 84px; background: repeating-linear-gradient(to bottom, rgba(255, 255, 255, .85) 0 1.5px, transparent 1.5px 10px);
+  -webkit-mask-image: linear-gradient(transparent, #000 30%, #000 70%, transparent); mask-image: linear-gradient(transparent, #000 30%, #000 70%, transparent); transition: opacity .6s; }
+.alt .ptr { position: absolute; left: 12px; top: 37px; width: 7px; height: 10px; background: #fff; clip-path: polygon(0 50%, 100% 0, 100% 100%); }
+.alt .nums { margin-left: 8px; }
+.alt b { display: block; font-size: 20px; font-weight: 600; line-height: 1.1; white-space: nowrap; }
 .alt b small { display: inline; margin-left: 2px; font-size: 11px; font-weight: 500; color: inherit; opacity: .85; }
-.alt b.k { font-size: 13px; }
-.alt b.k:empty { display: none; }
-.alt b.m:not(:has(small)) { font-size: 13px; font-weight: 500; }
-.alt b.rise, .alt b.ride { color: #c9f5b0; }
-.alt b.rise::before, .alt b.ride::before { content: '↑'; margin-right: 3px; font-size: 12px; }
-.alt b.ride::before { content: '⟳'; }
+.alt b.v { font-size: 13px; }
+.alt b.v.rise { color: #c9f5b0; }
+.alt b.v.st { font-weight: 500; }
+.alt b.k { font-size: 15px; margin-top: 4px; }
+.alt b:empty { display: none; }
+.alt.still .tape { opacity: .45; }
+.alt.still .ptr { display: none; }
 
 /* top middle: the compass, a strip of the sky ahead, its edges fading out */
 .compass3 { position: absolute; left: 50%; top: calc(12px + env(safe-area-inset-top)); transform: translateX(-50%); width: min(320px, 38vw); height: 34px;
@@ -82,22 +87,23 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .corner3 { position: absolute; right: calc(10px + env(safe-area-inset-right)); top: calc(10px + env(safe-area-inset-top)); }
 .dial { width: 128px; padding: 4px 6px; display: flex; flex-direction: column; align-items: center; gap: 2px; color: #fff; }
 .dial svg { filter: drop-shadow(0 1px 3px rgba(10, 20, 28, .35)); }
-.dial svg { width: 88px; height: 46px; display: block; overflow: visible; }
+.dial svg { width: 101px; height: 53px; display: block; overflow: visible; }
 .dial .track { fill: rgba(255, 255, 255, .2); stroke: rgba(10, 20, 28, .3); stroke-width: .8; }
 .dial .ring path { stroke-width: .4; }
 .dial .rim { fill: none; stroke: rgba(255, 255, 255, .85); stroke-width: 1.2; }
 .dial .base { stroke: rgba(255, 255, 255, .9); stroke-width: 1.4; stroke-linecap: round; }
 .dial .sun { fill: #f2bc4a; stroke: #fff; stroke-width: 1.2; }
 .dial .moon { fill: #eef2f6; stroke: rgba(29, 43, 54, .4); stroke-width: .8; }
-/* the needle: an upright bar with a triangle at its top; it never moves */
-.dial .needle { filter: drop-shadow(0 0 1.2px rgba(10, 20, 28, .75)); }
-.dial .needle .bar, .dial .needle .tip { fill: #fff; }
+/* the bead: where the time is now, a small white triangle with a slate edge; it never moves */
+.dial .bead .edge { fill: var(--ink); }
+.dial .bead .fill { fill: #fff; }
 .dial .label { display: none; }
 .dial .season { margin-top: 3px; font-size: 13px; font-weight: 600; white-space: nowrap; display: flex; align-items: center; gap: 6px; filter: var(--halo); }
 .dial .season::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--sc, var(--leaf)); }
 .dial .season.summer { --sc: #8fae4c; } .dial .season.autumn { --sc: #c9782f; } .dial .season.winter { --sc: #9cb6cf; } .dial .season.spring { --sc: #e39bb4; }
-/* the frame rate, under Call (songs.css puts Call left of the dial) */
-#ui3 .fps3 { position: absolute; right: 140px; top: 62px; width: 70px; white-space: nowrap; text-align: center; font: 600 15px var(--text); font-variant-numeric: tabular-nums; color: #fff; text-shadow: 0 1px 3px rgba(0, 0, 0, .55); }
+/* the frame rate, under the season */
+.corner3 .dial .season { margin-top: 21px; }
+#ui3 .fps3 { position: absolute; right: 0; top: 108px; width: 128px; white-space: nowrap; text-align: center; font: 600 12px var(--text); font-variant-numeric: tabular-nums; color: #fff; text-shadow: 0 1px 3px rgba(0, 0, 0, .55); }
 
 /* Take off and Sleep, bottom right while perched or on the ground, just left of the note pad when
    it is out (sys/songs.css); the buttons are main.js's and sleep.js's, Sleep to the left of Take off */
@@ -128,7 +134,6 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 /* a phone held upright: the compass and the toasts drop below the top row */
 @media (max-width: 620px) {
   .hud3 { gap: 10px; padding-right: 12px; }
-  .m3 .bar { width: 48px; }
   .compass3 { top: calc(132px + env(safe-area-inset-top)); width: min(260px, 60vw); }
 }
 
@@ -144,17 +149,15 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
    words on a soft, blurred dark backing, with an icon coloured by kind (song, event, tutorial,
    hint, warn). A tip and a message can show together, the tip under the message; the compass
    steps down below whatever shows */
-.toast3, .hint3 { position: absolute; left: 50%; top: calc(8px + env(safe-area-inset-top)); transform: translateX(-50%); margin: 0;
+.toast3, .hint3 { position: absolute; z-index: 2; left: 50%; top: calc(10px + env(safe-area-inset-top)); transform: translateX(-50%); margin: 0;
   display: flex; align-items: center; gap: 10px; width: max-content; max-width: min(560px, calc(100vw - 460px - env(safe-area-inset-left) - env(safe-area-inset-right))); padding: 7px 16px 7px 10px; border-radius: 20px;
   color: #fff; font-size: 14.5px; font-weight: 600; line-height: 1.35; text-align: left; text-shadow: 0 1px 2px rgba(0, 0, 0, .35);
   background: rgba(16, 24, 32, .38); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); box-shadow: none;
   opacity: 0; pointer-events: none; transition: opacity .5s, transform .35s; }
 .toast3.show { opacity: 1; }
 #ui3:has(.toast3.show) .hint3 { top: calc(var(--msgh, 44px) + 14px + env(safe-area-inset-top)); }
-.compass3 { transition: top .35s; }
-#ui3:has(.hint3.show) .compass3 { top: calc(58px + env(safe-area-inset-top)); }
-#ui3:has(.toast3.show) .compass3 { top: calc(var(--msgh, 44px) + 14px + env(safe-area-inset-top)); }
-#ui3:has(.toast3.show):has(.hint3.show) .compass3 { top: calc(var(--msgh, 44px) + 66px + env(safe-area-inset-top)); }
+.compass3 { transition: opacity .5s; }
+#ui3:has(.toast3.show) .compass3, #ui3:has(.hint3.show) .compass3 { opacity: 0; }
 .toast3 .ic3, .hint3 .ic3 { flex: none; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; background: none; }
 .toast3 .ic3 svg, .hint3 .ic3 svg { width: 22px; height: 22px; stroke-width: 2.1; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .3)); }
 .hint3 .ic3 { color: #9fe39a; }
@@ -165,9 +168,9 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .hint3 .tx3 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hint3 .more3 { flex: none; width: 30px; height: 30px; border-radius: 50%; border: 0; background: rgba(255, 255, 255, .2); color: #fff; cursor: pointer; padding: 0;
   font-weight: 700; font-size: 15px; line-height: 1; }
-/* the grey gear: How to play > Hints */
-.toast3 .set3, .hint3 .set3 { flex: none; width: 30px; height: 30px; margin: -2px -8px -2px 0; border-radius: 50%; border: 0; padding: 0; cursor: pointer;
-  display: flex; align-items: center; justify-content: center; background: rgba(150, 160, 170, .35); color: #dfe5ea; }
+/* the gear (sliders, no plate): How to play > Hints */
+.toast3 .set3, .hint3 .set3 { flex: none; width: 28px; height: 28px; margin: -2px -8px -2px 0; border: 0; padding: 0; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; background: none; color: rgba(255, 255, 255, .72); }
 .hint3 .set3 { margin: 0; }
 .toast3 .set3 svg, .hint3 .set3 svg { width: 18px; height: 18px; }
 .toast3.show .set3 { pointer-events: auto; }

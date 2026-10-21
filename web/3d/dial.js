@@ -1,7 +1,8 @@
 // Time of day, top right: the whole day as a disc (night, dawn, day, dusk, with a little sun at
-// noon and a moon at midnight) that turns under a fixed upright needle, so the time now is always
-// at the top; only the upper half shows, six hours either side. Round the rim runs the forecast: a
-// thin band, right of the needle, coloured by the weather due over the hours ahead (G.forecast,
+// noon and a moon at midnight) that turns under a small fixed bead (a white triangle pointing down
+// at the top of the rim), so the time now is always at the top; only the upper half shows, six
+// hours either side. With hub, the middle is cut out round for a button (Call, songs.css). Round the rim runs the forecast: a
+// thin band, right of the bead, coloured by the weather due over the hours ahead (G.forecast,
 // from the weather system; failing that, just the weather now, a little way ahead). The season and
 // its day sit underneath.
 import { SEASON_DAYS, DAY } from './sky.js';
@@ -14,7 +15,7 @@ export const SKY = { clear: '#ffd977', cloud: '#c3ccd3', fog: '#e4e7e8', rain: '
 const SAY = { clear: 'clear', cloud: 'cloudy', fog: 'fog', rain: 'rain', snow: 'snow', storm: 'a storm' };
 const SLICES = 12, RING = 4.2;
 
-export function createDial(parent) {
+export function createDial(parent, { hub = false } = {}) {
   const el = document.createElement('div'); el.className = 'dial';
   const CX = 44, CY = 42, R = 36;
   // a point at angle a (radians clockwise from straight up)
@@ -26,21 +27,25 @@ export function createDial(parent) {
   const band = (a0, a1) => { const r0 = R + 1.6, r1 = r0 + RING; return `M${P(at(a0, r1))}A${r1} ${r1} 0 0 1 ${P(at(a1, r1))}L${P(at(a1, r0))}A${r0} ${r0} 0 0 0 ${P(at(a0, r0))}Z`; };
   const disc = PARTS.map(([t0, t1, col]) => wedge(t0, t1, col)).join('');
   const [sx, sy] = at(Math.PI, R * .62), [mx, my] = at(0, R * .62);
-  // the band covers the hours ahead: the right quarter, from the needle to the base line
+  // the band covers the hours ahead: the right quarter, from the bead to the base line
   const Q = Math.PI / 2, slices = Array.from({ length: SLICES }, (_, i) => `<path d="${band(i / SLICES * Q, (i + 1) / SLICES * Q)}"/>`).join('');
-  const id = 'dc' + Math.random().toString(36).slice(2, 7);
-  el.innerHTML = `<svg viewBox="0 0 88 46" aria-hidden="true"><defs><clipPath id="${id}"><rect x="0" y="0" width="88" height="${CY}"/></clipPath></defs>
+  const id = 'dc' + Math.random().toString(36).slice(2, 7), HOLE = hub ? 22 : 0;
+  // the bead: a triangle pointing down, its flat top over the forecast band, white with a slate edge
+  const bead = (w, top, h) => `M${CX - w / 2} ${top}H${CX + w / 2}L${CX} ${top + h}Z`;
+  el.innerHTML = `<svg viewBox="0 0 88 46" aria-hidden="true"><defs><clipPath id="${id}"><rect x="0" y="0" width="88" height="${CY}"/></clipPath>
+    <mask id="${id}h"><rect x="0" y="0" width="88" height="46" fill="#fff"/>${HOLE ? `<circle cx="${CX}" cy="${CY}" r="${HOLE}" fill="#000"/>` : ''}</mask></defs>
     <path class="track" d="${band(-Q, Q)}"/><g class="ring">${slices}</g>
-    <g clip-path="url(#${id})"><g class="disc">${disc}<circle class="sun" cx="${sx}" cy="${sy}" r="4.2"/><circle class="moon" cx="${mx}" cy="${my}" r="3.6"/></g></g>
-    <path class="rim" d="M${CX - R} ${CY}A${R} ${R} 0 0 1 ${CX + R} ${CY}"/><path class="base" d="M${CX - R - 7} ${CY}H${CX + R + 7}"/>
-    <g class="needle"><path class="bar" d="M${CX - 1.7} ${CY}V${CY - R + 9}H${CX + 1.7}V${CY}Z"/><path class="tip" d="M${CX} ${CY - R - 1}L${CX + 4.6} ${CY - R + 8}H${CX - 4.6}Z"/></g></svg>
+    <g clip-path="url(#${id})" mask="url(#${id}h)"><g class="disc">${disc}<circle class="sun" cx="${sx}" cy="${sy}" r="4.2"/><circle class="moon" cx="${mx}" cy="${my}" r="3.6"/></g>
+    <path class="rim" d="M${CX - R} ${CY}A${R} ${R} 0 0 1 ${CX + R} ${CY}"/></g>
+    <path class="base" d="M${CX - R - 7} ${CY}H${CX - HOLE}${HOLE ? `M${CX + HOLE} ${CY}` : ''}H${CX + R + 7}"/>
+    <g class="bead"><path class="edge" d="${bead(12.2, CY - R - 6.6, 10.4)}"/><path class="fill" d="${bead(8.4, CY - R - 5.2, 7.2)}"/></g></svg>
     <div class="season"></div>`;
   parent.append(el);
   const discEl = el.querySelector('.disc'), seasonEl = el.querySelector('.season');
   const ring = [...el.querySelectorAll('.ring path')];
   let key = '';
   return {
-    // tod runs 0 (midnight) to 1; the disc turns so that tod sits under the needle.
+    // tod runs 0 (midnight) to 1; the disc turns so that tod sits under the bead.
     // forecast(seconds ahead) gives the weather due then: clear, cloud, fog, rain, snow or storm
     update(tod, dayN, hide, season = null, forecast = null) {
       const k = Math.round(tod * 400) + ',' + dayN + ',' + hide + ',' + season?.name;

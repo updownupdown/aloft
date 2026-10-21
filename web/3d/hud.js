@@ -21,14 +21,15 @@ export const SAY = {
 
 export function createHud(G, ui, input) {
   ui.insertAdjacentHTML('beforeend', `
-    <div class="hud3"><span class="meters"></span><span class="alt"><b class="m"></b><b class="k"></b></span></div>
+    <div class="hud3"><span class="meters"></span><span class="alt"><span class="tape"></span><span class="ptr"></span><span class="nums"><b class="m"></b><b class="v"></b><b class="k"></b></span></span></div>
     <div class="corner3"><div class="fps3 hidden"></div></div>
     <div class="pad3 L"><i></i></div><div class="pad3 R"><i></i></div>
     <p class="toast3"><span class="ic3"></span><span class="tx3"></span><button class="set3" aria-label="Choose which messages show">${icon('settings')}</button></p>`);
   const q = s => ui.querySelector(s);
   const hud = q('.hud3'), meters = q('.meters'), toastEl = q('.toast3'), padL = q('.pad3.L'), padR = q('.pad3.R');
-  const dial = createDial(q('.corner3')), compass = createCompass(G, ui);
-  const altM = q('.alt .m'), altK = q('.alt .k');
+  const dial = createDial(q('.corner3'), { hub: true }), compass = createCompass(G, ui);
+  const alt = q('.alt'), tape = q('.alt .tape'), altM = q('.alt .m'), altV = q('.alt .v'), altK = q('.alt .k');
+  let vr = 0, lastY = null;   // the rise or sink, m/s, smoothed
   q('.corner3').prepend(q('.corner3 .dial'));
   // off: the groups of tips and kinds of message turned off on How to play > Hints ('tip:food',
   // 'say:hint'); said: the last few lines of each kind, for that page
@@ -38,11 +39,12 @@ export function createHud(G, ui, input) {
   let toastT = 0, tipNow = null, tipT = 0, altKey = '';
   const queue = [];
 
-  // a meter: an icon and a bar that empties as the need grows; it flashes when low, faster when
-  // nearly empty (that is the whole warning: no message gets in the way)
+  // a meter: a round bubble that fills from the bottom like a glass, its icon on top; it empties as
+  // the need grows, and flashes when low, faster when nearly empty (that is the whole warning: no
+  // message gets in the way)
   H.meter = (id, { label, colour, low = .2 }) => {
     const col = (colour.match(/#[0-9a-f]{6}/gi) || ['#8a7a6a']).pop();
-    meters.insertAdjacentHTML('beforeend', `<span class="m3" data-m="${id}" title="${label}" style="--m:${col}">${icon(ICON_OF[id] || id)}<span class="bar"><i></i><b></b></span><span class="nm">${label[0].toUpperCase() + label.slice(1)}</span></span>`);
+    meters.insertAdjacentHTML('beforeend', `<span class="m3" data-m="${id}" title="${label}" style="--m:${col}"><span class="bar"><i></i><b></b></span>${icon(ICON_OF[id] || id)}<span class="nm">${label[0].toUpperCase() + label.slice(1)}</span></span>`);
     const el = meters.lastElementChild, fill = el.querySelector('.bar i'), cap = el.querySelector('.bar b'), m = { v: 1, low };
     all.push(m);
     let key = '';
@@ -53,13 +55,13 @@ export function createHud(G, ui, input) {
       max = Math.max(0, Math.min(1, max)); v = Math.max(0, Math.min(max, v)); m.v = v;
       const lo = v < low, k = `${Math.round(v * 100)},${lo},${v < low * .6},${glow},${Math.round(max * 100)}`;
       if (k === key) return; key = k;
-      fill.style.transform = `scaleX(${v.toFixed(3)})`;
-      cap.style.left = `${(max * 100).toFixed(1)}%`; el.classList.toggle('capped', max < .99);
+      fill.style.transform = `scaleY(${v.toFixed(3)})`;
+      cap.style.bottom = `${(max * 100).toFixed(1)}%`; el.classList.toggle('capped', max < .99);
       el.classList.toggle('glow', !!glow); if (glow) el.style.setProperty('--glow', glow);
       el.classList.toggle('low', lo); el.classList.toggle('urgent', v < low * .6);
     };
   };
-  // the message line, top centre above the compass: white words on a soft dark backing with an icon coloured by
+  // the message line, top centre over the compass (which fades out under it): white words on a soft dark backing with an icon coloured by
   // kind (SAY). One at a time; the rest wait their turn, except song lines (the next note, how a
   // song went), which show at once
   const toastTx = toastEl.querySelector('.tx3'), toastIc = toastEl.querySelector('.ic3');
@@ -78,7 +80,7 @@ export function createHud(G, ui, input) {
     toastKey = k; toastEl.dataset.icon = ic || ''; toastTx.textContent = msg; toastEl.dataset.kind = kind;
     toastIc.innerHTML = icon(ic || SAY[kind]?.icon || 'keepsake'); toastIc.style.color = SAY[kind]?.col || SAY.event.col;
     toastEl.classList.add('show'); toastT = secs;
-    ui.style.setProperty('--msgh', toastEl.offsetHeight + 'px');   // the compass steps down below it
+    ui.style.setProperty('--msgh', toastEl.offsetHeight + 'px');   // a tip steps down below it
   };
   H.toast = (msg, secs = 4, kind = 'event') => H.say(msg, { kind, secs });
   toastEl.querySelector('.set3').addEventListener('click', () => G.menu.set(true, 'how', 'hints'));
@@ -110,12 +112,23 @@ export function createHud(G, ui, input) {
       for (const t of H.tips) if (!H.done[t.id] && !H.off['tip:' + tipGroup(t.id)] && t.shown < 3 && G.t > t.rest && t.when()) { tipNow = t.id; bar.show(t); tipT = 8; t.shown++; t.rest = G.t + 68; break; }
     }
     if (!tipNow || tipT <= .3 || H.done[tipNow]) bar.hide();
-    // height over speed when flying, else what the hawk is doing
-    const f = H.flight, ak = f ? `${f.m}|${f.kmh}|${f.lift}` : H.status;
+    // the height ladder: a tape of ticks that slides with the height, the height, then the rise or
+    // sink and the speed when flying, or what the hawk is doing
+    const y = G.b.p[1];
+    if (lastY !== null && dt > 0) vr += ((y - lastY) / dt - vr) * Math.min(1, dt * 2.5);
+    lastY = y;
+    const f = H.flight, h = f ? f.m : H.height ?? '', rate = Math.abs(vr) < .05 ? '0.0' : Math.abs(vr).toFixed(1);
+    const ak = f ? `${h}|${f.kmh}|${f.lift}|${rate}|${vr > 0}` : `${h}|${H.status}`;
     if (ak !== altKey) {
       altKey = ak;
-      if (f) { altM.innerHTML = `${f.m}<small>m</small>`; altK.innerHTML = `${f.kmh}<small>km/h</small>`; } else { altM.textContent = H.status; altK.textContent = ''; }
-      altM.className = 'm' + (f?.lift ? ' ' + f.lift : '');
+      alt.classList.toggle('still', !f);
+      tape.style.backgroundPositionY = `${((+h || 0) * 2 % 10).toFixed(1)}px`;
+      altM.innerHTML = h !== '' ? `${h}<small>m</small>` : '';
+      if (f) {
+        altV.innerHTML = `${vr > .05 ? '↑' : vr < -.05 ? '↓' : ''} ${rate}<small>m/s</small>`;
+        altV.className = 'v' + (f.lift || vr > .3 ? ' rise' : vr < -.3 ? ' sink' : '');
+        altK.innerHTML = `${f.kmh}<small>km/h</small>`;
+      } else { altV.textContent = H.status; altV.className = 'v st'; altK.textContent = ''; }
     }
     compass.update(dt, G.menu?.open);
     dial.update(G.tod, G.day, false, G.season, G.forecast || nowOnly);

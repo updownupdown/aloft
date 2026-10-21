@@ -261,6 +261,7 @@ if (qs.has('fps')) G.settings.fpsCap = +qs.get('fps') || 60;
 
     glowT -= dt; setWings(b.stamina, glowT > 0 ? glow : '', b.maxStamina ?? 1);
     H.flight = b.state === 'fly' ? { m: above.toFixed(0), kmh: (b.s * 3.6).toFixed(0), lift: b.ride ? 'ride' : b.lift > .8 ? 'rise' : '' } : null;
+    H.height = above.toFixed(0);
     H.status = b.state === 'fly' ? '' : b.eating > 0 ? 'eating' : b.state === 'perch' ? 'perched' : b.state === 'swim' ? 'on the water' : 'on the ground';
     takeoffBtn.classList.toggle('gone', b.state === 'fly' || b.settle > 0);   // mid-meal, Take off carries the catch away
     H.update(dt);
