@@ -112,7 +112,7 @@ export function start(canvas, ui) {
   const takeoff = e => { e.preventDefault(); e.stopPropagation(); audio.unlock?.(); b.wantOff = .6; };   // flight.js takes off as soon as it can
   takeoffBtn.addEventListener('pointerdown', takeoff);
   // the actions other UI can offer (menu.js's one action button): run() and when() it fits now
-  (G.actions ||= {}).takeoff = { run: () => { audio.unlock?.(); b.wantOff = .6; }, when: () => b.state !== 'fly' && !(b.settle > 0) && !(b.eating > 0) };
+  (G.actions ||= {}).takeoff = { run: () => { audio.unlock?.(); b.wantOff = .6; }, when: () => b.state !== 'fly' && !(b.settle > 0) };
   const E = {
     get sun() { return G.light.daylight; },
     flap: (q, side, sync) => { audio.flap(); H.did('flap'); G.emit('flap', q, side); if (sync != null) wingGlow(sync); },
@@ -229,7 +229,7 @@ export function start(canvas, ui) {
     glowT -= dt; setWings(b.stamina, glowT > 0 ? glow : '', b.maxStamina ?? 1);
     H.flight = b.state === 'fly' ? { m: above.toFixed(0), kmh: (b.s * 3.6).toFixed(0), lift: b.ride ? 'ride' : b.lift > .8 ? 'rise' : '' } : null;
     H.status = b.state === 'fly' ? '' : b.eating > 0 ? 'eating' : b.state === 'perch' ? 'perched' : b.state === 'swim' ? 'on the water' : 'on the ground';
-    takeoffBtn.classList.toggle('gone', b.state === 'fly' || b.settle > 0 || b.eating > 0);
+    takeoffBtn.classList.toggle('gone', b.state === 'fly' || b.settle > 0);   // mid-meal, Take off carries the catch away
     H.update(dt);
     saveT += dt; if (saveT > 5) { saveT = 0; persist(); }
   }

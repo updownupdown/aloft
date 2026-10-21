@@ -144,7 +144,7 @@ function still(b, c, dt, E) {
   // perched or standing, only Take off takes off; a tap on the ground is a hop (to a worm close by,
   // or forward); on the water a tap still lifts off
   if (c.flap && b.settle <= 0 && b.state === 'ground' && !(b.eating > 0) && !b.asleep) return groundHop(b, E);
-  if ((c.flap && b.settle <= 0 && b.state === 'swim') || (b.wantOff > 0 && b.settle < .2 && !(b.eating > .3))) {
+  if ((c.flap && b.settle <= 0 && b.state === 'swim') || (b.wantOff > 0 && b.settle < .2)) {
     b.asleep = false;
     b.wantOff = 0; b.noPerch = 1.6; b.settle = 0; b.hop = 0;
     // take off: a strong stroke forward and up

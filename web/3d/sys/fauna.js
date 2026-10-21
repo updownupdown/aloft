@@ -170,6 +170,10 @@ export function faunaSystem(G) {
   }
   function fishStep(f, dt) {
     const rate = fishBoost > 0 ? 3 : 1;
+    // a hawk hanging slow over the water too long: the fish sink deep a while (3D thread, C4)
+    const hov = b.state === 'fly' && b.s < 8 && b.p[1] - WATER < 30 && Math.hypot(b.p[0] - f.x, b.p[2] - f.z) < 14;
+    f.watch = hov ? (f.watch || 0) + dt : Math.max(0, (f.watch || 0) - dt);
+    if (f.watch > 2.5 && f.jump < 0) { f.up = 0; f.wait = Math.max(f.wait, 6); f.watch = 2.5; }
     if (f.jump >= 0) {
       f.jump += dt / 1.1; if (f.jump >= 1) { f.jump = -1; f.wait = (5 + Math.random() * 14) / rate; ripple(f.x + Math.cos(f.yaw) * 1.6, f.z + Math.sin(f.yaw) * 1.6, 1); }
     } else if ((f.wait -= dt) <= 0) {
