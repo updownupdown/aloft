@@ -95,12 +95,13 @@ export function appRows(G) {
   document.addEventListener('visibilitychange', () => { if (!document.hidden) wake(); });
 
   // haptics: a tick for each wing beat, a thump on landing, a knock on a bump, a pulse on catching
-  // food or entering strong lift, a long buzz when a stoop reaches full speed
+  // food or entering strong lift, a flutter for a gust, a long buzz when a stoop reaches full speed
   G.settings.haptics = G.store.get('haptics3d', true);
   if (navigator.vibrate && matchMedia('(pointer: coarse)').matches) {
     const buzz = p => { if (G.settings.haptics && !G.paused) try { navigator.vibrate(p); } catch { /* not allowed */ } };
     G.on('flap', () => buzz(7)); G.on('land', () => buzz(28)); G.on('bump', () => buzz([18, 40, 18]));
     G.on('catch', () => buzz([12, 50, 24])); G.on('ring', () => buzz(14));
+    G.on('gust', (k, head) => buzz(head > .3 ? [8, 40, 8, 40, 8] : 30));   // met nose-on a gust lifts; side-on it rocks
     let inLift = false, fast = false;
     setInterval(() => {
       const b = G.b; if (!b || G.paused || b.state !== 'fly') { inLift = fast = false; return; }
