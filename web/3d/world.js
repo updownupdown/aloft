@@ -8,15 +8,14 @@ import { BIOMES, PAL, JOURNEY, blend, weightOf, share, rollBiome, cellsNear } fr
 export { ih, fbm, WORLD, newWorld, PAL, JOURNEY, blend };
 
 export const CHUNK = 96;
-// Ground detail (Settings > Ground detail): cells per chunk side. 16 is 6 m facets, 24 (the
-// default) 4 m, 32 3 m, 48 2 m, 96 1 m, 192 0.5 m. Triangles grow with the square. Detail falls
+// Ground detail (Settings > Ground detail): cells per chunk side. Low is 16 (6 m facets),
+// Medium 32 (3 m, the default), High 96 (1 m). Triangles grow with the square. Detail falls
 // off in rings round the bird (RINGS: out to so many metres, so many cells), so the finest steps
 // only build the few chunks close by; past the last ring it is the base step (CELLS).
-export const GROUND = [[16, 'Coarse', '6 m facets'], [24, 'Fine', '4 m facets'], [32, 'Finer', '3 m facets, more for the GPU'], [48, 'Finest', '2 m facets, heavy: try it on a fast phone'],
-  [96, '1 m', 'very heavy: ~15 MB more memory, may stutter as ground loads'], [192, '0.5 m', 'extreme: ~90 MB more memory, may stutter or run out']];
-export let CELLS = 24, CELL = CHUNK / 48, RINGS = [], GROUND_SET = 24;   // GROUND_SET: the step picked
+export const GROUND = [[16, 'Low', '6 m facets'], [32, 'Medium', '3 m facets'], [96, 'High', '1 m facets, heavier on memory and battery']];
+export let CELLS = 32, CELL = CHUNK / 48, RINGS = [], GROUND_SET = 32;   // GROUND_SET: the step picked
 export function setGroundDetail(n) {
-  if (!GROUND.some(g => g[0] === n)) n = 24;
+  if (!GROUND.some(g => g[0] === n)) n = n < 24 ? 16 : n > 48 ? 96 : 32;
   GROUND_SET = n;
   RINGS = n <= 48 ? [[160, Math.min(48, n * 2)], [1e9, n]]
     : n === 96 ? [[120, 96], [1e9, 48]]
@@ -25,7 +24,7 @@ export function setGroundDetail(n) {
 }
 // how many cells a side for a chunk whose middle is d metres from the bird
 export const cellsFor = d => RINGS.find(r => d < r[0])[1];
-setGroundDetail(store.get('ground', 24));
+setGroundDetail(store.get('ground', 32));
 // The water level: 0 on average, but the tides, the rain and the summer move it (sys/waters.js
 // calls setWater). One level for all water, sea and lakes alike, kept within half a metre or so.
 export let WATER = 0;
