@@ -1,4 +1,5 @@
-// Hunger and thirst, mice in the meadows, worms after rain, and drinking at the water's edge.
+// Hunger and thirst, mice in the meadows, worms after rain, and drinking (tap the water: at its edge,
+// afloat, or a puddle after rain).
 // Running low on either lowers how full the wings can get (G.maxStamina, marked on the wings bar).
 // Mice live in 48 m cells of open grass; only those near the hawk are simulated. A caught
 // mouse's cell refills after a while. Now and then a mouse squeaks (little white marks over it, a
@@ -86,8 +87,21 @@ export function foodSystem(G) {
   const setHunger = G.hud.meter('hunger', { label: 'food', colour: 'linear-gradient(90deg,#a8483a,#c96a4e)' });
   const setThirst = G.hud.meter('thirst', { label: 'water', colour: 'linear-gradient(90deg,#3f6f9a,#6c9ac0)' });
   G.hud.tip('hunt', () => G.hunger < .7 && b.state === 'fly' && G.aim?.target, 'A mouse in the grass! Tuck your wings (thumbs together) and dive at it. Come in low and your feet reach.');
-  G.hud.tip('drink', () => G.thirst < .6 && b.state !== 'fly', 'Thirsty? Land at the water’s edge, or on the water, to drink.');
+  G.hud.tip('drink', () => G.thirst < .6 && b.state !== 'fly', 'Thirsty? Tap the water near you to drink: at its edge, afloat, or a puddle after rain.');
   let drinking = false, sipT = 0, rustleT = 0;
+  // water to drink: afloat, at the water's edge, or by a puddle (seasons.js G.puddles: 8 floats each)
+  const puddleAt = (x, z, pad) => { const P = G.puddles || []; for (let i = 0; i < P.length; i += 8) if (Math.hypot(P[i] - x, P[i + 2] - z) < P[i + 3] + pad) return [P[i], P[i + 1], P[i + 2]]; return null; };
+  const shore = () => [[2, 0], [-2, 0], [0, 2], [0, -2], [1.4, 1.4], [-1.4, 1.4], [1.4, -1.4], [-1.4, -1.4]].some(([x, z]) => height(b.p[0] + x, b.p[2] + z) < WATER);
+  const waterBy = () => b.state === 'swim' || (b.state === 'ground' && (shore() || !!puddleAt(b.p[0], b.p[2], 1.2)));
+  // aim.js calls drink() for a tap on the water; a tap on water out of reach hops over first (b.wantDrink)
+  G.water = {
+    puddleAt,
+    drink() {
+      if (!waterBy() || b.settle > 0) return false;
+      if (G.thirst >= .99) { G.hud.toast('Not thirsty', 1.5); return true; }
+      drinking = true; sipT = 0; return true;
+    },
+  };
 
   // which mice live in a cell (fixed by hash), where their burrow is
   function cellMice(cx, cz) {
@@ -263,19 +277,14 @@ export function foodSystem(G) {
       }
       b.reach = reach;
       if (b.eating > 0) b.eating -= dt;
-      // drinking: floating, or standing at the edge of water
-      const g = height(b.p[0], b.p[2]);
-      const shore = b.state === 'ground' && [[2, 0], [-2, 0], [0, 2], [0, -2]].some(([x, z]) => height(b.p[0] + x, b.p[2] + z) < WATER);
-      // drinking starts once a little thirsty and goes on until full, then stops (thirst creeps back
-      // a hair every frame, so without the margin it never stopped sipping)
-      if (!(b.state === 'swim' || shore) || G.thirst >= 1) drinking = false;
-      else if (G.thirst < .97) drinking = true;
+      // drinking: a tap on the water starts it; it goes on until full, or until you move off
+      if (b.wantDrink && b.settle <= 0 && !b.goTo) { b.wantDrink = false; if (b.state === 'ground') G.water.drink(); }
+      if (drinking && (G.thirst >= 1 || b.settle > 0 || b.goTo || !waterBy())) drinking = false;
       if (drinking) {
         G.thirst = Math.min(1, G.thirst + FOOD.drink * dt);
         if ((sipT -= dt) <= 0) { sipT = 1.1; G.audio.drink(); }
         G.hud.did('drink');
       }
-      void g;
       // empty meters slow how fast the wings recover (the meters flash when low: no message)
       b.recover = (G.hunger > 0 ? 1 : .5) * (G.thirst > 0 ? 1 : .5);
       // low food or water: the wings can't fill all the way
