@@ -20,10 +20,11 @@ export function saveVoice(v) { try { localStorage.setItem(KEY, JSON.stringify({ 
 // and its pitch path as [0..1, multiple]. Flags: soft (a muffled low voice), harsh (a rasp of
 // overtones), pure (a clean whistle, no overtones), dual (a second voice that far above).
 // Most sing in the chosen register; the owl and the dove keep their own, low ones.
-const REG = { 6: .25, 11: .5 };
+const NV = 24;   // voices, one per species
+const REG = { 6: .25, 11: .5, 18: .5, 23: .3 };
 function template(voice, rnd) {
   const rep = (n, gap, dur, c, o = {}) => Array.from({ length: n }, (_, i) => ({ at: i * gap, dur, c: typeof c === 'function' ? c(i) : c, v: 1 - i * (o.fade || 0), ...o }));
-  switch (voice % 16) {
+  switch (voice % NV) {
     case 0: return [{ at: 0, dur: .26, c: [[0, 1.02], [.15, 1], [1, .97]], atk: .02 }];
     case 1: return [{ at: 0, dur: .11, c: [[0, .82], [.45, 1.12], [1, .94]] }, { at: .13, dur: .05, c: [[0, 1.05], [1, .9]], v: .5 }];
     case 2: return rep(4, .04, .028, [[0, 1.18], [1, .88]], { fade: .08 });
@@ -46,7 +47,24 @@ function template(voice, rnd) {
     case 13: return [...rep(2, .045, .03, [[0, 1.16], [1, .94]]), { at: .09, dur: .06, c: [[0, 1], [1, .97]], am: .7, amF: 70, v: .6 }];
     // a white-throated sparrow's pure, held whistle ("old Sam Peabody")
     case 14: return [{ at: 0, dur: .34, c: [[0, 1], [1, .995]], atk: .04, pure: true }];
+    // a cactus wren's harsh low "char"
+    case 16: return [{ at: 0, dur: .09, c: [[0, 1], [1, .94]], atk: .006, harsh: true, am: .6, amF: 62 }];
+    // a canyon wren's sweet whistle, each one sliding down
+    case 17: return [{ at: 0, dur: .1, c: [[0, 1.1], [1, .9]], atk: .01, pure: true }];
+    // a ptarmigan's dry croak: a low rattle
+    case 18: return rep(3, .05, .045, [[0, 1], [1, .9]], { harsh: true, am: .7, amF: 40 });
+    // a dipper's bright bubbling note
+    case 19: return rep(3, .035, .03, i => [[0, 1.1 - i * .03], [1, .96]]);
+    // a bellbird's struck bell: a pure ring with a bell's high partial, dying away slowly
+    case 20: return [{ at: 0, dur: .7, c: [[0, 1], [1, .995]], atk: .003, pure: true, dual: 2.76 }];
+    // a nightingale's full whistle, swelling, with a fast shiver
+    case 21: return [{ at: 0, dur: .22, c: [[0, .95], [.5, 1.05], [1, 1]], atk: .05, vib: .01, vibF: 30 }];
+    // a whip-poor-will's quick slurred whistle
+    case 22: return [{ at: 0, dur: .16, c: [[0, .9], [.4, 1.15], [1, 1.05]], atk: .01, pure: true }];
+    // a tawny owl's hoot, low and wavering
+    case 23: return [{ at: 0, dur: .5, c: [[0, 1], [.2, 1.02], [1, .97]], atk: .05, soft: true, vib: .02, vibF: 18 }];
     // a veery's breezy downward spiral, two voices at once
+    case 15:
     default: return rep(3, .055, .07, i => [[0, 1.06 - i * .03], [1, .96 - i * .03]], { dual: 1.19, fade: .2 });
   }
 }
@@ -62,6 +80,13 @@ export function createBirdVoice(ctx, dest, noiseBuf) {
   farLp.connect(echo); echo.connect(dl); dl.connect(elp); elp.connect(fb); fb.connect(dl); elp.connect(dest);
   const forest = ctx.createGain(), conv = ctx.createConvolver();
   conv.buffer = forestIR(ctx); farLp.connect(forest); forest.connect(conv); conv.connect(dest);
+  // a rock-walled place (a canyon, a fjord, under sea cliffs): a long echo off the far wall,
+  // coming back two or three times, duller each time. `place` 0..1 fades it in.
+  const wall = ctx.createGain(), wdl = ctx.createDelay(1.5), wfb = ctx.createGain(), wlp = ctx.createBiquadFilter();
+  wall.gain.value = 0; wdl.delayTime.value = .42; wfb.gain.value = .42; wlp.type = 'lowpass'; wlp.frequency.value = 2400;
+  farLp.connect(wall); wall.connect(wdl); wdl.connect(wlp); wlp.connect(wfb); wfb.connect(wdl); wlp.connect(dest);
+  const wallRev = ctx.createGain(); wallRev.gain.value = 0; farLp.connect(wallRev); wallRev.connect(conv);
+  V.place = k => { const t = ctx.currentTime; wall.gain.setTargetAtTime(.55 * k, t, .3); wallRev.gain.setTargetAtTime(.45 * k, t, .3); };
   V.set = o => {
     Object.assign(V, o);
     const t = ctx.currentTime, far = V.far ? 1 : 0;
@@ -120,9 +145,9 @@ export function createBirdVoice(ctx, dest, noiseBuf) {
   // one syllable of a kind (w whistle, c chip, t trill, b buzz) in a species' voice. A whistle is
   // the species' own note where that is tonal; the other kinds share shapes, coloured by the
   // voice's register and roughness.
-  const TONAL = new Set([0, 1, 4, 6, 8, 9, 11, 14]), ROUGH = new Set([10, 12]);
+  const TONAL = new Set([0, 1, 4, 6, 8, 9, 11, 14, 17, 20, 21, 22, 23]), ROUGH = new Set([10, 12, 16, 18]);
   function kindTemplate(kind, voice) {
-    const rough = ROUGH.has(voice % 16), soft = !!REG[voice % 16];
+    const rough = ROUGH.has(voice % NV), soft = !!REG[voice % NV];
     switch (kind) {
       case 'c': return [{ at: 0, dur: .05, c: [[0, 1.25], [1, .86]], atk: .004, harsh: rough }];
       case 't': return Array.from({ length: 6 }, (_, i) => ({ at: i * .045, dur: .032, c: i % 2 ? [[0, 1.1], [1, .92]] : [[0, .94], [1, 1.08]], v: 1 - i * .06, soft }));
@@ -133,16 +158,16 @@ export function createBirdVoice(ctx, dest, noiseBuf) {
   // one song note at pitch f (the game's pitch for that note), in a species' voice; `kind` picks
   // a syllable shape (left out: the species' own note, as the bird song lab plays it)
   V.sing = (f, voice = 0, vol = .16, kind = null) => {
-    if (kind && !(kind === 'w' && TONAL.has(voice % 16))) {
-      const t = ctx.currentTime + .005, prev = V.engine, reg = REG[voice % 16], pitch = (reg ? f * reg : f * V.octave) * (1 + (Math.random() - .5) * .03);
+    if (kind && !(kind === 'w' && TONAL.has(voice % NV))) {
+      const t = ctx.currentTime + .005, prev = V.engine, reg = REG[voice % NV], pitch = (reg ? f * reg : f * V.octave) * (1 + (Math.random() - .5) * .03);
       if (V.engine === 'whistle') V.engine = 'natural';
       for (const e of kindTemplate(kind, voice)) element(t + e.at, e, pitch, vol * (e.v ?? 1) * (reg ? 1.3 : 1.1));
       V.engine = prev; return;
     }
     const t = ctx.currentTime + .005, prev = V.engine;
-    if (V.engine === 'whistle' && voice % 16 < 8) { V.engine = 'natural'; whistle(t, f, voice, vol * .85); V.engine = prev; return; }
+    if (V.engine === 'whistle' && voice % NV < 8) { V.engine = 'natural'; whistle(t, f, voice, vol * .85); V.engine = prev; return; }
     // a little variation every time: no bird sings a note exactly the same twice
-    const j = 1 + (Math.random() - .5) * .03, reg = REG[voice % 16], pitch = reg ? f * reg * j : f * V.octave * j, rnd = Math.random;
+    const j = 1 + (Math.random() - .5) * .03, reg = REG[voice % NV], pitch = reg ? f * reg * j : f * V.octave * j, rnd = Math.random;
     if (V.engine === 'whistle') V.engine = 'natural';
     for (const e of template(voice, rnd)) element(t + e.at * (1 + (rnd() - .5) * .1), e, pitch, vol * (e.v ?? 1) * (reg ? 1.3 : 1.1));
     V.engine = prev;

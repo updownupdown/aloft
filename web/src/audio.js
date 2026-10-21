@@ -264,6 +264,8 @@ export function createAudio() {
   let BV = null;
   const birds = () => BV || (BV = createBirdVoice(A.ctx, A.master, noiseBuf), BV.set(loadVoice()), BV);
   A.setBirdVoice = v => { if (BV) BV.set(v); };
+  // songs echo off rock walls (0..1): canyons, fjords, sea cliffs
+  A.setPlace = k => { if (A.ctx) birds().place(k); };
   // a red squirrel's scolding chatter: a quick string of dry ticks
   A.chatter = () => { for (let k = 0; k < 7; k++) burst({ f: 3400 + Math.random() * 600, q: 6, dur: .045, vol: .09, delay: k * .07 + (k > 3 ? .12 : 0) }); };
   // the hawk's own voice for the singing string: one sustained whistle that follows the finger,
