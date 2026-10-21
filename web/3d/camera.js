@@ -1,10 +1,10 @@
 // The chase camera, the hawk's frame in the world, and its pose (wing beats, fold, flare,
 // feet, tail). Fills the camera, hawk and pose parts of the scene.
 import { height, WATER } from './world.js';
-import { angleTo, clamp, cross, lerp, mix3, norm, smooth } from './util.js';
+import { angleTo, clamp, cross, lerp, mix3, norm, smooth, store } from './util.js';
 
 export function createCamera(G) {
-  const C = { cam: null, look: null, yaw: 0, pitch: 0, still: false };
+  const C = { cam: null, look: null, yaw: 0, pitch: 0, still: false, zoom: clamp(+store.get('groundZoom3d', .5) || .5, .25, 1), zm: 1 };
   const b = G.b;
 
   C.update = (dt, S) => {
@@ -40,8 +40,13 @@ export function createCamera(G) {
       // looking round (b.lookYaw/lookPitch): the camera swings about the bird and tips up or down
       const ly = C.yaw + (b.lookYaw || 0), lp = b.lookPitch || 0, d = [Math.sin(ly), 0, -Math.cos(ly)];
       // a little above and behind, the hawk just under the middle of the view (clear of the song box)
-      want = [p[0] - d[0] * 2.6, p[1] + .9 - lp * 1.2, p[2] - d[2] * 2.6];
-      look = [p[0] + d[0] * 1.5, p[1] + .05 + lp * 3, p[2] + d[2] * 1.5];
+      // on the ground the view stands back (C.zoom .5: twice as far) to show worms and water round
+      // the bird; a pinch sets it from .25 (four times as far) to 1, and it is kept
+      if (b.zoomPinch) { C.zoom = Math.max(.25, Math.min(1, C.zoom * b.zoomPinch)); b.zoomPinch = 0; store.set('groundZoom3d', C.zoom); }
+      C.zm += ((b.state === 'ground' ? 1 / C.zoom : 1) - C.zm) * Math.min(1, dt * 4);
+      const zm = C.zm;
+      want = [p[0] - d[0] * 2.6 * zm, p[1] + .9 * zm - lp * 1.2, p[2] - d[2] * 2.6 * zm];
+      look = [p[0] + d[0] * 1.5 * zm, p[1] + .05 + lp * 3, p[2] + d[2] * 1.5 * zm];
     }
     if (!C.cam) C.cam = want.slice();
     const k = b.state === 'fly' && !C.still ? 1 : Math.min(1, dt * 2);

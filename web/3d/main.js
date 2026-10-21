@@ -148,6 +148,7 @@ export function start(canvas, ui) {
   H.tip('tuck', () => b.state === 'fly' && b.p[1] - height(b.p[0], b.p[2]) > 30, 'Slide your thumbs together to tuck your wings and stoop.');
   H.tip('flare', () => !!G.perchMark, 'A perch ahead. Slide your thumbs apart to flare, and glide onto it slowly.');
   H.tip('hop', () => b.state === 'perch' && G.aim?.hops?.length > 0, 'Tap a green ring to hop to that branch. Drag sideways to turn round.');
+  H.tip('ground', () => b.state === 'ground' && !(b.settle > 0), 'On the ground, tap a spot near by to hop over to it. Drag to turn round; pinch to see more or less round you.');
   const play = 'play';
   G.menu.tab(play, 'Play');
   G.menu.toggle(play, { label: 'Sound', get: () => G.settings.sound, set: v => { G.settings.sound = v; audio.setOn(v); store.set('sound', v); } });

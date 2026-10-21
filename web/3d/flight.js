@@ -150,13 +150,15 @@ function still(b, c, dt, E) {
   else if (b.hop > 0 && b.flapL > .42) b.flapL = b.flapR = 0;   // keep beating across a hop
   b.stamina = Math.min(1, b.stamina + dt * .2 * (b.recover ?? 1));
   // turn on the spot to choose a way out: drag sideways (the bird turns against the swipe, as if
-  // you were turning the view) or A/D; on the ground the drag turns the view and the bird only
-  // follows it slowly round, so it mostly faces away from you; a push forward walks
+  // you were turning the view) or A/D; on the ground the drag turns the view and the bird turns
+  // briskly with it, so it always faces away from you
   const turn = (c.keyRoll ?? 0) * dt * 1.6 - (c.dragX ?? 0) * 3.4;
   if (b.state === 'ground') {
     if (b.view == null) b.view = b.yaw;
     b.view += turn;
-    b.yaw += Math.atan2(Math.sin(b.view - b.yaw), Math.cos(b.view - b.yaw)) * Math.min(1, dt * .9) + turn * .1;
+    b.yaw += Math.atan2(Math.sin(b.view - b.yaw), Math.cos(b.view - b.yaw)) * Math.min(1, dt * 7) + turn * .5;
+    // pinch: two fingers together pull the view out, apart bring it in (camera.js reads b.zoom)
+    if (c.pinch && c.pinch !== 1) b.zoomPinch = (b.zoomPinch || 1) * c.pinch;
   } else { b.yaw += turn; b.view = null; }
   b.sPrev = 0; b.acc = 0;
   // look round (two fingers, or the gyro): the view swings, then drifts back after a pause
@@ -165,13 +167,15 @@ function still(b, c, dt, E) {
     b.lookT = 2.2;
     b.lookYaw = Math.max(-2.6, Math.min(2.6, (b.lookYaw || 0) + lk[0]));
     b.lookPitch = Math.max(-.7, Math.min(.9, (b.lookPitch || 0) + lk[1]));
-  } else if ((b.lookT = (b.lookT || 0) - dt) < 0) { const k = Math.min(1, dt * 2); b.lookYaw = (b.lookYaw || 0) * (1 - k); if (b.state !== 'perch') b.lookPitch = (b.lookPitch || 0) * (1 - k); }
-  // perched, one finger dragged up or down tips the view and it stays tipped (down looks up); on
-  // the ground up and down walk instead
-  if (b.state === 'perch' && c.dragY) b.lookPitch = Math.max(-.7, Math.min(.9, (b.lookPitch || 0) + c.dragY * 2));
-  if (b.state === 'ground' && Math.abs(c.pitch) > .3 && !c.both) {
-    const sp = c.pitch * 1.4 * dt; b.p[0] += Math.sin(b.yaw) * sp; b.p[2] -= Math.cos(b.yaw) * sp;
-    b.p[1] = Math.max(height(b.p[0], b.p[2]), WATER) + .35;
+  } else if ((b.lookT = (b.lookT || 0) - dt) < 0) { const k = Math.min(1, dt * 2); b.lookYaw = (b.lookYaw || 0) * (1 - k); if (b.state === 'swim') b.lookPitch = (b.lookPitch || 0) * (1 - k); }
+  // perched or standing, one finger dragged up or down tips the view and it stays tipped (down
+  // looks up); nothing walks: on the ground the bird gets about by hops
+  if ((b.state === 'perch' || b.state === 'ground') && c.dragY) b.lookPitch = Math.max(-.7, Math.min(.9, (b.lookPitch || 0) + c.dragY * 2));
+  // a tapped spot on the ground (aim.js sets b.goTo): hop there, a hop at a time, stopping at water
+  if (b.state === 'ground' && b.goTo && b.settle <= 0 && !(b.eating > 0) && !b.asleep && !(b.wantOff > 0)) {
+    const d = Math.hypot(b.goTo[0] - b.p[0], b.goTo[2] - b.p[2]);
+    if (d < .6) b.goTo = null;
+    else { const at = [...b.p]; groundHop(b, E, b.goTo); if (b.p[0] === at[0] && b.p[2] === at[2]) b.goTo = null; return; }
   }
   if (b.state === 'swim') b.p[1] = WATER + .12 + Math.sin(b.t * 2) * .03;
   if (b.wantOff > 0) b.wantOff -= dt;
@@ -184,7 +188,7 @@ function still(b, c, dt, E) {
     // take off: a strong stroke forward and up
     const wet = b.state === 'swim';
     b.yaw = clearYaw(b);   // facing a slope, turn to open air first (the camera swings round after)
-    b.state = 'fly'; b.perch = null; b.tree = null; b.view = null; b.lookYaw = b.lookPitch = 0;
+    b.state = 'fly'; b.perch = null; b.tree = null; b.view = null; b.goTo = null; b.lookYaw = b.lookPitch = 0;
     b.s = 8; b.gamma = .35; b.vy = wet ? 3.5 : 4.5;
     if (wet) b.p[1] = WATER + .5;   // clear of the surface, or the first frame would settle back onto it b.flapL = b.flapR = 0; b.ampL = b.ampR = 1;
     b.stamina = Math.max(0, b.stamina - FLY.flapCost);
@@ -202,10 +206,11 @@ function clearYaw(b) {
   return Math.atan2(n[0], -n[2]);
 }
 
-// a hop along the ground: to b.hopAim (a worm, set by food.js) if it is close, else a step forward
-function groundHop(b, E) {
-  const a = b.hopAim, d = a ? Math.hypot(a[0] - b.p[0], a[2] - b.p[2]) : 0;
-  if (a && d > .2) b.yaw = Math.atan2(a[0] - b.p[0], -(a[2] - b.p[2]));
+// a hop along the ground: toward to (a tapped spot), else b.hopAim (a worm, set by food.js) if it is
+// close, else a step forward
+function groundHop(b, E, to) {
+  const a = to || b.hopAim, d = a ? Math.hypot(a[0] - b.p[0], a[2] - b.p[2]) : 0;
+  if (a && d > .2) b.view = b.yaw = Math.atan2(a[0] - b.p[0], -(a[2] - b.p[2]));   // the camera comes round behind
   const step = a ? Math.min(d, 2.5) : 1.4, nx = b.p[0] + Math.sin(b.yaw) * step, nz = b.p[2] - Math.cos(b.yaw) * step;
   if (height(nx, nz) < WATER) return;
   b.from = [...b.p]; b.p = [nx, height(nx, nz) + .35, nz];
