@@ -51,11 +51,13 @@ export function speciesSystem(G) {
   }
   // Settings > Your bird: one card, the bird hovering on the breeze, a button to hear its call (the bird lab's renderer,
   // drawn only while Settings shows), with arrows either side to pick the one before or after
+  // one colour per stat, so the same stat reads the same across birds
+  const STAT_COL = { Speed: '#d0703a', Glide: '#3f88c5', Agility: '#8a5cc6', Hover: '#2e9c86', Stamina: '#c99a1e' };
   const MOVE = { hawk: 'Kites: flare into the wind to hang still', osprey: 'Plunges: dive into water for deep fish', owl: 'Silent glide: mice don’t hear it', raven: 'Tumbles: flick a bank twice the same way' };
   const BLURB = { hawk: 'Soars on thermals, stoops on mice', osprey: 'Long wings, plunges for fish', owl: 'Soft and slow, sees in the dark', raven: 'Agile, rolls and tumbles' };
   const traits = id => {
     const a = ABILITY[id];
-    return `<span class="stats3">${stats(id).map(([k, v]) => `<span>${k}</span><span class="pips3" aria-label="${v} of 5">${[1, 2, 3, 4, 5].map(n => `<i${n <= v ? ' class="on"' : ''}></i>`).join('')}</span>`).join('')}</span>`
+    return `<span class="stats3">${stats(id).map(([k, v]) => `<span class="st3" style="--pc:${STAT_COL[k]}">${k}</span><span class="pips3" style="--pc:${STAT_COL[k]}" aria-label="${v} of 5">${[1, 2, 3, 4, 5].map(n => `<i${n <= v ? ' class="on"' : ''}></i>`).join('')}</span>`).join('')}</span>`
       + (a ? `<span class="traits3">${a.good.map(t => `<span class="good">${t}</span>`).join('')}${a.bad.map(t => `<span class="bad">${t}</span>`).join('')}</span>` : '')
       + (MOVE[id] ? `<span class="traits3"><span class="move">${MOVE[id]}</span><span class="goal">Life goal: ${GOALS[id].title.toLowerCase()}</span></span>` : '');
   };

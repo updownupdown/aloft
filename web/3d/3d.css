@@ -284,12 +284,16 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .stats3 { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; align-items: center; font-size: 12.5px; }
 .pips3 { display: flex; gap: 3px; }
 .pips3 i { flex: 1; max-width: 26px; height: 6px; border-radius: 3px; background: rgba(29, 43, 54, .14); }
-.pips3 i.on { background: var(--ink); }
-.traits3 { display: grid; gap: 2px; font-size: 12.5px; line-height: 1.35; }
-.traits3 .good::before { content: '+ '; font-weight: 700; color: #4f7a45; }
-.traits3 .bad::before { content: '\2212  '; font-weight: 700; color: #a2593f; }
-.traits3 .move::before { content: '\2605  '; color: #b8862f; }
-.traits3 .goal::before { content: '\2192  '; font-weight: 700; color: #4a6f8a; }
+.pips3 i.on { background: var(--pc, var(--ink)); }
+.stats3 .st3 { display: flex; align-items: center; gap: 6px; }
+.stats3 .st3::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--pc); }
+.traits3 { display: grid; gap: 4px; font-size: 12.5px; line-height: 1.35; }
+.traits3 > span { display: flex; align-items: flex-start; gap: 7px; }
+.traits3 > span::before { flex: none; display: grid; place-items: center; width: 18px; height: 18px; margin-top: -1px; border-radius: 50%; font-size: 15px; font-weight: 700; line-height: 1; color: #fff; }
+.traits3 .good::before { content: '+'; background: #4f8a45; }
+.traits3 .bad::before { content: '\2212'; background: #b4603f; }
+.traits3 .move::before { content: '\2605'; font-size: 11px; background: #b8862f; }
+.traits3 .goal::before { content: '\2192'; font-size: 12px; background: #4a6f8a; }
 .dots3 { display: flex; gap: 5px; margin-top: 6px; }
 .dots3 i { width: 6px; height: 6px; border-radius: 50%; background: rgba(29, 43, 54, .2); }
 .dots3 i.on { background: var(--ink); }
