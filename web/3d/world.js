@@ -444,8 +444,10 @@ export function landmarksNear(x, z, r) {
 
 // Fence lines and dry-stone walls across the open farmland, maybe one run per 170 m cell:
 // a rusted wire fence on posts (red-tails love fence posts) or a low wall of stacked stones.
-// { id, kind: 'fence' | 'wall', posts: [[x, y, z], ...] } with a post every STEP metres along
-// the drawn ground; a run stops at water, a steep bank or a tree line.
+// { id, kind: 'fence' | 'wall', posts: [[x, y, z, h], ...] } with a post every STEP metres along
+// the drawn ground; a run stops at water, a steep bank or a tree line. A wall's h is how high it
+// stands at that post: knee to waist high, rising and falling, tumbled down to a low heap here
+// and there (its fallen stones lie beside it, sys/lands.js).
 export const FENCE_CELL = 170;
 const FENCE_LANDS = { meadow: .5, lakeland: .3, moor: .45, savanna: .3, birch: .12 };
 const fenceCache = new Map();
@@ -460,7 +462,11 @@ function fenceCell(gx, gz) {
     for (let i = 0; i < n; i++) {
       const y = groundAt(px, pz);
       if (y < 1 || groundNormal(px, pz)[1] < .8 || forest(px, pz) > .25) { if (posts.length > 3) break; posts.length = 0; }
-      else posts.push([px, y, pz]);
+      else {
+        const k = posts.length, low = ih(gx * 37 + k, gz, 178) < .14 || ih(gx * 37 + k + 1, gz, 178) < .07;
+        const wh = kind === 'wall' ? (low ? .18 + ih(gx, gz * 41 + k, 179) * .15 : .5 + .16 * Math.sin(k * .55 + gx) + ih(gx * 41 + k, gz, 180) * .3) : 1.3;
+        posts.push([px, y, pz, wh]);
+      }
       px += Math.cos(h) * step; pz += Math.sin(h) * step; h += bend * step;
     }
     if (posts.length > 3) f = { id: 'f' + gx + '_' + gz, kind, posts };
@@ -545,7 +551,7 @@ export function solidsNear(x, z, r) {
     }
   }
   // fence posts (perch on top) and the walls' coping stones
-  for (const f of fencesNear(x, z, r + 4)) for (const p of f.posts) if (Math.abs(p[0] - x) < r + 4 && Math.abs(p[2] - z) < r + 4) pillar(p[0], p[2], f.kind === 'wall' ? .5 : .09, p[1] - 1, p[1] + (f.kind === 'wall' ? .95 : 1.3));
+  for (const f of fencesNear(x, z, r + 4)) for (const p of f.posts) if (Math.abs(p[0] - x) < r + 4 && Math.abs(p[2] - z) < r + 4) pillar(p[0], p[2], f.kind === 'wall' ? .5 : .09, p[1] - 1, p[1] + p[3]);
   return out;
 }
 

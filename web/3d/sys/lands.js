@@ -4,7 +4,7 @@
 // trees (world.js treesIn). Finding them, postcards and the journal belong to journey.js.
 import { landmarksNear, rocksNear, fencesNear, height, WATER, WIND, PAL, GROUND, GROUND_SET, setGroundDetail } from '../world.js';
 import { mix3, store } from '../util.js';
-import { builder, blob, prism, tube, reseed } from '../shapes.js';
+import { builder, blob, prism, tube, reseed, rnd } from '../shapes.js';
 
 const STONE = [.6, .59, .56], STONE2 = [.5, .5, .49], MOSS = [.45, .52, .36];
 
@@ -172,7 +172,7 @@ function windWheel(k) {
 }
 // one run of fence or wall, built once along the ground (coordinates from its first post)
 function fenceMesh(f) {
-  reseed(85); const B = builder(), [ox, , oz] = f.posts[0], P = f.posts.map(([x, y, z]) => [x - ox, y, z - oz]);
+  reseed(85); const B = builder(), [ox, , oz] = f.posts[0], P = f.posts.map(([x, y, z, h]) => [x - ox, y, z - oz, h]);
   if (f.kind === 'fence') {
     const wood = [.46, .4, .32], wood2 = [.38, .32, .26], wire = [.44, .3, .22];
     P.forEach(([x, y, z], i) => prism(B, x, z, .08, .065, y - .3, y + 1.3 - (i % 3) * .06, 5, i & 1 ? wood : wood2));
@@ -181,13 +181,29 @@ function fenceMesh(f) {
       B.tri([x0, y0 + h, z0], [x1, y1 + h, z1], [x1, y1 + h - .03, z1], wire); B.tri([x0, y0 + h, z0], [x1, y1 + h - .03, z1], [x0, y0 + h - .03, z0], wire);
     }
   } else {
-    const st = [.58, .56, .52], st2 = [.5, .49, .46], moss = [.46, .5, .36];
+    // dry stone, laid in uneven courses to the height at each post (world.js), with stones fallen
+    // off the low, tumbled stretches lying in the grass on either side
+    const st = [.58, .56, .52], st2 = [.5, .49, .46], st3 = [.64, .62, .57], moss = [.46, .5, .36], cols = [st, st2, st3];
+    let n = 0;
     for (let i = 0; i + 1 < P.length; i++) {
-      const [x0, y0, z0] = P[i], [x1, y1, z1] = P[i + 1], a = Math.atan2(z1 - z0, x1 - x0), L = Math.hypot(x1 - x0, z1 - z0);
-      for (let k = 0; k < 4; k++) {
-        const t = (k + .5) / 4, x = x0 + (x1 - x0) * t, z = z0 + (z1 - z0) * t, y = y0 + (y1 - y0) * t - .15;
-        box(B, x, y, z, L / 4 + .05, .45, .7, a + (k - 1.5) * .04, k & 1 ? st : st2);
-        box(B, x + Math.sin(a) * .03, y + .43, z, L / 4 * .9, .38, .55, a + (k - 2) * .05, (k + i) & 1 ? st2 : st, (k + i) % 3 ? st : moss);
+      const [x0, y0, z0, h0] = P[i], [x1, y1, z1, h1] = P[i + 1], a = Math.atan2(z1 - z0, x1 - x0), L = Math.hypot(x1 - x0, z1 - z0);
+      const sx = -Math.sin(a), sz = Math.cos(a);
+      for (let k = 0; k < 5; k++) {
+        const t = (k + .5) / 5, x = x0 + (x1 - x0) * t, z = z0 + (z1 - z0) * t, y = y0 + (y1 - y0) * t - .15;
+        const top = (h0 + (h1 - h0) * t) * (.85 + rnd() * .3) + .15;
+        // courses: big footing stones, then smaller ones, each a little off line
+        let yy = y, c = 0;
+        while (yy < y + top - .08 && c < 4) {
+          const ch = Math.min(y + top - yy, .2 + rnd() * .16), w = .62 - c * .1, off = (rnd() - .5) * .08;
+          box(B, x + sx * off, yy, z + sz * off, L / 5 * (.75 + rnd() * .45), ch, w, a + (rnd() - .5) * .25, cols[n++ % 3], (n % 4) ? cols[n % 3] : moss);
+          yy += ch * .96; c++;
+        }
+      }
+      // fallen stones beside the low stretches
+      const low = Math.min(h0, h1) < .4 ? 4 : rnd() < .25 ? 1 : 0;
+      for (let k = 0; k < low; k++) {
+        const t = rnd(), side = rnd() < .5 ? -1 : 1, d = .6 + rnd() * 1.4, x = x0 + (x1 - x0) * t + sx * side * d, z = z0 + (z1 - z0) * t + sz * side * d;
+        box(B, x, y0 + (y1 - y0) * t - .12, z, .3 + rnd() * .25, .16 + rnd() * .12, .22 + rnd() * .2, rnd() * 6.28, cols[n++ % 3], (n % 3) ? cols[n % 3] : moss);
       }
     }
   }
