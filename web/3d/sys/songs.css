@@ -1,91 +1,93 @@
-/* Song controls (songs system), in frosted glass like the rest of the UI: the pitch strip, the
-   syllable kinds, the song box with its score, Imitate a bird and the Call button. Colours: --note on
-   each band and score glyph, --breast and --cap on each bird. Everything here can be restyled
+/* Song controls (songs system), in frosted glass like the rest of the UI: the Sing button, the
+   note pad, the legend of touches, the song card with its score and the birds to imitate, and the
+   Call button. Colours: --note on each row and score glyph. Everything here can be restyled
    without touching singui.js. */
 .sing3 { position: absolute; inset: 0; pointer-events: none; --side: calc(14px + env(safe-area-inset-left)); --side2: calc(14px + env(safe-area-inset-right));
   --pane: rgba(255, 255, 255, .5); --edge: rgba(255, 255, 255, .66); --shadow: 0 4px 16px rgba(20, 40, 50, .14);
-  --top: max(34%, calc(162px + env(safe-area-inset-top))); --bot: calc(22px + env(safe-area-inset-bottom));
-  --kw: 58px; --rec: calc(var(--side) + var(--kw) - 1px);
-  --frost: rgba(255, 255, 255, .58); }
-.sing3 button { font-family: var(--text); color: var(--ink); touch-action: none; }
-.kinds3, .rec3, .birds3 { -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); }
+  --top: max(34%, calc(150px + env(safe-area-inset-top))); --bot: calc(22px + env(safe-area-inset-bottom));
+  --padw: 200px; --frost: rgba(255, 255, 255, .58); }
+.sing3 button { font-family: var(--text); color: var(--ink); touch-action: manipulation; }
+.songcard3, .sgdone3, .singbtn3, .notepad3 { -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); }
+.sing3:not(.on) :is(.notepad3, .sgdone3, .sglegend3, .songcard3), .sing3.on .singbtn3 { display: none; }
+.sing3 svg { flex: none; }
 
-/* the pitch strip: five bands of glass tinted by their note, high at the top */
-.strip3 { pointer-events: auto; position: absolute; right: var(--side2); bottom: var(--bot); top: var(--top); width: var(--kw);
-  display: flex; flex-direction: column; gap: 5px; touch-action: none; }
-.strip3 i { flex: 1; border-radius: 14px; background: color-mix(in srgb, var(--note) 55%, rgba(255, 255, 255, .6)); opacity: .85; box-shadow: var(--shadow);
-  border: 1px solid rgba(255, 255, 255, .7); transition: opacity .2s, transform .2s; }
-.strip3 i.hit { animation: hit3 .3s ease-out; }
-.strip3 i.glow { animation: glow3 .6s ease-out; }
-.strip3 i.next { opacity: 1; box-shadow: 0 0 0 3px #fff, 0 0 14px 4px color-mix(in srgb, var(--note) 70%, #fff); animation: nextband3 1.1s ease-in-out infinite alternate; }
+/* Sing: bottom left while the hawk can sing; it opens the controls */
+.singbtn3 { pointer-events: auto; position: absolute; left: var(--side); bottom: var(--bot); min-height: 50px; display: flex; align-items: center; gap: 8px; padding: 0 20px 0 6px;
+  border: 1px solid var(--edge); border-radius: 25px; background: var(--frost); box-shadow: var(--shadow); font-size: 15px; font-weight: 700; cursor: pointer; }
+.singbtn3 .pic3 { width: 48px; height: 36px; display: grid; place-items: center; }
+.singbtn3 img { width: 48px; height: 36px; }
+.singbtn3 svg { width: 28px; height: 14px; stroke: var(--ink); }
+
+/* the note pad: five rows of glass tinted by their note, high at the top. Two thumbs can play. */
+.notepad3 { pointer-events: auto; position: absolute; right: var(--side2); bottom: var(--bot); top: var(--top); width: var(--padw); box-sizing: border-box; padding: 5px;
+  display: flex; flex-direction: column; gap: 5px; touch-action: none; border: 1px solid var(--edge); border-radius: 22px; background: rgba(255, 255, 255, .26); box-shadow: var(--shadow); }
+.notepad3 i { flex: 1; border-radius: 16px; background: color-mix(in srgb, var(--note) 55%, rgba(255, 255, 255, .6)); opacity: .88;
+  border: 1px solid rgba(255, 255, 255, .7); transition: opacity .2s, transform .15s; }
+.notepad3 i.down { opacity: 1; transform: scale(.985); }
+.notepad3 i.hit { animation: hit3 .3s ease-out; }
+.notepad3 i.glow { animation: glow3 .6s ease-out; }
+.notepad3 i.next { opacity: 1; box-shadow: 0 0 0 3px #fff, 0 0 14px 4px color-mix(in srgb, var(--note) 70%, #fff); animation: nextband3 1.1s ease-in-out infinite alternate; }
 @keyframes nextband3 { to { filter: brightness(1.25); } }
-.kinds3 div.next:not(.on) { box-shadow: inset 0 0 0 2px rgba(29, 43, 54, .45); }
-@keyframes hit3 { 0% { opacity: 1; transform: scaleX(1.08); filter: brightness(1.2); } 100% { transform: none; } }
+@keyframes hit3 { 0% { opacity: 1; filter: brightness(1.25); } 100% { filter: none; } }
 @keyframes glow3 { 0% { filter: brightness(1.4); opacity: 1; } 100% { filter: none; } }
+.sgdone3 { pointer-events: auto; position: absolute; right: var(--side2); top: calc(var(--top) - 46px); height: 38px; padding: 0 14px; border: 1px solid var(--edge); border-radius: 19px;
+  background: var(--frost); box-shadow: var(--shadow); font-size: 13px; font-weight: 600; cursor: pointer; }
 
-/* the kinds of syllable: a column of icons for the left thumb, the dark pill on the chosen kind;
-   while held (.slide) it widens to show the names, the pill follows the thumb and springs onto a
-   kind when let go */
-.kinds3 { pointer-events: auto; position: absolute; z-index: 2; left: var(--side); bottom: var(--bot); top: var(--top); width: var(--kw); padding: 4px; box-sizing: border-box;
-  display: flex; flex-direction: column; gap: 4px; touch-action: none; border-radius: 22px 22px 0 22px; background: var(--frost); border: 1px solid var(--edge); box-shadow: var(--shadow);
-  transition: width .18s ease-out, background .18s, border-radius .18s; overflow: hidden; }
-.kinds3.slide { width: 124px; background: rgba(255, 255, 255, .8); border-radius: 22px; }
-.kinds3 div { position: relative; flex: 1; display: flex; align-items: center; gap: 8px; padding: 0 9px; border-radius: 18px; white-space: nowrap;
-  font-size: 12.5px; font-weight: 600; color: var(--ink); transition: color .15s; user-select: none; -webkit-user-select: none; }
-.kinds3 span { opacity: 0; transition: opacity .15s; }
-.kinds3.slide span { opacity: 1; }
-.kinds3 svg { width: 30px; height: 15px; stroke: currentColor; flex: none; }
-.kinds3 div.on { color: #fff; }
-.puck3 { position: absolute; left: 4px; right: 4px; top: 0; border-radius: 18px; background: var(--ink); box-shadow: 0 2px 8px rgba(20, 40, 50, .25);
-  transition: transform .22s cubic-bezier(.3, 1.35, .5, 1), height .2s; }
-.kinds3.slide .puck3 { transition: none; }
+/* the legend: the four touches stacked left of the pad, white like the HUD; the chevron folds it */
+.sglegend3 { pointer-events: auto; position: absolute; right: calc(var(--side2) + var(--padw) + 6px); bottom: var(--bot); display: flex; flex-direction: column; align-items: flex-end; gap: 2px;
+  color: #fff; font-size: 13px; font-weight: 600; filter: drop-shadow(0 1px 1.5px rgba(10, 20, 28, .55)) drop-shadow(0 0 6px rgba(10, 20, 28, .25)); }
+.sglegend3 div { display: flex; align-items: center; gap: 6px; height: 34px; padding: 0 8px; border-radius: 17px; user-select: none; -webkit-user-select: none; }
+.sglegend3 div svg { width: 30px; height: 15px; stroke: #fff; }
+.sglegend3 div.hit { animation: key3 .4s ease-out; }
+@keyframes key3 { 0% { background: rgba(255, 255, 255, .35); } }
+.sglegend3 div.on { background: rgba(255, 255, 255, .22); }
+.sglegend3 div.next { background: rgba(255, 255, 255, .85); color: var(--ink); filter: none; }
+.sglegend3 div.next svg { stroke: var(--ink); }
+.sglegend3 .sgfold3 { width: 40px; height: 34px; padding: 0; border: 0; background: none; cursor: pointer; display: grid; place-items: center; }
+.sglegend3 .sgfold3 svg { width: 20px; height: 20px; stroke: #fff; transform: rotate(90deg); transition: transform .2s; }
+.sing3.fold .sglegend3 div { display: none; }
+.sing3.fold .sglegend3 .sgfold3 svg { transform: rotate(-90deg); }
 
-/* the song box, joined to the foot of the kinds column as one frosted piece (an L): the bird,
-   its name (or a cheer), its words, its score; tap it to open Imitate a bird */
-.rec3 { pointer-events: auto; position: absolute; left: var(--rec); bottom: var(--bot); display: flex; align-items: center; gap: 8px; max-width: min(46vw, 420px);
-  padding: 5px 44px 5px 8px; touch-action: none; user-select: none; -webkit-user-select: none; border: 1px solid var(--edge); border-left: 0; border-radius: 0 18px 18px 0; background: var(--frost); box-shadow: 6px 4px 14px rgba(20, 40, 50, .12); cursor: pointer; text-align: left; }
-.x3 { position: absolute; top: 3px; right: 3px; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 12px; background: rgba(29, 43, 54, .07);
-  font-size: 11px; line-height: 24px; color: var(--ink2); cursor: pointer; }
-.slow3 { position: absolute; bottom: 4px; right: 3px; height: 22px; padding: 0 6px; border: 0; border-radius: 11px; background: rgba(29, 43, 54, .07);
-  font-size: 10.5px; font-weight: 600; color: var(--ink2); cursor: pointer; }
-.rec3.practice .slow3 { background: var(--ink); color: #fff; }
-.sing3.lefty .rec3 .slow3 { right: auto; left: 3px; }
-.txt3 i { font-size: 11px; font-weight: 500; color: var(--ink2); line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.txt3 i:empty { display: none; }
-/* the song box tucked away: a round button in its place that opens Imitate a bird */
-.open3 { pointer-events: auto; position: absolute; left: var(--rec); bottom: var(--bot); width: 52px; height: 52px; padding: 0; display: grid; place-items: center;
-  border: 1px solid var(--edge); border-left: 0; border-radius: 0 26px 26px 0; background: var(--frost); box-shadow: 6px 4px 14px rgba(20, 40, 50, .12); cursor: pointer;
-  -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); }
-.open3 img { width: 44px; height: 33px; }
-.open3 svg { width: 28px; height: 14px; stroke: var(--ink); }
-.rec3.on { background: rgba(255, 255, 255, .8); }
-.rec3.pop { animation: pop3 .4s ease-out; }
-@keyframes pop3 { 40% { transform: scale(1.04); } }
+/* the song card, bottom left: the bird, its name (or a cheer), its score; the chevron opens the
+   large card with the words, Hear it, Slow and the birds to imitate */
+.songcard3 { pointer-events: auto; position: absolute; left: var(--side); bottom: var(--bot); box-sizing: border-box; display: flex; flex-direction: column; gap: 4px; padding: 6px 6px 7px 8px;
+  max-width: min(46vw, 400px); border: 1px solid var(--edge); border-radius: 18px; background: var(--frost); box-shadow: var(--shadow); }
+.sghead3 { display: flex; align-items: center; gap: 8px; cursor: pointer; min-width: 0; }
 .pic3 { flex: none; display: grid; place-items: center; width: 48px; height: 36px; border-radius: 12px; background: rgba(29, 43, 54, .06); }
 .pic3 img { width: 48px; height: 36px; }
 .pic3 svg { width: 30px; height: 15px; stroke: var(--ink); }
-.txt3 { display: flex; flex-direction: column; min-width: 0; }
-.txt3 b { font-weight: 700; font-size: 12.5px; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.rec3.cheer b { color: #2f7a4a; }
-.score3 { display: flex; gap: 3px; align-items: flex-end; min-height: 18px; }
-.score3:has(span) { height: 34px; }
-.score3 small { font-size: 11px; font-weight: 500; color: var(--ink2); white-space: nowrap; }
-.score3 span { width: 30px; height: 15px; margin-bottom: calc(var(--lane) * 4.5px); opacity: .4; border-bottom: 2px solid transparent; flex: none; }
-.score3 svg { width: 30px; height: 15px; stroke: var(--note); }
+.txt3 { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.txt3 b { font-weight: 700; font-size: 13px; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.txt3 i { font-style: normal; font-size: 11.5px; font-weight: 500; color: var(--ink2); line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.txt3 i:empty { display: none; }
+.songcard3.cheer b { color: #2f7a4a; }
+.songcard3.pop { animation: pop3 .4s ease-out; }
+@keyframes pop3 { 40% { transform: scale(1.04); } }
+.sgmore3 { flex: none; width: 34px; height: 34px; padding: 0; border: 0; border-radius: 17px; background: rgba(29, 43, 54, .07); display: grid; place-items: center; cursor: pointer; }
+.sgmore3 svg { width: 18px; height: 18px; stroke: var(--ink); transition: transform .2s; }
+/* the score: one glyph per syllable at its pitch, the next one in a pale box */
+.score3 { --g: 30px; display: flex; gap: 3px; align-items: flex-end; min-height: 18px; padding-left: 2px; }
+.score3:has(span) { height: calc(var(--g) * .5 + 22px); }
+.score3 small { font-size: 11.5px; font-weight: 500; color: var(--ink2); white-space: nowrap; }
+.score3 span { width: var(--g); height: calc(var(--g) / 2); padding: 2px 1px; margin-bottom: calc(var(--lane) * var(--g) * .15); opacity: .4; border-radius: 7px; flex: none; }
+.score3 svg { width: 100%; height: 100%; stroke: var(--note); display: block; }
 .score3 span.done { opacity: 1; }
 .score3 span.wrong { opacity: 1; filter: saturate(0) brightness(.6); }
-.score3 span.next { opacity: 1; border-bottom-color: var(--ink); animation: next3 1s ease-in-out infinite alternate; }
+.score3 span.next { opacity: 1; background: rgba(29, 43, 54, .1); box-shadow: inset 0 0 0 1px rgba(29, 43, 54, .12); }
 .score3 span.bird { opacity: .7; filter: saturate(.3); }
-@keyframes next3 { to { transform: translateY(-2px); } }
-
-/* Imitate a bird: every bird you know at once, in compact cards, from the bottom of the screen
-   up over the song box; a sound-wave mark on any bird singing nearby */
-.birds3 { pointer-events: auto; position: fixed; left: var(--side); bottom: var(--bot); z-index: 3; width: min(860px, calc(100vw - 2 * var(--side) - 120px));
-  max-height: calc(100vh - 70px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); box-sizing: border-box; display: flex; flex-direction: column; padding: 4px 6px 6px; border-radius: 18px;
-  background: rgba(255, 255, 255, .86); box-shadow: 0 8px 24px rgba(20, 40, 50, .2); border: 1px solid var(--edge); }
-.birds3 header { display: flex; align-items: center; justify-content: space-between; padding: 0 2px 4px 6px; font-weight: 700; font-size: 13px; }
-.birds3 header button { width: 28px; height: 28px; border: 0; border-radius: 14px; background: rgba(29, 43, 54, .08); font-size: 12px; cursor: pointer; }
-.cards3 { overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 4px; }
+.sgtools3, .birds3 { display: none; }
+/* the large card */
+.sing3.big .songcard3 { width: min(calc(50vw - 80px - var(--side)), 460px); min-width: min(300px, 46vw); max-width: none;
+  max-height: calc(100% - var(--bot) - 64px - env(safe-area-inset-top)); padding: 8px 8px 8px 10px; gap: 7px; background: rgba(255, 255, 255, .84); z-index: 3; }
+.sing3.big .sgmore3 svg { transform: rotate(180deg); }
+.sing3.big .score3 { --g: 40px; }
+.sing3.big .sgtools3 { display: flex; gap: 6px; flex: none; }
+.sgtools3 button { height: 34px; display: flex; align-items: center; gap: 6px; padding: 0 12px; border: 0; border-radius: 17px; background: rgba(29, 43, 54, .08); font-size: 12.5px; font-weight: 600; cursor: pointer; }
+.sgtools3 svg { width: 13px; height: 13px; fill: var(--ink); }
+.sing3.practice .slow3 { background: var(--ink); color: #fff; }
+.sing3.big .birds3 { display: flex; flex-direction: column; min-height: 0; flex: 1; }
+.birds3 header { padding: 2px 2px 4px; font-weight: 700; font-size: 12.5px; }
+.cards3 { overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 4px; min-height: 0; }
 .sing3 .cards3 button { touch-action: pan-y; }
 .cards3 button { position: relative; display: flex; flex-direction: column; align-items: center; gap: 0; padding: 3px 2px 5px; border: 1px solid transparent; border-radius: 12px;
   background: rgba(255, 255, 255, .6); font-size: 11.5px; font-weight: 600; text-align: center; cursor: pointer; line-height: 1.15; }
@@ -94,20 +96,22 @@
 .cards3 button.on { background: rgba(29, 43, 54, .12); border-color: rgba(29, 43, 54, .3); }
 .cards3 button.stop { justify-content: center; font-weight: 500; color: var(--ink2); }
 .near3 { position: absolute; top: 4px; right: 5px; width: 15px; height: 15px; stroke: #2f7a4a; fill: #2f7a4a; }
-.birds3 p { margin: 6px 8px; font-size: 12.5px; color: var(--ink2); }
+.cards3 p { margin: 6px 8px; font-size: 12.5px; color: var(--ink2); grid-column: 1 / -1; }
 
 /* left-handed: the sides swap */
-.sing3.lefty .strip3 { right: auto; left: var(--side); }
-.sing3.lefty .kinds3 { left: auto; right: var(--side2); }
-.sing3.lefty .kinds3:not(.slide) { border-radius: 22px 22px 22px 0; }
-.sing3.lefty .rec3, .sing3.lefty .open3 { left: auto; right: calc(var(--side2) + var(--kw) - 1px); border-left: 1px solid var(--edge); border-right: 0; }
-.sing3.lefty .rec3 { border-radius: 18px 0 0 18px; padding: 5px 8px 5px 44px; }
-.sing3.lefty .rec3 .x3 { right: auto; left: 3px; }
-.sing3.lefty .open3 { border-radius: 26px 0 0 26px; }
-.sing3.lefty .birds3 { left: auto; right: var(--side2); }
+.sing3.lefty .notepad3, .sing3.lefty .sgdone3 { right: auto; left: var(--side); }
+.sing3.lefty .sglegend3 { right: auto; left: calc(var(--side) + var(--padw) + 6px); align-items: flex-start; }
+.sing3.lefty .sglegend3 .sgfold3 svg { transform: rotate(-90deg); }
+.sing3.lefty.fold .sglegend3 .sgfold3 svg { transform: rotate(90deg); }
+.sing3.lefty .songcard3, .sing3.lefty .singbtn3 { left: auto; right: var(--side2); }
 
-/* Call sits left of the day dial (128px wide, 12px in) */
-/* Call: just the word, white with the HUD's dark halo, like the rest of the HUD */
+/* Take off and Sleep sit bottom middle, between the song card and the note pad (the one action
+   button in their place too); Sleep to the left of Take off when both show */
+#ui3 .act3, #ui3 .takeoff3 { left: 50% !important; right: auto !important; translate: -50% 0; }
+#ui3 .takeoff3.sleep3 { left: auto !important; right: 50% !important; translate: -5px 0; }
+#ui3:has(.sleep3:not(.gone)) .takeoff3:not(.sleep3) { translate: 5px 0; }
+
+/* Call: just the word, left of the day dial (128px wide, 12px in), white with the HUD's dark halo */
 .call3 { pointer-events: auto; position: absolute; right: calc(12px + 128px + 10px + env(safe-area-inset-right)); top: calc(12px + env(safe-area-inset-top));
   min-width: 54px; height: 54px; padding: 0 6px; border: 0; border-radius: 27px; cursor: pointer; touch-action: none; background: none;
   font-family: var(--text); font-weight: 700; font-size: 16px; letter-spacing: .02em; color: #fff;
