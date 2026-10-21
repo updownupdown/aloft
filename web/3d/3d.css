@@ -83,17 +83,16 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .dial { width: 128px; padding: 4px 6px; display: flex; flex-direction: column; align-items: center; gap: 2px; color: #fff; }
 .dial svg { filter: drop-shadow(0 1px 3px rgba(10, 20, 28, .35)); }
 .dial svg { width: 88px; height: 46px; display: block; overflow: visible; }
-.dial .nightw, .dial.night .dayw { display: none; }
-.dial.night .nightw { display: inline; }
 .dial .track { fill: rgba(255, 255, 255, .2); stroke: rgba(10, 20, 28, .3); stroke-width: .8; }
 .dial .ring path { stroke-width: .4; }
-.dial .shade { fill: rgba(255, 255, 255, .5); }
 .dial .rim { fill: none; stroke: rgba(255, 255, 255, .85); stroke-width: 1.2; }
 .dial .base { stroke: rgba(255, 255, 255, .9); stroke-width: 1.4; stroke-linecap: round; }
-.dial .hand { stroke: #fff; stroke-width: 2.2; stroke-linecap: round; filter: drop-shadow(0 0 1px rgba(10, 20, 28, .7)); }
-.dial .hub { fill: #fff; stroke: rgba(10, 20, 28, .5); stroke-width: .8; }
-.dial .sun { fill: #f2bc4a; stroke: #fff; stroke-width: 1.5; }
-.dial .sun.moon { fill: #f4f7f8; stroke: rgba(29, 43, 54, .45); stroke-width: 1; }
+.dial .sun { fill: #f2bc4a; stroke: #fff; stroke-width: 1.2; }
+.dial .moon { fill: #eef2f6; stroke: rgba(29, 43, 54, .4); stroke-width: .8; }
+/* the needle: an upright bar with a slit down it and a triangle at its top; it never moves */
+.dial .needle { filter: drop-shadow(0 0 1.2px rgba(10, 20, 28, .75)); }
+.dial .needle .bar, .dial .needle .tip { fill: #fff; }
+.dial .needle .slit { stroke: #1d2b36; stroke-width: .9; stroke-linecap: round; }
 .dial .label { display: none; }
 .dial .season { margin-top: 3px; font-size: 13px; font-weight: 600; white-space: nowrap; display: flex; align-items: center; gap: 6px; filter: var(--halo); }
 .dial .season::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--sc, var(--leaf)); }
