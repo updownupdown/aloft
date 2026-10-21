@@ -105,7 +105,7 @@ export function storySystem(G) {
   G.on('trick', kind => {
     St.tricks++;
     if (inMarsh()) St.bonus += .06;   // showing off where the other hawks can see
-    if (St.suitor) G.hud.toast(kind === 'stoop' ? 'A stoop! The hawk watches.' : 'A wingover! The hawk circles closer.', 2);
+    if (St.suitor) G.hud.toast({ stoop: 'A stoop! The hawk watches.', tumble: 'A tumble! Your suitor calls and follows.' }[kind] || 'A wingover! The hawk circles closer.', 2);
   });
   // a song sung well where the other hawks can hear helps too (songs.js emits 'song')
   G.on('song', (sp, q) => { if (inMarsh()) St.bonus += .04 * (typeof q === 'number' ? q : 1); });

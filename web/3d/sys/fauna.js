@@ -15,6 +15,7 @@ export const FAUNA = {
   heronCell: 220, heronR: 240,
   fishCell: 40, fishR: 90,
   fish: .35, catchR: 1.6, catchDive: 1.6, catchH: 2.2,   // as food.js: fill, reach, extra reach diving, how low
+  plungeR: 4.5,                         // an osprey plunging feet first (sys/moves.js sets b.plunge) reaches fish this far, at any depth
   kettleW: 4.6, kettleR: 520,           // thermals at least this strong carry a kettle of wild hawks
 };
 
@@ -189,11 +190,11 @@ export function faunaSystem(G) {
   const fishY = f => f.jump >= 0 ? WATER + Math.sin(f.jump * Math.PI) * 1.3 - .1 : WATER - .45 + Math.min(1, f.up) * .32;
   function tryCatch() {
     if (b.state !== 'fly') return;
-    const focus = G.aim?.focus || 0;
+    const focus = G.aim?.focus || 0, deep = b.plunge > 0;
     for (const f of fishes.values()) {
-      if (f.up < .5 && f.jump < 0) continue;
+      if (!deep && f.up < .5 && f.jump < 0) continue;
       const fy = fishY(f), above = b.p[1] - fy, hd = Math.hypot(b.p[0] - f.x, b.p[2] - f.z);
-      if (above < FAUNA.catchH + focus * 2.5 && above > -1 && hd < FAUNA.catchR + FAUNA.catchDive * focus) {
+      if (deep ? hd < FAUNA.plungeR : above < FAUNA.catchH + focus * 2.5 && above > -1 && hd < FAUNA.catchR + FAUNA.catchDive * focus) {
         fishes.delete(f.id); caught.set(f.id, G.clock);
         b.state = 'swim'; b.p = [f.x, WATER + .35, f.z]; b.s = 0; b.eating = 2.4;
         G.hunger = Math.min(1, (G.hunger ?? 1) + FAUNA.fish);

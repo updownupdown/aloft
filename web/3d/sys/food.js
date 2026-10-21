@@ -86,7 +86,7 @@ export function foodSystem(G) {
   function simulate(m, dt) {
     // wander near the burrow in short scurries; run from a low, close shadow
     const dx = m.x - b.p[0], dz = m.z - b.p[2], hd = Math.hypot(dx, dz), low = b.p[1] - height(b.p[0], b.p[2]) < 14;
-    if (b.state === 'fly' && hd < 10 && low && m.flee <= 0) { m.flee = 1.2; m.yaw = Math.atan2(dx, -dz) + (Math.random() - .5); }
+    if (b.state === 'fly' && hd < 10 && low && m.flee <= 0 && !G.silent) { m.flee = 1.2; m.yaw = Math.atan2(dx, -dz) + (Math.random() - .5); }
     let sp = 0;
     if (m.flee > 0) { m.flee -= dt; sp = 2.2; }
     else if (m.go > 0) { m.go -= dt; sp = 1.1; }
