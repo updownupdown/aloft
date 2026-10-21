@@ -48,8 +48,6 @@ const GIFT_TEXT = {
 const FAR = { hawk: 'hawks', osprey: 'ospreys', owl: 'owls', raven: 'ravens' };
 const PHRASE = { dawn: 'at dawn', day: 'in the daytime', dusk: 'at dusk', night: 'at night' };
 const PLACE = { forest: 'the woods', ridge: 'the great ridge', coast: 'the coast', meadow: 'a meadow', marsh: 'the marsh', lakeland: 'the lakeland', cliffs: 'the high ground', mountains: 'the mountains' };
-const hex01 = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255);
-const NOTE01 = NOTE_COLS.map(hex01);
 const compass = (dx, dz) => ['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west'][Math.round((Math.atan2(dx, -dz) / (Math.PI / 4) + 8)) % 8];
 
 export function songsSystem(G) {
@@ -79,7 +77,7 @@ export function songsSystem(G) {
 
   const ui = createSingUI(document.getElementById('ui3'), {
     audio: A, voice: () => SPECIES[voice ?? 1].voice,
-    onSyll: (lane, kind) => { notePart(b.p, lane); G.music.echo(lane); singNote(lane, kind); },
+    onSyll: (lane, kind) => { notePart(b.p, lane, kind, true); G.music.echo(lane); singNote(lane, kind); },
     onPick: pick, onCall: call, onHear: hearIt,
   });
 
@@ -87,8 +85,12 @@ export function songsSystem(G) {
   const storm = () => G.storm || 0, winter = () => G.season.winter;
   const young = s => s.young && !winter();
   const isOut = s => active(s.sp, G.tod, storm(), winter()) || ((G.gifts.sing > 0 || chorus && !s.sp.look.owl) && storm() < .6);
-  function notePart(p, lane, col = NOTE01[lane]) {
-    G.part([p[0], p[1] + .35, p[2]], [(Math.random() - .5) * .8, 2.4 + lane * .2, (Math.random() - .5) * .8], 1.5, col, .13);
+  // a syllable rising from a beak: a songbird's (at its perch), or the hawk's (a little ahead of
+  // where it sits)
+  let lastS = null;
+  function notePart(p, lane, kind, hawk = false) {
+    const at = hawk ? [p[0] + Math.sin(b.yaw) * .2, p[1] + .32, p[2] - Math.cos(b.yaw) * .2] : [p[0], p[1] + .15, p[2]];
+    ui.rise(lastS, at, lane, kind);
   }
   function hear(sp) { if (!G.heard.has(sp.id)) { G.heard.add(sp.id); store.set('heard', [...G.heard]); } }
   // a songbird (or a visitor) sings; in a duet it sings only the first half and leaves the rest to you
@@ -107,7 +109,7 @@ export function songsSystem(G) {
     tune.notes.slice(0, count).forEach((n, i) => later(i * sp.gap, () => {
       if (v > .005) A.note(n, sp.voice, v * (o.young && !winter() ? .8 : 1), tune.kinds[i]);
       if (v > .04) hear(sp);
-      notePart([o.x, o.y, o.z], n);
+      if (v > .02) notePart([o.x, o.y, o.z], n, tune.kinds[i]);
       if (S.bird === o) ui.glow(n);
     }));
   }
@@ -343,7 +345,7 @@ export function songsSystem(G) {
     if (G.paused || e.repeat) return;
     const n = '12345'.indexOf(e.key), k = '6789'.indexOf(e.key);
     if (n >= 0 && ui.ready && !ui.open) ui.sing(true);
-    if (n >= 0 && ui.open) { A.note(n, SPECIES[voice ?? 1].voice, .18, ui.kind); ui.glow(n); notePart(b.p, n); G.music.echo(n); singNote(n, ui.kind); }
+    if (n >= 0 && ui.open) { A.note(n, SPECIES[voice ?? 1].voice, .18, ui.kind); ui.glow(n); notePart(b.p, n, ui.kind, true); G.music.echo(n); singNote(n, ui.kind); }
     if (k >= 0 && ui.open) ui.setKind(KINDS[k][0]);
     if (e.code === 'KeyC') call(.6);
   });
@@ -456,6 +458,7 @@ export function songsSystem(G) {
         const listening = close && young(close) && close.sp !== target && G.learned.has(target.id) ? `a young ${close.sp.name.toLowerCase()} is listening` : '';
         sc = { sp: target, title, words: listening || words, done: off + S.tries.length, bird: off, state: S.wrongT > 0 ? 'wrong' : S.doneT > 0 ? 'done' : '' };
       } else if (picked) sc = { sp: picked, hidden: true, title: picked.name, note: 'Listen for one nearby to learn its song' };
+      G.camSing = ui.open ? 1 : 0;   // the camera comes in closer while singing (camera.js)
       ui.update({ available, known, learned: G.learned, picked, sc, nearby, lefty: lefty(), resting: callT > 0 });
       // slow practice: the phrase at half speed, over and over, softly; the next note lit
       const prac = ui.practice && ui.open && target && sc && !sc.hidden;
@@ -491,6 +494,7 @@ export function songsSystem(G) {
       }
     },
     scene(S3) {
+      lastS = S3;
       for (const s of near) if (s.out) {
         const sing = (s.singT || 0) > 0, bob = sing ? Math.abs(Math.sin(G.t * 14)) * .015 : 0;
         const look = s.heading + Math.sin(G.t * .3 + s.ph) * .9 * (Math.sin(G.t * .07 + s.ph) > 0 ? 1 : 0);
