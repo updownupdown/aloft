@@ -146,7 +146,16 @@ export function landsSystem(G) {
           if (lit > .2) {
             const top = [l.x, l.y + 20, l.z], a = G.t * .9;
             S.motes.push(...top, 1, .95, .7, 2.2 * lit);
-            for (let i = 1; i < 60; i++) S.motes.push(top[0] + Math.cos(a) * i * 2.6, top[1] - i * .06, top[2] + Math.sin(a) * i * 2.6, ...mix3(S.horizon, [1, .95, .75], lit * (1 - i / 62) * .8), .55 + i * .025);
+            // two soft shafts of light either way: discs packed so close they run together,
+            // widening and fading into the sky with distance
+            for (const side of [0, Math.PI]) {
+              const c = Math.cos(a + side), s = Math.sin(a + side);
+              for (let d = 1.5; d < 190;) {
+                const r = .7 + d * .055, f = 1 - d / 190;
+                S.motes.push(top[0] + c * d, top[1] - d * .05, top[2] + s * d, ...mix3(S.horizon, [1, .95, .78], lit * f * f * (side ? .45 : .7)), r);
+                d += Math.max(.5, r * .45);
+              }
+            }
           }
         }
       }
