@@ -21,7 +21,7 @@ const SHORT = {
   nestbranch: ['twig', 'Perch on a branch to build'],
   keepsake: ['spark', 'Something glints: land by it'],
   song: ['note', 'Copy the songbird'],
-  imitate: ['note', 'Pick a bird in Songs to imitate'],
+  imitate: ['note', 'Tap Sing, then pick a bird to imitate'],
   call: ['call', 'Hold Call to call out'],
 };
 // 20-unit line icons, drawn in the text colour

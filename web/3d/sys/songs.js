@@ -80,10 +80,8 @@ export function songsSystem(G) {
   const ui = createSingUI(document.getElementById('ui3'), {
     audio: A, voice: () => SPECIES[voice ?? 1].voice,
     onSyll: (lane, kind) => { notePart(b.p, lane); G.music.echo(lane); singNote(lane, kind); },
-    onPick: pick, onCall: call,
+    onPick: pick, onCall: call, onHear: hearIt,
   });
-  // for the round action button (menu): Imitate a bird, while the song controls are out
-  (G.actions ||= {}).imitate = { label: 'Imitate', when: () => ui.open, run: () => ui.openBirds() };
 
   // ---- songbirds singing --------------------------------------------------------------------
   const storm = () => G.storm || 0, winter = () => G.season.winter;
@@ -152,6 +150,12 @@ export function songsSystem(G) {
     if (!G.learned.has(id)) { ui.cheer(`You sing in the ${picked.name}'s voice`); return; }
     ui.cheer(`Imitate the ${picked.name}`); H.did('imitate');
     picked.notes.forEach((n, i) => later(.5 + i * picked.gap, () => { A.note(n, picked.voice, .07, picked.kinds[i]); ui.glow(n); }));
+  }
+  // Hear it (the song card): the song you are copying, once, softly, its notes lit on the pad
+  function hearIt() {
+    const sp = S.target || (picked && G.learned.has(picked.id) ? picked : null);
+    if (!sp) { ui.cheer(picked ? 'Listen for one nearby first' : 'Pick a bird to imitate'); return; }
+    sp.notes.forEach((n, i) => later(.2 + i * sp.gap, () => { A.note(n, sp.voice, .08, sp.kinds[i]); ui.glow(n); }));
   }
 
   // ---- teaching a young bird (round six) -----------------------------------------------------
@@ -338,14 +342,15 @@ export function songsSystem(G) {
   addEventListener('keydown', e => {
     if (G.paused || e.repeat) return;
     const n = '12345'.indexOf(e.key), k = '6789'.indexOf(e.key);
+    if (n >= 0 && ui.ready && !ui.open) ui.sing(true);
     if (n >= 0 && ui.open) { A.note(n, SPECIES[voice ?? 1].voice, .18, ui.kind); ui.glow(n); notePart(b.p, n); G.music.echo(n); singNote(n, ui.kind); }
     if (k >= 0 && ui.open) ui.setKind(KINDS[k][0]);
     if (e.code === 'KeyC') call(.6);
   });
 
   // ---- tips and the Songs tab ---------------------------------------------------------------------
-  H.tip('song', () => S.bird && !G.learned.has(S.bird.sp.id), 'A songbird! Copy its score: choose the sound on the left, then the pitch on the right.');
-  H.tip('imitate', () => b.state === 'perch' && G.learned.size && !picked && perchT > 3, 'Open Songs (left) and pick a bird to imitate. Sing its song right and it answers with a gift.');
+  H.tip('song', () => S.bird && !G.learned.has(S.bird.sp.id), 'A songbird! Tap Sing and copy its score on the note pad: the row is the pitch, the touch is the sound.');
+  H.tip('imitate', () => b.state === 'perch' && G.learned.size && !picked && perchT > 3, 'Tap Sing, then open the song card (bottom left) and pick a bird to imitate. Sing its song right and it answers with a gift.');
   H.tip('call', () => b.state === 'fly' && G.clock > 240, 'Hold Call, top right, to scream: the longer you hold, the louder. Mice freeze and far hawks answer.');
   // (after the core's own tabs, which main.js adds once the systems are made)
   queueMicrotask(songsTab);
@@ -375,7 +380,7 @@ export function songsSystem(G) {
 
   // ---- each frame --------------------------------------------------------------------------------
   return {
-    id: 'songs', ui,   // (ui.lanePt and ui.kindPt for test scripts)
+    id: 'songs', ui,   // (ui.lanePt for test scripts)
     update(dt) {
       for (let i = queue.length - 1; i >= 0; i--) if (queue[i].t <= G.t) { const q = queue[i]; queue.splice(i, 1); q.fn(); }
       for (const k in G.gifts) { G.gifts[k] -= dt; if (G.gifts[k] <= 0) delete G.gifts[k]; }
