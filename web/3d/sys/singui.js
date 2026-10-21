@@ -39,7 +39,8 @@ const MOVE = 10, SWIPE = 30;
 
 import { songbirdPic } from '../pics.js';
 import { project } from '../shot.js';
-import { icon, ICONS } from '../icons.js';
+import { icon, ICONS, birdIcon } from '../icons.js';
+import { BIRD } from '../hawk.js';
 // stop singing: the sing icon, crossed out
 const UNSING = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS.sing}<path d="M3.5 3.5l17 17"/></svg>`;
 
@@ -57,7 +58,7 @@ export function createSingUI(ui, { audio, voice, onSyll, onPick, onCall }) {
       </div>
       <div class="birds3"><header><span>Imitate a bird</span><button class="sgless3" aria-label="Close">${CHEVRON}</button></header><div class="cards3"></div></div>
     </div>
-    <button class="call3" aria-label="Hawk call" title="Call">${icon('call')}</button>`);
+    <button class="call3" aria-label="Call" title="Call">${birdIcon(BIRD)}</button>`);
   const root = [...ui.querySelectorAll('.sing3')].at(-1), q = s => root.querySelector(s);
   const pad = q('.notepad3'), card = q('.songcard3'), score = q('.score3'), cards = q('.cards3');
   const name = card.querySelector('b'), pic = card.querySelector('.pic3'), singPic = q('.singbtn3 .pic3');
@@ -189,6 +190,7 @@ export function createSingUI(ui, { audio, voice, onSyll, onPick, onCall }) {
     update({ available, known, learned, picked, sc, nearby = new Set(), lefty, resting }) {
       root.classList.toggle('lefty', lefty); S.lefty = lefty;
       callBtn.classList.toggle('rest', resting);
+      if (callBtn.dataset.bird !== BIRD) { callBtn.dataset.bird = BIRD; callBtn.innerHTML = birdIcon(BIRD); }   // Call shows the bird you fly
       if (!!available !== S.ready) {
         S.ready = !!available; root.classList.toggle('hidden', !S.ready); ui.classList.toggle('singing3', S.ready);
         if (!S.ready) big(false);

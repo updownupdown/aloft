@@ -1,6 +1,6 @@
 // The heads-up layer: meters, a status line, the day dial, toasts, one tip at a time, and the
 // thumb pads. Systems add meters with G.hud.meter() and tips with G.hud.tip(); they call
-// G.hud.toast(). Meters are short bars stacked in one glass pill with the menu button, beside the
+// G.hud.toast() / G.hud.say(). Meters are short bars stacked in one glass pill with the menu button, beside the
 // height and speed; they are touched only when their value changes. A compass runs along the top.
 import { store } from './util.js';
 import { createDial } from './dial.js';
@@ -10,13 +10,21 @@ import { icon } from './icons.js';
 
 // each meter's icon (icons.js)
 const ICON_OF = { hunger: 'hunger', thirst: 'thirst', wings: 'stamina' };
+// the message line's kinds: the colour of the icon, and the icon unless the message names one
+export const SAY = {
+  event: { col: '#ffd36b', icon: 'keepsake' },      // something happened: a new land, an aim done, a gift
+  song: { col: '#9fcaff', icon: 'songs' },          // singing: the next note, how a song went
+  tutorial: { col: '#9fe39a', icon: 'how' },        // the first season's lessons, tips
+  hint: { col: '#ffffff', icon: 'aim' },            // a nudge: what you could do here
+  warn: { col: '#ff9e8a', icon: 'hunger' },         // a need running low, danger
+};
 
 export function createHud(G, ui, input) {
   ui.insertAdjacentHTML('beforeend', `
     <div class="hud3"><span class="meters"></span><span class="alt"><b class="m"></b><b class="k"></b></span></div>
     <div class="corner3"><div class="fps3 hidden"></div></div>
     <div class="pad3 L"><i></i></div><div class="pad3 R"><i></i></div>
-    <p class="toast3"></p>`);
+    <p class="toast3"><span class="ic3"></span><span class="tx3"></span></p>`);
   const q = s => ui.querySelector(s);
   const hud = q('.hud3'), meters = q('.meters'), toastEl = q('.toast3'), padL = q('.pad3.L'), padR = q('.pad3.R');
   const dial = createDial(q('.corner3')), compass = createCompass(G, ui);
@@ -49,10 +57,24 @@ export function createHud(G, ui, input) {
       el.classList.toggle('low', lo); el.classList.toggle('urgent', v < low * .6);
     };
   };
-  H.toast = (msg, secs = 4) => {
-    if (toastT > 0) { if (toastEl.textContent !== msg && !queue.some(m => m[0] === msg)) queue.push([msg, secs]); return; }
-    toastEl.textContent = msg; toastEl.classList.add('show'); toastT = secs;
+  // the message line, bottom centre: white words on a soft dark backing with an icon coloured by
+  // kind (SAY). One at a time; the rest wait their turn, except song lines (the next note, how a
+  // song went), which show at once
+  const toastTx = toastEl.querySelector('.tx3'), toastIc = toastEl.querySelector('.ic3');
+  let toastKey = '';
+  H.say = (msg, { kind = 'event', secs = 4, icon: ic } = {}) => {
+    const k = kind + '|' + msg, song = kind === 'song';
+    if (toastT > 0 && !song) {
+      if (k !== toastKey && !queue.some(m => m[0] === msg)) queue.push([msg, secs, kind, ic]);
+      return;
+    }
+    // a song line cuts in; what it interrupts goes back to the front of the queue
+    if (toastT > 0 && toastEl.dataset.kind !== 'song') queue.unshift([toastTx.textContent, Math.max(2, toastT), toastEl.dataset.kind, toastEl.dataset.icon || undefined]);
+    toastKey = k; toastEl.dataset.icon = ic || ''; toastTx.textContent = msg; toastEl.dataset.kind = kind;
+    toastIc.innerHTML = icon(ic || SAY[kind]?.icon || 'keepsake'); toastIc.style.color = SAY[kind]?.col || SAY.event.col;
+    toastEl.classList.add('show'); toastT = secs;
   };
+  H.toast = (msg, secs = 4, kind = 'event') => H.say(msg, { kind, secs });
   // a tip shows while `when()` holds, until H.did(id) is called or it is swiped away (both are
   // remembered). It shows for eight seconds at a time, then rests a minute, at most three times a
   // session; tips.js gives it its short line and icon
@@ -73,7 +95,7 @@ export function createHud(G, ui, input) {
   H.update = dt => {
     toastT -= dt;
     if (toastT <= 0 && toastEl.classList.contains('show')) toastEl.classList.remove('show');
-    if (toastT <= -.5 && queue.length) H.toast(...queue.shift());
+    if (toastT <= -.5 && queue.length) { const [m, s, kind, ic] = queue.shift(); H.say(m, { kind, secs: s, icon: ic }); }
     tipT -= dt;
     if (tipT <= 0) {
       tipNow = null;
