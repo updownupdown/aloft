@@ -54,7 +54,9 @@ web/3d/sys/*.js         systems: air (thermal clouds/motes), rings, food (hunger
                         JOURNEY.marsh, landmarks found, route, years), map (the Map tab: fog of war, pan/zoom, tap a place), nest (twigs, egg, chick),
                         story (health -> G.tailRed, keepsakes, tricks, courtship, mate and fledglings),
                         photo (photo mode, postcards, album), howto (How to play and the controls map)
-                        songs (songbirds, learning and imitating songs on the pitch strip, gifts, Call)
+                        songs (songbirds, learning and imitating songs on the pitch strip, gifts, Call),
+                        aims (a daily aim and feathers, the lands collection, racing the companion),
+                        season (the first season guided by the companion, one lesson a day), ghost (ghost flights by link)
 ```
 
 A system is `(G) => ({ id, update?(dt, c), scene?(S), save?(), load?(o) })`, added to `SYSTEMS` in

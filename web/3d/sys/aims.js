@@ -1,7 +1,9 @@
-// Soft aims: an intention for each day and the lands collection. Each dawn the Journal offers one
-// optional aim (fly a ring course, sing with a songbird, see a land you haven't, ...); doing it
-// earns a feather. The lands collection is a page of small faceted tiles, one for each land of the
-// world, that fill in as you fly over them, with a star when its sight is found (world.js LANDS).
+// Soft aims: an intention for each day, the bird's life goal on the Log (sys/life.js), the lands
+// collection and racing the companion. Each dawn the Journal offers one optional aim (fly a ring
+// course, sing with a songbird, see a land you haven't, ...); doing it earns a feather. The lands
+// collection is a page of small faceted tiles, one for each land of the world, that fill in as you
+// fly over them, with a star when its sight is found (world.js LANDS). Now and then the companion
+// races you round a ring course.
 import * as W from '../world.js';
 import { BIOMES, blend } from '../biomes.js';
 import { facets } from '../facet.js';
@@ -20,6 +22,11 @@ const AIMS = {
   guide: { text: 'Add a page to your field guide.', on: 'sighted' },
   high: { text: 'Ride a thermal 250 m above the ground.', on: 'high' },
   pin: { text: 'Mark a good place on your map with a pin.', on: 'pin' },
+  // the first season's lessons (sys/season.js) use these too
+  perch: { text: 'Land on a branch.', on: 'land', ok: k => k === 'perch', lesson: 1 },
+  drink: { text: 'Land by water and drink.', on: 'drink', lesson: 1 },
+  sleep: { text: 'Roost on a branch and sleep through a night.', on: 'sleep', lesson: 1 },
+  south: { text: 'Fly a kilometre south.', on: 'south', lesson: 1 },
 };
 const HIGH = 250;
 
@@ -29,8 +36,9 @@ export function aimsSystem(G) {
 
   // ---- the day's aim ------------------------------------------------------------------------
   function pick() {
-    const pool = Object.keys(AIMS).filter(k => !A.last.includes(k) && !(k === 'land' && seenAll()));
-    A.aim = pool[Math.floor(Math.random() * pool.length)] || 'rings'; A.day = G.day; A.done = false; A.count = 0;
+    // in the first season the day's lesson is the day's aim
+    const pool = Object.keys(AIMS).filter(k => !AIMS[k].lesson && !A.last.includes(k) && !(k === 'land' && seenAll()));
+    A.aim = G.lessonAim?.() || pool[Math.floor(Math.random() * pool.length)] || 'rings'; A.day = G.day; A.done = false; A.count = 0;
     A.last = [...A.last, A.aim].slice(-4);
   }
   const offer = () => G.hud.toast(`Today’s aim, if you like: ${AIMS[A.aim].text[0].toLowerCase()}${AIMS[A.aim].text.slice(1)}`, 6);
@@ -42,8 +50,9 @@ export function aimsSystem(G) {
     G.hud.toast(`Today’s aim is done. A feather for your journal (${A.feathers}).`, 5);
     G.audio.ring?.();
   });
-  // a thermal ride high above the ground: held for a moment and a half
-  let highT = 0, high = false;
+  // a thermal ride high above the ground: held for a moment and a half; and a few things other
+  // systems don't announce (a drink, a night's sleep, a kilometre south since dawn)
+  let highT = 0, high = false, drank = 0, asleep = false, southFrom = null;
 
   // ---- racing the companion ----------------------------------------------------------------
   // through the first ring of a course, now and then (more often when it is with you) it races you round
@@ -84,11 +93,16 @@ export function aimsSystem(G) {
   // ---- the Journal: the day's aim on the Log, the lands on their own page --------------------
   const today = journal(G).section(5, 'Today');
   const lands = journal(G).section(45);
+  // the chosen bird's life goal (sys/life.js G.life), as a checklist with counts
+  const life = journal(G).section(7, 'Your life');
   const tile = {};
   G.menu.onOpen(() => {
     const a = AIMS[A.aim];
     today.body.innerHTML = a ? `<p class="aim3 ${A.done ? 'done' : ''}"><i></i>${esc(a.text)}${a.n && !A.done ? ` <small>${A.count} of ${a.n}</small>` : ''}</p>
       <p class="feathers3">${A.feathers ? `Feathers for aims kept: ${A.feathers}` : 'Each day brings one aim. It is only an offer.'}</p>` : '';
+    const L = G.life;
+    life.el.classList.toggle('hidden', !L);
+    if (L) life.body.innerHTML = `<p class="life3t">${esc(L.title)}${L.done ? ' <small>Done.</small>' : ''}</p><ul class="life3">${L.steps.map(s => `<li class="${s.done ? 'done' : ''}"><i></i>${esc(s.text)}${s.need > 1 ? ` <small>${Math.min(s.n, s.need)} of ${s.need}</small>` : ''}</li>`).join('')}</ul>`;
     const n = KEYS.filter(k => A.seen[k]).length;
     lands.body.innerHTML = `<p class="lands3sum">${n} of ${KEYS.length} lands flown over${(W.LANDS || []).length ? `, ${Object.keys(A.sights).length} sights found` : ''}.</p>
       <div class="lands3">${KEYS.map(k => `<figure class="${A.seen[k] ? 'seen' : ''}"><img alt="" src="${pic(k)}"><figcaption>${A.seen[k] ? esc(cap(BIOMES[k].label)) : '?'}${A.sights[k] ? ' <b title="sight found">★</b>' : ''}</figcaption></figure>`).join('')}</div>`;
@@ -117,6 +131,10 @@ export function aimsSystem(G) {
         const k = landOf(b.p[0], b.p[2]);
         if (k && !A.seen[k]) { A.seen[k] = 1; if (Object.keys(A.seen).length > 1) { G.hud.toast(`A new land for your collection: ${BIOMES[k]?.label || k}.`, 4); G.emit('newLand', k); } }
       }
+      if (G.thirst < drank || b.eating > 0) drank = G.thirst; else if (G.thirst - drank > .05 && b.state !== 'fly') { G.emit('drink'); drank = G.thirst; }
+      if (b.asleep && !asleep) G.emit('sleep'); asleep = !!b.asleep;
+      if (southFrom?.day !== G.day) southFrom = { day: G.day, z: b.p[2], done: false };
+      if (!southFrom.done && b.p[2] - southFrom.z > 1000) { southFrom.done = true; G.emit('south'); }
       const up = b.state === 'fly' && b.lift > .8 && b.p[1] - Math.max(W.height(b.p[0], b.p[2]), W.WATER) > HIGH;
       if (!up) { high = false; highT = 0; } else if (!high && (highT += dt) > 1.5) { high = true; G.emit('high'); }
     },
