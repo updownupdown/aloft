@@ -12,7 +12,7 @@ export function builder() {
   };
   return { tri, out: () => new Float32Array(a) };
 }
-let seed = 1; export const reseed = n => { seed = n; }; const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+let seed = 1; export const reseed = n => { seed = n; }; export const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
 
 // an upright prism; rib < 1 pulls every other corner in (a fluted cactus, a ribbed trunk)
 export function prism(B, x, z, r0, r1, y0, y1, sides, col, rib = 1) {
@@ -22,6 +22,7 @@ export function prism(B, x, z, r0, r1, y0, y1, sides, col, rib = 1) {
     const p0 = [x + Math.cos(a) * r0 * ka, y0, z + Math.sin(a) * r0 * ka], p1 = [x + Math.cos(b) * r0 * kb, y0, z + Math.sin(b) * r0 * kb];
     const q0 = [x + Math.cos(a) * r1 * ka, y1, z + Math.sin(a) * r1 * ka], q1 = [x + Math.cos(b) * r1 * kb, y1, z + Math.sin(b) * r1 * kb];
     B.tri(p0, q1, p1, col, (rnd() - .5) * .08); B.tri(p0, q0, q1, col, (rnd() - .5) * .08);
+    if (r1 > .001) B.tri(q0, [x, y1, z], q1, col);   // the top, so a stone or post seen from above is closed
   }
 }
 // a cone of needles; serr > 0 gives it a ragged skirt: every other point tucked in and up, the
