@@ -114,6 +114,19 @@ export function weatherSystem(G) {
     if (G.storm > .2 || G.rain > .2) H.toast('The storm eases, and the sky begins to clear.', 3);
   });
 
+  // a learned song sung well at a landmark (songs.js 'placeSong'): the summit cairn calls the
+  // northern lights, an arch wakes a hidden thermal under it, the falls throw a rainbow
+  let songLights = 0;
+  G.on('placeSong', ev => {
+    const l = ev.l;
+    if (ev.kind === 'lights') { songLights = 240; ev.handled = true; }
+    else if (ev.kind === 'bow') { rainbowT = 80; ev.handled = true; }
+    else if (ev.kind === 'thermal') {
+      env.thermals = env.thermals.filter(t => t.until > G.t);
+      env.thermals.push({ x: l.x, z: l.z, r: 26, w: 4.2, top: (l.y || 0) + 420, id: 900001 + (l.x | 0) % 997, song: true, until: G.t + 300 });
+      ev.handled = true;
+    }
+  });
   return {
     id: 'weather',
     update(dt) {
@@ -176,7 +189,9 @@ export function weatherSystem(G) {
       for (const m of meteors) m.t += dt;
       meteors = meteors.filter(m => m.t < m.life);
       const north = 1 - smooth(1500, 4500, b.p[2]), cold = clamp((G.season?.autumn || 0) + winter + (G.season?.name === 'spring' ? .5 : 0), 0, 1);
-      const lights = dayHash(3) < .45 ? L.night * (1 - G.overcast) * north * cold : 0;
+      if (songLights > 0) songLights -= dt;
+      if (env.thermals.length && env.thermals[0].until < G.t) env.thermals = env.thermals.filter(t => t.until > G.t);
+      const lights = Math.max(dayHash(3) < .45 ? L.night * (1 - G.overcast) * north * cold : 0, songLights > 0 ? Math.max(.25, L.night) * Math.min(1, songLights / 20) : 0);
       G.aurora = lerp(G.aurora, lights, Math.min(1, dt * .3));
       if (G.aurora > .5) note(`Day ${G.day}: northern lights.`);
       if (G.snowing > .3) once('snow', 'Snow. Mice are harder to spot under it: look for the faint stir in the white.', 5);

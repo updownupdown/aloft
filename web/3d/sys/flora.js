@@ -116,13 +116,26 @@ export function floraSystem(G) {
       if (cam[1] - height(cam[0], cam[2]) > 120) return;   // too high to see them
       const a = Math.floor((cam[0] - N) / C), b = Math.floor((cam[0] + N) / C), d0 = Math.floor((cam[2] - N) / C), d1 = Math.floor((cam[2] + N) / C);
       const autumn = S.autumn ?? (G.season?.autumn || 0);
+      // a gust front (G.gust, flight's feel) rolls across the grass as a pale band of bent blades
+      // showing their undersides; skimming low (G.skim) lays the grass over round the bird
+      const g = G.gust, sk = G.skim;
+      const stir = (x, z) => {
+        let k = 0;
+        if (g) {
+          const s = (x - g.x) * g.dx + (z - g.z) * g.dz, side = Math.abs((x - g.x) * -g.dz + (z - g.z) * g.dx);
+          if (s < 2 && s > -14 && side < g.w * .6) k += Math.exp(-((s + 4) ** 2) / 18) * g.k * (1 - side / (g.w * .6));
+        }
+        if (sk) { const d = Math.hypot(x - sk.x, z - sk.z); if (d < 7) k += (1 - d / 7) * sk.k; }
+        return k;
+      };
       for (let cz = d0; cz <= d1; cz++) for (let cx = a; cx <= b; cx++) {
         const mx = (cx + .5) * C - cam[0], mz = (cz + .5) * C - cam[2], dd = mx * mx + mz * mz;
         if (dd > N * N) continue;
         const far = dd > (N * .6) ** 2;
         for (const [kind, x, y, z, sc, yaw, tint, gold] of cell(cx, cz)) {
           if (far && kind !== 'bush' && kind !== 'stone') continue;   // small things only close up
-          (S.props[kind] ||= []).push(x, y, z, sc, yaw, tint, gold ? .9 : kind === 'tuft' || kind === 'bush' ? autumn * .6 : 0, 0);
+          const k = (g || sk) && (kind === 'tuft' || kind === 'flower') ? stir(x, z) : 0;
+          (S.props[kind] ||= []).push(x, y, z, sc * (1 - k * .3), yaw + k * 1.2, tint + k * 3, gold ? .9 : kind === 'tuft' || kind === 'bush' ? autumn * .6 : 0, 0);
         }
       }
     },

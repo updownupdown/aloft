@@ -7,7 +7,7 @@ import { ring, cloud, TREE_LOOKS } from './shapes.js';
 import { buildHawk, HAWK_SCALE } from './hawk.js';
 
 // instanced shapes that are cloud: see-through when the camera is close or inside
-const CLOUDY = new Set(['cloud', 'storm', 'puff', 'lens']);
+const CLOUDY = new Set(['cloud', 'storm', 'puff', 'lens', 'devil']);
 const COMMON_FS = `
 uniform vec3 uCam, uSun, uSunCol, uSkyAmb, uGndAmb, uFogCol, uFocus;
 uniform float uFogDen, uDither, uSeek;

@@ -22,7 +22,7 @@ export const WATER = 0;
 
 // what systems change at run time: the snowline (0 summer .. 1 deep winter, chunks must be
 // rebuilt when it moves), the thermals' strength, and extra lift (storm cells, waves, kettles)
-export const env = { snow: 0, season: 'summer', seasonDay: 0, thermal: 1, lifts: [] };
+export const env = { snow: 0, season: 'summer', seasonDay: 0, thermal: 1, lifts: [], thermals: [] };
 
 // how much of each kind of country a point is, 0..1 each (older callers read these)
 export function bands(x, z, bl = blend(x, z)) {
@@ -518,6 +518,8 @@ export function thermalAt(gx, gz) {
 export function thermalsNear(x, z, r) {
   const out = [], a = Math.floor((x - r) / THERMAL_CELL), b = Math.floor((x + r) / THERMAL_CELL), c = Math.floor((z - r) / THERMAL_CELL), d = Math.floor((z + r) / THERMAL_CELL);
   for (let gz = c; gz <= d; gz++) for (let gx = a; gx <= b; gx++) { const t = thermalAt(gx, gz); if (t) out.push(t); }
+  // columns that come and go (a song at an arch wakes one: env.thermals, weather.js)
+  for (const t of env.thermals) if (Math.abs(t.x - x) < r && Math.abs(t.z - z) < r) out.push(t);
   // the fire mountain's warm breath: a strong, wide column over its smoking cone
   for (const l of landmarksNear(x, z, r + 60)) if (l.kind === 'volcano') out.push({ x: l.x, z: l.z, r: 48, w: 7, top: 720, id: Math.abs((l.x | 0) * 31 + (l.z | 0)), volcano: true });
   return out;
