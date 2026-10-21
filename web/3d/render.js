@@ -48,18 +48,24 @@ void main() {
     float bayer[16] = float[16](0., 8., 2., 10., 12., 4., 14., 6., 3., 11., 1., 9., 15., 7., 13., 5.);
     if (k < .99 && (bayer[i] + .5) / 16. > k) discard;
   } else if (uDither > .5) {
-    // see-through near the camera, on a wide line to the hawk and round the hawk itself, so
-    // leaves never hide it and you can see the gaps you are flying into
     vec3 ab = uFocus - uCam, ap = vPos - uCam; float t = clamp(dot(ap, ab) / dot(ab, ab), 0., 1.);
     float dl = length(ap - ab * t), dc = length(ap), dh = length(vPos - uFocus);
-    // uSeek (flaring to land, or perched) opens the trees wider and from farther off, to find a perch
-    float e = uSeek;
-    float k = min(min(smoothstep(3.5 + 6. * e, 10. + 22. * e, dl) + step(.98, t), smoothstep(6. + 12. * e, 18. + 34. * e, dc)), mix(.12 - .07 * e, 1., smoothstep(3. + 6. * e, 15. + 25. * e, dh)));
-    // what is below the hawk never hides it from the camera above: keep that mostly solid, so the
-    // branch or cactus you sit on stays there under you
-    k = mix(k, max(k, .97), smoothstep(uFocus.y + .2, uFocus.y - .6, vPos.y));
-    // only leaves go see-through: trunks and limbs stay solid so you can see what to land on
-    if (k < .99 && vLeaf > .5) {   // leaves, marked by the vertex shader before the autumn turn
+    // uSeek (flaring to land, or perched) thins the leaves more and from farther off, to find a perch
+    float e = uSeek, k;
+    if (vLeaf > .5) {   // leaves, marked by the vertex shader before the autumn turn
+      // foliage thins the nearer the camera comes, down to a light screen; it opens wide on the
+      // line to the hawk and round the hawk itself, so leaves never hide it
+      float near = mix(.28 - .18 * e, 1., smoothstep(6. + 6. * e, 32. + 38. * e, dc));
+      float line = smoothstep(2.5 + 4. * e, 8. + 14. * e, dl) + step(.98, t);
+      float round = mix(.1, 1., smoothstep(3. + 4. * e, 12. + 18. * e, dh));
+      k = min(near, min(line, round));
+    } else {
+      // trunks and limbs stay solid so you can see what to land on, except one right between the
+      // camera and the hawk, or brushing the lens; what is under the hawk (its perch) always shows
+      k = max(min(smoothstep(.45, 1.3, dl) + step(.96, t), smoothstep(.8, 2.2, dc)), .1);
+      k = mix(k, 1., smoothstep(uFocus.y + .2, uFocus.y - .6, vPos.y) * (1. - smoothstep(2., 4., dh)));
+    }
+    if (k < .99) {
       // an ordered 4x4 dither reads as a soft screen rather than noise
       ivec2 q = ivec2(gl_FragCoord.xy) & 3;
       int i = q.x + q.y * 4;
