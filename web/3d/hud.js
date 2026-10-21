@@ -57,7 +57,7 @@ export function createHud(G, ui, input) {
       el.classList.toggle('low', lo); el.classList.toggle('urgent', v < low * .6);
     };
   };
-  // the message line, bottom centre: white words on a soft dark backing with an icon coloured by
+  // the message line, top centre above the compass: white words on a soft dark backing with an icon coloured by
   // kind (SAY). One at a time; the rest wait their turn, except song lines (the next note, how a
   // song went), which show at once
   const toastTx = toastEl.querySelector('.tx3'), toastIc = toastEl.querySelector('.ic3');
@@ -73,6 +73,7 @@ export function createHud(G, ui, input) {
     toastKey = k; toastEl.dataset.icon = ic || ''; toastTx.textContent = msg; toastEl.dataset.kind = kind;
     toastIc.innerHTML = icon(ic || SAY[kind]?.icon || 'keepsake'); toastIc.style.color = SAY[kind]?.col || SAY.event.col;
     toastEl.classList.add('show'); toastT = secs;
+    ui.style.setProperty('--msgh', toastEl.offsetHeight + 'px');   // the compass steps down below it
   };
   H.toast = (msg, secs = 4, kind = 'event') => H.say(msg, { kind, secs });
   // a tip shows while `when()` holds, until H.did(id) is called or it is swiped away (both are
