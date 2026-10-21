@@ -2,7 +2,7 @@
 // water, thermal motes. One lit shader with two-sided faces, hemisphere light, haze toward the
 // horizon colour and a paper grain, so it stays in Aloft's palette at very little cost.
 import { program, mesh, perspective, lookAt, mul, basis, IDENT } from './gl.js';
-import { CHUNK, chunkMesh, cellsFor, treesNear, ringsNear, height, normalAt, thermalsNear, thermalCentre, TREE, perchesOf } from './world.js';
+import { CHUNK, chunkMesh, cellsFor, treesNear, ringsNear, height, normalAt, thermalsNear, thermalCentre, TREE, perchesOf, env, WORLD } from './world.js';
 import { ring, cloud, TREE_LOOKS } from './shapes.js';
 import { buildHawk, HAWK_SCALE } from './hawk.js';
 
@@ -197,43 +197,87 @@ export function createRenderer(gl) {
   const R = { chunks, view: 520, treeView: 360, nearTrees: 110, stats: { chunks: 0, trees: 0, tris: 0 }, treeAt: null };
   gl.disable(gl.CULL_FACE);
 
+  // Ground chunks are built in a Worker (chunkwork.js) when it can run; jobs go out nearest first,
+  // a few at a time, and a chunk is swapped in only when its new mesh is ready. Missing ground
+  // close by is built here at once, so a jump never shows a hole. R.dropChunks marks every chunk
+  // stale (gen) and they are rebuilt in place, the old mesh drawn until the new one arrives.
+  let gen = 0, worker = null;
+  const busy = new Map();   // key -> gen of a job in flight
+  try {
+    worker = new Worker(new URL('./chunkwork.js', import.meta.url), { type: 'module' });
+    worker.onmessage = e => {
+      const { k, cx, cz, cells, gen: g, data } = e.data;
+      busy.delete(k);
+      if (g !== gen) return;   // the season (or the detail) changed while it was built
+      place(k, cx, cz, cells, data);
+    };
+    worker.onerror = () => { worker = null; busy.clear(); };
+  } catch { worker = null; }
+  function place(k, cx, cz, cells, data) {
+    const old = chunks.get(k); if (old) { gl.deleteBuffer(old.m.buf); gl.deleteVertexArray(old.m.vao); }
+    let y0 = 1e9, y1 = -1e9;   // its height range, for culling against the view
+    for (let i = 1; i < data.length; i += 12) { const y = data[i]; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+    chunks.set(k, { cx, cz, cells, gen, y0, y1, m: mesh(gl, data, LAYOUT) });
+  }
   function updateChunks(cam, budget = 2) {
-    const r = Math.ceil(R.view / CHUNK), ccx = Math.floor(cam[0] / CHUNK), ccz = Math.floor(cam[2] / CHUNK);
+    const view = Math.min(R.view, R.fogView || 1e9);
+    const r = Math.ceil(view / CHUNK), ccx = Math.floor(cam[0] / CHUNK), ccz = Math.floor(cam[2] / CHUNK);
     const want = [], finer = [];
     for (let j = -r; j <= r; j++) for (let i = -r; i <= r; i++) {
       const cx = ccx + i, cz = ccz + j, d = Math.hypot((cx + .5) * CHUNK - cam[0], (cz + .5) * CHUNK - cam[2]);
-      if (d > R.view + CHUNK) continue;
+      if (d > view + CHUNK) continue;
       const k = cx + ',' + cz, c = chunks.get(k), cells = cellsFor(d);
       if (!c) want.push([d, cx, cz, k, cells]);
-      else if (c.cells !== cells) finer.push([d, cx, cz, k, cells]);   // near chunks get finer cells (world.js cellsFor)
+      else if (c.cells !== cells || c.gen !== gen) finer.push([d, cx, cz, k, cells]);   // near chunks get finer cells (world.js cellsFor); stale ones are redone
     }
     want.sort((a, b) => a[0] - b[0]); finer.sort((a, b) => a[0] - b[0]);
-    const build = ([, cx, cz, k, cells]) => {
-      const old = chunks.get(k); if (old) { gl.deleteBuffer(old.m.buf); gl.deleteVertexArray(old.m.vao); }
-      chunks.set(k, { cx, cz, cells, m: mesh(gl, chunkMesh(cx, cz, cells), LAYOUT) });
-    };
-    for (let n = 0; n < Math.min(budget, want.length); n++) build(want[n]);
-    // one re-detail a frame, once nothing is missing (a fine chunk takes a few ms to build)
-    if (!want.length && finer.length) build(finer[0]);
+    const build = ([, cx, cz, k, cells]) => place(k, cx, cz, cells, chunkMesh(cx, cz, cells));
+    if (worker) {
+      // a hole close by can't wait for the worker
+      for (const w of want) if (w[0] < CHUNK * 1.5 && !busy.has(w[3])) { build(w); budget--; if (budget <= 0) break; }
+      for (const w of [...want, ...finer]) {
+        if (busy.size >= 4) break;
+        if (busy.get(w[3]) === gen || (chunks.get(w[3])?.cells === w[4] && chunks.get(w[3])?.gen === gen)) continue;
+        busy.set(w[3], gen);
+        worker.postMessage({ k: w[3], cx: w[1], cz: w[2], cells: w[4], gen, seed: WORLD.seed, snow: env.snow, season: env.season, seasonDay: env.seasonDay });
+      }
+    } else {
+      for (let n = 0; n < Math.min(budget, want.length); n++) build(want[n]);
+      // one re-detail a frame, once nothing is missing (a fine chunk takes a few ms to build)
+      if (!want.length && finer.length) build(finer[0]);
+    }
     for (const [k, c] of chunks) {
-      if (Math.hypot((c.cx + .5) * CHUNK - cam[0], (c.cz + .5) * CHUNK - cam[2]) > R.view + CHUNK * 3) {
+      if (Math.hypot((c.cx + .5) * CHUNK - cam[0], (c.cz + .5) * CHUNK - cam[2]) > view + CHUNK * 3) {
         gl.deleteBuffer(c.m.buf); gl.deleteVertexArray(c.m.vao); chunks.delete(k);
       }
     }
     return want.length;
   }
   // tree instances are rebuilt when the hawk has moved a little: near ones detailed, far ones simple
-  let treeFrom = null;
+  // and only those in front of the camera (a cone a little wider than the view), re-sorted when the
+  // view turns; the list round the hawk is fetched again only after it moves
+  let treeFrom = null, treeAll = [], treeYaw = 0, treeSteep = false;
   function updateTrees(p, season) {
-    if (treeFrom && Math.hypot(p[0] - treeFrom[0], p[2] - treeFrom[2]) < 20 && treeFrom[3] === season.key && treeFrom[4] === season.bare) return;
-    treeFrom = [p[0], 0, p[2], season.key, season.bare];
-    const all = treesNear(p[0], p[2], R.treeView), buckets = kinds.map(() => [[], []]);
-    for (const t of all) {
-      const d = Math.hypot(t.x - p[0], t.z - p[2]); if (d > R.treeView) continue;
+    const v = R.viewInfo, tv = Math.min(R.treeView, (R.fogView || 1e9) * .85);
+    const moved = !treeFrom || Math.hypot(p[0] - treeFrom[0], p[2] - treeFrom[2]) >= 20 || treeFrom[3] !== season.key || treeFrom[4] !== season.bare || treeFrom[5] !== tv;
+    let yaw = treeYaw, steep = treeSteep;
+    if (v) { yaw = Math.atan2(v.f[0], -v.f[2]); steep = v.f[1] < -.55; }
+    const turned = Math.abs(Math.atan2(Math.sin(yaw - treeYaw), Math.cos(yaw - treeYaw))) > .3 || steep !== treeSteep;
+    if (!moved && !turned) return;
+    if (moved) { treeFrom = [p[0], 0, p[2], season.key, season.bare, tv]; treeAll = treesNear(p[0], p[2], tv); }
+    treeYaw = yaw; treeSteep = steep;
+    const buckets = kinds.map(() => [[], []]);
+    const fx = Math.sin(yaw), fz = -Math.cos(yaw), cone = v && !steep ? Math.cos(Math.min(Math.PI, Math.atan(Math.tan(v.fov / 2) * v.aspect) + .75)) : -2;
+    const cx = v ? v.cam[0] : p[0], cz = v ? v.cam[2] : p[2];
+    let drawn = 0;
+    for (const t of treeAll) {
+      const d = Math.hypot(t.x - p[0], t.z - p[2]); if (d > tv) continue;
+      const dx = t.x - cx, dz = t.z - cz, dc = Math.hypot(dx, dz);
+      if (dc > 40 && (dx * fx + dz * fz) / dc < cone) continue;   // well off to the side or behind
       const k = t.look ?? t.kind, turn = season.bare && kinds[k].autumn >= .5 ? 2 : season.autumn * (.5 + t.tint) * kinds[k].autumn;   // 2: bare
-      buckets[k][d < R.nearTrees ? 0 : 1].push(t.x, t.y, t.z, t.s, t.yaw, t.tint, turn, t.id % 97);
+      buckets[k][d < R.nearTrees ? 0 : 1].push(t.x, t.y, t.z, t.s, t.yaw, t.tint, turn, t.id % 97); drawn++;
     }
-    R.stats.trees = all.length;
+    R.stats.trees = drawn;
     for (let k = 0; k < kinds.length; k++) for (let l = 0; l < 2; l++) {
       const m = l ? kinds[k].far : kinds[k].near, data = new Float32Array(buckets[k][l]);
       gl.bindBuffer(gl.ARRAY_BUFFER, m.ibuf); gl.bufferData(gl.ARRAY_BUFFER, data, gl.DYNAMIC_DRAW); m.icount = data.length / 8;
@@ -252,6 +296,7 @@ export function createRenderer(gl) {
     const proj = perspective(S.fov, w / h, .15, 1400), view = lookAt(S.cam, S.look, S.camUp);
     const vp = mul(proj, view);
     R.vp = vp;
+    { const fx = S.look[0] - S.cam[0], fy = S.look[1] - S.cam[1], fz = S.look[2] - S.cam[2], l = Math.hypot(fx, fy, fz) || 1; R.viewInfo = { cam: S.cam, f: [fx / l, fy / l, fz / l], fov: S.fov, aspect: w / h }; }
     let tris = 0;
     // sky
     gl.depthMask(false); gl.disable(gl.DEPTH_TEST);
@@ -266,11 +311,11 @@ export function createRenderer(gl) {
     // ground
     gl.useProgram(lit.p); setLight(lit, S);
     gl.uniformMatrix4fv(lit.u.uVP, false, vp); gl.uniformMatrix4fv(lit.u.uModel, false, IDENT);
-    const fx_ = S.look[0] - S.cam[0], fz_ = S.look[2] - S.cam[2], fl = Math.hypot(fx_, fz_) || 1;
+    // only the chunks inside the view (their box against the frustum's sides)
+    const P = planes(vp);
     let n = 0;
     for (const c of chunks.values()) {
-      const dx = (c.cx + .5) * CHUNK - S.cam[0], dz = (c.cz + .5) * CHUNK - S.cam[2];
-      if ((dx * fx_ + dz * fz_) / fl < -CHUNK * .9 && S.camHigh < 120) continue;   // behind the camera
+      if (!boxIn(P, c.cx * CHUNK, c.y0 - 3, c.cz * CHUNK, (c.cx + 1) * CHUNK, c.y1, (c.cz + 1) * CHUNK)) continue;
       gl.bindVertexArray(c.m.vao); gl.drawArrays(gl.TRIANGLES, 0, c.m.count); n++; tris += c.m.count / 3;
     }
     R.stats.chunks = n;
@@ -355,10 +400,23 @@ export function createRenderer(gl) {
     return new Float32Array(out);
   }
 
-  // free every ground chunk so it is rebuilt (after the snowline or the season changes the colours)
-  R.dropChunks = () => { for (const c of chunks.values()) { gl.deleteBuffer(c.m.buf); gl.deleteVertexArray(c.m.vao); } chunks.clear(); };
+  // rebuild every ground chunk (after the snowline, the season or the detail changes): each is redone
+  // in place, the old one drawn until its new mesh is ready
+  R.dropChunks = () => { gen++; };
   R.updateChunks = updateChunks; R.updateTrees = updateTrees; R.shape = shape;
   return R;
+}
+
+// the view's four sides (left, right, bottom, top) as planes from a column-major view-projection
+function planes(m) {
+  const P = [];
+  for (const [i, sg] of [[0, 1], [0, -1], [1, 1], [1, -1]]) P.push([m[3] + sg * m[i], m[7] + sg * m[4 + i], m[11] + sg * m[8 + i], m[15] + sg * m[12 + i]]);
+  return P;
+}
+// is a box at least partly inside every plane
+function boxIn(P, x0, y0, z0, x1, y1, z1) {
+  for (const [a, b, c, d] of P) if (a * (a > 0 ? x1 : x0) + b * (b > 0 ? y1 : y0) + c * (c > 0 ? z1 : z0) + d < 0) return false;
+  return true;
 }
 
 function invert(m) {

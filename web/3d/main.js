@@ -182,6 +182,23 @@ export function start(canvas, ui) {
   }
   addEventListener('resize', resize); resize();
   let last = performance.now(), saveT = 0, resT = 0, frames = 0, skipT = 0;
+  // Auto graphics (Settings > Graphics: Auto): when the resolution has already dropped as far as it
+  // goes and the frames are still slow, step the level down; long smooth at full resolution, step it
+  // up. Quick in the first 20 seconds, gentle after, and never twice within 20 seconds.
+  let lowT = 0, highT = 0, sinceT = 0, playT = 0;
+  function autoQuality(fps, target) {
+    const W = 1.5; playT += W; sinceT += W;
+    if (G.gfx?.preset !== 'auto' || G.pinRes) return;
+    lowT = G.res <= .6 && fps < target ? lowT + W : Math.max(0, lowT - W);
+    highT = G.res >= 1 && fps > target + 3 ? highT + W : 0;
+    if (sinceT < 20) return;
+    const lv = G.gfx.level;
+    if (lowT >= (playT < 30 ? 6 : 9) && lv > 0) { G.emit('gfxAuto', lv - 1); lowT = highT = sinceT = 0; }
+    else if (highT >= 45 && lv < 2) { G.emit('gfxAuto', lv + 1); lowT = highT = sinceT = 0; }
+  }
+  // the level also sets how far trees are drawn, and how far they keep their detailed mesh
+  const treeGfx = lv => { R.treeView = 360 * [.75, 1, 1.15][lv ?? 1]; R.nearTrees = 110 * [.7, 1, 1.2][lv ?? 1]; };
+  G.on('gfx', treeGfx); treeGfx(G.gfx?.level);
 
   function frame(now) {
     requestAnimationFrame(frame);
@@ -198,6 +215,7 @@ export function start(canvas, ui) {
       if (G.pinRes) { /* pinned */ } else if (fps < target && G.res > .5) { G.res = Math.max(.5, G.res - .1); resize(); }
       else if (fps > target + 4 && G.res < 1) { G.res = Math.min(1, G.res + .05); resize(); }
       H.fps(fps); G.stats = { fps, res: G.res, chunks: R.stats.chunks, tris: R.stats.tris };
+      autoQuality(fps, target);
     }
 
     input.gyroOn = b.state === 'perch' && b.settle <= 0;
@@ -216,10 +234,11 @@ export function start(canvas, ui) {
     G.parts = G.parts.filter(p => p.life > 0);
 
     // the scene: light, camera and hawk, then whatever each system adds
-    const S = { ...G.light, time: G.t, wind: (G.windK ?? .3) + (G.gustWind || 0), fogDen: .0042, autumnCol: [.8, .5, .22], props: {}, motes: [] };
+    const S = { ...G.light, time: G.t, wind: (G.windK ?? .3) + (G.gustWind || 0), fogDen: .0042 + .0012 * (G.light.night || 0), autumnCol: [.8, .5, .22], props: {}, motes: [] };
     camera.update(dt, S);
     for (const s of systems) s.scene?.(S);
     for (const q of G.parts) S.motes.push(...q.p, ...q.col, q.size * Math.min(1, q.life / q.max * 2));
+    R.fogView = 2.1 / S.fogDen;   // past this the haze hides everything: nothing is drawn there (night, rain, fog)
     R.updateChunks(S.cam, 3);
     R.updateTrees(b.p, G.season);
     R.draw(S, null, canvas.width, canvas.height);
