@@ -33,7 +33,7 @@ export function createDial(parent) {
     <path class="track" d="${band(-Q, Q)}"/><g class="ring">${slices}</g>
     <g clip-path="url(#${id})"><g class="disc">${disc}<circle class="sun" cx="${sx}" cy="${sy}" r="4.2"/><circle class="moon" cx="${mx}" cy="${my}" r="3.6"/></g></g>
     <path class="rim" d="M${CX - R} ${CY}A${R} ${R} 0 0 1 ${CX + R} ${CY}"/><path class="base" d="M${CX - R - 7} ${CY}H${CX + R + 7}"/>
-    <g class="needle"><path class="bar" d="M${CX - 1.7} ${CY}V${CY - R + 9}H${CX + 1.7}V${CY}Z"/><path class="slit" d="M${CX} ${CY - 2}V${CY - R + 10}"/><path class="tip" d="M${CX} ${CY - R - 1}L${CX + 4.6} ${CY - R + 8}H${CX - 4.6}Z"/></g></svg>
+    <g class="needle"><path class="bar" d="M${CX - 1.7} ${CY}V${CY - R + 9}H${CX + 1.7}V${CY}Z"/><path class="tip" d="M${CX} ${CY - R - 1}L${CX + 4.6} ${CY - R + 8}H${CX - 4.6}Z"/></g></svg>
     <div class="season"></div>`;
   parent.append(el);
   const discEl = el.querySelector('.disc'), seasonEl = el.querySelector('.season');

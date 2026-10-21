@@ -3,9 +3,9 @@
 // their icons; then the open section's pages (sub-tabs) stacked down a column of their own, when it
 // has any; then the open page. Systems add their own section with G.menu.tab(id, title) (it returns
 // the pane element), pages inside it with G.menu.page(tab, id, title), and rows with
-// G.menu.toggle() / G.menu.button(). Settings (tab 'play') has its switches in one column and its
-// groups of buttons in the other; the groups 'bird' and 'play' sit in the Game section instead
-// (G.menu.group). G.menu.onOpen(fn) refreshes a pane each time the menu opens; G.menu.subtitle(fn)
+// G.menu.toggle() / G.menu.button(). Settings (tab 'play') is one column of sections with icons
+// (audio, graphics, gameplay, dev tools; each row goes by its label, SECTION_OF); the groups 'bird'
+// and 'play' sit in the Game section instead (G.menu.group). G.menu.onOpen(fn) refreshes a pane each time the menu opens; G.menu.subtitle(fn)
 // gives the date line that the Map shows.
 import { letter } from './letter.js';
 import { store } from './util.js';
@@ -23,9 +23,24 @@ const ICONS = {
   play: 'M3 6h3.5M10.5 6H17M3 14h7.5M14.5 14H17M8.5 4a2 2 0 1 1 0 4 2 2 0 0 1 0-4zM12.5 12a2 2 0 1 1 0 4 2 2 0 0 1 0-4z',
   how: 'M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM7.6 7.6a2.5 2.5 0 1 1 3.4 2.3c-.6.3-1 .8-1 1.5v.6M10 14.5h.01',
 };
-// groups of buttons: the section and column each sits in, and its heading. Game: your bird, then
-// play; Settings: the switches in column 1, then sound and the app
-const GROUPS = { bird: ['game', 1, 'Your bird'], play: ['game', 2, 'Play'], sound: ['play', 2, 'Sound and music'], app: ['play', 2, 'The app'] };
+// groups of rows, in one column, in this order: the section each sits in, its heading and an icon.
+// Game: your bird, then play; Settings: audio, graphics, gameplay, dev tools
+const GROUPS = {
+  bird: ['game', 'Your bird'],
+  play: ['game', 'Play'],
+  audio: ['play', 'Audio', 'M3 8h3l4-3.5v11L6 12H3zM13 7.5a3.5 3.5 0 0 1 0 5M15.2 5.2a6.6 6.6 0 0 1 0 9.6'],
+  graphics: ['play', 'Graphics', 'M2.5 15.5l5-7 3.5 4.5 2.5-3 4 5.5zM13.5 4.5a1.6 1.6 0 1 1 0 3.2 1.6 1.6 0 0 1 0-3.2z'],
+  gameplay: ['play', 'Gameplay', 'M6 6.5h8a4 4 0 0 1 0 8c-1.4 0-2-1-4-1s-2.6 1-4 1a4 4 0 0 1 0-8zM6 9v3M4.5 10.5h3M13.5 10h.01M15 11.5h.01'],
+  dev: ['play', 'Dev tools', 'M7 6l-4 4 4 4M13 6l4 4-4 4M11 4.5l-2 11'],
+};
+// where each Settings row goes: by its label, else by the group it names (older names: sound, app),
+// else gameplay
+const SECTION_OF = {
+  Sound: 'audio', Music: 'audio', 'Music style': 'audio',
+  Graphics: 'graphics', 'Ground detail': 'graphics', 'Full refresh rate': 'graphics',
+  'Show frame rate': 'dev', Update: 'dev', 'Music lab': 'dev', 'Bird song lab': 'dev',
+};
+const OLD = { sound: 'audio', app: 'dev', switch: 'gameplay' };
 
 export function createMenu(G, ui) {
   ui.insertAdjacentHTML('beforeend', `
@@ -73,8 +88,7 @@ export function createMenu(G, ui) {
     nav.insertBefore(btn, [...nav.children].find(b => +b.dataset.rank > rank) || null);
     panes.insertAdjacentHTML('beforeend', `<section class="pane3 hidden" data-pane="${id}"></section>`);
     pane = panes.querySelector(`[data-pane=${id}]`);
-    if (id === 'play') pane.innerHTML = '<div class="settings3"><div class="col3" data-col="1"><div class="sw3"><h3>Switches</h3></div></div><div class="col3" data-col="2"></div></div>';
-    if (id === 'game') pane.innerHTML = '<div class="settings3"><div class="col3" data-col="1"></div><div class="col3" data-col="2"></div></div>';
+    if (id === 'play' || id === 'game') pane.innerHTML = `<div class="stack3 ${id}3"></div>`;
     return pane;
   };
   // a page inside a tab, with its own button in the pages column; pages sit in the order given
@@ -100,20 +114,21 @@ export function createMenu(G, ui) {
     panes.scrollTop = 0;
     G.emit('menuPage', tab, id);
   };
-  // a group of Settings buttons, by name (GROUPS), made the first time it is asked for
+  // a group of rows in Game or Settings, by name (GROUPS), made the first time it is asked for
   M.group = name => {
-    const [tab, col, title] = GROUPS[name] || ['play', 2, name], pane = M.tab(tab);
+    name = OLD[name] || name;
+    const [tab, title, icon] = GROUPS[name] || ['play', name], pane = M.tab(tab);
     let g = pane.querySelector(`[data-group=${name}]`); if (g) return g;
-    const c = pane.querySelector(`[data-col="${col}"]`);
-    g = document.createElement('div'); g.className = 'group3'; g.dataset.group = name; g.dataset.rank = Object.keys(GROUPS).indexOf(name);
-    g.innerHTML = `<h3>${title}</h3>`;
+    const c = pane.querySelector('.stack3');
+    g = document.createElement('section'); g.className = 'group3'; g.dataset.group = name; g.dataset.rank = Object.keys(GROUPS).indexOf(name);
+    g.innerHTML = `<h3>${icon ? `<svg viewBox="0 0 20 20" aria-hidden="true"><path d="${icon}"/></svg>` : ''}${title}</h3>`;
     c.insertBefore(g, [...c.children].find(x => +x.dataset.rank > +g.dataset.rank) || null);
     return g;
   };
-  const where = (tab, group) => tab !== 'play' ? M.tab(tab) : group === 'switch' ? M.tab('play').querySelector('.sw3') : M.group(group || 'app');
+  const where = (tab, group, label) => tab !== 'play' ? M.tab(tab) : M.group(group === 'bird' || group === 'play' ? group : SECTION_OF[label] || OLD[group] || group || 'gameplay');
   M.toggle = (tab, { label, sub = '', get, set, group = 'switch' }) => {
     const act = 'a' + n++;
-    where(tab, group).insertAdjacentHTML('beforeend', `<button data-act="${act}" class="sw" role="switch"><span>${label}${sub ? ` <small>${sub}</small>` : ''}</span><i></i></button>`);
+    where(tab, group, label).insertAdjacentHTML('beforeend', `<button data-act="${act}" class="sw" role="switch"><span>${label}${sub ? ` <small>${sub}</small>` : ''}</span><i></i></button>`);
     const el = card.querySelector(`[data-act=${act}]`), refresh = () => { el.classList.toggle('on', !!get()); el.setAttribute('aria-checked', !!get()); };
     M.acts.set(act, () => { set(!get()); refresh(); });
     M.opens.push(refresh); refresh();
@@ -122,7 +137,7 @@ export function createMenu(G, ui) {
   // a button row; main: a dark pill (one per group at most); group: where it sits in Settings
   M.button = (tab, { label, sub = '', onClick, href, quiet = false, main = false, group }) => {
     const act = 'a' + n++, cls = main ? 'main3' : quiet ? 'quiet3' : 'btn';
-    where(tab, group).insertAdjacentHTML('beforeend', href
+    where(tab, group, label).insertAdjacentHTML('beforeend', href
       ? `<a data-act="${act}" class="${cls}" href="${href}">${label}${sub ? ` <em>${sub}</em>` : ''}</a>`
       : `<button data-act="${act}" class="${cls}">${label}${sub ? ` <em>${sub}</em>` : ''}</button>`);
     const el = card.querySelector(`[data-act=${act}]`);
