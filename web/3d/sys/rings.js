@@ -46,13 +46,14 @@ export function ringsSystem(G) {
         const d = Math.hypot(r.x - S.cam[0], r.y - S.cam[1], r.z - S.cam[2]), near = Math.min(1, 30 / Math.max(d, 1));
         // the way on glows a little: the next ring of the course being flown, else each course's first
         const next = run ? run.circuit === r.circuit && r.k === run.next : r.k === 0;
-        // lined up to fly through it (aim.js): blue, as a perch you would land on is green
+        // lined up to fly through it (aim.js): it warms a little toward a soft yellow
         const aimed = G.aim?.ring?.id === r.id;
-        const col = aimed ? [.35, .62, 1] : mix3(S.horizon, [1, 1, .98], .16 + near * .22 + (next ? .14 : 0)), c = Math.cos(r.yaw), sn = Math.sin(r.yaw);
+        const base = mix3(S.horizon, [1, 1, .98], .16 + near * .22 + (next ? .14 : 0));
+        const col = aimed ? mix3(base, G.aim.ringCol || [1, .84, .4], .4) : base, c = Math.cos(r.yaw), sn = Math.sin(r.yaw);
         for (let i = 0; i < 40; i++) {
           const a = i / 40 * 6.283 + G.t * .05, w = Math.sin(i * 2.7 + G.t * .4 + r.id) * .35, rr = r.r * (1 + w * .1);
           const lx = Math.cos(a) * rr, ly = Math.sin(a) * rr, lz = Math.sin(i * 1.3 + G.t * .3) * .4;
-          S.motes.push(r.x + c * lx - sn * lz, r.y + ly, r.z + sn * lx + c * lz, ...col, (.9 + Math.abs(w) * 1.1) * (aimed ? 1.6 : 1));
+          S.motes.push(r.x + c * lx - sn * lz, r.y + ly, r.z + sn * lx + c * lz, ...col, (.9 + Math.abs(w) * 1.1) * (aimed ? 1.12 : 1));
         }
       }
     },
