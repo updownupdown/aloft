@@ -10,7 +10,7 @@ import { buildHawk, HAWK_SCALE } from './hawk.js';
 const CLOUDY = new Set(['cloud', 'storm', 'puff', 'lens', 'devil']);
 const COMMON_FS = `
 uniform vec3 uCam, uSun, uSunCol, uSkyAmb, uGndAmb, uFogCol, uFocus;
-uniform float uFogDen, uDither, uSeek, uCut, uFade;
+uniform float uFogDen, uDither, uSeek, uCut, uFade, uWater;
 in vec3 vPos, vNrm, vCol, vColB; in float vLeaf, vFade, vGone;
 out vec4 frag;
 float h21(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
@@ -70,7 +70,15 @@ void main() {
   vec3 n = normalize(vNrm), col = vCol;
   if (!gl_FrontFacing) { n = -n; col = vColB; }
   vec3 c = shade(col, n);
-  if (vPos.y < 0.) c = mix(c, vec3(.16, .3, .36) * (uSkyAmb + uSunCol * .5), clamp(-vPos.y / 5., 0., .85));
+  // under the water: tinted toward how the surface itself looks from here (its deep colour and
+  // the sky it reflects), so where the water plane and a shelving shore fight for the same pixel
+  // (the water is pushed back a hair, see below) the two read the same and nothing flickers
+  if (vPos.y < uWater) {
+    vec3 v = normalize(uCam - vPos);
+    float fr = .25 + .75 * pow(1. - max(v.y, 0.), 3.);
+    vec3 surf = mix(vec3(.18, .34, .4) * (uSkyAmb + uSunCol * .6), uFogCol, fr * .8);
+    c = mix(c, surf, clamp(.62 + (uWater - vPos.y) / 4., 0., .92));
+  }
   frag = vec4(haze(c) * grain(), 1.);
 }`;
 const LIT_VS = `#version 300 es
@@ -377,7 +385,7 @@ export function createRenderer(gl) {
   function setLight(P, S) {
     gl.uniform3fv(P.u.uCam, S.cam); gl.uniform3fv(P.u.uSun, S.sun); gl.uniform3fv(P.u.uSunCol, S.sunCol);
     gl.uniform3fv(P.u.uSkyAmb, S.skyAmb); gl.uniform3fv(P.u.uGndAmb, S.gndAmb); gl.uniform3fv(P.u.uFogCol, S.horizon);
-    gl.uniform1f(P.u.uFogDen, S.fogDen); gl.uniform3fv(P.u.uFocus, S.focus); gl.uniform1f(P.u.uDither, 0); gl.uniform1f(P.u.uCut, 0); gl.uniform1f(P.u.uFade, 0); if (P.u.uSeek) gl.uniform1f(P.u.uSeek, S.seek || 0);
+    gl.uniform1f(P.u.uFogDen, S.fogDen); gl.uniform3fv(P.u.uFocus, S.focus); gl.uniform1f(P.u.uDither, 0); gl.uniform1f(P.u.uCut, 0); gl.uniform1f(P.u.uFade, 0); gl.uniform1f(P.u.uWater, S.water ?? 0); if (P.u.uSeek) gl.uniform1f(P.u.uSeek, S.seek || 0);
   }
 
   R.draw = (S, W, cw, ch) => {
@@ -464,7 +472,9 @@ export function createRenderer(gl) {
     gl.uniform3fv(water.u.uZenith, S.zenith); gl.uniform3fv(water.u.uHorizon, S.horizon); gl.uniform3fv(water.u.uSun, S.sun);
     gl.uniform3fv(water.u.uSunCol, S.sunCol); gl.uniform3fv(water.u.uFogCol, S.horizon); gl.uniform3fv(water.u.uSkyAmb, S.skyAmb);
     gl.uniform1f(water.u.uFogDen, S.fogDen); gl.uniform1f(water.u.uTime, S.time);
+    gl.enable(gl.POLYGON_OFFSET_FILL); gl.polygonOffset(1.5, 4);   // just behind ground at the same depth
     gl.bindVertexArray(plane.vao); gl.drawArrays(gl.TRIANGLES, 0, 6);
+    gl.disable(gl.POLYGON_OFFSET_FILL);
     // on the water: strips laid on its surface (river foam), as ribbons but after the water
     if (S.surface?.length) {
       gl.useProgram(flat.p); gl.uniform1f(flat.u.uPoints, 0);

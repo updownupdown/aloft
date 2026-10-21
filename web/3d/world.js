@@ -4,7 +4,7 @@
 // noise in noise.js. Coordinates: x east, z south, y up, metres-ish. Water level is y = 0.
 import { store } from './util.js';
 import { ih, fbm, smooth, clamp, WORLD, newWorld } from './noise.js';
-import { BIOMES, PAL, JOURNEY, blend, weightOf, share, rollBiome, cellsNear, riverLine } from './biomes.js';
+import { BIOMES, PAL, JOURNEY, blend, weightOf, share, rollBiome, cellsNear } from './biomes.js';
 export { ih, fbm, WORLD, newWorld, PAL, JOURNEY, blend };
 
 export const CHUNK = 96;
@@ -70,25 +70,31 @@ export function height(x, z) {
 // with a bed deep enough for fish. They come and go with a second, slower noise: they rise
 // where it turns positive (a spring) and run until it fades (into a lake, the sea, or the
 // ground). RIVER.scale is the spacing; flow and foam are sys/rivers.js.
-export const RIVER = { scale: 1500, seed: 91, half: 7, bed: -2.2 };
+export const RIVER = { scale: 1500, seed: 91, half: 8, bed: -2.2 };
+// side: which side of the channel the point is on (+1/-1); lean (-1..1) which bank is the high,
+// steep outer one along this stretch (the other is a low, wide inner bank), changing as it winds
 export function riverAt(x, z) {
   const m = fbm(x / 2600, z / 2600, RIVER.seed + 7, 1);
   if (m < .02 || Math.hypot(x, z + 60) < 320) return null;
-  const d = riverLine(x, z, RIVER.seed, RIVER.scale) * RIVER.scale * .55, w = RIVER.half * smooth(.02, .2, m);
-  return { d, w, m };
+  // the channel line is warped by a second noise, so it swings in meanders and bends
+  const wx = x + fbm(x / 520, z / 520, RIVER.seed + 11, 2) * 170, wz = z + fbm(x / 520, z / 520, RIVER.seed + 13, 2) * 170;
+  const v = fbm(wx / RIVER.scale, wz / RIVER.scale, RIVER.seed, 2) + fbm(wx / (RIVER.scale / 5), wz / (RIVER.scale / 5), RIVER.seed + 2, 1) * .12;
+  const wide = .65 + .7 * (fbm(x / 340, z / 340, RIVER.seed + 17, 1) * .5 + .5);
+  return { d: Math.abs(v) * RIVER.scale * .55, w: RIVER.half * wide * smooth(.02, .2, m), m, side: v < 0 ? -1 : 1, lean: clamp(fbm(x / 260, z / 260, RIVER.seed + 19, 1) * 2.2, -1, 1) };
 }
 function riverCut(x, z, h) {
   const r = riverAt(x, z); if (!r || h < RIVER.bed) return h;
-  const bank = r.w + 22 + Math.max(0, h) * 1.1; if (r.d > bank) return h;
-  // the bed: deepest mid-stream, up to the waterline at the edge; where the river fades it
-  // shallows to a dry gully
-  const k = smooth(.02, .2, r.m), u = r.w > .5 ? Math.min(1, r.d / r.w) : 1;
-  const bed = RIVER.bed * k * (1 - u * u) + (1 - k) * 1.2 + (r.d > r.w ? (r.d - r.w) * .04 : 0);
+  const s1 = r.side * r.lean;   // +1 on the outer (cut) bank, -1 on the inner one
+  const bank = (r.w + 22 + Math.max(0, h) * 1.1) * (1 - s1 * .45); if (r.d > bank) return h;
+  // the bed: deepest under the outer bank, up to the waterline at the edge; where the river
+  // fades it shallows to a dry gully
+  const k = smooth(.02, .2, r.m), u = r.w > .5 ? Math.min(1, r.d / r.w) : 1, deep = 1 + s1 * .35;
+  const bed = RIVER.bed * deep * k * (1 - u ** (1.6 + s1)) + (1 - k) * 1.2 + (r.d > r.w ? (r.d - r.w) * .04 : 0);
   if (h <= bed) return h;
-  // the valley sides, and a low grassy bank a couple of metres over the water
-  const s = smooth(r.w, bank, r.d);
-  const y = bed + (h - bed) * s;
-  return r.d > r.w ? Math.max(y, Math.min(h, 2 * smooth(r.w, r.w + 4, r.d))) : y;
+  // the valley sides, and the bank over the water: a steep cut on the outer side, a low
+  // shelving bar on the inner
+  const s = smooth(r.w, bank, r.d), y = bed + (h - bed) * s, lip = 2 + s1 * 1.6, run = 4 - s1 * 2.5;
+  return r.d > r.w ? Math.max(y, Math.min(h, lip * smooth(r.w, r.w + run, r.d))) : y;
 }
 export function normalAt(x, z) {
   const e = 1.5, hx = height(x + e, z) - height(x - e, z), hz = height(x, z + e) - height(x, z - e);
