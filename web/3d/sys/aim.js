@@ -166,6 +166,7 @@ export function aimSystem(G) {
       else if (A.ring) A.mode = 'ring';
       else if (bestP) {
         A.mode = 'perch'; A.perch = bestP;
+        b.aimPerch = bestP; b.aimPerchT = 1.5;   // flight.js lands only on this one while it holds
         // slow and lined up: drawn gently onto it
         if (b.s < FLY.landS + 5) {
           const want = Math.atan2(bestP.x - b.p[0], -(bestP.z - b.p[2])), k = Math.min(1, dt * (1.2 + b.flare * 1.5));

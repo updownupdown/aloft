@@ -43,6 +43,7 @@ export function step(b, c, dt, E) {
   // how fast the hawk is gaining speed (smoothed): no perching while it is
   b.acc = (b.acc || 0) + ((b.s - (b.sPrev ?? b.s)) / Math.max(dt, 1e-3) - (b.acc || 0)) * Math.min(1, dt * 4);
   b.sPrev = b.s; b.view = null;
+  aimB = b; if ((b.aimPerchT = (b.aimPerchT || 0) - dt) <= 0) b.aimPerch = null;
 
   // flaps
   if (c.flap) {
@@ -271,10 +272,11 @@ function trees(b, dt, E) {
       b.canopy = 1;
       // settle on the nearest limb (never the crown's top: coming in over it you sink through)
       const limbs = perchesOf(t).filter(p => !p.top), over = y > t.s * (t.kind ? .8 : TREE.crownY + TREE.crownR * .45);
-      if (b.s < 6 && mayPerch && !over && limbs.length) { settleOn(b, nearestPerch(limbs, b.p), t, E); return; }
+      const mine = limbs.find(aimed);
+      if (b.s < 6 && mayPerch && !over && limbs.length && (mine || !b.aimPerch)) { settleOn(b, mine || nearestPerch(limbs, b.p), t, E); return; }
     }
     // a perch close by while slow: land on it
-    if (mayPerch && b.s < FLY.landS + FLY.floatLand * (b.float || 0) && b.vy < 3) for (const p of perchesOf(t)) if (!p.top) {
+    if (mayPerch && b.s < FLY.landS + FLY.floatLand * (b.float || 0) && b.vy < 3) for (const p of perchesOf(t)) if (!p.top && (!b.aimPerch || aimed(p))) {
       if (Math.hypot(p.x - b.p[0], p.y + PERCH_Y - b.p[1], p.z - b.p[2]) < FLY.perchR + b.flare * .8 + FLY.floatReach * (b.float || 0)) { settleOn(b, p, t, E); return; }
     }
   }
@@ -284,11 +286,15 @@ function trees(b, dt, E) {
 // towers, standing stones and cairns: hard sides, a perch on top
 // not right after taking off, nor while speeding up or tucked in a dive
 const canPerch = b => !(b.noPerch > 0) && !(b.acc > 1.2) && b.tuck < .4;
+// lined up on a perch (aim.js sets b.aimPerch, held a moment after the line loses it), the hawk
+// lands on that one only, never one it brushes past on the way
+let aimB = null;
+const aimed = p => !!aimB?.aimPerch && Math.abs(p.x - aimB.aimPerch.x) + Math.abs(p.y - aimB.aimPerch.y) + Math.abs(p.z - aimB.aimPerch.z) < .05;
 function solids(b, E) {
   const mayPerch = canPerch(b);
   for (const o of solidsNear(b.p[0], b.p[2], 10)) {
     const dx = b.p[0] - o.x, dz = b.p[2] - o.z, hd = Math.hypot(dx, dz);
-    if (mayPerch && b.s < FLY.landS + FLY.floatLand * (b.float || 0) && b.vy < 3 && Math.hypot(o.perch.x - b.p[0], o.perch.y + PERCH_Y - b.p[1], o.perch.z - b.p[2]) < FLY.perchR + o.r * .5 + b.flare * .8) { settleOn(b, o.perch, null, E); return; }
+    if (mayPerch && (!b.aimPerch || aimed(o.perch)) && b.s < FLY.landS + FLY.floatLand * (b.float || 0) && b.vy < 3 && Math.hypot(o.perch.x - b.p[0], o.perch.y + PERCH_Y - b.p[1], o.perch.z - b.p[2]) < FLY.perchR + o.r * .5 + b.flare * .8) { settleOn(b, o.perch, null, E); return; }
     const tr = o.r + .35;
     if (hd >= tr || b.p[1] < o.y0 || b.p[1] > o.top + .3) continue;
     // over the top edge: hop up onto it; otherwise the side is hard
@@ -304,7 +310,7 @@ function settleOn(b, p, t, E, dur) {
   // the glide onto it takes longer the farther it has to go, so it never jumps
   const far = Math.hypot(p.x - b.p[0], p.y + PERCH_Y - b.p[1], p.z - b.p[2]);
   dur ??= Math.min(.75, Math.max(.35, .3 + far * .12));
-  b.state = 'perch'; b.perch = p; b.tree = t; b.settle = b.settleT = dur; b.s = 0; b.vy = 0;
+  b.state = 'perch'; b.perch = p; b.tree = t; b.settle = b.settleT = dur; b.s = 0; b.vy = 0; b.aimPerch = null;
   b.from = [b.p[0], b.p[1], b.p[2]]; b.fromYaw = b.yaw;
   b.p = [p.x, p.y + PERCH_Y, p.z];
   // sit across a limb, facing whichever way along it is nearer the way you came in
