@@ -31,6 +31,7 @@ import { guideSystem } from './sys/guide.js';
 import { journeySystem } from './sys/journey.js';
 import { nestSystem } from './sys/nest.js';
 import { storySystem } from './sys/story.js';
+import { ruinsSystem } from './sys/ruins.js';
 import { photoSystem } from './sys/photo.js';
 import { howtoSystem } from './sys/howto.js';
 import { weatherSystem } from './sys/weather.js';
@@ -55,7 +56,7 @@ import { seasonSystem } from './sys/season.js';
 import { ghostSystem } from './sys/ghost.js';
 
 const SYSTEMS = [speciesSystem, movesSystem, lifeSystem, clockSystem, weatherSystem, watersSystem, windsSystem, floraSystem, airSystem, ringsSystem, foodSystem, aimSystem, sleepSystem, feelSystem, batterySystem, songsSystem,
-  guideSystem, journeySystem, nestSystem, storySystem, photoSystem, howtoSystem, faunaSystem, landsSystem, seasonsSystem, glowSystem, landAirSystem, crittersSystem, huntersSystem, aimsSystem, seasonSystem, ghostSystem];
+  guideSystem, journeySystem, nestSystem, storySystem, ruinsSystem, photoSystem, howtoSystem, faunaSystem, landsSystem, seasonsSystem, glowSystem, landAirSystem, crittersSystem, huntersSystem, aimsSystem, seasonSystem, ghostSystem];
 
 export function start(canvas, ui) {
   const gl = createGL(canvas);

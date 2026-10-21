@@ -1,9 +1,10 @@
 // Landmarks drawn in the world (where they stand is world.js landmarksNear): standing stones,
-// cairns, a ruined tower, the lighthouse on the sea cliffs (its lamp turns at night), and
+// cairns, a ruined tower, the lighthouse on the sea cliffs (dark now, like every lamp: nobody
+// keeps it; the farms and villages are sys/ruins.js), and
 // waterfalls spilling over the cliffs with mist at their feet. The giant oaks and willows are
 // trees (world.js treesIn). Finding them, postcards and the journal belong to journey.js.
-import { landmarksNear, rocksNear, fencesNear, height, WATER, WIND, PAL, GROUND, GROUND_SET, setGroundDetail } from '../world.js';
-import { mix3, store } from '../util.js';
+import { landmarksNear, rocksNear, fencesNear, height, WATER, PAL, GROUND, GROUND_SET, setGroundDetail } from '../world.js';
+import { store } from '../util.js';
 import { builder, blob, prism, tube, reseed, rnd } from '../shapes.js';
 
 const STONE = [.6, .59, .56], STONE2 = [.5, .5, .49], MOSS = [.45, .52, .36];
@@ -34,11 +35,16 @@ function tower() {
   return B.out();
 }
 function lighthouse() {
-  reseed(64); const B = builder(), white = [.95, .93, .88], red = [.75, .25, .2], dark = [.2, .2, .22], lamp = [1.2, 1.1, .8];
+  reseed(64); const B = builder(), white = [.86, .84, .78], red = [.62, .28, .22], dark = [.2, .2, .22], glass = [.2, .25, .28], gone = [.07, .08, .09];
   const bands = [[-1, 5, white], [5, 9, red], [9, 15, white], [15, 19, red]];
   for (const [y0, y1, c] of bands) prism(B, 0, 0, 3.2 - y0 * .04, 3.2 - y1 * .04, y0, y1, 10, c);
+  prism(B, 0, 0, 3.3, 3.2, -1, .8, 10, MOSS);                  // moss and lichen round its foot
   prism(B, 0, 0, 2.8, 2.8, 19, 19.6, 10, dark);                // the gallery
-  prism(B, 0, 0, 1.6, 1.6, 19.6, 22, 8, lamp);                 // the lantern
+  // the lantern, long dark: dull panes, two of them broken out
+  for (let i = 0; i < 8; i++) {
+    const a = i / 8 * 6.283, b = (i + 1) / 8 * 6.283, P = (t, y) => [Math.cos(t) * 1.6, y, Math.sin(t) * 1.6], col = i === 2 || i === 5 ? gone : glass;
+    B.tri(P(a, 19.6), P(b, 19.6), P(b, 22), col); B.tri(P(a, 19.6), P(b, 22), P(a, 22), col);
+  }
   prism(B, 0, 0, 1.9, .2, 22, 24.5, 8, dark);                  // the cap
   return B.out();
 }
@@ -116,20 +122,6 @@ function box(B, x, y, z, l, h, w, a, col, top = col) {
   q(P(-L, 0, W), P(-L, 0, -W), P(-L, h, -W), P(-L, h, W), col); q(P(L, 0, -W), P(L, 0, W), P(L, h, W), P(L, h, -W), col);
   q(P(-L, h, -W), P(L, h, -W), P(L, h, W), P(-L, h, W), top);
 }
-// an old barn: weathered red boards, a grey gable roof with a ridge to perch on, a dark door
-function barn() {
-  reseed(81); const B = builder(), red = [.6, .26, .2], red2 = [.52, .22, .18], roof = [.42, .42, .44], roof2 = [.36, .36, .38], dark = [.2, .15, .13], white = [.85, .82, .76];
-  box(B, 0, -.5, 0, 12, 5.5, 8, 0, red);
-  for (const k of [-1, 1]) {   // the gable ends and the two roof slopes
-    B.tri([6 * k, 5, -4], [6 * k, 5, 4], [6 * k, 8.2, 0], red2);
-    const e = [[-6.4, 4.8, 4.4 * k], [6.4, 4.8, 4.4 * k], [6.4, 8.3, 0], [-6.4, 8.3, 0]];
-    B.tri(e[0], e[1], e[2], k > 0 ? roof : roof2); B.tri(e[0], e[2], e[3], k > 0 ? roof : roof2);
-  }
-  box(B, 6.02, -.4, 0, .05, 4, 3.2, 0, dark); box(B, 6.05, 3.7, 0, .06, .2, 3.4, 0, white);   // the big door and its lintel
-  box(B, -6.02, 5.2, 0, .05, 1.2, 1.2, 0, dark);   // the hay loft hatch
-  box(B, 0, 8.2, 0, 13, .2, .3, 0, roof2);          // the ridge
-  return B.out();
-}
 // a fire lookout: four splayed legs with braces, a cabin with a pyramid roof and a railed walk
 function lookout() {
   reseed(82); const B = builder(), wood = [.5, .42, .33], wood2 = [.42, .35, .28], cab = [.62, .55, .44], win = [.3, .35, .4], roof = [.36, .3, .26];
@@ -145,29 +137,6 @@ function lookout() {
   for (let k = 0; k < 4; k++) box(B, Math.cos(k * 1.5708) * 1.62, 14.9, Math.sin(k * 1.5708) * 1.62, .05, 1, 2.2, k * 1.5708, win);
   for (let k = 0; k < 4; k++) { const [i, j] = legs[k], [i2, j2] = legs[(k + 1) % 4]; B.tri([i * 2.25, 16.4, j * 2.25], [i2 * 2.25, 16.4, j2 * 2.25], [0, 17.8, 0], k & 1 ? roof : [.3, .25, .22]); }
   for (let k = 0; k < 4; k++) { const [i, j] = legs[k], [i2, j2] = legs[(k + 1) % 4]; tube(B, [i * 2.25, 15, j * 2.25], [i2 * 2.25, 15, j2 * 2.25], .04, wood2); }
-  return B.out();
-}
-// a farm wind pump: a lattice tower, a platform, the tail vane (the wheel turns: windWheel)
-function windmill() {
-  reseed(83); const B = builder(), iron = [.42, .4, .38], iron2 = [.5, .46, .42], rust = [.55, .35, .24];
-  const legs = [[-1, -1], [1, -1], [1, 1], [-1, 1]];
-  for (const [i, j] of legs) tube(B, [i * 1.5, -.5, j * 1.5], [i * .35, 11, j * .35], .06, iron);
-  for (let k = 0; k < 4; k++) { const [i, j] = legs[k], [i2, j2] = legs[(k + 1) % 4]; for (const y of [2, 5, 8]) { const r = 1.5 - y / 11.5 * 1.15; tube(B, [i * r, y, j * r], [i2 * r, y, j2 * r], .035, iron2); } }
-  box(B, 0, 10.9, 0, 1.3, .15, 1.3, 0, rust);
-  tube(B, [0, 11.6, 0], [-2.6, 11.6, 0], .05, iron);
-  B.tri([-1.8, 11.2, 0], [-3, 12.4, 0], [-3, 11.1, 0], rust);
-  tube(B, [0, 11, 0], [.35, 11.6, 0], .08, iron);
-  return B.out();
-}
-// the wheel, in a few turned copies (a prop can only turn about the vertical), drawn by phase
-const WHEEL_STEPS = 6;
-function windWheel(k) {
-  reseed(84); const B = builder(), blade = [.68, .64, .58], blade2 = [.55, .5, .46], N = 12;
-  for (let i = 0; i < N; i++) {
-    const a = (i + k / WHEEL_STEPS) / N * 6.283, b = a + .32, c = Math.cos, s = Math.sin;
-    B.tri([.4, c(a) * .35, s(a) * .35], [.5, c(a) * 1.9, s(a) * 1.9], [.5, c(b) * 1.9, s(b) * 1.9], i & 1 ? blade : blade2);
-    B.tri([.4, c(a) * .35, s(a) * .35], [.5, c(b) * 1.9, s(b) * 1.9], [.4, c(b) * .35, s(b) * .35], i & 1 ? blade : blade2);
-  }
   return B.out();
 }
 // one run of fence or wall, built once along the ground (coordinates from its first post)
@@ -224,8 +193,7 @@ export function landsSystem(G) {
   R.shape('lm_stones', stones()); R.shape('lm_cairn', cairn()); R.shape('lm_tower', tower()); R.shape('lm_lighthouse', lighthouse());
   R.shape('rock_tor', tor()); R.shape('rock_hoodoo', hoodoo()); R.shape('rock_boulder', boulder());
   R.shape('rock_lava', lava()); R.shape('rock_arch', arch()); R.shape('rock_stack', stack());
-  R.shape('lm_barn', barn()); R.shape('lm_lookout', lookout()); R.shape('lm_windmill', windmill());
-  for (let k = 0; k < WHEEL_STEPS; k++) R.shape('lm_wheel' + k, windWheel(k));
+  R.shape('lm_lookout', lookout());
   const fenceOf = new Map();   // run id -> { shape, at }
   const fenceShape = f => {
     let m = fenceOf.get(f.id);
@@ -251,20 +219,13 @@ export function landsSystem(G) {
       }
     },
     scene(S) {
-      const cam = S.cam, L = G.light;
+      const cam = S.cam;
       for (const o of rocks) if (Math.abs(o.x - cam[0]) < 480 && Math.abs(o.z - cam[2]) < 480) (S.props['rock_' + o.kind] ||= []).push(o.x, o.y - .3, o.z, o.s, o.yaw, .5, 0, 0);
       for (const f of fences) { const m = fenceShape(f); (S.props[m.shape] ||= []).push(m.at[0], 0, m.at[2], 1, 0, .5, 0, 0); }
       for (const l of near) {
         if (Math.hypot(l.x - cam[0], l.z - cam[2]) > 600) continue;
-        if (l.kind === 'barn') (S.props.lm_barn ||= []).push(l.x, l.y - .3, l.z, 1, l.yaw, .5, 0, 0);
         if (l.kind === 'lookout') (S.props.lm_lookout ||= []).push(l.x, l.y - .2, l.z, 1, l.yaw, .5, 0, 0);
         if (l.kind === 'stack') (S.props.rock_stack ||= []).push(l.x, l.y - .3, l.z, l.h, l.yaw, .5, 0, 0);
-        if (l.kind === 'windmill') {
-          // the wheel faces into the wind and turns with it
-          const wy = Math.atan2(-WIND[2], -WIND[0]), k = Math.floor(G.t * (2 + (G.windK ?? .3) * 6)) % WHEEL_STEPS;
-          (S.props.lm_windmill ||= []).push(l.x, l.y - .3, l.z, 1, wy, .5, 0, 0);
-          (S.props['lm_wheel' + k] ||= []).push(l.x, l.y - .3, l.z, 1, wy, .5, 0, 0);
-        }
         if (l.kind === 'stones') (S.props.lm_stones ||= []).push(l.x, l.y, l.z, 1, l.yaw, .5, 0, 0);
         if (l.kind === 'cairn') (S.props.lm_cairn ||= []).push(l.x, l.y - .3, l.z, 1, l.yaw, .5, 0, 0);
         if (l.kind === 'tower') (S.props.lm_tower ||= []).push(l.x, l.y - .5, l.z, 1, l.yaw, .5, 0, 0);
@@ -272,22 +233,6 @@ export function landsSystem(G) {
         if (l.kind === 'falls') { const f = fall(l); (S.props[f.shape] ||= []).push(l.x, f.top, l.z, 1, Math.atan2(l.dz, l.dx), .5, 0, 0); }
         if (l.kind === 'lighthouse') {
           (S.props.lm_lighthouse ||= []).push(l.x, l.y - .8, l.z, 1, 0, .5, 0, 0);
-          // at dusk and night the lamp shines and its beam sweeps the sea
-          const lit = 1 - L.daylight * .85;
-          if (lit > .2) {
-            const top = [l.x, l.y + 20, l.z], a = G.t * .9;
-            S.motes.push(...top, 1, .95, .7, 2.2 * lit);
-            // two soft shafts of light either way: discs packed so close they run together,
-            // widening and fading into the sky with distance
-            for (const side of [0, Math.PI]) {
-              const c = Math.cos(a + side), s = Math.sin(a + side);
-              for (let d = 1.5; d < 190;) {
-                const r = .7 + d * .055, f = 1 - d / 190;
-                S.motes.push(top[0] + c * d, top[1] - d * .05, top[2] + s * d, ...mix3(S.horizon, [1, .95, .78], lit * f * f * (side ? .45 : .7)), r);
-                d += Math.max(.5, r * .45);
-              }
-            }
-          }
         }
       }
     },

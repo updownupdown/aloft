@@ -5,6 +5,7 @@
 // G.life = { bird, title, steps: [{ id, text, n, need, done }], done } for the Journal, and 'life'
 // is emitted whenever a step is done. Progress is kept per bird, so switching birds loses nothing.
 import { height, WATER, landmarksNear } from '../world.js';
+import { buildingsNear } from '../settle.js';
 import { BIRD } from '../hawk.js';
 import { NEST_TWIGS } from './nest.js';
 
@@ -26,7 +27,7 @@ export const GOALS = {
   owl: { title: 'The old barn', steps: [
     ['moon', 'Catch three mice by moonlight', 3],
     ['silent', 'Glide in silently on five mice, never flapping', 5],
-    ['home', 'Claim a roost: perch on an old barn, a ruined tower or a great oak'],
+    ['home', 'Claim a roost: perch on an old barn, a chapel tower, a ruined tower or a great oak'],
     ['mate', 'Find a mate'],
     ['fledge', 'Raise an owlet until it fledges'],
   ] },
@@ -38,7 +39,7 @@ export const GOALS = {
     ['mate', 'Find a mate'],
   ] },
 };
-const ROOSTS = new Set(['barn', 'tower', 'oak']), COASTS = new Set(['stack', 'lighthouse']);
+const ROOSTS = new Set(['barn', 'chapel', 'tower', 'oak']), COASTS = new Set(['stack', 'lighthouse']);
 
 export function lifeSystem(G) {
   const b = G.b, prog = {};   // prog[bird][step] = count
@@ -69,7 +70,9 @@ export function lifeSystem(G) {
     for (let a = 0; a < 8; a++) for (const r of [25, 55]) if (height(x + Math.cos(a * .785) * r, z + Math.sin(a * .785) * r) < WATER) return true;
     return false;
   };
-  const nearKind = (x, z, kinds, r) => landmarksNear(x, z, r).some(l => kinds.has(l.kind) && Math.hypot(l.x - x, l.z - z) < r);
+  // a landmark of a kind, or one of the empty farms' and villages' buildings (settle.js)
+  const nearKind = (x, z, kinds, r) => landmarksNear(x, z, r).some(l => kinds.has(l.kind) && Math.hypot(l.x - x, l.z - z) < r)
+    || buildingsNear(x, z, r).some(bd => kinds.has(bd.kind) && Math.hypot(bd.x - x, bd.z - z) < r);
 
   G.on('catch', e => {
     if (BIRD === 'osprey' && e.kind === 'fish') { if (b.plunge) tick('plunge'); if (G.story?.mate) tick('feed'); }

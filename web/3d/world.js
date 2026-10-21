@@ -5,6 +5,7 @@
 import { store } from './util.js';
 import { ih, fbm, smooth, clamp, WORLD, newWorld } from './noise.js';
 import { BIOMES, PAL, JOURNEY, blend, weightOf, share, rollBiome, cellsNear } from './biomes.js';
+import { settlementsNear, buildingsNear, bridgesNear, roadShade, buildingSolids, bridgeSolids, clearOf, saplingIn } from './settle.js';
 export { ih, fbm, WORLD, newWorld, PAL, JOURNEY, blend };
 
 export const CHUNK = 96;
@@ -150,6 +151,9 @@ function groundColour(x, y, z, ny, bl = blend(x, z)) {
       c = mixc(c, [.62, .58, .38], grassy * (1 - f) * patch * turn * .4);
     }
   }
+  // the old tracks between the empty farms and villages (settle.js), worn earth half grown over
+  const rd = y > .3 ? roadShade(x, z) : 0;
+  if (rd > 0) c = mixc(c, [.74, .66, .5], rd * (.6 + .4 * smooth(-.3, .25, fbm(x / 70, z / 70, 695, 2))));
   // snow on the heights, and in winter right down to the meadows (not on cliffs, not below water)
   const line = 185 - env.snow * 200;
   c = mixc(c, PAL.snow, smooth(line - 5, line + 25, y + fbm(x / 40, z / 40, 7, 2) * 12) * smooth(.45, .25, steep) * (y > .3 ? 1 : 0) * (1 - noSnow * .85));
@@ -268,6 +272,7 @@ export function treesIn(cx, cz) {
     if ((wet ? y < -1.2 || y > 3 : y < 1.2) || y > 140) continue;
     const nm = normalAt(x, z); if (nm[1] < .82) continue;
     if (Math.hypot(x, z + 60) < 22) continue;   // keep the starting spot clear
+    if (roadShade(x, z) > .25) continue;          // nor on the old tracks
     const [look, s0, ds] = lookFor(e.name, x, z, y, ih(gx, gz, 28));
     const s = s0 + ih(gx, gz, 24) * ds;
     t.push({ x, y: y - .3, z, s, yaw: ih(gx, gz, 25) * 6.283, kind: LOOKS[look].kind, look, id: gx * 7919 + gz, tint: ih(gx, gz, 26) });
@@ -281,6 +286,15 @@ export function treesIn(cx, cz) {
     if (Math.floor(l.x / CHUNK) !== cx || Math.floor(l.z / CHUNK) !== cz) continue;
     const look = l.kind === 'giant' ? LOOK.redwood : LOOK.broadleaf;
     t.push({ x: l.x, y: l.y - .5, z: l.z, s: l.h, yaw: l.yaw, kind: LOOKS[look].kind, look, id: 900001 + (cx * 31 + cz) * 7, tint: l.kind === 'willow' ? .9 : .2, landmark: l.id });
+  }
+  // and off the old buildings, but a young tree grows up through each roofless shell
+  for (const bd of buildingsNear((cx + .5) * CHUNK, (cz + .5) * CHUNK, CHUNK / 2 + 16)) {
+    const clear = clearOf(bd);
+    for (let i = t.length - 1; i >= 0; i--) if (Math.hypot(t[i].x - bd.x, t[i].z - bd.z) < clear) t.splice(i, 1);
+    if (saplingIn(bd) && Math.floor(bd.x / CHUNK) === cx && Math.floor(bd.z / CHUNK) === cz) {
+      const r = ih(Math.round(bd.x), Math.round(bd.z), 696), look = bd.y > 60 ? LOOK.pine : LOOK.broadleaf;
+      t.push({ x: bd.x + (r - .5) * 1.5, y: bd.y - .2, z: bd.z + (r - .5), s: 6 + r * 4, yaw: r * 6.283, kind: LOOKS[look].kind, look, id: 3e7 + Math.round(bd.x) * 7 + Math.round(bd.z) * 131, tint: r });
+    }
   }
   treeCache.set(key, t);
   if (treeCache.size > 600) treeCache.delete(treeCache.keys().next().value);
@@ -392,13 +406,13 @@ function cellSight(c) {
   lmCache.set(key, l);
   return l;
 }
-// the old human traces too (no people): barns on farmland, fire lookouts over the woods,
-// wind pumps on the open country, and sea stacks off the coasts (where the osprey nests)
+// fire lookouts over the woods and sea stacks off the coasts (where the osprey nests); the
+// barns and wind pumps stand with their farmsteads now (settle.js)
 const LM_KIND = {
-  forest: ['oak', 'oak', 'stones', 'lookout'], lakeland: ['oak', 'oak', 'stones', 'barn'], birch: ['oak', 'stones', 'lookout'], meadow: ['tower', 'stones', 'oak', 'barn', 'barn', 'windmill'],
-  savanna: ['tower', 'redstones', 'windmill', 'barn'], cliffs: ['falls'], mountains: ['cairn', 'falls', 'lookout'], alpine: ['cairn'], fjord: ['falls', 'stack'], moor: ['stones', 'cairn', 'tower', 'windmill'],
+  forest: ['oak', 'oak', 'stones', 'lookout'], lakeland: ['oak', 'oak', 'stones'], birch: ['oak', 'stones', 'lookout'], meadow: ['tower', 'stones', 'oak'],
+  savanna: ['tower', 'redstones'], cliffs: ['falls'], mountains: ['cairn', 'falls', 'lookout'], alpine: ['cairn'], fjord: ['falls', 'stack'], moor: ['stones', 'cairn', 'tower'],
   coast: ['stones', 'tower', 'stack', 'stack'], marsh: ['willow', 'stones'], swamp: ['willow'], desert: ['redstones'], canyon: ['redstones', 'falls'], badlands: ['redstones'],
-  redwood: ['lookout'], saltflat: ['windmill'],
+  redwood: ['lookout'],
 };
 // a sea stack wants open water 4 to 12 m deep near the shore
 function stackSpot(x, z) {
@@ -428,7 +442,8 @@ function landmarkCell(gx, gz) {
   lmCache.set(key, l);
   return l;
 }
-export function landmarksNear(x, z, r) {
+// the sights alone (settle.js places the farms and villages away from them)
+export function sightsNear(x, z, r) {
   const out = [], inBox = l => l && Math.abs(l.x - x) < r && Math.abs(l.z - z) < r;
   for (const l of fixedLandmarks()) if (inBox(l)) out.push(l);
   for (const c of cellsNear(x, z, r + 400)) { const l = cellSight(c); if (inBox(l)) out.push(l); }
@@ -438,6 +453,12 @@ export function landmarksNear(x, z, r) {
     // the great sights keep their country to themselves
     if (inBox(l) && !out.some(o => o.kind !== 'sight' && Math.hypot(o.x - l.x, o.z - l.z) < 350)) out.push(l);
   }
+  return out;
+}
+// the sights and the abandoned villages (settle.js), each a place to find
+export function landmarksNear(x, z, r) {
+  const out = sightsNear(x, z, r);
+  for (const S of settlementsNear(x, z, r, false)) if (S.lm && Math.abs(S.x - x) < r && Math.abs(S.z - z) < r) out.push(S.lm);
   return out;
 }
 
@@ -476,6 +497,8 @@ function fenceCell(gx, gz) {
 export function fencesNear(x, z, r) {
   const out = [], a = Math.floor((x - r - 120) / FENCE_CELL), b = Math.floor((x + r + 120) / FENCE_CELL), c = Math.floor((z - r - 120) / FENCE_CELL), d = Math.floor((z + r + 120) / FENCE_CELL);
   for (let gz = c; gz <= d; gz++) for (let gx = a; gx <= b; gx++) { const f = fenceCell(gx, gz); if (f && f.posts.some(p => Math.abs(p[0] - x) < r && Math.abs(p[2] - z) < r)) out.push(f); }
+  // the farms' paddocks and the shepherds' folds
+  for (const S of settlementsNear(x, z, r, false)) for (const f of S.fences) if (f.posts.some(p => Math.abs(p[0] - x) < r && Math.abs(p[2] - z) < r)) out.push(f);
   return out;
 }
 
@@ -538,10 +561,8 @@ export function solidsNear(x, z, r) {
       pillar(l.x, l.z, 1.9, l.y + 18.8, l.y + 23.7, { x: l.x - 2.25, y: l.y + 18.8, z: l.z });
     }
     if (l.kind === 'cairn') pillar(l.x, l.z, .9, l.y - 1, l.y + 2.33);
-    // the barn's roof ridge, the lookout's cabin roof, the wind pump's platform, the stack's turf
-    if (l.kind === 'barn') { const c = Math.cos(l.yaw), s = Math.sin(l.yaw); for (const k of [-3.5, 0, 3.5]) pillar(l.x + c * k, l.z + s * k, 3.6, l.y - 1, l.y + 7.6, { x: l.x + c * k, y: l.y + 8.25, z: l.z + s * k }); }
+    // the lookout's cabin roof, the stack's turf
     if (l.kind === 'lookout') pillar(l.x, l.z, 2.4, l.y - 1, l.y + 16.4, { x: l.x + 1.6, y: l.y + 16.4, z: l.z });
-    if (l.kind === 'windmill') pillar(l.x, l.z, 1, l.y - 1, l.y + 11.2);
     if (l.kind === 'stack') pillar(l.x, l.z, .12 * l.h, l.y - 1, l.y - .3 + l.h);
     if (l.kind === 'arch') for (const g of archLegs(l, l.h)) pillar(g.x, g.z, .12 * l.h, l.y - 1, l.y - .5 + l.h * .68);
     if (l.kind === 'stones') for (let i = 0; i < 9; i++) {
@@ -549,6 +570,9 @@ export function solidsNear(x, z, r) {
       pillar(l.x + c * lx - s * lz, l.z + s * lx + c * lz, .55, l.y - 1, l.y + h);
     }
   }
+  // the empty houses, barns, chapels and wells, and the bridges' parapets
+  for (const bd of buildingsNear(x, z, r + 14)) buildingSolids(bd, pillar);
+  for (const g of bridgesNear(x, z, r + 30)) bridgeSolids(g, pillar);
   // fence posts (perch on top) and the walls' coping stones
   for (const f of fencesNear(x, z, r + 4)) for (const p of f.posts) if (Math.abs(p[0] - x) < r + 4 && Math.abs(p[2] - z) < r + 4) pillar(p[0], p[2], f.kind === 'wall' ? .5 : .09, p[1] - 1, p[1] + p[3]);
   return out;
@@ -569,6 +593,8 @@ export function thermalsNear(x, z, r) {
   for (let gz = c; gz <= d; gz++) for (let gx = a; gx <= b; gx++) { const t = thermalAt(gx, gz); if (t) out.push(t); }
   // columns that come and go (a song at an arch wakes one: env.thermals, weather.js)
   for (const t of env.thermals) if (Math.abs(t.x - x) < r && Math.abs(t.z - z) < r) out.push(t);
+  // sun-warmed stone: a gentle column over each empty village
+  for (const S of settlementsNear(x, z, r, false)) if (S.kind === 'village') out.push({ x: S.x, z: S.z, r: 22, w: 3, top: S.y + 280, id: 7e7 + Math.round(S.x) * 3 + Math.round(S.z) });
   // the fire mountain's warm breath: a strong, wide column over its smoking cone
   for (const l of landmarksNear(x, z, r + 60)) if (l.kind === 'volcano') out.push({ x: l.x, z: l.z, r: 48, w: 7, top: 720, id: Math.abs((l.x | 0) * 31 + (l.z | 0)), volcano: true });
   return out;
