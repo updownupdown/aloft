@@ -22,7 +22,3 @@ button:active { transform: translateY(1px); }
 .slider small { grid-column: 1 / -1; margin: 0; }
 .log { list-style: none; margin: 4px 0; padding: 0; font-size: 15px; color: var(--ink2); font-style: italic; min-height: 7.5em; }
 .links { display: flex; gap: 14px; flex-wrap: wrap; }
-.dirs { list-style: none; margin: 0; padding: 0; }
-.dirs li { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 8px 0; border-bottom: 1px solid var(--rule); }
-.dirs button { min-width: 150px; text-align: left; }
-.dirs em { color: var(--ink2); font-size: 14px; flex: 1 1 200px; }

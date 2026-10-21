@@ -162,7 +162,7 @@ if (qs.has('fps')) G.settings.fpsCap = +qs.get('fps') || 60;
     set: v => { G.settings.fpsCap = v; store.set('fpsCap3d', v); },
     sub: v => v <= 30 ? 'frames a second: 30 saves the most battery' : v >= 90 ? 'frames a second: 90 is smoothest, uses the most battery' : 'frames a second: smooth, a fair battery' });
   G.menu.toggle(play, { label: 'Show frame rate', get: () => G.settings.fps, set: v => { G.settings.fps = v; store.set('fps3d', v); H.showFps(v); } });
-  G.menu.button(play, { label: 'Music lab', sub: 'try other directions for the music', href: 'musiclab.html', group: 'sound' });
+  G.menu.button(play, { label: 'Music lab', sub: 'shape the music: strings, piano, pace', href: 'musiclab.html', group: 'sound' });
   G.menu.button(play, { label: 'Start a new journey', sub: 'from the valley', group: 'play', onClick: el => {
     if (el.dataset.sure) { G.resetting = true; store.set('save3d', null); location.reload(); } else { el.dataset.sure = 1; el.firstChild.textContent = 'Tap again to start over '; }
   } });

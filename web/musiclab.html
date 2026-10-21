@@ -11,26 +11,23 @@
 <body>
 <main>
   <div class="top"><h1>Music lab</h1><span class="links"><a href="./">Back to the game</a></span></div>
-  <p>Try a direction for the game's music, then shape it while it plays. Changes are heard from the next chord or note. Keep what you like and the game plays it.</p>
+  <p>Valley, taken apart: long bowed chords over a low pedal, and a soft piano repeating a slow figure, then resting. Shape it while it plays; changes are heard from the next chord or note. Keep what you like and the game plays it.</p>
 
-  <div class="opts"><button class="save" data-play>Play</button><button data-skip="chord">Next chord now</button><button data-skip="lead">Melody now</button></div>
+  <div class="opts"><button class="save" data-play>Play</button><button data-skip="chord">Next chord now</button><button data-skip="piano">Piano now</button></div>
   <div class="opts" data-k="hour"></div>
   <div class="opts"><button data-storm>Storm</button></div>
   <ul class="log"></ul>
-
-  <h2>Direction</h2>
-  <ul class="dirs"></ul>
 
   <h2>Shape it</h2>
   <div class="sliders"></div>
 
   <h2>Keep it</h2>
-  <div class="opts"><button class="save" data-save>Use this in the game</button><button data-reset>Back to the direction as it was</button></div>
+  <div class="opts"><button class="save" data-save>Use this in the game</button><button data-reset>Back to how it was</button></div>
   <small class="saved"></small>
 </main>
 <script type="module">
 import { createAudio } from './src/audio.js';
-import { createMusic, DIRECTIONS, directionTune } from './src/music.js';
+import { createMusic, VALLEY_TUNE } from './src/music.js';
 import { SPECIES } from './src/songs.js';
 
 const A = createAudio(), M = createMusic(A), q = s => document.querySelector(s);
@@ -39,13 +36,19 @@ let hour = 'day', storm = false, playing = false;
 // [key, label, min, max, step, how to show it, a line on what it does]
 const s = v => `${(+v).toFixed(0)} s`, pc = v => `${Math.round(v * 100)}%`, x = v => `${(+v * 1000).toFixed(0)}`;
 const SLIDERS = [
-  ['bedVol', 'Chords volume', 0, .08, .002, x],
-  ['leadVol', 'Melody volume', 0, .12, .002, x],
-  ['chordLen', 'Chord length', 6, 40, 1, s, 'How long each chord lasts at least (up to half as long again).'],
+  ['strings', 'Strings volume', 0, .06, .002, x],
+  ['piano', 'Piano volume', 0, .14, .002, x],
+  ['chordLen', 'Chord length', 6, 40, 1, s, 'How long each chord lasts at least (up to ten seconds more).'],
   ['overlap', 'Next chord starts at', .3, 1, .02, pc, 'Of the way through the last one. Lower means more melding.'],
-  ['quiet', 'Quiet between melodies', 0, 90, 1, s, 'At least this long, and longer at night.'],
-  ['leadOct', 'Melody octave', -1, 1, 1, v => (+v > 0 ? '+' : '') + v],
-  ['room', 'Room', 0, .9, .02, pc, 'How much of the music rings in a big room behind it.'],
+  ['bright', 'Strings brightness', 400, 1600, 20, v => `${v} Hz`],
+  ['pedal', 'Low pedal note', 0, 1, .05, pc, 'How often a deep held note sits under the chords.'],
+  ['figure', 'Piano figure every', 2, 8, .1, v => `${(+v).toFixed(1)} s`],
+  ['pair', 'Between its two notes', .4, 2.5, .05, v => `${(+v).toFixed(2)} s`],
+  ['run', 'Figures before a rest', 2, 20, 1, v => v],
+  ['quiet', 'Piano rests for', 0, 90, 1, s, 'About this long, longer at night.'],
+  ['pianoOct', 'Piano octave', -1, 1, 1, v => (+v > 0 ? '+' : '') + v],
+  ['arc', 'Rise and fall over', 60, 900, 10, v => `${Math.round(v / 60 * 10) / 10} min`],
+  ['room', 'Room', 0, .9, .02, pc],
   ['echo', 'Valley echo', 0, .7, .02, pc],
 ];
 const inputs = {};
@@ -57,19 +60,12 @@ for (const [k, label, min, max, step, show, note] of SLIDERS) {
   inputs[k] = { inp, out, show };
   q('.sliders').append(row);
 }
-for (const [id, name, what] of DIRECTIONS) {
-  const li = document.createElement('li');
-  li.innerHTML = `<button data-dir="${id}">${id} · ${name}</button><em>${what}</em>`;
-  li.querySelector('button').onclick = () => { M.setTune(directionTune(id)); if (playing) M.skip('chord'); draw(); };
-  q('.dirs').append(li);
-}
 for (const [v, name] of HOURS) {
   const b = document.createElement('button'); b.textContent = name; b.dataset.v = v;
   b.onclick = () => { hour = v; draw(); }; q('[data-k=hour]').append(b);
 }
 function draw() {
   for (const [k, { inp, out, show }] of Object.entries(inputs)) { inp.value = M.tune[k]; out.textContent = show(M.tune[k]); }
-  for (const b of document.querySelectorAll('[data-dir]')) b.classList.toggle('on', b.dataset.dir === M.tune.dir);
   for (const b of document.querySelectorAll('[data-k=hour] button')) b.classList.toggle('on', b.dataset.v === hour);
   q('[data-storm]').classList.toggle('on', storm);
   q('[data-play]').textContent = playing ? 'Pause' : 'Play';
@@ -78,7 +74,7 @@ q('[data-storm]').onclick = () => { storm = !storm; draw(); };
 q('[data-play]').onclick = () => { A.unlock(); A.resume(); playing = !playing; M.setOn(playing); draw(); };
 for (const b of document.querySelectorAll('[data-skip]')) b.onclick = () => { if (playing) M.skip(b.dataset.skip); };
 
-// what the music is doing, newest first
+// what Valley is doing, newest first
 const log = q('.log'), t0 = performance.now();
 M.log = msg => {
   const li = document.createElement('li'), t = Math.round((performance.now() - t0) / 1000);
@@ -96,7 +92,7 @@ q('[data-save]').onclick = () => {
   try { localStorage.setItem('aloft.musicTune', JSON.stringify(M.tune)); q('.saved').textContent = 'Kept. The game plays it this way next time it opens.'; }
   catch { q('.saved').textContent = 'This browser would not save it (private mode?).'; }
 };
-q('[data-reset]').onclick = () => { M.setTune(directionTune(M.tune.dir)); draw(); };
+q('[data-reset]').onclick = () => { M.setTune({ ...VALLEY_TUNE }); draw(); };
 document.addEventListener('visibilitychange', () => { if (document.hidden) A.suspend(); else A.resume(); });
 draw();
 </script>
