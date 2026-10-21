@@ -48,9 +48,9 @@ export function registerSongbirds(R) {
   for (const sp of SPECIES) for (const w of ['fold', 'up', 'down']) R.shape(`sb${sp.id}${w}`, birdShape(sp, w));
 }
 // one instance (8 floats) of a songbird: perched, or flying with its wings mid-beat
-export function pushBird(S, sp, x, y, z, heading, flying = false, beat = 0) {
+export function pushBird(S, sp, x, y, z, heading, flying = false, beat = 0, scale = 1.7) {
   const w = !flying ? 'fold' : Math.sin(beat) > 0 ? 'up' : 'down';
-  (S.props[`sb${sp.id}${w}`] ||= []).push(x, y, z, 1.7, heading - Math.PI / 2, .5, 0, 0);
+  (S.props[`sb${sp.id}${w}`] ||= []).push(x, y, z, scale, heading - Math.PI / 2, .5, 0, 0);
 }
 
 // habitat, in the 2D game's biome names (a ridge counts as mountains; coast birds are the marsh's;
@@ -91,7 +91,8 @@ function treeSpot(t) {
   const sp = pickW(pool, ih(t.id, 4, 92)), ps = perchesOf(t), p = ps[ps.length - 1];
   // a little to one side of the perch, so a hawk landing there does not sit on it
   const a = t.yaw + 1.6;
-  return { id: t.id, ph: ih(t.id, 7, 95) * 99, sp, tree: t, bio, x: p.x + Math.cos(a) * .35, y: p.y + .02, z: p.z + Math.sin(a) * .35, heading: ih(t.id, 5, 93) * 6.283 };
+  // one tree bird in six is a young one, still learning its song (smaller; out of winter only)
+  return { id: t.id, ph: ih(t.id, 7, 95) * 99, sp, tree: t, bio, young: ih(t.id, 8, 107) < .16, x: p.x + Math.cos(a) * .35, y: p.y + .02, z: p.z + Math.sin(a) * .35, heading: ih(t.id, 5, 93) * 6.283 };
 }
 // the top of a rock (as solidsNear has it: rocks are drawn .3 m sunk)
 const TOP = { tor: 1, hoodoo: 1, boulder: .75 };
