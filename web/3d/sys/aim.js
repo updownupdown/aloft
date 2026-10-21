@@ -6,12 +6,12 @@
 // mice are marked red only while you dive at one. Perched or standing, the perches a hop away
 // get green rings: tap one to hop across. Aiming is forgiving: a dive leans toward its mouse, and a slow
 // approach lined up with a perch is drawn onto it.
-import { height, WATER, treesNear, perchesOf, solidsNear } from '../world.js';
+import { height, WATER, treesNear, perchesOf, solidsNear, ringsNear } from '../world.js';
 import { FLY, fwd, hopPerches, hopTo } from '../flight.js';
 import { clamp, smooth } from '../util.js';
 
 const T = 2.6, STEPS = 16, g = 9.8;
-const COL = { near: [.9, .9, .84], prey: [.8, .24, .16], perch: [.28, .64, .34], soft: [.36, .52, .3], fast: [.72, .52, .18], ink: [.2, .18, .16] };
+const COL = { ring: [.3, .58, 1], near: [.9, .9, .84], prey: [.8, .24, .16], perch: [.28, .64, .34], soft: [.36, .52, .3], fast: [.72, .52, .18], ink: [.2, .18, .16] };
 
 // a flat ring lying level (or, with y null, draped on the ground), drawn into the ribbon. With
 // tilt it leans up toward the camera so that from level with it, it still reads as a ring
@@ -62,7 +62,7 @@ export function aimSystem(G) {
     update(dt) {
       const A = G.aim;
       A.focus += ((b.state === 'fly' ? b.tuck : 0) - A.focus) * Math.min(1, dt * 5);
-      A.path = []; A.impact = null; A.target = null; A.perch = null; A.mode = 'ink';
+      A.path = []; A.impact = null; A.target = null; A.perch = null; A.ring = null; A.mode = 'ink';
       A.hops = b.state !== 'fly' && b.settle <= 0 && !(b.eating > 0) && !G.menu?.open ? hopPerches(b) : [];
       if (b.state !== 'fly' || b.s < 3) { A.perches = []; return; }
       // fly the path ahead with today's bank and pitch held
@@ -112,7 +112,21 @@ export function aimSystem(G) {
       }
       A.perches = ahead.slice(0, 3);
       if (bestP && !A.perches.includes(bestP)) A.perches[2] = bestP;
+      // a ring the path flies through (crosses its plane inside its radius): blue
+      const live = G.systems.rings?.live;
+      for (const r of ringsNear(b.p[0], b.p[2], 80)) {
+        if (live && !live(r)) continue;
+        const nx = -Math.sin(r.yaw), nz = Math.cos(r.yaw);
+        for (let i = 1; i < A.path.length && !A.ring; i++) {
+          const p0 = A.path[i - 1], p1 = A.path[i], d0 = (p0[0] - r.x) * nx + (p0[2] - r.z) * nz, d1 = (p1[0] - r.x) * nx + (p1[2] - r.z) * nz;
+          if (Math.sign(d0) === Math.sign(d1)) continue;
+          const t = d0 / (d0 - d1), q = [p0[0] + (p1[0] - p0[0]) * t, p0[1] + (p1[1] - p0[1]) * t, p0[2] + (p1[2] - p0[2]) * t];
+          if (Math.hypot(q[0] - r.x, q[1] - r.y, q[2] - r.z) < r.r * .9) A.ring = r;
+        }
+        if (A.ring) break;
+      }
       if (A.target && A.focus > .25) A.mode = 'prey';
+      else if (A.ring) A.mode = 'ring';
       else if (bestP) {
         A.mode = 'perch'; A.perch = bestP;
         // slow and lined up: drawn gently onto it
@@ -134,7 +148,7 @@ export function aimSystem(G) {
       if (A.path.length < 2) return;
       // the line: a thin ribbon facing the camera, fading in near the hawk and out at the far end
       const col = COL[A.mode], P = A.path, R = S.ribbon ||= [];
-      const strong = A.mode === 'prey' || A.mode === 'perch' ? 1 : .55 + f * .3;
+      const strong = A.mode === 'prey' || A.mode === 'perch' || A.mode === 'ring' ? 1 : .55 + f * .3;
       let prev = null;
       for (let i = 0; i < P.length; i++) {
         const p = P[i], q = P[Math.min(P.length - 1, i + 1)], o = P[Math.max(0, i - 1)];
@@ -150,7 +164,7 @@ export function aimSystem(G) {
       // where it ends: a ring on the ground, on the mouse, or nothing (the perch has its own)
       let c = A.impact;
       if (A.mode === 'prey') c = [A.target.x, A.target.y, A.target.z];
-      if (A.mode === 'perch' || !c) return;
+      if (A.mode === 'perch' || A.mode === 'ring' || !c) return;
       const prey = A.mode === 'prey', r = (prey ? 1.1 : 2.2) * (1 - f * .55) * (prey ? 1 + Math.sin(G.t * 6) * .08 : 1);
       flatRing(S, c[0], prey ? c[1] + .12 : null, c[2], r, prey ? .22 : .12 + f * .1, col, prey ? .9 : .5 + f * .3);
     },

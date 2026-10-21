@@ -44,6 +44,9 @@ void main() {
     // uSeek (flaring to land, or perched) opens the trees wider and from farther off, to find a perch
     float e = uSeek;
     float k = min(min(smoothstep(3.5 + 6. * e, 10. + 22. * e, dl) + step(.98, t), smoothstep(6. + 12. * e, 18. + 34. * e, dc)), mix(.12 - .07 * e, 1., smoothstep(3. + 6. * e, 15. + 25. * e, dh)));
+    // what is below the hawk never hides it from the camera above: keep that mostly solid, so the
+    // branch or cactus you sit on stays there under you
+    k = mix(k, max(k, .97), smoothstep(uFocus.y + .2, uFocus.y - .6, vPos.y));
     // only leaves go see-through: trunks and limbs stay solid so you can see what to land on
     if (k < .99 && vLeaf > .5) {   // leaves, marked by the vertex shader before the autumn turn
       // an ordered 4x4 dither reads as a soft screen rather than noise
