@@ -11,7 +11,7 @@ const CLOUDY = new Set(['cloud', 'storm', 'puff', 'lens', 'devil']);
 const COMMON_FS = `
 uniform vec3 uCam, uSun, uSunCol, uSkyAmb, uGndAmb, uFogCol, uFocus;
 uniform vec3 uZenith;
-uniform float uFogDen, uDither, uSeek, uCut, uFade, uWater, uLift, uTime, uWaterLook;
+uniform float uFogDen, uDither, uSeek, uCut, uFade, uWater, uLift, uTime;
 in vec3 vPos, vNrm, vCol, vColB; in float vLeaf, vFade, vGone;
 out vec4 frag;
 float h21(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
@@ -20,34 +20,17 @@ float vn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f);
 // The water is drawn here, on whatever lies under it (the ground, a fish, the hawk's feet), not
 // as a plane of its own: where the view ray crosses the surface (P) it takes the surface's look,
 // seen through as much as the water is shallow (depth). No second surface, so nothing can fight
-// at the shoreline, and no extra pass over the screen. uWaterLook picks the style:
-// 0 soft waves, 1 low-poly facets, 2 painted bands of depth with a foam line.
+// at the shoreline, and no extra pass over the screen. The look is painted: flat bands of colour
+// from the shallows out to the deep, a white line where it meets the shore, the sky faintly in it
+// at a low angle. No wave noise, so it costs only a few sums per water pixel.
 vec4 waterAt(vec3 P, float depth) {
-  vec3 v = normalize(uCam - P), nrm;
-  if (uWaterLook > .5 && uWaterLook < 1.5) {
-    // facets: a triangle grid of 2.4 m, each triangle tilting slowly on its own
-    vec2 g = P.xz / 2.4, cell = floor(g), f = fract(g); vec2 id = cell * 2. + step(1., f.x + f.y);
-    float a = h21(id) * 6.28 + uTime * (.5 + h21(id + 3.) * .6);
-    nrm = normalize(vec3(sin(a) * .1, 1., cos(a * 1.3) * .1));
-  } else {
-    vec2 q = P.xz * .35; float e = .2, t = uTime * .6, n0 = vn(q + t) + vn(q * 2.1 - t);
-    nrm = normalize(vec3(n0 - vn(q + vec2(e, 0) + t) - vn((q + vec2(e, 0)) * 2.1 - t), 1.6, n0 - vn(q + vec2(0, e) + t) - vn((q + vec2(0, e)) * 2.1 - t)));
-  }
-  vec3 lit = uSkyAmb + uSunCol * .6;
-  vec3 deep = mix(vec3(.26, .46, .46), vec3(.15, .3, .38), smoothstep(0., 4., depth)) * lit;
-  float fr = .25 + .75 * pow(1. - max(dot(v, nrm), 0.), 3.);
-  vec3 r = reflect(-v, nrm), sky = mix(uFogCol, uZenith, pow(max(r.y, 0.), .55));
-  float foam = 1. - smoothstep(.04, .2, depth);
-  if (uWaterLook > 1.5) {
-    // painted: flat bands from the shallows out to the deep, a white line where it meets the shore
-    float band = floor(smoothstep(0., 3.5, depth) * 4.) / 3.;
-    vec3 c = mix(vec3(.42, .66, .62), vec3(.16, .32, .42), band) * lit;
-    c = mix(c, sky, .12 + fr * .2);
-    return vec4(mix(c, vec3(.95) * lit, foam * .8), mix(.55, 1., smoothstep(0., .6, depth)));
-  }
-  vec3 c = mix(deep, sky, fr) + uSunCol * pow(max(dot(r, uSun), 0.), 120.) * .8;
-  c = mix(c, vec3(.92) * lit, foam * .35);
-  return vec4(c, max(mix(.4, .93, smoothstep(0., 2., depth)), fr));
+  vec3 v = normalize(uCam - P), lit = uSkyAmb + uSunCol * .6;
+  float fr = .25 + .75 * pow(1. - max(v.y, 0.), 3.);
+  vec3 sky = mix(uFogCol, uZenith, pow(max(v.y, 0.), .55));
+  float foam = 1. - smoothstep(.04, .2, depth), band = floor(smoothstep(0., 3.5, depth) * 4.) / 3.;
+  vec3 c = mix(vec3(.42, .66, .62), vec3(.16, .32, .42), band) * lit;
+  c = mix(c, sky, .12 + fr * .2);
+  return vec4(mix(c, vec3(.95) * lit, foam * .8), mix(.55, 1., smoothstep(0., .6, depth)));
 }
 vec3 shade(vec3 col, vec3 n) {
   float d = dot(n, uSun), wrap = max((d + .3) / 1.3, 0.);
@@ -287,7 +270,7 @@ export function createRenderer(gl) {
   const hawk = mesh(gl, new Float32Array(12), LAYOUT, { dynamic: true });
   const fx = mesh(gl, new Float32Array(7), [[0, 3], [1, 4]], { dynamic: true });
   const chunks = new Map();
-  const R = { chunks, waterLook: [0, 1, 2].includes(+new URLSearchParams(location.search).get('water')) ? +new URLSearchParams(location.search).get('water') : 0, view: 520, treeView: 360, nearTrees: 110, stats: { chunks: 0, trees: 0, tris: 0 }, treeAt: null };
+  const R = { chunks, view: 520, treeView: 360, nearTrees: 110, stats: { chunks: 0, trees: 0, tris: 0 }, treeAt: null };
   gl.disable(gl.CULL_FACE);
 
   // Ground chunks are built in a Worker (chunkwork.js) when it can run; jobs go out nearest first,
@@ -421,7 +404,7 @@ export function createRenderer(gl) {
   function setLight(P, S) {
     gl.uniform3fv(P.u.uCam, S.cam); gl.uniform3fv(P.u.uSun, S.sun); gl.uniform3fv(P.u.uSunCol, S.sunCol);
     gl.uniform3fv(P.u.uSkyAmb, S.skyAmb); gl.uniform3fv(P.u.uGndAmb, S.gndAmb); gl.uniform3fv(P.u.uFogCol, S.horizon);
-    gl.uniform1f(P.u.uFogDen, S.fogDen); gl.uniform3fv(P.u.uFocus, S.focus); gl.uniform1f(P.u.uDither, 0); gl.uniform1f(P.u.uCut, 0); gl.uniform1f(P.u.uFade, 0); gl.uniform1f(P.u.uWater, S.water ?? 0); gl.uniform1f(P.u.uLift, 0); gl.uniform3fv(P.u.uZenith, S.zenith); gl.uniform1f(P.u.uTime, S.time); gl.uniform1f(P.u.uWaterLook, R.waterLook); if (P.u.uSeek) gl.uniform1f(P.u.uSeek, S.seek || 0);
+    gl.uniform1f(P.u.uFogDen, S.fogDen); gl.uniform3fv(P.u.uFocus, S.focus); gl.uniform1f(P.u.uDither, 0); gl.uniform1f(P.u.uCut, 0); gl.uniform1f(P.u.uFade, 0); gl.uniform1f(P.u.uWater, S.water ?? 0); gl.uniform1f(P.u.uLift, 0); gl.uniform3fv(P.u.uZenith, S.zenith); gl.uniform1f(P.u.uTime, S.time); if (P.u.uSeek) gl.uniform1f(P.u.uSeek, S.seek || 0);
   }
 
   R.draw = (S, W, cw, ch) => {
