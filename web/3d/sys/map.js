@@ -124,6 +124,8 @@ export function mapView(G, J, { HOME_Z, MARSH_Z }) {
     const out = [{ x: 0, z: HOME_Z, name: 'Home, the forest edge', note: 'Where the journey starts and ends.', col: PIG.wood }];
     if (G.nest) out.push({ x: G.nest.x, z: G.nest.z, name: 'Your nest', note: G.nest.egg || G.nest.chick ? 'Someone is waiting for you here.' : 'A nest of twigs, in a tree.', col: PIG.bark });
     for (const l of Object.values(J.found)) out.push({ x: l.x, z: l.z, name: l.name, note: l.note, col: PIG.ring });
+    // food left on a branch (flight thread's G.caches), till it spoils
+    for (const c of G.caches || []) out.push({ x: c.x, z: c.z, name: `A ${c.kind || 'catch'} left on a branch`, note: `Left on day ${Math.floor(c.day)}. It keeps two days.`, cache: c });
     for (const p of J.pins || []) out.push({ x: p.x, z: p.z, name: PINS[p.kind]?.[0] || 'A pin', note: '', pin: p });
     return out;
   }
@@ -148,6 +150,7 @@ export function mapView(G, J, { HOME_Z, MARSH_Z }) {
     for (const p of places()) {
       const px = sx(p.x), py = sz(p.z); if (px < -20 || py < -20 || px > V.w + 20 || py > V.h + 20) continue;
       if (p.pin) { pin(x, px, py, PINS[p.pin.kind]?.[1] || '#8a6fc0'); continue; }
+      if (p.cache) { pin(x, px, py, '#7a4a2a'); continue; }
       mark(x, px, py, p.col); label(px + 9, py - 6, p.name);
     }
     // you: a little hawk, pointing the way you face
