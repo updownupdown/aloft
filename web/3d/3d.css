@@ -408,3 +408,18 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 /* while singing the song controls fill both sides and the bottom: notes go top middle, under the compass */
 #ui3.singing3 .toast3 { bottom: auto; top: calc(64px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); max-width: min(420px, 50vw); text-align: center; }
 #ui3.singing3 .hint3, #ui3.singing3 .tipmore3 { display: none; }
+
+/* Journal: the day's aim, and the lands collection as small faceted tiles */
+.aim3 { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 500; }
+.aim3 i { flex: none; width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--ink2); }
+.aim3.done i { background: var(--ink); border-color: var(--ink); box-shadow: inset 0 0 0 3px #fff; }
+.aim3.done { color: var(--ink2); text-decoration: line-through; text-decoration-color: rgba(29, 43, 54, .35); }
+.feathers3 { font-size: 13px; color: var(--ink2); }
+.lands3sum { font-size: 14px; }
+.lands3 { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 10px; margin: 8px 0 14px; }
+.lands3 figure { margin: 0; display: grid; gap: 4px; }
+.lands3 img { width: 100%; aspect-ratio: 3 / 2; border-radius: 10px; filter: grayscale(1) brightness(.55) contrast(.8); opacity: .45; box-shadow: 0 1px 4px rgba(20, 40, 50, .15); }
+.lands3 figure.seen img { filter: none; opacity: 1; }
+.lands3 figcaption { font-size: 12px; font-weight: 600; text-align: center; color: var(--ink2); }
+.lands3 figure.seen figcaption { color: var(--ink); }
+.lands3 figcaption b { color: #d39a2a; }

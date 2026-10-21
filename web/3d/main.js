@@ -40,9 +40,10 @@ import { windsSystem } from './sys/winds.js';
 import { floraSystem } from './sys/flora.js';
 import { sleepSystem } from './sys/sleep.js';
 import { speciesSystem } from './sys/species.js';
+import { aimsSystem } from './sys/aims.js';
 
 const SYSTEMS = [speciesSystem, clockSystem, weatherSystem, windsSystem, floraSystem, airSystem, ringsSystem, foodSystem, aimSystem, sleepSystem, songsSystem,
-  guideSystem, journeySystem, nestSystem, storySystem, photoSystem, howtoSystem, faunaSystem, landsSystem];
+  guideSystem, journeySystem, nestSystem, storySystem, photoSystem, howtoSystem, faunaSystem, landsSystem, aimsSystem];
 
 export function start(canvas, ui) {
   const gl = createGL(canvas);
