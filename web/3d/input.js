@@ -63,9 +63,11 @@ export function createInput(el) {
   addEventListener('devicemotion', e => {
     const r = e.rotationRate, dt = (e.interval || 16) / (e.interval > 1 ? 1000 : 1);
     if (!I.gyroOn || !r || r.alpha == null) return;
+    // a dead zone: the small shakes of holding the phone (or tapping it) never turn the view
+    const dz = v => Math.abs(v) < 6 ? 0 : v - Math.sign(v) * 6;
     const ang = screen.orientation?.angle ?? 0, sg = ang === 270 ? -1 : 1, d2r = Math.PI / 180;
-    if (ang === 90 || ang === 270) { I.gyro[0] += -sg * r.beta * d2r * dt; I.gyro[1] += sg * r.gamma * d2r * dt; }
-    else { I.gyro[0] += -r.gamma * d2r * dt; I.gyro[1] += r.beta * d2r * dt; }
+    if (ang === 90 || ang === 270) { I.gyro[0] += -sg * dz(r.beta) * d2r * dt; I.gyro[1] += sg * dz(r.gamma) * d2r * dt; }
+    else { I.gyro[0] += -dz(r.gamma) * d2r * dt; I.gyro[1] += dz(r.beta) * d2r * dt; }
   });
   I.gyro = [0, 0];
 

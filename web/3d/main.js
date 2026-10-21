@@ -221,7 +221,7 @@ export function start(canvas, ui) {
       autoQuality(fps, target);
     }
 
-    input.gyroOn = b.state === 'perch' && b.settle <= 0;
+    input.gyroOn = b.state === 'perch' && b.settle <= 0 && !(G.singing || G.camSing);   // not while singing: tapping notes shakes the phone
     const c = input.read();
     G.systems.clock.update(dt, c);
     step(b, c, dt, E);
