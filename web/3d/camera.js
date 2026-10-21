@@ -76,8 +76,15 @@ export function createCamera(G) {
     S.camUp = norm([r0[0] * Math.sin(b.roll) * .3, 1, r0[2] * Math.sin(b.roll) * .3]);
     S.camHigh = C.cam[1] - height(C.cam[0], C.cam[2]);
     S.focus = hp;
-    S.hawk = { p: hp, r: [-r[0], -r[1], -r[2]], u, f };
-    S.pose = pose(dt);
+    // stop motion (Settings, experimental): the bird's pose and turn are drawn twelve times a second,
+    // held between, while its place and the camera move on every frame
+    const held = G.settings?.stopMo && C.held && (C.heldT = (C.heldT || 0) + dt) < 1 / 12;
+    if (held) { S.hawk = { p: hp, r: C.held.r, u: C.held.u, f: C.held.f }; S.pose = C.held.pose; }
+    else {
+      S.hawk = { p: hp, r: [-r[0], -r[1], -r[2]], u, f };
+      S.pose = pose(dt);
+      C.held = { r: S.hawk.r, u, f, pose: S.pose }; C.heldT = 0;
+    }
   };
 
   // wing beats: up, a long down stroke, back to the glide; the hand lags behind the arm.

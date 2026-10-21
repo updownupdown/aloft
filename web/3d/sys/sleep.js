@@ -29,14 +29,14 @@ export function sleepSystem(G) {
   };
   btn.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); G.audio.unlock?.(); sleep(); });
   // for menu.js's one action button
-  (G.actions ||= {}).sleep = { run: sleep, when: () => !sleeping && period(G.tod) === 'night' && (b.state === 'perch' || b.state === 'ground') && !(b.settle > 0) };
+  (G.actions ||= {}).sleep = { run: sleep, when: () => !sleeping && period(G.tod) === 'night' && b.state === 'perch' && !(b.settle > 0) };   // only where it can roost
   G.on('gesture', () => { if (sleeping && slept > 1) wake(); });
   H.tip('sleep', () => b.state === 'perch' && period(G.tod) === 'night', 'Night has come. Tap Sleep to roost till first light; your wings rest while you sleep.');
   return {
     id: 'sleep',
     update(dt) {
       const night = period(G.tod) === 'night';
-      btn.classList.toggle('gone', sleeping || !night || (b.state !== 'perch' && b.state !== 'ground') || b.settle > 0 || !!G.menu?.open);
+      btn.classList.toggle('gone', sleeping || !night || b.state !== 'perch' || b.settle > 0 || !!G.menu?.open);
       if (!sleeping) return;
       if (b.state !== 'perch') return wake();
       slept += dt;
