@@ -108,6 +108,7 @@ export function aimSystem(G) {
       if (mice) {
         let best = null, bd = 1e9; const f = fwd(b);
         for (const m of mice.values()) {
+          if (m.hidden > 0) continue;   // gone down its burrow
           const dx = m.x - b.p[0], dy = m.y - b.p[1], dz = m.z - b.p[2], d = Math.hypot(dx, dy, dz);
           if (d > 90 || d < 1) continue;
           const nearImpact = A.impact ? Math.hypot(m.x - A.impact[0], m.z - A.impact[2]) : 1e9;
@@ -118,7 +119,7 @@ export function aimSystem(G) {
         // keep a mouse you are already diving at, unless it gets well away from the line
         // (with some give: once locked, a looser tuck keeps it, so a wobble doesn't drop it)
         const hold = A.lock ? .12 : .25;
-        if (A.lock && mice.has(A.lock.id) && A.focus > hold && (!best || bd > 6)) best = A.lock;
+        if (A.lock && mice.has(A.lock.id) && !(A.lock.hidden > 0) && A.focus > hold && (!best || bd > 6)) best = A.lock;
         A.target = best; A.lock = A.focus > hold ? best : null;
         // a pull toward the mouse while diving at it, firmer the tighter the tuck
         if (best && A.focus > .2) {
