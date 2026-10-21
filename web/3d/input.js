@@ -11,14 +11,15 @@
 // Keyboard for desktop: W/S or Up/Down pitch, A/D or Left/Right bank, Shift or Q tuck,
 // E flare, Space flap.
 // Perched or standing, a drag sideways turns the bird (read as dragX), perched a drag up or down
-// tips the view (dragY: down looks up, as if pulling the sky into view), and a tap may be taken by
+// tips the view (dragY: down looks up, as if pulling the sky into view), on the ground two fingers
+// pinch the view in or out (pinch), and a tap may be taken by
 // onTap (a perch ring to hop to) before it counts as a flap. Two fingers dragging together, or
 // turning the phone (gyro, while I.gyroOn), look round instead (read as look: [x, y]).
 
 const TAP_TIME = .3, TAP_MOVE = .06, PAIR = .2;
 
 export function createInput(el) {
-  const I = { L: pad(), R: pad(), keys: new Set(), taps: [], invert: false, onAny: null, onTap: null, radius: 70, drag: 0, dragY: 0, lk: [0, 0], gyroOn: false };
+  const I = { L: pad(), R: pad(), keys: new Set(), taps: [], invert: false, onAny: null, onTap: null, radius: 70, drag: 0, dragY: 0, pinch: 1, lk: [0, 0], gyroOn: false };
   function pad() { return { id: null, x0: 0, y0: 0, x: 0, y: 0, t0: 0, moved: 0, dx: 0, dy: 0 }; }
   const size = () => Math.min(innerWidth, innerHeight);
   el.addEventListener('touchstart', e => {
@@ -31,12 +32,13 @@ export function createInput(el) {
   }, { passive: false });
   el.addEventListener('touchmove', e => {
     e.preventDefault();
-    const two = I.L.id !== null && I.R.id !== null;
+    const two = I.L.id !== null && I.R.id !== null, gap = () => Math.hypot(I.L.x - I.R.x, I.L.y - I.R.y), g0 = two ? gap() : 0;
     for (const t of e.changedTouches) for (const P of [I.L, I.R]) if (P.id === t.identifier) {
       if (two) { I.lk[0] += (t.clientX - P.x) / 2; I.lk[1] += (t.clientY - P.y) / 2; } else { I.drag += t.clientX - P.x; I.dragY += t.clientY - P.y; }
       P.x = t.clientX; P.y = t.clientY;
       P.moved = Math.max(P.moved, Math.hypot(P.x - P.x0, P.y - P.y0));
     }
+    if (two && g0 > 20) I.pinch *= gap() / g0;   // how much the two fingers spread (>1) or closed
   }, { passive: false });
   const end = e => {
     I.onAny?.();   // touchend is what lets a page start sound
@@ -106,9 +108,9 @@ export function createInput(el) {
       if (now - a.t > PAIR + TAP_TIME) { I.taps.shift(); flap = { q: .55, side: a.side }; break; }
       break;
     }
-    const dragX = I.drag / size(), dragY = I.dragY / size(); I.drag = I.dragY = 0;
+    const dragX = I.drag / size(), dragY = I.dragY / size(), pinch = I.pinch; I.drag = I.dragY = 0; I.pinch = 1;
     const look = [-I.lk[0] / size() * 3 + I.gyro[0], I.lk[1] / size() * 2 + I.gyro[1]];   // drag grabs the view; the gyro turns it I.lk = [0, 0]; I.gyro = [0, 0];
-    return { pitch: clampU(pitch), roll: clampU(roll), yaw, keyRoll, dragX, dragY, look, spread: clampU(spread), flap, held: l || rr || K.size > 0, both: l && rr };
+    return { pitch: clampU(pitch), roll: clampU(roll), yaw, keyRoll, dragX, dragY, pinch, look, spread: clampU(spread), flap, held: l || rr || K.size > 0, both: l && rr };
   };
   return I;
 }

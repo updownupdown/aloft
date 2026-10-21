@@ -53,16 +53,33 @@ export function aimSystem(G) {
   G.aim = { focus: 0, target: null, impact: null, path: [], perches: [], perch: null, mode: 'ink' };
   G.hud.tip('aim', () => b.state === 'fly' && G.t > 20, 'The line shows where you are headed: red on a mouse you dive at, green on a perch. Tuck your wings to dive and it focuses.');
   // tap a hop ring (on screen, within a thumb's width) to hop to it
+  // standing, tap a spot on the ground near by (a worm, the water's edge) to hop over to it
+  const screen = (x, y, z) => {
+    const m = G.R.vp, X = m[0] * x + m[4] * y + m[8] * z + m[12], Y = m[1] * x + m[5] * y + m[9] * z + m[13], w = m[3] * x + m[7] * y + m[11] * z + m[15];
+    return w < .3 ? null : [(X / w * .5 + .5) * innerWidth, (.5 - Y / w * .5) * innerHeight];
+  };
   G.input.onTap = (x, y) => {
-    const hs = G.aim.hops; if (!hs?.length || !G.R.vp || G.menu?.open) return false;
-    const m = G.R.vp, W = innerWidth, H = innerHeight; let best = null, bd = Math.min(W, H) * .09;
+    if (!G.R.vp || G.menu?.open) return false;
+    const hs = G.aim.hops || []; let best = null, bd = Math.min(innerWidth, innerHeight) * .09;
     for (const h of hs) {
-      const p = h.p, X = m[0] * p.x + m[4] * (p.y + .12) + m[8] * p.z + m[12], Y = m[1] * p.x + m[5] * (p.y + .12) + m[9] * p.z + m[13], w = m[3] * p.x + m[7] * (p.y + .12) + m[11] * p.z + m[15];
-      if (w < .3) continue;
-      const d = Math.hypot((X / w * .5 + .5) * W - x, (.5 - Y / w * .5) * H - y);
+      const q = screen(h.p.x, h.p.y + .12, h.p.z); if (!q) continue;
+      const d = Math.hypot(q[0] - x, q[1] - y);
       if (d < bd) { bd = d; best = h; }
     }
-    return !!best && hopTo(b, best, G.E);
+    if (best) return hopTo(b, best, G.E);
+    if (b.state !== 'ground' || b.settle > 0) return false;
+    // the ground point under the tap: the nearest on screen of a ring of points round the bird
+    let to = null, td = Math.min(innerWidth, innerHeight) * .06;
+    for (let r = .8; r < 30; r *= 1.12) for (let i = 0; i < 48; i++) {
+      const a = i / 48 * 6.283, px = b.p[0] + Math.sin(a) * r, pz = b.p[2] - Math.cos(a) * r, py = Math.max(height(px, pz), WATER);
+      const q = screen(px, py, pz); if (!q) continue;
+      const d = Math.hypot(q[0] - x, q[1] - y);
+      if (d < td) { td = d; to = [px, py, pz]; }
+    }
+    if (!to) return false;
+    if (b.hopAim && Math.hypot(b.hopAim[0] - to[0], b.hopAim[2] - to[2]) < 1.5) to = b.hopAim;   // a worm by the tap
+    b.goTo = to; G.part([to[0], to[1] + .1, to[2]], [0, .5, 0], .5, [1, 1, .95], .1);
+    return true;
   };
   // perches in front of the hawk, nearest first (limbs and stone tops, never treetops)
   function perchesAhead() {
