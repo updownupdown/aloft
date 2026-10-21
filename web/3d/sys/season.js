@@ -70,7 +70,7 @@ export function seasonSystem(G) {
       if (!pts) { wait = 15; return; }   // nothing of the kind nearby yet: try again further on
       S.done[G.day] = 1;
       G.companion?.fly(pts, 13, () => {});
-      G.hud.toast(L.say, 8);
+      G.hud.toast(L.say, 8, 'tutorial');
     },
     save: () => S,
     load(o) { Object.assign(S, o); },

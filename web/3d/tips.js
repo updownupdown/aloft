@@ -38,7 +38,7 @@ export function tipBar(G, ui, H) {
   const T = {
     show(t) {
       tip = t; const [ic, short] = SHORT[t.id] || ['dot', t.text];
-      el.querySelector('.ic3').innerHTML = ICON[ic] ? icon(ICON[ic]) : '';
+      el.querySelector('.ic3').innerHTML = icon(ICON[ic] || 'how');
       el.querySelector('.tx3').textContent = short;
       el.style.transform = ''; el.classList.add('show');
     },

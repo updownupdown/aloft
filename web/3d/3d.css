@@ -19,7 +19,7 @@ button { font-family: inherit; color: inherit; }
 .hidden { display: none !important; }
 small { display: block; font-size: 12.5px; color: var(--ink2); }
 /* one pane of glass */
-.glass, #ui3 .takeoff3, .hint3, .tipmore3, .photo3 {
+.glass, #ui3 .takeoff3, .tipmore3, .photo3 {
   background: var(--glass); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); border: 1px solid var(--edge); box-shadow: var(--shadow); }
 
 /* top left: one pill holding the menu button, the meters (short bars stacked) and the height over
@@ -98,19 +98,21 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 /* the frame rate, under Call (songs.css puts Call left of the dial) */
 #ui3 .fps3 { position: absolute; right: 140px; top: 62px; width: 70px; white-space: nowrap; text-align: center; font: 600 15px var(--text); font-variant-numeric: tabular-nums; color: #fff; text-shadow: 0 1px 3px rgba(0, 0, 0, .55); }
 
-/* Take off, bottom right just left of the song notes (the button is main.js's; Sleep sits to its left) */
-#ui3 .takeoff3 { pointer-events: auto; position: absolute; right: calc(84px + env(safe-area-inset-right)); bottom: calc(22px + env(safe-area-inset-bottom));
+/* Take off and Sleep, top centre while perched or on the ground (the compass gives way to them);
+   the buttons are main.js's and sleep.js's, Sleep to the left of Take off when both show */
+#ui3 .takeoff3 { pointer-events: auto; position: absolute; left: 50% !important; right: auto !important; top: calc(12px + env(safe-area-inset-top)); bottom: auto !important; translate: -50% 0;
   display: flex; align-items: center; gap: 8px; min-height: 46px; padding: 0 22px 0 18px; border-radius: 23px; cursor: pointer; touch-action: manipulation;
   font-family: var(--text); font-style: normal; font-weight: 700; font-size: 15px; letter-spacing: .02em; color: var(--ink); background: var(--glass2); transition: opacity .4s; }
 #ui3 .takeoff3::before { content: ''; width: 14px; height: 14px; background: var(--ink);
   clip-path: polygon(50% 0, 100% 50%, 64% 50%, 64% 100%, 36% 100%, 36% 50%, 0 50%); }
 #ui3 .takeoff3.gone { opacity: 0; pointer-events: none; }
-/* left-handed singing puts the notes on the left: Take off follows them */
-#ui3:has(.sing3.lefty) .takeoff3 { right: auto; left: calc(84px + env(safe-area-inset-left)); }
-/* the one action button (action.js) in Take off's place: it stands in for Take off, Sleep and the
+#ui3 .takeoff3.sleep3 { left: auto !important; right: 50% !important; translate: -5px 0; }
+#ui3:has(.sleep3:not(.gone)) .takeoff3:not(.sleep3) { translate: 5px 0; }
+#ui3.act3on:has(.act3:not(.gone)) .compass3, #ui3:not(.act3on):has(.takeoff3:not(.gone)) .compass3 { display: none; }
+/* the one action button (action.js), top centre in Take off's place: it stands in for Take off, Sleep and the
    songs' reopen button, with a dot for each action that fits now when there are more than one */
 #ui3.act3on .takeoff3 { display: none !important; }
-#ui3 .act3 { pointer-events: auto; position: absolute; right: calc(84px + env(safe-area-inset-right)); bottom: calc(22px + env(safe-area-inset-bottom));
+#ui3 .act3 { pointer-events: auto; position: absolute; left: 50%; top: calc(12px + env(safe-area-inset-top)); translate: -50% 0;
   display: flex; align-items: center; gap: 8px; min-height: 50px; padding: 0 20px 0 16px; border: 0; border-radius: 25px; cursor: pointer; touch-action: none;
   font: 700 15px var(--text); letter-spacing: .02em; color: var(--ink); background: var(--glass2); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur);
   box-shadow: var(--shadow); transition: opacity .4s, transform .2s; }
@@ -122,7 +124,6 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 #ui3 .act3 .dots b.on { background: var(--ink); }
 #ui3 .act3.turn { transform: scale(.94); }
 #ui3 .act3.gone { opacity: 0; pointer-events: none; }
-#ui3:has(.sing3.lefty) .act3 { right: auto; left: calc(84px + env(safe-area-inset-left)); }
 /* a phone held upright: the compass and the toasts drop below the top row */
 @media (max-width: 620px) {
   .hud3 { gap: 10px; padding-right: 12px; }
@@ -138,21 +139,25 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .pad3 i { position: absolute; left: 29px; top: 29px; width: 30px; height: 30px; border-radius: 50%; background: rgba(255, 255, 255, .7); box-shadow: 0 2px 8px rgba(20, 40, 50, .18); }
 .pad3.on { opacity: .9; transition: none; }
 
-/* a toast: a few lines of white text, bottom left above the thumb pad, no pane behind it */
-.toast3 { position: absolute; left: calc(22px + env(safe-area-inset-left)); bottom: calc(150px + env(safe-area-inset-bottom)); margin: 0; max-width: min(380px, 44vw);
-  text-align: left; font-size: 15px; font-weight: 500; line-height: 1.4; color: #fff; filter: var(--halo); opacity: 0; transition: opacity .6s; }
+/* the message line, bottom centre (hud.js H.say / H.toast, and the tips): white words on a soft,
+   blurred dark backing, with an icon coloured by kind (song, event, tutorial, hint, warn). A tip
+   and a message can show together: the message sits just above the tip */
+.toast3, .hint3 { position: absolute; left: 50%; bottom: calc(14px + env(safe-area-inset-bottom)); transform: translateX(-50%); margin: 0;
+  display: flex; align-items: center; gap: 10px; width: max-content; max-width: min(560px, 62vw); padding: 7px 16px 7px 10px; border-radius: 20px;
+  color: #fff; font-size: 14.5px; font-weight: 600; line-height: 1.35; text-align: left; text-shadow: 0 1px 2px rgba(0, 0, 0, .35);
+  background: rgba(16, 24, 32, .38); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); box-shadow: none;
+  opacity: 0; pointer-events: none; transition: opacity .5s, transform .35s; }
 .toast3.show { opacity: 1; }
-/* a tip: an icon, a few words and an i, on a pill that swipes away */
-.hint3 { position: absolute; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom)); transform: translateX(-50%); display: flex; align-items: center; gap: 12px;
-  max-width: min(520px, 76vw); padding: 6px 6px 6px 8px; border-radius: 26px; background: var(--glass2);
-  opacity: 0; pointer-events: none; transition: opacity .5s, transform .35s; touch-action: none; user-select: none; }
+#ui3:has(.hint3.show) .toast3 { bottom: calc(66px + env(safe-area-inset-bottom)); }
+.toast3 .ic3, .hint3 .ic3 { flex: none; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; background: none; }
+.toast3 .ic3 svg, .hint3 .ic3 svg { width: 22px; height: 22px; stroke-width: 2.1; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .3)); }
+.hint3 .ic3 { color: #9fe39a; }
+/* a tip swipes away, and its i pauses to say more */
+.hint3 { padding-right: 6px; touch-action: none; user-select: none; }
 .hint3.show { opacity: 1; pointer-events: auto; }
 .hint3.drag { transition: none; }
-.hint3 .ic3 { flex: none; width: 34px; height: 34px; border-radius: 50%; background: var(--ink); color: #fff; display: flex; align-items: center; justify-content: center; }
-.hint3 .ic3 svg { width: 20px; height: 20px; stroke-width: 2; }
-.hint3 .ic3:empty::after { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #fff; }
-.hint3 .tx3 { font-size: 14px; font-weight: 600; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.hint3 .more3 { flex: none; width: 34px; height: 34px; border-radius: 50%; border: 0; background: rgba(29, 43, 54, .1); cursor: pointer; padding: 0;
+.hint3 .tx3 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hint3 .more3 { flex: none; width: 30px; height: 30px; border-radius: 50%; border: 0; background: rgba(255, 255, 255, .2); color: #fff; cursor: pointer; padding: 0;
   font-weight: 700; font-size: 15px; line-height: 1; }
 .tipmore3 { pointer-events: auto; position: absolute; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom)); transform: translateX(-50%); width: min(440px, 86vw);
   padding: 16px 18px 12px; border-radius: 22px; background: rgba(255, 255, 255, .7); }
@@ -460,7 +465,7 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .photo3 button { display: inline-flex; align-items: center; gap: 7px; }
 .photo3 button svg { width: 18px; height: 18px; }
 .photo3 button.main3 { color: #fff; background: var(--ink); }
-@media (max-width: 620px) { .toast3 { max-width: 72vw; } }
+@media (max-width: 620px) { .toast3, .hint3 { max-width: 86vw; } }
 /* Journal > Songs: a card for each songbird with its picture */
 .songs3 .pic { width: 72px; height: 54px; background: linear-gradient(#d3e3ec, #eef1ea); }
 .songs3 img { object-fit: contain; }
@@ -470,7 +475,6 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 /* singing: the sound kinds take the left edge and the score the bottom middle (songs.css), so
    notes move up clear of them and tips wait */
 /* while singing the song controls fill both sides and the bottom: notes go top middle, under the compass */
-#ui3.singing3 .toast3 { bottom: auto; top: calc(64px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); max-width: min(420px, 50vw); text-align: center; }
 #ui3.singing3 .hint3, #ui3.singing3 .tipmore3 { display: none; }
 
 /* Journal: the day's aim, and the lands collection as small faceted tiles */

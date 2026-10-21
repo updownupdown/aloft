@@ -109,4 +109,18 @@ export const ICONS = {
   // Keepsake: Four-point star
   keepsake: '<path d="M12 3c.8 5 4 8.2 9 9-5 .8-8.2 4-9 9-.8-5-4-8.2-9-9 5-.8 8.2-4 9-9z"/>',
 };
+// the playable birds as filled silhouettes, for Call (the bird you fly): seen from below in flight,
+// the owl perched and facing you
+const F = d => `<path fill="currentColor" stroke="none" d="${d}"/>`;
+Object.assign(ICONS, {
+  // red-tail: broad wings, a short fanned tail
+  bird_hawk: F('M12 6.2c.9 0 1.5.7 1.6 1.6l.1 1.3c2.8-.9 5.8-.8 8.3.5-.5.9-1.4 1.5-2.4 1.8l-1.1.8-1.2.2-1 .6-3.7.6.4 1.4c1.5.3 2.5 1.2 2.7 2.6-1.1.7-2.4 1.1-3.7 1.1s-2.6-.4-3.7-1.1c.2-1.4 1.2-2.3 2.7-2.6l.4-1.4-3.7-.6-1-.6-1.2-.2-1.1-.8c-1-.3-1.9-.9-2.4-1.8 2.5-1.3 5.5-1.4 8.3-.5l.1-1.3c.1-.9.7-1.6 1.6-1.6z'),
+  // osprey: long wings crooked at the wrist, an M from below
+  bird_osprey: F('M12 7c.8 0 1.3.6 1.4 1.4l.1 1.3 3.2-1.9c1.8-1 3.8-1.2 5.8-.5-1.5.5-2.6 1.3-3.4 2.4l-.9 1.3-4.6 1.3-.2 1.4 1.1 3.8-2.5-.9-2.5.9 1.1-3.8-.2-1.4-4.6-1.3-.9-1.3C5.1 9.7 4 8.9 2.5 8.4c2-.7 4-.5 5.8.5l3.2 1.9.1-1.3C10.7 7.6 11.2 7 12 7z'),
+  // barn owl: perched, a heart-shaped face, two dark eyes
+  bird_owl: F('M12 3.5c3.4 0 5.8 2.3 5.8 5.6v4.6c0 3.9-2.6 6.8-5.8 6.8s-5.8-2.9-5.8-6.8V9.1c0-3.3 2.4-5.6 5.8-5.6z') + '<circle fill="#1d2b36" stroke="none" cx="9.9" cy="9.6" r="1.1"/><circle fill="#1d2b36" stroke="none" cx="14.1" cy="9.6" r="1.1"/><path stroke="#1d2b36" stroke-width="1.1" d="M8 7.4c1.6-.6 2.9-.2 4 1 1.1-1.2 2.4-1.6 4-1M12 11v1.4"/>',
+  // raven: fingered wings, a wedge-shaped tail
+  bird_raven: F('M12 6.5c.8 0 1.3.6 1.4 1.4l.1 1.2c3-.8 6-.5 8.5.9l-1 .4.6.6-1.2.2.3.7-1.6-.1-1.4.6-3.6.4-.3 1.5 2 3.5L12 19l-3.8-1.2 2-3.5-.3-1.5-3.6-.4-1.4-.6-1.6.1.3-.7-1.2-.2.6-.6-1-.4c2.5-1.4 5.5-1.7 8.5-.9l.1-1.2c.1-.8.6-1.4 1.4-1.4z'),
+});
+export const birdIcon = (id, cls = '') => icon(ICONS['bird_' + id] ? 'bird_' + id : 'bird_hawk', cls);
 export const icon = (key, cls = '') => `<svg${cls ? ` class="${cls}"` : ''} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[key] || ''}</svg>`;

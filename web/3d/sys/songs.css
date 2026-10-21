@@ -114,11 +114,6 @@
   100% { opacity: 0; transform: translate(var(--dx), calc(var(--up) * -1)) scale(var(--s)); } }
 .menu-open .rise3, .bare3 .rise3 { display: none; }
 
-/* Take off and Sleep sit bottom middle, between the song card and the note pad (the one action
-   button in their place too); Sleep to the left of Take off when both show */
-#ui3 .act3, #ui3 .takeoff3 { left: 50% !important; right: auto !important; translate: -50% 0; }
-#ui3 .takeoff3.sleep3 { left: auto !important; right: 50% !important; translate: -5px 0; }
-#ui3:has(.sleep3:not(.gone)) .takeoff3:not(.sleep3) { translate: 5px 0; }
 
 /* Call: its icon (icons.js), left of the day dial (128px wide, 12px in), white with the HUD's dark halo */
 .call3 { pointer-events: auto; position: absolute; right: calc(12px + 128px + 10px + env(safe-area-inset-right)); top: calc(12px + env(safe-area-inset-top));
