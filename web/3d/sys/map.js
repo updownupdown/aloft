@@ -8,16 +8,19 @@ import * as W from '../world.js';
 import { PIG, C, shade, poly, facets } from '../facet.js';
 import { clamp } from '../util.js';
 import { esc } from '../journal.js';
-import { hourName } from '../dial.js';
-import { SEASON_DAYS } from '../sky.js';
+import { createDial } from '../dial.js';
+import { SEASON_DAYS, SEASONS } from '../sky.js';
 
 const CELL = 100;                        // fog cells, metres
 const SEE = [160, 2.2, 520];             // clearing radius: base, per metre of height, most
 const ZOOM = [1.2, 24], ZOOM0 = 5;       // metres per CSS pixel: closest, farthest, at first
 const FOG = 'rgba(0, 0, 0, .6)';
 const key = (i, j) => i + ',' + j;
-// your own pins: a long press drops one, of a kind (each with its colour); they show on the compass
-export const PINS = { thermal: ['A thermal', '#e8a33a'], water: ['Water', '#3f8fd0'], perch: ['A perch', '#5f9a4a'], food: ['Food', '#c0533f'], mark: ['A place', '#8a6fc0'] };
+// your own pins: a long press drops one in the colour you pick (they mean what you like); they
+// show on the compass. Pins dropped before had a kind, and keep that kind's colour
+export const PINS = ['#e8a33a', '#c0533f', '#d977a8', '#8a6fc0', '#3f8fd0', '#5f9a4a', '#f4f1e8'];
+const OLD = { thermal: '#e8a33a', water: '#3f8fd0', perch: '#5f9a4a', food: '#c0533f', mark: '#8a6fc0' };
+export const pinCol = p => p.col || OLD[p.kind] || PINS[3];
 
 export function mapView(G, J, { HOME_Z, MARSH_Z }) {
   const b = G.b, seen = new Set();
@@ -43,10 +46,13 @@ export function mapView(G, J, { HOME_Z, MARSH_Z }) {
   // ---- the tab ----------------------------------------------------------------------------
   const pane = G.menu.tab('map', 'Map');
   pane.classList.add('mappane3', 'flush3');
-  pane.innerHTML = `<div class="mapbox3"><canvas></canvas><div class="mapsum3"></div>
+  pane.innerHTML = `<div class="mapbox3"><canvas></canvas><div class="mapsum3"></div><div class="mapday3"><div class="mapseason3"></div></div>
       <div class="mapbtn3"><button data-z="in" aria-label="Zoom in"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button><button data-z="out" aria-label="Zoom out"><svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button><button data-z="me" aria-label="Centre on the hawk"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="6.5"/><circle cx="12" cy="12" r="2" class="dot"/><path d="M12 2v3.5M12 18.5V22M2 12h3.5M18.5 12H22"/></svg></button></div>
-      <div class="mapnote3 hidden"></div></div>`;
+      <p class="maptip3">Hold the map to drop a pin.</p><div class="mapnote3 hidden"></div></div>`;
   const sum = pane.querySelector('.mapsum3'), box = pane.querySelector('.mapbox3'), cv = box.querySelector('canvas'), note = box.querySelector('.mapnote3');
+  // top right, the same day dial as in flight, and the season in more detail beneath it
+  const day = box.querySelector('.mapday3'), seasonEl = day.querySelector('.mapseason3'), dial = createDial(day);
+  day.prepend(dial.el || day.querySelector('.dial'));
   const V = { x: 0, z: 0, sc: ZOOM0, w: 0, h: 0, dpr: 1 };
   let cache = null, open = false, raf = 0;
   const centre = () => { V.x = b.p[0]; V.z = b.p[2]; };
@@ -61,17 +67,18 @@ export function mapView(G, J, { HOME_Z, MARSH_Z }) {
     if (!open) return;
     centre(); note.classList.add('hidden');
     const pct = Math.round(explored() * 100);
-    // the overlay, a narrow card: the time of day by a little sun or moon, the day and the season
-    // with a pip for each of its days, where the hawk is, and how much of the way south is known
-    const h = hourName(G.tod), night = h === 'night', where = G.placeNote().replace(/^Day \d+, \w+, /, '');
-    const cap = t => t[0].toUpperCase() + t.slice(1), into = ((G.day - 1) % SEASON_DAYS) + 1;
-    const pips = Array.from({ length: SEASON_DAYS }, (_, i) => `<i class="${i < into ? 'on' : ''}"></i>`).join('');
-    sum.className = `mapsum3 ${G.season.name}${night ? ' night' : ''}`;
-    sum.innerHTML = `<div class="when3"><span class="sky3 ${h}"></span><b>${cap(h)}</b></div>
-      <div class="day3"><b>Day ${G.day}</b><span>${cap(G.season.name)}, ${into} of ${SEASON_DAYS}</span><span class="pips3s">${pips}</span></div>
-      <p>${esc(cap(where))}</p>
+    dial.update(G.tod, G.day, false, null, G.forecast || null);
+    const cap = t => t[0].toUpperCase() + t.slice(1), into = ((G.day - 1) % SEASON_DAYS) + 1, left = SEASON_DAYS - into;
+    const next = SEASONS[(SEASONS.indexOf(G.season.name) + 1) % SEASONS.length];
+    const pips = Array.from({ length: SEASON_DAYS }, (_, i) => `<i class="${i < into - 1 ? 'on' : i === into - 1 ? 'on now' : ''}"></i>`).join('');
+    seasonEl.className = `mapseason3 ${G.season.name}`;
+    seasonEl.innerHTML = `<b>${cap(G.season.name)}, day ${into} of ${SEASON_DAYS}</b><span class="pips3s">${pips}</span>
+      <small>${left ? `${left} day${left > 1 ? 's' : ''} to ${next}` : `${cap(next)} comes tomorrow`}</small>`;
+    // top left: where the hawk is, and how far the journey has come
+    const where = G.placeNote().replace(/^Day \d+, \w+, /, ''), L = G.collection?.(), found = Object.keys(J.found || {}).length;
+    sum.innerHTML = `<p class="here3">${esc(cap(where))}</p>
       <div class="far3"><span><i style="width:${Math.max(2, pct)}%"></i></span><small>${pct}% of the way south known</small></div>
-      <small class="tip3">Hold the map to drop a pin.</small>`;
+      <ul class="tally3"><li><b>${J.year || 1}</b>${J.year > 1 ? 'years' : 'year'}</li><li><b>${found}</b>${found === 1 ? 'landmark' : 'landmarks'}</li>${L ? `<li><b>${L.lands}<small>/${L.of}</small></b>lands</li><li><b>${L.feathers}</b>${L.feathers === 1 ? 'feather' : 'feathers'}</li>` : ''}${J.pins?.length ? `<li><b>${J.pins.length}</b>${J.pins.length === 1 ? 'pin' : 'pins'}</li>` : ''}</ul>`;
     requestAnimationFrame(() => { fit(); cache = null; draw(); });
   });
   addEventListener('resize', () => { if (open) { fit(); cache = null; soon(); } });
@@ -126,7 +133,7 @@ export function mapView(G, J, { HOME_Z, MARSH_Z }) {
     for (const l of Object.values(J.found)) out.push({ x: l.x, z: l.z, name: l.name, note: l.note, col: PIG.ring });
     // food left on a branch (flight thread's G.caches), till it spoils
     for (const c of G.caches || []) out.push({ x: c.x, z: c.z, name: `A ${c.kind || 'catch'} left on a branch`, note: `Left on day ${Math.floor(c.day)}. It keeps two days.`, cache: c });
-    for (const p of J.pins || []) out.push({ x: p.x, z: p.z, name: PINS[p.kind]?.[0] || 'A pin', note: '', pin: p });
+    for (const p of J.pins || []) out.push({ x: p.x, z: p.z, name: 'Your pin', note: '', pin: p });
     return out;
   }
 
@@ -149,7 +156,7 @@ export function mapView(G, J, { HOME_Z, MARSH_Z }) {
     else if (mz >= V.h) { const km = ((MARSH_Z - V.z) / 1000).toFixed(1), t = `The wintering marsh, ${km} km south`; label(V.w / 2 - x.measureText(t).width / 2, V.h - 22, t); poly(x, [[V.w / 2 - 6, V.h - 13], [V.w / 2 + 6, V.h - 13], [V.w / 2, V.h - 4]], C(PIG.ink, .7)); }
     for (const p of places()) {
       const px = sx(p.x), py = sz(p.z); if (px < -20 || py < -20 || px > V.w + 20 || py > V.h + 20) continue;
-      if (p.pin) { pin(x, px, py, PINS[p.pin.kind]?.[1] || '#8a6fc0'); continue; }
+      if (p.pin) { pin(x, px, py, pinCol(p.pin)); continue; }
       if (p.cache) { pin(x, px, py, '#7a4a2a'); continue; }
       mark(x, px, py, p.col); label(px + 9, py - 6, p.name);
     }
@@ -187,10 +194,10 @@ export function mapView(G, J, { HOME_Z, MARSH_Z }) {
   const offerPin = p => {
     const at = [wx(p[0]), wz(p[1])]; lastTap = null; moved = 99;
     note.classList.remove('hidden');
-    note.innerHTML = `<b>Drop a pin here</b><span class="pins3">${Object.entries(PINS).map(([k, [name, col]]) => `<button data-pin="${k}" style="--pc:${col}">${name}</button>`).join('')}</span>`;
+    note.innerHTML = `<b>Drop a pin here</b><small>Pick its colour.</small><span class="pins3">${PINS.map(c => `<button data-pin="${c}" style="--pc:${c}" aria-label="Pin colour"></button>`).join('')}</span>`;
     note.onclick = e => {
       const k = e.target.closest('[data-pin]')?.dataset.pin; if (!k) return;
-      (J.pins ||= []).push({ id: Date.now().toString(36), kind: k, x: Math.round(at[0]), z: Math.round(at[1]) });
+      (J.pins ||= []).push({ id: Date.now().toString(36), col: k, x: Math.round(at[0]), z: Math.round(at[1]) });
       if (J.pins.length > 40) J.pins.shift();
       note.classList.add('hidden'); note.onclick = null; soon(); G.hud.did('pin'); G.emit('pin');
     };

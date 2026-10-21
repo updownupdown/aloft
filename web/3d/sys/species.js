@@ -77,7 +77,7 @@ export function speciesSystem(G) {
     use(CHOICES[(CHOICES.indexOf(BIRD) + +a.dataset.step + CHOICES.length) % CHOICES.length]); G.store.set('bird', BIRD); show();
   });
   let shown = false;
-  G.on('menuTab', id => { shown = id === 'play'; });
+  G.on('menuTab', id => { shown = id === 'game'; });
   G.on('resume', () => { shown = false; });
   queueMicrotask(() => startLab(card.querySelector('canvas'), [pic], () => 'hover', { active: () => shown && G.menu.open }));
   return {

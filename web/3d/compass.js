@@ -2,7 +2,7 @@
 // N, E, S and W, ticks between, and marks for the places that matter (the nest, the way south or
 // home, landmarks found nearby). Moved only when the heading or the marks change.
 import { HOME_Z, MARSH_Z } from './sys/journey.js';
-import { PINS } from './sys/map.js';
+import { pinCol } from './sys/map.js';
 
 const SPAN = Math.PI * .55;          // from the middle to either edge
 const POINTS = [['N', 0], ['NE', 45], ['E', 90], ['SE', 135], ['S', 180], ['SW', 225], ['W', 270], ['NW', 315]];
@@ -37,7 +37,7 @@ export function createCompass(G, ui) {
     if (G.ghost) out.push(['ghost', G.ghost.x, G.ghost.z, 'The ghost flight']);
     // your own pins, the two nearest within 4 km, each in its colour
     const pins = (J?.pins || []).map(p => [p, Math.hypot(p.x - x, p.z - z)]).filter(([, d]) => d > 40 && d < 4000).sort((a, c) => a[1] - c[1]).slice(0, 2);
-    for (const [p] of pins) out.push(['pin', p.x, p.z, PINS[p.kind]?.[0] || 'Your pin', PINS[p.kind]?.[1]]);
+    for (const [p] of pins) out.push(['pin', p.x, p.z, 'Your pin', pinCol(p)]);
     return out;
   }
   function setMarks(list) {
