@@ -6,7 +6,7 @@ import { height, thermalsNear, thermalCentre, landmarksNear, blend, ih } from '.
 import { mix3, smooth } from '../util.js';
 import { builder, reseed } from '../shapes.js';
 
-const DEVIL_LANDS = { badlands: 1, savanna: .8, desert: .9, canyon: .5, saltflat: .7 };
+const DEVIL_LANDS = { badlands: 1, savanna: .8, desert: .9, canyon: .5, saltflat: .7, steppe: .6 };
 const FOG_LANDS = { fjord: 1, coast: .7 };
 
 // a dust devil: a funnel of grit, sparse twisted facets widening upward (unit height)

@@ -4,7 +4,7 @@
 import { height, treesNear, landmarksNear, blend, ih } from '../world.js';
 import { mix3 } from '../util.js';
 
-const FIREFLY_LANDS = { meadow: 1, lakeland: 1, forest: .7, birch: .6, savanna: .4, swamp: .8, marsh: .8 };
+const FIREFLY_LANDS = { meadow: 1, lakeland: 1, forest: .7, birch: .6, savanna: .4, swamp: .8, marsh: .8, rainforest: 1, maquis: .5 };
 const SURF_LANDS = { mangrove: 1, swamp: 1, coast: .7, fjord: .4 };
 
 export function glowSystem(G) {

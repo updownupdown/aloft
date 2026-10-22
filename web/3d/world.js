@@ -1,13 +1,17 @@
 // The 3D world is a pure function of position and a seeded hash: terrain height, where trees
 // stand, where thermals rise and rings hang. Only small caches are kept. The lands themselves
 // (which biome is where, and each one's ground and colours) are in biomes.js; the seed and the
-// noise in noise.js. Coordinates: x east, z south, y up, metres-ish. Water level is y = 0.
+// noise in noise.js; the Earth underneath (coasts, continents, latitude) in earth.js. The world
+// is 96 km round and wraps east to west (main.js moves the bird across the seam). Coordinates:
+// x east, z south, y up, metres-ish. Water level is y = 0.
 import { store } from './util.js';
 import { ih, fbm, smooth, clamp, WORLD, newWorld } from './noise.js';
-import { BIOMES, PAL, JOURNEY, blend, weightOf, share, rollBiome, cellsNear } from './biomes.js';
+import { BIOMES, PAL, blend, weightOf, share, rollBiome, cellsNear } from './biomes.js';
+import { coastDist, latLon, latAt, oceanKey, regionAt, wrapX, toXZ, EARTH, NORTH, SOUTH, seasonAt, snowLine } from './earth.js';
 import { railCut, railShade, railNear, railSolids, railLandmarks } from './rail.js';
 import { settlementsNear, buildingsNear, bridgesNear, roadShade, buildingSolids, bridgeSolids, polesNear, poleSolids, clearOf, saplingIn } from './settle.js';
-export { ih, fbm, WORLD, newWorld, PAL, JOURNEY, blend };
+export { ih, fbm, WORLD, newWorld, PAL, blend };
+export { coastDist, latLon, latAt, regionAt, wrapX, toXZ, EARTH, NORTH, SOUTH } from './earth.js';
 
 export const CHUNK = 96;
 // Ground detail (Settings > Ground detail): cells per chunk side. Low is 16 (6 m facets),
@@ -34,7 +38,8 @@ export function setWater(y) { WATER = y; }
 
 // what systems change at run time: the snowline (0 summer .. 1 deep winter, chunks must be
 // rebuilt when it moves), the thermals' strength, and extra lift (storm cells, waves, kettles)
-export const env = { snow: 0, season: 'summer', seasonDay: 0, thermal: 1, lifts: [], thermals: [], shade: null };   // shade(x, z): cloud shadow 0..1 (sys/air.js)
+// yearFrac: the calendar (earth.js yearFrac), which with the latitude sets each place's season and snow
+export const env = { snow: 0, snowLine: 185, season: 'summer', seasonDay: 0, yearFrac: .47, thermal: 1, lifts: [], thermals: [], shade: null };   // shade(x, z): cloud shadow 0..1 (sys/air.js)
 
 // how much of each kind of country a point is, 0..1 each (older callers read these)
 export function bands(x, z, bl = blend(x, z)) {
@@ -50,7 +55,8 @@ export function biomeAt(x, z) {
 export function placeName(x, z) {
   const l = landmarksNear(x, z, 700).sort((a, b) => Math.hypot(a.x - x, a.z - z) - Math.hypot(b.x - x, b.z - z))[0];
   if (l && Math.hypot(l.x - x, l.z - z) < 300 + (l.kind === 'sight' ? l.r : 0)) return l.name;
-  return blend(x, z)[0].b.label;
+  const r = regionAt(x, z);
+  return r ? `${blend(x, z)[0].b.label}, ${r.name}` : blend(x, z)[0].b.label;
 }
 
 // ---- terrain -----------------------------------------------------------------------------
@@ -62,11 +68,67 @@ export function baseHeight(x, z) {
   let h = 0;
   for (const e of bl) h += e.w * e.b.h(x, z, B, e);
   if (!bl[0].b.flat) h += B.fine * 1.6 * (1 - share(bl, 'saltflat'));
+  h = shore(x, z, h, bl);
   h = riverCut(x, z, h);
-  // a valley floor near the start so the first flight begins over a meadow and pond
-  const d0 = Math.hypot(x, z + 60);
-  if (d0 < 260) h = h * smooth(30, 260, d0) + (1 - smooth(30, 260, d0)) * (6 + 10 * Math.min(1, d0 / 120) - 14 * Math.max(0, 1 - Math.hypot(x - 40, z + 150) / 55));
   return h;
+}
+// The real coastline (earth.js: metres to the coast) roughened by noise at two sizes: the land
+// shelves down to beaches, or drops in sea cliffs where the land is cliffy; the sea floor deepens
+// away from the shore. Out at sea: islands, and near the poles the pack ice.
+function shore(x, z, h, bl) {
+  const c = coastDist(x, z);
+  if (c > 1400) return h;
+  const s = c + fbm(x / 430, z / 430, 31, 3) * 300 + fbm(x / 90, z / 90, 32, 2) * 55;
+  const cliff = Math.min(1, weightOf(bl, 'cliff')), w = 75 - 62 * cliff;
+  const land = h * (.12 + .88 * cliff + (1 - cliff) * .88 * smooth(0, 900, s)) + 1.2 * (1 - cliff);
+  const bed = -3 - 32 * smooth(0, 1800, -s);
+  let y = bed + (land - bed) * smooth(-w, w, s);
+  if (s < 400) y = Math.max(y, isles(x, z));   // (a real island the coastline has too rises from it)
+  if (y < 1 && (z < NORTH + 5500 || z > SOUTH - 4200)) {   // the pack ice, with leads of open water
+    const k = z < 0 ? smooth(NORTH + 5500, NORTH + 2500, z) : smooth(SOUTH - 4200, SOUTH - 1800, z);
+    const floe = smooth(-.1, .12, fbm(x / 160, z / 160, 33, 3) + k * .5 - .25);
+    y = y + (Math.max(y, .9 + fbm(x / 30, z / 30, 34, 1) * .25) - y) * floe * smooth(0, .3, k);
+  }
+  return y;
+}
+// Islands: the real small ones (too small for the baked coastline) and, in the island seas
+// (earth.js OCEANS travel 'islands'), a scatter of volcanic islands and coral atolls to hop
+// across. Never near the wrap seam.
+const REAL_ISLES = [[19.6, -155.5, 950, 'volcano'], [20.8, -156.3, 520, 'volcano'], [38.6, -28, 520, 'volcano'], [32.7, -17, 420, 'volcano'], [28.3, -16.6, 620, 'volcano'],
+  [32.3, -64.8, 340, 'atoll'], [-.6, -90.5, 600, 'volcano'], [-17.6, -149.4, 520, 'volcano'], [-27.1, -109.4, 320, 'volcano'], [62, -6.9, 420, 'high'], [-20.3, 57.6, 420, 'volcano'],
+  [-21.1, 55.5, 460, 'volcano'], [3.2, 73.2, 420, 'atoll'], [-4.7, 55.5, 360, 'high'], [-9, -140, 420, 'volcano'], [13.4, 144.8, 360, 'high'], [-15.9, -5.7, 320, 'volcano'],
+  [-7.9, -14.4, 300, 'volcano'], [-37.1, -12.3, 320, 'volcano'], [16, -24, 460, 'volcano'], [12.5, 54, 420, 'high'], [-21.2, -159.8, 320, 'atoll'], [-14.3, -170.7, 300, 'atoll']];
+let isleList = null;
+const isleCells = new Map(), ISLE = 2600;
+function isleCell(gx, gz) {
+  const k = gx * 100003 + gz; let c = isleCells.get(k); if (c !== undefined) return c;
+  c = null;
+  const x = (gx + .2 + ih(gx, gz, 341) * .6) * ISLE, z = (gz + .2 + ih(gx, gz, 342) * .6) * ISLE;
+  if (Math.abs(x) < EARTH.W / 2 - EARTH.SEAM - 2200 && coastDist(x, z) < -1400 && z > NORTH + 6000 && z < SOUTH - 5000) {
+    const [lat, lon] = latLon(x, z), o = oceanKey(lat, lon), p = o === 'pacific-s' ? .32 : o === 'med' ? .12 : 0;
+    if (ih(gx, gz, 343) < p) c = { x, z, r: 170 + ih(gx, gz, 344) * 330, kind: Math.abs(lat) < 24 && ih(gx, gz, 345) < .55 ? 'atoll' : 'volcano', H: 24 + ih(gx, gz, 346) * 70 };
+  }
+  isleCells.set(k, c); if (isleCells.size > 4000) isleCells.delete(isleCells.keys().next().value);
+  return c;
+}
+function isleH(I, x, z) {
+  const d = Math.hypot(x - I.x, z - I.z) / I.r * (1 + fbm(x / 90, z / 90, 347, 2) * .18);
+  if (d > 1.6) return -99;
+  if (I.kind === 'atoll') return Math.max(-3.5 + 3 * smooth(.9, .6, d), 1.8 * Math.exp(-(((d - .82) / .13) ** 2)) - 6 * smooth(.95, 1.5, d));
+  const cone = I.kind === 'high' ? (1 - d * d) * I.H : I.H * smooth(1.05, .1, d) ** 1.5 - (I.kind === 'volcano' ? 6 * smooth(.16, 0, d) : 0);
+  return Math.max(-30 * smooth(1, 1.6, d), cone + 2 * smooth(1.1, .9, d));
+}
+export function islesNear(x, z, r) {
+  if (!isleList) isleList = REAL_ISLES.map(([la, lo, R, kind], i) => { const p = toXZ(la, lo); return p && Math.abs(p[0]) < EARTH.W / 2 - EARTH.SEAM - 1500 ? { x: p[0], z: p[1], r: R, kind, H: kind === 'atoll' ? 0 : R * .11, real: i } : null; }).filter(Boolean);
+  const out = isleList.filter(I => Math.abs(I.x - x) < r + I.r * 1.6 && Math.abs(I.z - z) < r + I.r * 1.6);
+  const a = Math.floor((x - r - 800) / ISLE), b = Math.floor((x + r + 800) / ISLE), c = Math.floor((z - r - 800) / ISLE), d = Math.floor((z + r + 800) / ISLE);
+  for (let gz = c; gz <= d; gz++) for (let gx = a; gx <= b; gx++) { const I = isleCell(gx, gz); if (I) out.push(I); }
+  return out;
+}
+function isles(x, z) {
+  let y = -99;
+  for (const I of islesNear(x, z, 0)) y = Math.max(y, isleH(I, x, z));
+  return y;
 }
 // Rivers: long winding channels (where a slow noise crosses zero) cut down below the water
 // through whatever land they cross, in valleys that widen with the height of the land around,
@@ -78,7 +140,7 @@ export const RIVER = { scale: 1500, seed: 91, half: 8, bed: -2.2 };
 // steep outer one along this stretch (the other is a low, wide inner bank), changing as it winds
 export function riverAt(x, z) {
   const m = fbm(x / 2600, z / 2600, RIVER.seed + 7, 1);
-  if (m < .02 || Math.hypot(x, z + 60) < 320) return null;
+  if (m < .02) return null;
   // the channel line is warped by noises at four sizes, so it swings in big meanders (some
   // reaches wild, some calmer), bends and doglegs within them, and small kinks close up
   const u = (sd, k) => fbm(x / k, z / k, RIVER.seed + sd, 1) * .5 + .5;
@@ -128,7 +190,7 @@ export function groundNormal(x, z) {
 }
 // open meadow vs woodland: where trees grow (above about .1 is wood)
 function forestOf(x, z, bl) {
-  let f = fbm(x / 220, z / 220, 9, 2) - .35 * Math.max(0, 1 - Math.hypot(x, z + 60) / 200);
+  let f = fbm(x / 220, z / 220, 9, 2);
   for (const e of bl) f += e.w * e.b.forest;
   return f;
 }
@@ -154,11 +216,13 @@ function groundColour(x, y, z, ny, bl = blend(x, z)) {
   c = mixc(c, mixc(PAL.rock, PAL.rock2, ih(x | 0, z | 0, 3)), smooth(.22, .42, steep) * (1 - own));
   // the season on the ground: fresh green in spring; in autumn leaf litter under the trees and
   // tired, bare patches in the open (chunks are rebuilt when the season or snowline moves)
-  if (env.season === 'spring' || env.season === 'autumn') {
+  // The season is the place's own (earth.js: the south has summer while the north has winter)
+  const lat = latAt(x, z), se = seasonAt(lat, env.yearFrac);
+  if (!se.tropic && (se.i === 3 || se.i === 1)) {
     const grassy = smooth(.0, .08, c[1] - c[0]) * (1 - own) * (y > 1.8 ? 1 : 0), f = forestOf(x, z, bl);
-    if (env.season === 'spring') c = mixc(c, [c[0] * .9, c[1] * 1.05 + .015, c[2] * .85], grassy * smooth(0, 3, env.seasonDay + 1) * .5);
+    if (se.i === 3) c = mixc(c, [c[0] * .9, c[1] * 1.05 + .015, c[2] * .85], grassy * smooth(0, 3, se.d + 1) * .5);
     else {
-      const patch = smooth(.05, .4, fbm(x / 18, z / 18, 61, 2)), turn = smooth(0, 6, env.seasonDay + 1);
+      const patch = smooth(.05, .4, fbm(x / 18, z / 18, 61, 2)), turn = smooth(0, 6, se.d + 1);
       c = mixc(c, mixc(PAL.wood, [.62, .4, .2], .55), grassy * smooth(.05, .35, f) * turn * .55);
       c = mixc(c, [.62, .58, .38], grassy * (1 - f) * patch * turn * .4);
     }
@@ -169,8 +233,9 @@ function groundColour(x, y, z, ny, bl = blend(x, z)) {
   // the railway's ballast, grey stone with grass coming through
   const bal = y > .3 ? railShade(x, z) : 0;
   if (bal > 0) c = mixc(c, [.5, .48, .45], bal * (.65 + .35 * smooth(-.3, .3, fbm(x / 9, z / 9, 696, 2))));
-  // snow on the heights, and in winter right down to the meadows (not on cliffs, not below water)
-  const line = 185 - env.snow * 200;
+  // snow on the heights, and in winter right down to the meadows (not on cliffs, not below water);
+  // lower toward the poles, where the ice and the tundra keep some all year
+  const line = snowLine(lat, env.yearFrac);
   c = mixc(c, PAL.snow, smooth(line - 5, line + 25, y + fbm(x / 40, z / 40, 7, 2) * 12) * smooth(.45, .25, steep) * (y > .3 ? 1 : 0) * (1 - noSnow * .85));
   const j = .92 + ih(Math.floor(x * 7), Math.floor(z * 7), 5) * .14;   // a little pigment variation per facet
   return [c[0] * j, c[1] * j, c[2] * j];
@@ -278,9 +343,14 @@ const MIX = {
   savanna: (y, wet) => [[4, 7], [11, .6], [9, wet * 2]],
   swamp: () => [[7, 6], [12, 2], [0, 1]],
   marsh: (y, wet) => [[12, 3 + wet * 2], [0, 2], [9, 1.5]],
+  taiga: (y, wet) => [[10, 7], [1, 2.5], [2, 1.5], [12, wet * 1.5]],
+  tundra: () => [[2, 3], [10, 2], [11, 2]],
+  rainforest: (y, wet) => [[0, 6], [4, 1.2], [8, 2], [12, wet * 2], [7, wet * 2]],
+  maquis: (y, wet) => [[8, 4], [11, 3], [1, 2], [9, wet * 2]],
+  steppe: (y, wet) => [[9, wet * 4 + .3], [8, .5], [11, .5]],
 };
 // how big the trees of a land grow (stunted on the moor and the heights, tall in sheltered woods)
-const SIZE_K = { moor: .7, alpine: .8, cliffs: .75, coast: .8, fjord: .9, volcano: .75, canyon: .85, badlands: .8, forest: 1.08, redwood: 1.1 };
+const SIZE_K = { moor: .7, alpine: .8, cliffs: .75, coast: .8, fjord: .9, volcano: .75, canyon: .85, badlands: .8, forest: 1.08, redwood: 1.1, tundra: .45, taiga: .95, rainforest: 1.6, maquis: .7, steppe: .8 };
 function lookFor(b, x, z, y, r, f) {
   const wet = smooth(5, 1.5, y), hi = smooth(45, 110, y);
   const list = (MIX[b] || MIX.meadow)(y, wet, hi);
@@ -305,6 +375,11 @@ const densityOf = (b, f, x, z) => {
     case 'saltflat': return 0;
     case 'savanna': return fbm(x / 160, z / 160, 32, 2) > .15 ? .07 : .012;     // acacias in loose groves
     case 'swamp': return .3;
+    case 'ice': return 0;
+    case 'tundra': return .006;
+    case 'steppe': return .02;
+    case 'rainforest': return f > -.3 ? .6 : .3;
+    case 'taiga': return f > .1 ? .5 : f > -.2 ? .2 : .04;
     default: return f > .32 ? .55 : f > .12 ? .2 : f > -.1 ? .03 : .008;
   }
 };
@@ -321,7 +396,6 @@ export function treesIn(cx, cz) {
     const y = groundAt(x, z), wet = e.name === 'swamp';
     if ((wet ? y < -1.2 || y > 3 : y < 1.2) || y > 140) continue;
     const nm = normalAt(x, z); if (nm[1] < .82) continue;
-    if (Math.hypot(x, z + 60) < 22) continue;   // keep the starting spot clear
     if (roadShade(x, z) > .25 || railNear(x, z) < 6) continue;   // nor on the old tracks and the railway
     const look = lookFor(e.name, x, z, y, ih(gx, gz, 28), f);
     const s = sizeOf(look, e.name, x, z, f, ih(gx, gz, 29), ih(gx, gz, 24));
@@ -363,7 +437,8 @@ export function treesNear(x, z, r) {
 const BUSH_LANDS = {
   moor: ['gorse', .09, 1.2, .8], coast: ['gorse', .06, 1.1, .7], cliffs: ['gorse', .04, 1, .6],
   desert: ['sage', .035, 1, .6], canyon: ['sage', .06, 1.1, .6], badlands: ['sage', .045, 1, .6], volcano: ['sage', .015, .9, .5],
-  savanna: ['thorn', .06, 1.6, 1.1], saltflat: null, alpine: ['gorse', .02, .8, .5],
+  savanna: ['thorn', .06, 1.6, 1.1], saltflat: null, alpine: ['gorse', .02, .8, .5], ice: null,
+  tundra: ['gorse', .03, .7, .6], steppe: ['sage', .05, .9, .7], maquis: ['gorse', .12, 1.3, .9],
 };
 const bushCache = new Map();
 export function bushesIn(cx, cz) {
@@ -381,7 +456,7 @@ export function bushesIn(cx, cz) {
     }
     if (!L || p > L[1] * (.4 + 1.2 * clump)) continue;
     const y = groundAt(x, z); if (y < 1 || y > 170) continue;
-    if (normalAt(x, z)[1] < .78 || Math.hypot(x, z + 60) < 22) continue;
+    if (normalAt(x, z)[1] < .78) continue;
     if (roadShade(x, z) > .25 || railNear(x, z) < 6) continue;
     if (trees.some(t => Math.abs(t.x - x) < 3 && Math.abs(t.z - z) < 3)) continue;
     const s = L[2] * (.6 + ih(gx, gz, 166) * .5 + clump * .25) + L[3] * ih(gx, gz, 167) * .5;
@@ -452,8 +527,7 @@ const lmCache = new Map();
 const nameOf = (kind, a, b) => { const n = LM_NAMES[kind]; return n[Math.floor(ih(a, b, 85) * n.length)]; };
 function fixedLandmarks() {
   if (lmCache.has('fixed')) return lmCache.get('fixed');
-  const L = [{ id: 'willow', name: 'The Old Willow', kind: 'willow', x: 60, z: JOURNEY.marsh + 400 }];
-  for (const l of L) finishLandmark(l, 7);
+  const L = [];
   lmCache.set('fixed', L);
   return L;
 }
@@ -483,8 +557,8 @@ function cellSight(c) {
   if (blend(cx, cz)[0].name === c.name) switch (c.name) {
     case 'coast': {
       // walk out from the bay until there is land, and stand the light on the headland
-      const a = ih(gx, gz, 331) * 6.283;
-      for (let r = 200; r < 700; r += 6) { const x = cx + Math.cos(a) * r, z = cz + Math.sin(a) * r; if (height(x, z) > 8) { l = { kind: 'lighthouse', x: x + Math.cos(a) * 9, z: z + Math.sin(a) * 9 }; break; } }
+      // on the real shore: the high ground nearest the sea within the land's patch
+      for (let i = 0; i < 90 && !l; i++) { const a = i * 2.39996, r = 20 + i * 8, x = cx + Math.cos(a) * r, z = cz + Math.sin(a) * r, d = coastDist(x, z); if (d > 15 && d < 80 && height(x, z) > 6) l = { kind: 'lighthouse', x, z }; }
       break;
     }
     case 'volcano': l = { kind: 'volcano', x: cx, z: cz }; break;
@@ -514,7 +588,8 @@ const LM_KIND = {
   forest: ['oak', 'oak', 'stones', 'lookout'], lakeland: ['oak', 'oak', 'stones'], birch: ['oak', 'stones', 'lookout'], meadow: ['tower', 'stones', 'oak'],
   savanna: ['tower', 'redstones'], cliffs: ['falls'], mountains: ['cairn', 'falls', 'lookout'], alpine: ['cairn'], fjord: ['falls', 'stack'], moor: ['stones', 'cairn', 'tower'],
   coast: ['stones', 'tower', 'stack', 'stack'], marsh: ['willow', 'stones'], swamp: ['willow'], desert: ['redstones'], canyon: ['redstones', 'falls'], badlands: ['redstones'],
-  redwood: ['lookout'],
+  redwood: ['lookout'], taiga: ['lookout', 'stones'], tundra: ['cairn', 'stones'], steppe: ['stones', 'tower'], maquis: ['tower', 'stones'],
+  rainforest: ['falls', 'oak'],
 };
 // a sea stack wants open water 4 to 12 m deep near the shore
 function stackSpot(x, z) {
@@ -529,7 +604,7 @@ function landmarkCell(gx, gz) {
   const key = gx + ',' + gz; if (lmCache.has(key)) return lmCache.get(key);
   let l = null;
   const x = (gx + .25 + ih(gx, gz, 81) * .5) * LM_CELL, z = (gz + .25 + ih(gx, gz, 82) * .5) * LM_CELL;
-  if (Math.hypot(x, z) > 500 && ih(gx, gz, 83) < .42) {
+  if (ih(gx, gz, 83) < .42) {
     const kinds = LM_KIND[blend(x, z)[0].name];
     let kind = kinds?.[Math.floor(ih(gx, gz, 84) * kinds.length)];
     if (kind) {

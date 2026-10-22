@@ -1,7 +1,6 @@
 // A linear compass along the top middle: the quarter of the sky ahead and either side, with
-// N, E, S and W, ticks between, and marks for the places that matter (the nest, the way south or
-// home, landmarks found nearby). Moved only when the heading or the marks change.
-import { HOME_Z, MARSH_Z } from './sys/journey.js';
+// N, E, S and W, ticks between, and marks for the places that matter (the nest, where you began,
+// landmarks found nearby). Moved only when the heading or the marks change.
 import { pinCol } from './sys/map.js';
 import { icon } from './icons.js';
 
@@ -25,8 +24,7 @@ export function createCompass(G, ui) {
   function places() {
     const out = [], J = G.journey, x = b.p[0], z = b.p[2];
     if (G.nest) out.push(['nest', G.nest.x, G.nest.z, 'Your nest']);
-    if (J?.goal === 'south' && z < MARSH_Z - 200) out.push(['south', x, MARSH_Z, 'The wintering marsh']);
-    if (J?.goal === 'north' && z > HOME_Z + 200) out.push(['home', x, HOME_Z, 'Home']);
+    if (G.home && Math.hypot(G.home[0] - x, G.home[1] - z) < 5000 && Math.hypot(G.home[0] - x, G.home[1] - z) > 300) out.push(['home', G.home[0], G.home[1], 'Where you began']);
     const found = Object.values(J?.found || {}).map(l => [l, Math.hypot(l.x - x, l.z - z)]).filter(([, d]) => d > 60 && d < 3000).sort((a, c) => a[1] - c[1]).slice(0, 3);
     for (const [l] of found) out.push(['place', l.x, l.z, l.name]);
     if (G.ghost) out.push(['ghost', G.ghost.x, G.ghost.z, 'The ghost flight']);

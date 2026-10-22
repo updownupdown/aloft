@@ -28,7 +28,9 @@ web/3d/main.js          boot, the frame loop, save/resume, the SYSTEMS list, fli
 web/3d/flight.js        hawk flight model (energy, tuck/flare, flaps, thermal ride, trees, perching, ground, water)
 web/3d/input.js         two thumbs = two wings (floating sticks, paired taps), keyboard
 web/3d/camera.js        chase camera, hawk frame, pose (wing beats with per-wing amplitude)
-web/3d/world.js         terrain height(x,z), colours, trees + perches, thermals, airLift, rings
+web/3d/world.js         terrain height(x,z) (coasts from earth.js, islands, pack ice), colours, trees + perches, thermals, airLift, rings
+web/3d/earth.js         the Earth under the world: coastDist, earthBiome, continentAt, latLon/toXZ, oceanAt (each ocean's way across), regionAt, calendar (yearFrac, dateOf, seasonAt, snowLine)
+web/3d/earthdata.js     baked grids for earth.js (made by tools/earth/bake.py from Natural Earth; do not edit by hand)
 web/3d/render.js        WebGL2 renderer: sky, chunks, instanced trees and named shapes, hawk, water, points
 web/3d/shapes.js        low-poly builders (builder, blob, prism, cone) and tree/ring/cloud meshes
 web/3d/hawk.js          the hawk mesh, rebuilt per frame from a pose
@@ -54,20 +56,23 @@ web/birds.html          bird lab: every species side by side (3d/birdlab.js)
 web/lab.html            bird song lab; web/musiclab.html music lab (both share lab.css)
 web/icons/, web/fonts/  app icons (tools/icon.html + tools/make-icons.mjs), bundled fonts (SIL OFL)
 web/3d/sys/*.js         systems: air (thermal clouds/motes), rings, food (hunger, thirst, mice), aim, flora (tufts, flowers, stones, reeds), bushes (world.js bushesNear; perch on top),
-                        guide (field guide: G.sight(key,x,y,z,r), G.guide.page()), journey (migration south to
-                        JOURNEY.marsh, landmarks found, route, years), map (the Map tab: fog of war, pan/zoom, tap a place), nest (twigs, egg, chick),
+                        guide (field guide: G.sight(key,x,y,z,r), G.guide.page()), journey (countries and
+                        landmarks found, route, years turning with your own spring), map (the Map tab: fog of war, pan/zoom, tap a place), nest (twigs, egg, chick),
                         story (health -> G.tailRed, keepsakes, tricks, courtship, mate and fledglings),
                         photo (photo mode, postcards, album), howto (How to play and the controls map)
                         songs (songbirds, learning and imitating songs, dialects, mimics, alarm calls, gifts, Call), moments (music that notices),
                         aims (a daily aim and feathers, the lands collection, racing the companion),
-                        season (the first season guided by the companion, one lesson a day), ghost (ghost flights by link)
+                        season (the first season guided by the companion, one lesson a day), ghost (ghost flights by link), poles (the ice edges: white air, a wind back, aurora)
 ```
 
 A system is `(G) => ({ id, update?(dt, c), scene?(S), save?(), load?(o) })`, added to `SYSTEMS` in
 main.js. It adds instanced shapes with `G.R.shape(name, tris)` and pushes 8 floats per instance to
 `S.props[name]` (x, y, z, scale, yaw, tint, turn, phase), points to `S.motes` (x, y, z, r, g, b, size),
 particles with `G.part()`, and talks on the bus (`G.on`, `G.emit`). Saves go under `aloft.save3d`
-(per system). 3D coordinates: x east, z south, **y up**, metres, water at y = 0. Debug:
+(per system). 3D coordinates: x east, z south, **y up**, metres, water at y = 0. The world is a rough Earth
+96 x 61 km (earth.js EARTH): x wraps at +-48 km (main.js moves the bird and emits `wrap`, dx; keep
+positions you hold in step), the poles are the north and south edges, and each place's season comes
+from its latitude (`G.season` is the bird's own; `G.date` the calendar). Debug:
 `window.__aloft3d.dbg` (thermal, forest, mouse, fly).
 
 ## Code style
@@ -98,8 +103,9 @@ Colours live in `PAL` (world.js) and the moods in `sky.js`.
 - Flight: `FLY` at the top of `flight.js`; thermals and lift in `world.js`; wave lift in `sys/winds.js`.
 - Thumb timing (tap, pairing): top of `input.js`. Camera distances and dive focus: `camera.js`.
 - Food and drink: `FOOD` in `sys/food.js`. Aim and the dive assist: `sys/aim.js`.
-- Day length and seasons: `DAY`, `SEASON_DAYS` in `sky.js`. Journey: `JOURNEY` in `world.js`.
-- Progress saves under `aloft.save3d`, one entry per system.
+- Day length and seasons: `DAY`, `SEASON_DAYS` in `sky.js`; the calendar (`YEAR_DAYS`) and sun by latitude in `earth.js` / `sky.js`. Starts per bird: `STARTS` in `main.js`. Poles: `POLES` in `sys/poles.js`.
+- Progress saves under `aloft.save3d`, one entry per system. **Saves are not kept across big changes yet**
+  (experimental phase, James 2026-10-22): change the save format freely; main.js drops a save that doesn't fit.
 
 ## CLI workflow (Git Bash on Windows, or any shell)
 

@@ -59,6 +59,7 @@ export function pushBird(S, sp, x, y, z, heading, flying = false, beat = 0, scal
 const HABITAT = {
   ridge: 'mountains', alpine: 'mountains', coast: 'marsh', swamp: 'marsh', canyon: 'cliffs', badlands: 'cliffs', fjord: 'cliffs', volcano: 'cliffs',
   desert: 'meadow', moor: 'meadow', savanna: 'meadow', saltflat: 'meadow', birch: 'forest', redwood: 'forest', karst: 'forest',
+  taiga: 'forest', rainforest: 'forest', tundra: 'meadow', steppe: 'meadow', maquis: 'meadow', ice: 'marsh',
 };
 export function habitat(x, z) {
   const n = biomeAt(x, z).name;

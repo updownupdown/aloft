@@ -26,7 +26,7 @@ const AIMS = {
   perch: { text: 'Land on a branch.', on: 'land', ok: k => k === 'perch', lesson: 1 },
   drink: { text: 'Land by water and drink.', on: 'drink', lesson: 1 },
   sleep: { text: 'Roost on a branch and sleep through a night.', on: 'sleep', lesson: 1 },
-  south: { text: 'Fly a kilometre south.', on: 'south', lesson: 1 },
+  far: { text: 'Fly two kilometres from where you were at dawn.', on: 'far', lesson: 1 },
 };
 const HIGH = 250;
 
@@ -51,8 +51,8 @@ export function aimsSystem(G) {
     G.audio.ring?.();
   });
   // a thermal ride high above the ground: held for a moment and a half; and a few things other
-  // systems don't announce (a drink, a night's sleep, a kilometre south since dawn)
-  let highT = 0, high = false, drank = 0, asleep = false, southFrom = null;
+  // systems don't announce (a drink, a night's sleep, two kilometres since dawn)
+  let highT = 0, high = false, drank = 0, asleep = false, farFrom = null;
 
   // ---- racing the companion ----------------------------------------------------------------
   // through the first ring of a course, now and then (more often when it is with you) it races you round
@@ -135,8 +135,8 @@ export function aimsSystem(G) {
       }
       if (G.thirst < drank || b.eating > 0) drank = G.thirst; else if (G.thirst - drank > .05 && b.state !== 'fly') { G.emit('drink'); drank = G.thirst; }
       if (b.asleep && !asleep) G.emit('sleep'); asleep = !!b.asleep;
-      if (southFrom?.day !== G.day) southFrom = { day: G.day, z: b.p[2], done: false };
-      if (!southFrom.done && b.p[2] - southFrom.z > 1000) { southFrom.done = true; G.emit('south'); }
+      if (farFrom?.day !== G.day) farFrom = { day: G.day, x: b.p[0], z: b.p[2], done: false };
+      if (!farFrom.done && Math.hypot(W.wrapX(b.p[0] - farFrom.x), b.p[2] - farFrom.z) > 2000) { farFrom.done = true; G.emit('far'); }
       const up = b.state === 'fly' && b.lift > .8 && b.p[1] - Math.max(W.height(b.p[0], b.p[2]), W.WATER) > HIGH;
       if (!up) { high = false; highT = 0; } else if (!high && (highT += dt) > 1.5) { high = true; G.emit('high'); }
     },

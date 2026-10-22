@@ -161,7 +161,7 @@ void main() {
   // leaves (greenish vertices) take a per-tree tint and the season's turn
   vec3 col = aCol * (.88 + iB.y * .24);
   col = mix(col, uAutumn * (.85 + iB.y * .3), leafy * clamp(iB.z, 0., 1.));
-  // snow lies on the upturned leaves and needles above the snowline (world.js env.snow)
+  // snow lies on the upturned leaves and needles above the snowline (world.js env.snowLine)
   col = mix(col, vec3(.93, .95, .98), leafy * smoothstep(uSnowLine - 8., uSnowLine + 12., vPos.y) * smoothstep(.05, .45, n.y) * .85);
   vCol = col; vColB = col; vLeaf = leafy;
   gl_Position = uVP * vec4(vPos, 1.);
@@ -368,7 +368,7 @@ export function createRenderer(gl) {
     want.sort((a, b) => a[0] - b[0]);
     for (const [, tx, tz, k] of want) {
       if (farBusy.size >= 2) break;
-      if (worker) { farBusy.add(k); worker.postMessage({ k, cx: tx, cz: tz, cells: FAR_CELLS, size: FAR_TILE, drop: FAR_DROP, far: true, gen, seed: WORLD.seed, snow: env.snow, season: env.season, seasonDay: env.seasonDay }); }
+      if (worker) { farBusy.add(k); worker.postMessage({ k, cx: tx, cz: tz, cells: FAR_CELLS, size: FAR_TILE, drop: FAR_DROP, far: true, gen, seed: WORLD.seed, yearFrac: env.yearFrac }); }
       else { placeFar(k, tx, tz, chunkMesh(tx, tz, FAR_CELLS, FAR_TILE, FAR_DROP)); break; }
     }
   }
@@ -392,7 +392,7 @@ export function createRenderer(gl) {
         if (busy.size >= 4) break;
         if (busy.get(w[3]) === gen || (chunks.get(w[3])?.cells === w[4] && chunks.get(w[3])?.gen === gen)) continue;
         busy.set(w[3], gen);
-        worker.postMessage({ k: w[3], cx: w[1], cz: w[2], cells: w[4], gen, seed: WORLD.seed, snow: env.snow, season: env.season, seasonDay: env.seasonDay });
+        worker.postMessage({ k: w[3], cx: w[1], cz: w[2], cells: w[4], gen, seed: WORLD.seed, yearFrac: env.yearFrac });
       }
     } else {
       for (let n = 0; n < Math.min(budget, want.length); n++) build(want[n]);

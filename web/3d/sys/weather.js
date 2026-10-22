@@ -2,13 +2,14 @@
 // in winter), greying the sky, thickening the haze and weakening the thermals; storms roll in
 // as a dark cell on the wind with lightning, thunder, gusty lift ahead and sink under the core.
 // Also: dawn fog that fills the hollows, a rainbow when a shower clears, the moon and its
-// phases, meteor showers on rare clear nights, northern lights early in the journey, and a sea
+// phases, meteor showers on rare clear nights, northern (and southern) lights in the high latitudes, and a sea
 // of cloud filling the valleys of the high country on still mornings.
 // Sets G.overcast, G.rain, G.storm, G.snowing, G.windK, G.fog (0..1) and env.thermal; the
 // snowline (env.snow) follows the season and the ground is repainted when it moves.
 import { height, WATER, env, bands, WIND, ih, fbm } from '../world.js';
 import { builder, blob, reseed } from '../shapes.js';
 import { DAY } from '../sky.js';
+import { snowAt, snowLine, yearFrac } from '../earth.js';
 import { clamp, lerp, mix3, smooth, norm } from '../util.js';
 
 export const WEATHER = {
@@ -20,7 +21,6 @@ export const WEATHER = {
 };
 // the snowline by season and day in it (0 summer .. 1 deep winter): it creeps down through
 // autumn and winter, a step each day, and climbs back through spring
-const SNOW = { summer: () => 0, autumn: d => .04 + d * .045, winter: d => .5 + d * .072, spring: d => .62 - d * .075 };
 
 function dropShape() {
   const B = builder(), c = [.74, .79, .86];
@@ -188,20 +188,22 @@ export function weatherSystem(G) {
       }
       for (const m of meteors) m.t += dt;
       meteors = meteors.filter(m => m.t < m.life);
-      const north = 1 - smooth(1500, 4500, b.p[2]), cold = clamp((G.season?.autumn || 0) + winter + (G.season?.name === 'spring' ? .5 : 0), 0, 1);
+      const north = smooth(46, 62, Math.abs(G.season?.lat ?? 0)), cold = clamp((G.season?.autumn || 0) + winter + (G.season?.name === 'spring' ? .5 : 0), 0, 1);
       if (songLights > 0) songLights -= dt;
       if (env.thermals.length && env.thermals[0].until < G.t) env.thermals = env.thermals.filter(t => t.until > G.t);
       const lights = Math.max(dayHash(3) < .45 ? L.night * (1 - G.overcast) * north * cold : 0, songLights > 0 ? Math.max(.25, L.night) * Math.min(1, songLights / 20) : 0);
       G.aurora = lerp(G.aurora, lights, Math.min(1, dt * .3));
-      if (G.aurora > .5) note(`Day ${G.day}: northern lights.`);
+      if (G.aurora > .5) note(`${G.date?.text || `Day ${G.day}`}: ${(G.season?.lat ?? 1) < 0 ? 'southern' : 'northern'} lights.`);
       if (G.snowing > .3) once('snow', 'Snow. Mice are harder to spot under it: look for the faint stir in the white.', 5);
-      // the snowline follows the season; repaint the ground when it moves
-      const sn = G.season?.name || 'summer', snow = Math.max(0, SNOW[sn]?.(G.season.d || 0) ?? 0);
-      if (Math.abs(env.snow - snow) > .01 || env.season !== sn) { env.snow = snow; env.season = sn; env.seasonDay = G.season.d || 0; G.R.dropChunks?.(); }
+      // the snowline follows the date and the latitude (earth.js): env.snow is the bird's own, for the
+      // systems near it; the ground paints each place's own from env.yearFrac, repainted once a day
+      const yf = yearFrac(G.day, .5), lat = G.season.lat ?? 45;
+      env.snow = snowAt(lat, yf); env.snowLine = snowLine(lat, yf); env.season = G.season?.name || 'summer'; env.seasonDay = G.season.d || 0;
+      if (env.yearFrac !== yf) { env.yearFrac = yf; G.R.dropChunks?.(); }
       if (G.storm > .3 && b.state === 'fly') G.hud.did?.('storm');
     },
     scene(S) {
-      S.snowLine = 185 - env.snow * 200;   // render.js lays snow on leaves and needles above it
+      S.snowLine = env.snowLine;   // render.js lays snow on leaves and needles above it
       const ov = G.overcast, st = G.storm, L = G.light;
       // greyer, flatter light under cloud; darker in a storm; a flash of lightning lifts it all
       const grey = [.7, .71, .72].map(v => v * (.25 + .75 * (1 - L.night)) * (1 - .4 * st));

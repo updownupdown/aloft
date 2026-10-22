@@ -19,7 +19,7 @@ const SHORT = {
   drink: ['drop', 'Land by water to drink'],
   ride: ['spiral', 'Rising air: spread wide and circle'],
   ring: ['ring', 'Fly through the ring'],
-  south: ['compass', 'Head south for the winter'],
+  wander: ['compass', 'The whole Earth is yours to wander'],
   twig: ['twig', 'A twig: land beside it'],
   nestbranch: ['twig', 'Perch on a branch to build'],
   keepsake: ['spark', 'Something glints: land by it'],
@@ -44,7 +44,7 @@ export const TIP_GROUPS = [
   ['ground', 'Perched and on the ground', 'takeoff', ['hop', 'ground', 'sleep']],
   ['food', 'Food and water', 'prey', ['hunt', 'drink', 'worms', 'carry']],
   ['songs', 'Songs and calls', 'songs', ['song', 'imitate', 'call']],
-  ['journey', 'Journey and nest', 'south', ['south', 'twig', 'nestbranch', 'keepsake', 'relic']],
+  ['journey', 'Journey and nest', 'south', ['wander', 'twig', 'nestbranch', 'keepsake', 'relic']],
   ['other', 'Other', 'how', []],
 ];
 export const tipGroup = id => (TIP_GROUPS.find(g => g[3].includes(id)) || TIP_GROUPS.at(-1))[0];

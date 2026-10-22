@@ -1,5 +1,5 @@
 // The first season, guided: days 1 to 8 of the first year each bring one thing to learn (rising
-// air, perching, mice, water, songs, rings, sleep, the way south), shown by the companion hawk,
+// air, perching, mice, water, songs, rings, sleep, new country), shown by the companion hawk,
 // who flies to it (sys/fauna.js G.companion.fly) while a note says what it is doing. The lesson is
 // also the day's aim (sys/aims.js asks G.lessonAim). Nothing stops play; each lesson shows once.
 import * as W from '../world.js';
@@ -13,7 +13,7 @@ const LESSONS = [
   { aim: 'sing', say: 'Songbirds sing from the trees. Perch near one and copy its song: they answer, and some give gifts.', go: tree },
   { aim: 'course', say: 'Your companion flies through a ring of mist. A course of them climbs away: fly them one after another.', go: rings },
   { aim: 'sleep', say: 'Night is coming. Your companion finds a roost: perch on a branch and Sleep till dawn.', go: tree, dusk: true },
-  { aim: 'south', say: 'The air is cooling. Your companion turns south, the way to the wintering marsh. Follow it.', go: south },
+  { aim: 'far', say: 'The whole Earth is yours to wander. Your companion sets off to see new country: follow it a while.', go: far },
 ];
 
 // where the companion flies for each lesson: [x, y, z] points from where the hawk is
@@ -50,7 +50,7 @@ function rings(b) {
   if (!first) return null;
   return W.ringsNear(first.x, first.z, 900).filter(r => r.circuit === first.circuit).sort((a, c) => a.k - c.k).map(r => [r.x, r.y, r.z]);
 }
-function south(b) { return [[b.p[0], b.p[1] + 10, b.p[2] + 250], [b.p[0], b.p[1] + 20, b.p[2] + 600]]; }
+function far(b) { const d = [Math.sin(b.yaw), -Math.cos(b.yaw)]; return [[b.p[0] + d[0] * 250, b.p[1] + 10, b.p[2] + d[1] * 250], [b.p[0] + d[0] * 600, b.p[1] + 20, b.p[2] + d[1] * 600]]; }
 
 export function seasonSystem(G) {
   const b = G.b, S = { done: {} };

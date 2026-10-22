@@ -18,6 +18,8 @@ const LIVES = {
   alpine: [['marmot', .45, 2], ['goat', .3, 3]], mountains: [['marmot', .35, 2], ['goat', .25, 2]], cliffs: [['goat', .3, 3]],
   swamp: [['crab', .6, 3], ['egret', .5, 2]], marsh: [['egret', .35, 2]], coast: [['crab', .3, 2], ['seal', .2, 3]], fjord: [['seal', .4, 4]],
   forest: [['squirrel', .5, 2]], birch: [['squirrel', .45, 2]], lakeland: [['squirrel', .3, 1]], redwood: [['squirrel', .5, 2]],
+  taiga: [['squirrel', .4, 2]], rainforest: [['squirrel', .4, 2], ['lizard', .3, 1]], maquis: [['lizard', .4, 1], ['jackrabbit', .2, 1]],
+  steppe: [['jackrabbit', .3, 1], ['bison', .12, 6]], tundra: [['marmot', .2, 2], ['bison', .05, 5]], ice: [['seal', .12, 3]],
 };
 // prey: how much it fills (food, water), its name; and how fast it runs
 const PREY = { jackrabbit: [.32, .06, 'a jackrabbit', 7.5], lizard: [.14, .04, 'a lizard', 4], marmot: [.3, .06, 'a marmot', 5], crab: [.12, .1, 'a crab', 2.2], squirrel: [.22, .05, 'a squirrel', 5.5], snake: [.2, .05, 'a grass snake', 0] };

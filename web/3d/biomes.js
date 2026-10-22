@@ -1,14 +1,14 @@
 // The lands of Aloft come in patches, like a quilt: the ground is cut into cells about a
 // kilometre across (their edges warped so no line is straight), each cell gets one biome by a
-// seeded roll, and neighbouring biomes blend over a band about 200 m wide. Every biome is
-// found everywhere, but deserts, canyons and savanna lean south and snowy peaks, fjords and
-// birch woods lean north. Past JOURNEY.marsh the wintering marsh takes over.
+// seeded roll, and neighbouring biomes blend over a band about 200 m wide. The roll is weighted
+// by the real Earth under the cell (earth.js): a cell in the Sahara rolls dunes and now and then
+// a canyon or a salt pan, one in western Europe forest, meadow or lakeland (PALETTE).
 // A biome is its ground (h: height in m at x, z), its colours (c), how wooded it is (forest),
 // and flags for the shared touches (rock on steep ground, snow up high, sand at the shore).
 // Trees, rocks and flora read the biome too (world.js, sys/flora.js).
 import { ih, fbm, ridged, softRidged, smooth, clamp } from './noise.js';
+import { earthBiome, latAt } from './earth.js';
 
-export const JOURNEY = { home: 0, marsh: 9000 };
 export const BIOME_CELL = 950, BLEND = 210;
 
 const hex = h => [parseInt(h.slice(1, 3), 16) / 255, parseInt(h.slice(3, 5), 16) / 255, parseInt(h.slice(5, 7), 16) / 255];
@@ -25,6 +25,9 @@ export const PAL = {
   lush: hex('#77a553'), lush2: hex('#8db35c'), lime: hex('#bdb6a4'), lime2: hex('#a7a291'),
   lava: hex('#3e3a39'), lava2: hex('#55504b'), ash: hex('#77695f'), rust: hex('#8a5a44'),
   swamp: hex('#5f7647'), swamp2: hex('#6f7a46'),
+  // the lands of the Earth
+  ice: hex('#eef2f2'), ice2: hex('#c9dde4'), tundra: hex('#9c9a70'), tundra2: hex('#a88a62'), lichen: hex('#c2bf9a'), taiga: hex('#4f6b44'), taiga2: hex('#62794c'),
+  steppe: hex('#bcae74'), steppe2: hex('#a2a47c'), maquis: hex('#a8a061'), maquis2: hex('#6c7843'), rain: hex('#3f7a3e'), rain2: hex('#2d6236'),
   // the trees of the new lands
   birch: hex('#e9e4d8'), birchLeaf: hex('#9bb84f'), birchLeaf2: hex('#b4c35a'), redBark: hex('#8a4a32'), redLeaf: hex('#3f5f3c'),
   acacia: hex('#7d8a3c'), acacia2: hex('#93993f'), cactus: hex('#5f8a4f'), cactus2: hex('#729a58'), joshua: hex('#6d7f45'), mangrove: hex('#4f7a46'),
@@ -52,47 +55,47 @@ function towers(x, z) {
 // how common each biome is, n = northness and s = southness (0..1)
 export const BIOMES = {
   meadow: {
-    w: () => 1, label: 'the meadows', forest: -.15,
+    label: 'the meadows', forest: -.15,
     h: (x, z, B) => 13 + B.big * 30 + B.mid * 10,
     c: (x, y, z) => mixc(mixc(PAL.meadow, PAL.meadow2, smooth(-.35, .35, fbm(x / 70, z / 70, 11, 2))), PAL.moss, smooth(.1, .5, fbm(x / 25, z / 25, 12, 2)) * .45),
   },
   forest: {
-    w: () => 1.1, label: 'the woods', forest: .32,
+    label: 'the woods', forest: .32,
     h: (x, z, B) => 16 + B.big * 34 + B.mid * 13,
     c: (x, y, z) => mixc(mixc(PAL.meadow, PAL.wood, .6), PAL.moss, smooth(.1, .5, fbm(x / 25, z / 25, 12, 2)) * .5),
   },
   lakeland: {
-    w: () => .75, label: 'the lakelands', forest: .05, lakes: 1,
+    label: 'the lakelands', forest: .05, lakes: 1,
     h: (x, z, B) => 12 + B.big * 30 + B.mid * 10 - 13 * smooth(-.05, -.45, B.big),
     c: (x, y, z) => mixc(mixc(PAL.meadow, PAL.meadow2, smooth(-.35, .35, fbm(x / 70, z / 70, 11, 2))), PAL.wood, smooth(-.1, .4, fbm(x / 220, z / 220, 9, 2)) * .6),
   },
   birch: {
-    w: (n) => .35 + n * .9, label: 'the birch woods', forest: .3,
+    label: 'the birch woods', forest: .3,
     h: (x, z, B) => 18 + B.big * 26 + B.mid * 12,
     c: (x, y, z) => mixc(PAL.birchFloor, PAL.fern, smooth(-.2, .4, fbm(x / 30, z / 30, 21, 2)) * .6),
   },
   redwood: {
-    w: () => .5, label: 'the giant woods', forest: .4,
+    label: 'the giant woods', forest: .4,
     h: (x, z, B) => 26 + B.big * 44 + B.mid * 18,
     c: (x, y, z) => mixc(PAL.duff, PAL.moss, smooth(-.2, .4, fbm(x / 22, z / 22, 22, 2)) * .7),
   },
   moor: {
-    w: () => .6, label: 'the moors', forest: -.55,
+    label: 'the moors', forest: -.55,
     h: (x, z, B) => 22 + B.big * 14 - Math.abs(B.mid) * 6,
     c: (x, y, z) => mixc(PAL.moor, PAL.heather2, smooth(0, .4, fbm(x / 30, z / 30, 15, 2)) * .55),
   },
   mountains: {
-    w: (n) => .5 + n * .4, label: 'the high country', forest: 0, high: 1,
+    label: 'the high country', forest: 0, high: 1,
     h: (x, z, B) => 30 + B.big * 30 + B.mid * 12 + softRidged(x / 260, z / 260, 4, 3) ** 2 * 160,
     c: (x, y, z) => mixc(PAL.meadow, PAL.heath, smooth(40, 110, y) * .6),
   },
   alpine: {
-    w: (n) => .12 + n * 1.3, label: 'the snowy peaks', forest: -.2, high: 1, peaks: 1,
+    label: 'the snowy peaks', forest: -.2, high: 1, peaks: 1,
     h: (x, z, B) => 70 + B.big * 40 + B.mid * 16 + softRidged(x / 330, z / 330, 41, 3, .06) ** 2.2 * 270 + softRidged(x / 90, z / 90, 42, 2, .15) ** 2 * 8,
     c: (x, y, z, st) => mixc(mixc(PAL.alpine, PAL.heath, smooth(60, 140, y)), PAL.scree, smooth(.15, .3, st) * smooth(90, 150, y)),
   },
   cliffs: {
-    w: () => .55, label: 'the cliffs', forest: -.1, high: 1,
+    label: 'the cliffs', forest: -.1, high: 1, cliff: 1,
     h: (x, z, B) => {
       const h = 45 + B.big * 40 + B.mid * 14 + softRidged(x / 300, z / 300, 43, 2) ** 2 * 90;
       return h + smooth(-.2, .12, fbm(x / 650, z / 650, 64, 2)) * .85 * (stepped(Math.max(0, h), 24, .78, .96) - h);
@@ -100,7 +103,7 @@ export const BIOMES = {
     c: (x, y, z) => mixc(PAL.meadow, PAL.heath, smooth(30, 100, y) * .6),
   },
   fjord: {
-    w: (n) => .12 + n * .8, label: 'the fjords', forest: .1, high: .5, coast: 1,
+    label: 'the fjords', forest: .1, high: .5, coast: 1, cliff: .7,
     h: (x, z, B) => {
       const plat = 92 + B.big * 34 + B.mid * 12 + softRidged(x / 210, z / 210, 44, 2) ** 2 * 60, cl = riverLine(x, z, 45, 800);
       return plat + (-15 - plat) * smooth(.13, .055, cl);
@@ -108,18 +111,12 @@ export const BIOMES = {
     c: (x, y, z) => mixc(PAL.fjord, PAL.moss, smooth(-.2, .4, fbm(x / 30, z / 30, 23, 2)) * .5),
   },
   coast: {
-    w: () => .6, label: 'the coast', forest: -.25, coast: 1,
-    // a bay of sea in the middle of the cell, ringed by sea cliffs (sandy coves in places)
-    h: (x, z, B, e) => {
-      const R = 330 + ih(e.gx, e.gz, 311) * 120, d = Math.hypot(x - e.cx, z - e.cz) / R + fbm(x / 160, z / 160, 63, 2) * .12;
-      const cove = smooth(.1, .4, fbm(x / 300, z / 300, 67, 1)), sea = cove > .5 ? smooth(1.08, .9, d) : smooth(1, .965, d);
-      const land = 16 + B.big * 14 + B.mid * 6 + 24 * smooth(1.5, 1, d) * (1 - cove);
-      return land * (1 - sea) - 16 * sea;
-    },
+    label: 'the coast', forest: -.25, coast: 1, shore: 1,
+    h: (x, z, B) => 12 + B.big * 14 + B.mid * 6,
     c: (x, y, z) => mixc(PAL.heath, PAL.heather, smooth(.1, .5, fbm(x / 40, z / 40, 14, 2)) * .6),
   },
   desert: {
-    w: (n, s) => .1 + s * 1.3, label: 'the dunes', forest: -.95, dry: 1, ownRock: 1, noSnow: 1, sandy: 1,
+    label: 'the dunes', forest: -.95, dry: 1, ownRock: 1, noSnow: 1, sandy: 1,
     h: (x, z, B) => {
       const along = x * .8 + z * .6 + fbm(x / 400, z / 400, 76, 2) * 60;
       const dunes = 14 + B.big * 10 + (1 - Math.abs(Math.sin(along / 34))) ** 1.5 * 7 + Math.sin(along / 11 + B.mid * 4) * .8;
@@ -132,7 +129,7 @@ export const BIOMES = {
     },
   },
   canyon: {
-    w: (n, s) => .08 + s * 1.1, label: 'the canyonlands', forest: -.8, dry: 1, ownRock: 1, noSnow: 1,
+    label: 'the canyonlands', forest: -.8, dry: 1, ownRock: 1, noSnow: 1,
     h: (x, z, B) => {
       const h = stepped(62 + B.big * 30 + B.mid * 10, 16), cl = riverLine(x, z, 73, 950), cut = smooth(.11, .035, cl);
       const floor = -1.5 - smooth(.035, 0, cl), wall = smooth(.11, .06, cl);
@@ -144,24 +141,24 @@ export const BIOMES = {
     },
   },
   badlands: {
-    w: (n, s) => .12 + s * .7, label: 'the badlands', forest: -.95, dry: 1, ownRock: 1, noSnow: 1,
+    label: 'the badlands', forest: -.95, dry: 1, ownRock: 1, noSnow: 1,
     h: (x, z, B) => 10 + B.big * 8 + softRidged(x / 115, z / 115, 46, 3, .1) ** 2 * 36 * (.6 + .4 * smooth(-.4, .3, fbm(x / 500, z / 500, 47, 2))) + Math.abs(fbm(x / 28, z / 28, 48, 1)) * 2.5,
     // bands of grey, pink, cream and lilac clay
     c: (x, y, z) => pick([PAL.clay1, PAL.clay2, PAL.clay3, PAL.clay4, PAL.clay5, PAL.clay2], Math.floor((y + fbm(x / 120, z / 120, 49, 1) * 4) / 3.2)),
   },
   saltflat: {
-    w: (n, s) => .08 + s * .45, label: 'the salt flats', forest: -1.3, dry: 1, noSnow: 1, flat: 1,
+    label: 'the salt flats', forest: -1.3, dry: 1, noSnow: 1, flat: 1,
     h: (x, z, B) => 1.7 + fbm(x / 400, z / 400, 97, 2) * .5 + B.fine * .06,
     // a crust cracked into plates
     c: (x, y, z) => mixc(PAL.salt, PAL.salt2, ih(Math.floor((x + fbm(x / 20, z / 20, 98, 1) * 6) / 14), Math.floor((z + fbm(z / 20, x / 20, 99, 1) * 6) / 14), 312) * .7),
   },
   savanna: {
-    w: (n, s) => .15 + s * .9, label: 'the savanna', forest: -.55, noSnow: 1,
+    label: 'the savanna', forest: -.55, noSnow: 1,
     h: (x, z, B) => 12 + B.big * 12 + B.mid * 4,
     c: (x, y, z) => mixc(mixc(PAL.straw, PAL.straw2, smooth(-.3, .3, fbm(x / 50, z / 50, 24, 2))), PAL.savGreen, smooth(.2, .6, fbm(x / 140, z / 140, 25, 2)) * .6),
   },
   karst: {
-    w: () => .45, label: 'the stone forest', forest: .12, ownRock: 1,
+    label: 'the stone forest', forest: .12, ownRock: 1,
     h: (x, z, B) => {
       const low = 2.4 + B.mid * 1.6 + fbm(x / 90, z / 90, 98, 2) * 1.6 - 3.6 * smooth(-.25, -.45, fbm(x / 300, z / 300, 99, 2));
       return low + towers(x, z);
@@ -169,7 +166,7 @@ export const BIOMES = {
     c: (x, y, z, st) => mixc(mixc(PAL.lush, PAL.lush2, smooth(-.3, .3, fbm(x / 40, z / 40, 26, 2))), mixc(PAL.lime, PAL.lime2, ih(x | 0, z | 0, 27)), smooth(.25, .45, st)),
   },
   volcano: {
-    w: () => .22, label: 'the fire mountain', forest: -.4, ownRock: 1,
+    label: 'the fire mountain', forest: -.4, ownRock: 1,
     // a caldera: a ring of ash slopes round a crater lake, a smoking cone in the middle, old
     // lava fields all round
     h: (x, z, B, e) => {
@@ -183,12 +180,43 @@ export const BIOMES = {
     },
   },
   swamp: {
-    w: (n, s) => .2 + s * .35, label: 'the mangrove swamp', forest: .15, lakes: .5, marsh: .6, noSnow: 1,
+    label: 'the mangrove swamp', forest: .15, lakes: .5, marsh: .6, noSnow: 1,
     h: (x, z) => .45 + fbm(x / 40, z / 40, 99, 2) * 1.7 + fbm(x / 180, z / 180, 100, 2) * 1.3,
     c: (x, y, z) => mixc(PAL.swamp, PAL.swamp2, smooth(-.3, .3, fbm(x / 20, z / 20, 28, 2))),
   },
+  // ---- the lands the Earth needed ----
+  ice: {
+    label: 'the ice', forest: -2.5, ownRock: 1, flat: 1,
+    h: (x, z, B) => 18 + B.big * 26 + B.mid * 7 + softRidged(x / 420, z / 420, 51, 2) ** 2 * 36,
+    c: (x, y, z, st) => mixc(mixc(PAL.ice, PAL.snow, smooth(-.3, .3, fbm(x / 60, z / 60, 52, 2))), PAL.ice2, smooth(.12, .3, st) * .8),
+  },
+  tundra: {
+    label: 'the tundra', forest: -1.4, lakes: .6,
+    h: (x, z, B) => 9 + B.big * 12 + B.mid * 4 - 10 * smooth(-.08, -.42, B.big) - 3.5 * smooth(.25, .5, fbm(x / 110, z / 110, 53, 2)),
+    c: (x, y, z) => mixc(mixc(PAL.tundra, PAL.tundra2, smooth(-.2, .4, fbm(x / 50, z / 50, 54, 2)) * .7), PAL.lichen, smooth(.25, .55, fbm(x / 14, z / 14, 55, 1)) * .5),
+  },
+  taiga: {
+    label: 'the taiga', forest: .4, lakes: .4,
+    h: (x, z, B) => 15 + B.big * 26 + B.mid * 10 - 10 * smooth(-.1, -.45, B.big),
+    c: (x, y, z) => mixc(PAL.taiga, PAL.taiga2, smooth(-.2, .4, fbm(x / 26, z / 26, 56, 2)) * .6),
+  },
+  steppe: {
+    label: 'the steppe', forest: -.95, noSnow: .4,
+    h: (x, z, B) => 14 + B.big * 14 + B.mid * 3,
+    c: (x, y, z) => mixc(mixc(PAL.steppe, PAL.steppe2, smooth(-.3, .3, fbm(x / 60, z / 60, 57, 2))), PAL.straw, smooth(.2, .6, fbm(x / 150, z / 150, 58, 2)) * .4),
+  },
+  maquis: {
+    label: 'the Mediterranean hills', forest: -.2, noSnow: .7,
+    h: (x, z, B) => 18 + B.big * 30 + B.mid * 13 + softRidged(x / 240, z / 240, 59, 2) ** 2 * 30,
+    c: (x, y, z) => mixc(PAL.maquis, PAL.maquis2, smooth(.05, .45, fbm(x / 16, z / 16, 60, 2)) * .65),
+  },
+  rainforest: {
+    label: 'the rainforest', forest: .75, noSnow: 1,
+    h: (x, z, B) => 12 + B.big * 28 + B.mid * 14,
+    c: (x, y, z) => mixc(PAL.rain, PAL.rain2, smooth(-.2, .4, fbm(x / 24, z / 24, 62, 2)) * .7),
+  },
   marsh: {
-    w: () => 0, label: 'the wintering marsh', forest: -.3, marsh: 1,
+    label: 'the reed marshes', forest: -.3, marsh: 1,
     h: (x, z) => .55 + fbm(x / 55, z / 55, 68, 2) * 2.6 + fbm(x / 260, z / 260, 69, 2) * 1.8,
     c: (x, y, z) => mixc(PAL.reed, PAL.reed2, smooth(-.3, .3, fbm(x / 18, z / 18, 13, 2))),
   },
@@ -200,20 +228,31 @@ export const BIOME_NAMES = Object.keys(BIOMES);
 const warpX = (x, z) => fbm(x / 700, z / 700, 91, 2) * 260, warpZ = (x, z) => fbm(x / 700 + 5.3, z / 700, 92, 2) * 260;
 const cells = new Map();
 export function clearBiomeCache() { cells.clear(); }
+// what each kind of Earth country rolls, by weight (the baked biome from earth.js -> lands)
+export const PALETTE = {
+  sea: [['coast', 1]], seaTropic: [['swamp', .5], ['rainforest', .5]],
+  ice: [['ice', 1]], tundra: [['tundra', 6], ['moor', .8]], taiga: [['taiga', 6], ['birch', 1.5], ['lakeland', .8]], birch: [['birch', 5], ['taiga', 1.5], ['lakeland', 1]],
+  forest: [['forest', 5], ['meadow', 2.5], ['lakeland', .8]], meadow: [['meadow', 5], ['forest', 2], ['lakeland', .6]], lakeland: [['lakeland', 5], ['forest', 1.5], ['birch', .6]],
+  moor: [['moor', 5], ['cliffs', .5], ['meadow', .6]], coast: [['coast', 4], ['cliffs', 1], ['meadow', 1]], cliffs: [['cliffs', 4], ['coast', 1.5]],
+  fjord: [['fjord', 5], ['mountains', 1], ['birch', .6]], mountains: [['mountains', 5], ['alpine', 1], ['forest', .6]], alpine: [['alpine', 5], ['mountains', 2]],
+  sequoia: [['redwood', 3], ['mountains', 2]], redwood: [['redwood', 5], ['forest', 1]], steppe: [['steppe', 6], ['meadow', 1], ['badlands', .15], ['saltflat', .08]],
+  maquis: [['maquis', 5], ['meadow', .8], ['cliffs', .4], ['karst', .15]], desert: [['desert', 7], ['canyon', .4], ['badlands', .4], ['saltflat', .4]],
+  canyon: [['canyon', 5], ['desert', 1], ['badlands', 1]], badlands: [['badlands', 5], ['steppe', 1], ['canyon', .5]], saltflat: [['saltflat', 4], ['desert', 1.5]],
+  savanna: [['savanna', 7], ['steppe', .4]], rainforest: [['rainforest', 7], ['swamp', .6], ['karst', .2]], swamp: [['swamp', 5], ['rainforest', 1.5]],
+  marsh: [['marsh', 5], ['lakeland', .6]], karst: [['karst', 5], ['rainforest', 1], ['forest', .5]], volcano: [['volcano', 3], ['mountains', 1.5]],
+};
 function cellAt(gx, gz) {
   const key = gx * 100003 + gz; let c = cells.get(key); if (c) return c;
   const wcx = (gx + .15 + ih(gx, gz, 321) * .7) * BIOME_CELL, wcz = (gz + .15 + ih(gx, gz, 322) * .7) * BIOME_CELL;
   let cx = wcx, cz = wcz;
   for (let i = 0; i < 3; i++) { const nx = wcx - warpX(cx, cz), nz = wcz - warpZ(cx, cz); cx = nx; cz = nz; }
-  const s = smooth(-2500, 7000, cz), n = 1 - s;
-  let name;
-  if (Math.hypot(wcx, wcz) < BIOME_CELL * .75 || (gx === 0 && gz === 0)) name = 'lakeland';   // home: woods and lakes
-  else {
-    let tot = 0; const ws = BIOME_NAMES.map(k => { const w = BIOMES[k].w(n, s); tot += w; return w; });
-    let r = ih(gx, gz, 323) * tot; name = BIOME_NAMES[BIOME_NAMES.length - 1];
-    for (let i = 0; i < ws.length; i++) if ((r -= ws[i]) < 0) { name = BIOME_NAMES[i]; break; }
-  }
-  c = { gx, gz, wcx, wcz, cx, cz, name, b: BIOMES[name] };
+  let e = earthBiome(cx, cz);
+  if (e === 'sea' && Math.abs(latAt(cx, cz)) < 24) e = 'seaTropic';
+  const pal = PALETTE[e] || PALETTE.forest;
+  let tot = 0; for (const p of pal) tot += p[1];
+  let r = ih(gx, gz, 323) * tot, name = pal[0][0];
+  for (const p of pal) if ((r -= p[1]) < 0) { name = p[0]; break; }
+  c = { gx, gz, wcx, wcz, cx, cz, name, b: BIOMES[name], earth: e };
   cells.set(key, c); if (cells.size > 3000) cells.delete(cells.keys().next().value);
   return c;
 }
@@ -235,10 +274,7 @@ export function blend(x, z) {
   }
   const out = []; let tot = 0;
   for (const [d, c] of near) { const w = smooth(BLEND, 0, d - d1); if (w > .002) { out.push({ name: c.name, b: c.b, w, cx: c.cx, cz: c.cz, gx: c.gx, gz: c.gz }); tot += w; } }
-  // the wintering marsh, a broad band across the far south
-  const m = smooth(JOURNEY.marsh - 500, JOURNEY.marsh + 150, z + fbm(x / 900, z / 1300, 61, 2) * 320);
-  for (const e of out) e.w = e.w / tot * (1 - m);
-  if (m > .002) out.push({ name: 'marsh', b: BIOMES.marsh, w: m, cx: x, cz: JOURNEY.marsh + 2000, gx: 0, gz: 1e6 });
+  for (const e of out) e.w /= tot;
   return out.sort((a, b) => b.w - a.w);
 }
 // how much of each kind of country a point is (summed over the biomes)

@@ -14,7 +14,9 @@ import { createRenderer } from './render.js';
 import { createPerf } from './perf.js';
 import { createInput } from './input.js';
 import { createHawk, step, perchAhead } from './flight.js';
-import { height, WATER, WIND, thermalsNear, forest, treesNear, perchesOf, solidsNear } from './world.js';
+import { height, WATER, WIND, thermalsNear, forest, treesNear, perchesOf, solidsNear, toXZ, EARTH } from './world.js';
+import { BIRD } from './hawk.js';
+import { polesSystem } from './sys/poles.js';
 import { createAudio } from '../src/audio.js';
 import { createMusic } from '../src/music.js';
 import { store, clamp } from './util.js';
@@ -66,7 +68,20 @@ import { stillSystem } from './sys/still.js';
 
 const SYSTEMS = [speciesSystem, movesSystem, lifeSystem, clockSystem, weatherSystem, watersSystem, windsSystem, floraSystem, bushesSystem, airSystem, ringsSystem, foodSystem, aimSystem, sleepSystem, feelSystem, batterySystem, songsSystem, momentsSystem,
   guideSystem, journeySystem, nestSystem, storySystem, ruinsSystem, photoSystem, howtoSystem, faunaSystem, neighboursSystem, landsSystem, seasonsSystem, glowSystem, landAirSystem, crittersSystem, huntersSystem, aimsSystem, seasonSystem, ghostSystem,
-  fieldsSystem, skyDaysSystem, raptorsSystem, wingcraftSystem, stillSystem];
+  fieldsSystem, skyDaysSystem, raptorsSystem, wingcraftSystem, stillSystem, polesSystem];
+
+// Where each bird first flies, in its own country (earth.js toXZ: latitude, longitude): the
+// red-tail at a forest edge in the Finger Lakes, the osprey over a Scottish loch, the barn owl in
+// the Loire farmland, the raven over a Norwegian fjord. Then the nearest open ground to start over.
+const STARTS = { hawk: [42.6, -76.7], osprey: [57.2, -4.5], owl: [47.4, 0.7], raven: [61.2, 7] };
+function startOf(bird) {
+  const [x0, z0] = toXZ(...(STARTS[bird] || STARTS.hawk)) || [0, 0];
+  for (let i = 0; i < 400; i++) {
+    const a = i * 2.39996, r = i * 12, x = x0 + Math.cos(a) * r, z = z0 + Math.sin(a) * r, h = height(x, z);
+    if (h > 3 && h < 90 && forest(x, z) < .25) return [Math.round(x), Math.round(z)];
+  }
+  return [Math.round(x0), Math.round(z0)];
+}
 
 export function start(canvas, ui) {
   const gl = createGL(canvas);
@@ -75,12 +90,17 @@ export function start(canvas, ui) {
   const audio = createAudio(), music = createMusic(audio);
   audio.on = store.get('sound', true);
   music.setMode(store.get('musicMode', 'valley'));
-  const b = createHawk(0, -60);
+  // Saves are not kept across big changes yet (experimental): one from before the Earth world
+  // (no home in it) is dropped, and the bird starts afresh in its own country
+  let S0 = store.get('save3d', null);
+  if (S0 && !S0.home) { S0 = null; store.set('save3d', null); }
+  const home = S0?.home || startOf(BIRD !== 'hawk' ? BIRD : store.get('bird', 'hawk'));
+  const b = createHawk(home[0], home[1]);
 
   // ---- the game object and its bus --------------------------------------------------------
   const listeners = new Map();
   const G = {
-    b, R, audio, music, input, store, t: 0, clock: 0, paused: false, parts: [], flags: store.get('flags3d', {}),
+    b, R, home, audio, music, input, store, t: 0, clock: 0, paused: false, parts: [], flags: store.get('flags3d', {}),
     settings: { sound: audio.on, music: store.get('music', true), invert: store.get('invert3d', false), fps: store.get('fps3d', false), fpsCap: store.get('fpsCap3d', store.get('fullRate3d', false) ? 90 : 60) },
     res: 1, systems: {},
     on: (name, fn) => { if (!listeners.has(name)) listeners.set(name, []); listeners.get(name).push(fn); },
@@ -96,7 +116,6 @@ export function start(canvas, ui) {
   for (const s of systems) G.systems[s.id] = s;
 
   // ---- save and resume -----------------------------------------------------------------
-  const S0 = store.get('save3d', null);
   if (!S0) { b.state = 'fly'; b.p[1] += 35; b.s = 12; }
   else {
     Object.assign(b, { p: S0.p, yaw: S0.yaw, state: 'ground', stamina: S0.stamina ?? 1 });
@@ -108,7 +127,7 @@ export function start(canvas, ui) {
   function persist() {
     if (G.resetting) return;   // a new journey or world has cleared the save; the reload must not write it back
     const sys = {}; for (const s of systems) if (s.save) sys[s.id] = s.save();
-    store.set('save3d', { p: b.p, yaw: b.yaw, stamina: b.stamina, clock: G.clock, perch: b.state === 'perch', sys });
+    store.set('save3d', { p: b.p, yaw: b.yaw, stamina: b.stamina, clock: G.clock, perch: b.state === 'perch', home: G.home, sys });
     store.set('flags3d', G.flags);
   }
   G.persist = persist;
@@ -175,6 +194,7 @@ if (qs.has('fps')) G.settings.fpsCap = +qs.get('fps') || 60;
         const g = height(x, z); b.perch = b.tree = null;
         if (g < WATER) { b.state = 'swim'; b.p = [x, WATER + .12, z]; } else { b.state = 'ground'; b.p = [x, g + .35, z]; }
       }
+      G.systems.clock.reseason?.();   // a new place, its own season straight away
       done?.();
       setTimeout(() => { fade.style.opacity = 0; fade.style.pointerEvents = 'none'; }, 250);
     }, 450);
@@ -211,7 +231,7 @@ if (qs.has('fps')) G.settings.fpsCap = +qs.get('fps') || 60;
   G.menu.toggle(play, { label: 'Rest at 30 fps', sub: 'perched or on the ground and left alone a few seconds: half the frames, less battery', get: () => G.settings.rest, set: v => { G.settings.rest = v; store.set('rest3d', v); } });
   G.menu.toggle(play, { label: 'Show frame rate', get: () => G.settings.fps, set: v => { G.settings.fps = v; store.set('fps3d', v); H.showFps(v); } });
   G.menu.button(play, { label: 'Music lab', sub: 'shape the music: strings, piano, pace', href: 'musiclab.html', group: 'sound' });
-  G.menu.button(play, { label: 'Start a new journey', sub: 'from the valley', group: 'play', onClick: el => {
+  G.menu.button(play, { label: 'Start a new journey', sub: 'in your bird’s own country', group: 'play', onClick: el => {
     if (el.dataset.sure) { G.resetting = true; store.set('save3d', null); location.reload(); } else { el.dataset.sure = 1; el.firstChild.textContent = 'Tap again to start over '; }
   } });
   appRows(G);
@@ -315,8 +335,15 @@ if (qs.has('fps')) G.settings.fpsCap = +qs.get('fps') || 60;
     G.systems.clock.update(dt, c);
     pf.lap('Systems', 'clock');
     // the wind (world.js WIND, its strength from the weather): flight drifts with it and lands by it
-    { const ws = (G.windK ?? .3) * 6 / Math.hypot(WIND[0], WIND[2]); b.wind = [WIND[0] * ws, WIND[2] * ws]; }
+    { const ws = (G.windK ?? .3) * 6 / Math.hypot(WIND[0], WIND[2]), pw = G.poleWind || [0, 0]; b.wind = [WIND[0] * ws + pw[0], WIND[2] * ws + pw[1]]; }
     step(b, c, dt, E);
+    // the world wraps east to west (earth.js): over the open Pacific the bird is moved round
+    if (Math.abs(b.p[0]) > EARTH.W / 2) {
+      const dx = -Math.sign(b.p[0]) * EARTH.W;
+      b.p[0] += dx; if (b.from) b.from[0] += dx; b.snapCam = true;
+      for (const p of G.parts) p.p[0] += dx;
+      G.emit('wrap', dx);
+    }
     if (Math.abs(c.roll) > .5) H.did('bank');
     if (Math.abs(c.pitch) > .5) H.did('climb');
     if (c.spread < -.5) { H.did('tuck'); H.did('aim'); }
