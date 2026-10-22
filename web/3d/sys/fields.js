@@ -1,6 +1,6 @@
 // Hunting with your head (round eight A1, A3, A4, A5): clues that tell you where the food is.
-// A1 signs to read from the air: vole runways as faint pale lines through the grass round each
-// mouse's home, its track across fresh snow to a hole, and the grazed rings where hares feed.
+// A1 signs to read from the air: a mouse's track across fresh snow to its hole, and the grazed
+// rings where hares feed. (Vole runways were removed: James found the pale lines confusing.)
 // A3 the hay meadows (each farm's paddock) through the year: short and open in early spring,
 // tall by midsummer (a still mouse in it can't be made out), laid flat by a storm, mown in
 // autumn with bales left lying. A4 a fox mousing the field edges at dusk and dawn: where it
@@ -157,15 +157,13 @@ export function fieldsSystem(G) {
   }
 
   // ---- A1 signs ----
-  const paths = new Map();   // mouse id -> its runways and its snow track (fixed by hash)
+  const paths = new Map();   // mouse id -> its snow track (fixed by hash)
   function pathsOf(m) {
     let p = paths.get(m.id); if (p) return p;
     const walk = (x, z, a, n, step, seed) => { const out = [[x, z]]; for (let i = 0; i < n; i++) { a += (ih(m.id, seed + i, 611) - .5) * 1.1; x += Math.cos(a) * step; z += Math.sin(a) * step; out.push([x, z]); } return out; };
-    const run = [[[m.hx, m.hz], [m.bx, m.bz]]];
-    for (let k = 0; k < 3; k++) run.push(walk(m.hx, m.hz, ih(m.id, k, 612) * 6.283, 5 + (ih(m.id, k, 613) * 4 | 0), 1.4, 20 + k * 10));
     const ta = ih(m.id, 9, 614) * 6.283, track = walk(m.bx + Math.cos(ta) * 9, m.bz + Math.sin(ta) * 9, ta + Math.PI, 7, 1.2, 70);
     track.push([m.bx, m.bz]);
-    p = { run, track }; paths.set(m.id, p); if (paths.size > 600) paths.delete(paths.keys().next().value);
+    p = { track }; paths.set(m.id, p); if (paths.size > 600) paths.delete(paths.keys().next().value);
     return p;
   }
   const snowAt = (x, z, y) => { const line = 185 - env.snow * 200; return smooth(line - 5, line + 25, y + fbm(x / 40, z / 40, 7, 2) * 12); };
@@ -185,8 +183,8 @@ export function fieldsSystem(G) {
     }
   }
 
-  G.dev?.add({ id: 'r8-signs', title: 'Signs to read: vole runways, tracks in snow, grazed rings', area: 'Food and water', round: 'R8 A1',
-    how: 'Fly 20 to 120 m over open grass near a farm: pale thin lines show where voles run; in snow a track leads to a hole; hares graze rings.', go: () => toFarm(60) });
+  G.dev?.add({ id: 'r8-signs', title: 'Signs to read: tracks in snow, grazed rings', area: 'Food and water', round: 'R8 A1',
+    how: 'Fly 20 to 120 m over open grass near a farm: in snow a track leads to a mouse hole; hares graze rings.', go: () => toFarm(60) });
   G.dev?.add({ id: 'r8-hay', title: 'Hay meadows through the year', area: 'Food and water', round: 'R8 A3',
     how: "Each farm's paddock: short in spring, tall in summer (still mice hide in it), laid flat after a storm, mown with bales in autumn.", go: () => toFarm(30) });
   G.dev?.add({ id: 'r8-fox', title: 'A fox mousing at dusk', area: 'Wildlife', round: 'R8 A4',
@@ -251,7 +249,7 @@ export function fieldsSystem(G) {
           if (snowAt(m.hx, m.hz, y) > .5) {
             strip(out, p.track, .16, [.48, .55, .68], .6 * fade);
             (S.props.burrow ||= []).push(m.bx, groundAt(m.bx, m.bz) + .02, m.bz, 1.3, 0, .5, 0, 0);
-          } else if (!H0.mown || G.season?.i !== 2) for (const q of p.run) strip(out, q, .22 + .2 * smooth(20, 120, above), [.92, .9, .66], .34 * fade);
+          }
         }
       }
       for (const o of G.prey || []) if (o.kind === 'jackrabbit' || o.kind === 'rabbit' || o.kind === 'marmot') {
