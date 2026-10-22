@@ -1,7 +1,8 @@
 // The nest: twigs lie under some trees; land beside one to pick it up, then perch on a branch to
 // start a nest there. Five twigs and there is an egg; a day later a chick, hungry: catch mice and
 // keep part of each for it, and carry it home. Five meals and it fledges and flies with you.
-// Last year's nest tree is remembered, and a few twigs there start this year's.
+// Last year's nest tree is remembered, and a few twigs there start this year's. A nest built on
+// year after year grows deeper (a layer of old sticks under it for each year) and keeps its trinkets.
 import { height, treesNear, ih } from '../world.js';
 import { builder, blob, reseed } from '../shapes.js';
 import { DAY } from '../sky.js';
@@ -9,6 +10,7 @@ import { journal } from '../journal.js';
 
 export const NEST_TWIGS = 5, CHICK_MEALS = 5;
 const NEAR = 3.2;   // metres from the nest that count as at it
+const ORD = ['', 'first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth'];
 
 function twigShape() {
   const B = builder(), c = [.45, .33, .22], c2 = [.38, .27, .18];
@@ -50,6 +52,10 @@ export function nestSystem(G) {
   const twigsNear = (x, z, r) => treesNear(x, z, r).map(twigOf).filter(Boolean);
   const atNest = (p, n = G.nest) => n && Math.hypot(p.x - n.x, p.y - n.y, p.z - n.z) < NEAR;
   const say = (m, s = 4) => G.hud.toast(m, s);
+  const trinkets = () => G.story?.keepsakes?.length || 0;
+  G.dev?.add({ id: 'nest-years', area: 'Journal and story', round: 'R8 F2', pr: 182, title: 'The nest grows over the years and keeps its trinkets',
+    how: 'Mend last year’s nest each spring: a layer of old sticks for each year, keepsakes on the rim; the Journal counts its years. Try it ages your nest a year.',
+    go: () => { if (G.nest) G.nest.years = (G.nest.years || 1) + 1; else say('Build a nest first: Try it ages the nest you have.', 3); } });
 
   G.hud.tip('twig', () => !G.carry && b.state === 'fly' && b.p[1] - height(b.p[0], b.p[2]) < 25 && twigsNear(b.p[0], b.p[2], 20).length > 0 && !(G.nest?.twigs >= NEST_TWIGS), 'A twig under the tree. Land beside it to pick it up, then perch on a branch to start a nest.');
   G.hud.tip('nestbranch', () => G.carry === 'twig' && !G.nest, 'Carrying a twig. Perch on a branch (fly slowly into a tree) to start your nest there.');
@@ -68,8 +74,12 @@ export function nestSystem(G) {
     const n = G.nest;
     if (G.carry === 'twig') {
       if (!n) {
-        if (old && atNest(p, old)) { G.nest = { ...old, twigs: 3, fed: 0 }; delete G.nest.chick; delete G.nest.fledged; delete G.nest.eggAt; old = null; G.carry = null; G.audio.rustle?.(.8); say('Last year’s nest, mended: two more twigs.'); return; }
-        G.nest = { x: p.x, y: p.y, z: p.z, twigs: 1, fed: 0, place: G.placeName?.(p.x, p.z) || 'the woods' };
+        if (old && atNest(p, old)) {
+          const years = (old.years || 1) + 1;
+          G.nest = { ...old, twigs: 3, fed: 0, years }; delete G.nest.chick; delete G.nest.fledged; delete G.nest.eggAt; old = null; G.carry = null; G.audio.rustle?.(.8);
+          say(`Last year’s nest, mended for its ${ORD[years] || `${years}th`} spring: two more twigs.`); G.emit('nestYear', years); return;
+        }
+        G.nest = { x: p.x, y: p.y, z: p.z, twigs: 1, fed: 0, years: 1, place: G.placeName?.(p.x, p.z) || 'the woods' };
         G.carry = null; G.audio.rustle?.(.8); G.hud.did('nestbranch'); say('You started a nest. Bring four more twigs.'); return;
       }
       if (!atNest(p)) { say('Twigs go to your nest. The Journal map shows where it is.', 3); return; }
@@ -91,13 +101,13 @@ export function nestSystem(G) {
   }
 
   // the year turns: the nest becomes last year's, waiting to be built on
-  G.on('marsh', () => { if (G.nest) old = { x: G.nest.x, y: G.nest.y, z: G.nest.z, place: G.nest.place }; });
-  G.on('newYear', () => { if (G.nest) { old = { x: G.nest.x, y: G.nest.y, z: G.nest.z, place: G.nest.place }; G.nest = null; } if (old) say('Your old nest tree still stands; a few twigs there start this year’s nest.', 5); });
+  G.on('marsh', () => { if (G.nest) old = { x: G.nest.x, y: G.nest.y, z: G.nest.z, place: G.nest.place, years: G.nest.years || 1 }; });
+  G.on('newYear', () => { if (G.nest) { old = { x: G.nest.x, y: G.nest.y, z: G.nest.z, place: G.nest.place, years: G.nest.years || 1 }; G.nest = null; } if (old) say('Your old nest tree still stands; a few twigs there start this year’s nest.', 5); });
   G.on('newDay', () => { taken = new Set(); });
 
   const status = () => {
     const n = G.nest;
-    if (!n) return old ? `Last year’s nest waits in ${old.place}. Bring a twig there to mend it.` : 'No nest yet. Twigs lie under some broadleaf trees: land beside one to pick it up, then perch on a branch to start a nest.';
+    if (!n) return old ? `Last year’s nest waits in ${old.place}${old.years > 1 ? `, ${old.years} years old` : ''}. Bring a twig there to mend it.` : 'No nest yet. Twigs lie under some broadleaf trees: land beside one to pick it up, then perch on a branch to start a nest.';
     if (n.fledged) return 'Your chick has fledged and flies with you.';
     if (n.twigs < NEST_TWIGS) return `Building a nest in ${n.place}: ${n.twigs} of ${NEST_TWIGS} twigs.`;
     if (!n.chick) return `An egg in your nest in ${n.place}. It hatches ${G.clock - n.eggAt > DAY * .6 ? 'very soon' : 'in about a day'}.`;
@@ -105,7 +115,8 @@ export function nestSystem(G) {
   };
   const sec = journal(G).section(30);
   sec.body.innerHTML = '<p></p>';
-  G.menu.onOpen(() => { sec.body.firstChild.textContent = status() + (G.carry ? ` You are carrying ${G.carry === 'twig' ? 'a twig' : 'a meal for the chick'}.` : ''); });
+  const age = () => G.nest?.years > 1 ? ` This nest has stood ${G.nest.years} years, deeper each spring, with ${trinkets()} ${trinkets() === 1 ? 'trinket' : 'trinkets'} woven in.` : '';
+  G.menu.onOpen(() => { sec.body.firstChild.textContent = status() + age() + (G.carry ? ` You are carrying ${G.carry === 'twig' ? 'a twig' : 'a meal for the chick'}.` : ''); });
 
   return {
     id: 'nest',
@@ -122,8 +133,13 @@ export function nestSystem(G) {
       if (G.carry === 'twig' && S.hawk) tw.push(S.hawk.p[0], S.hawk.p[1] - .28, S.hawk.p[2], .8, b.yaw, .5, 0, 0);
       if (G.carry === 'mouse' && S.hawk && G.R) (S.props.mouse ||= []).push(S.hawk.p[0], S.hawk.p[1] - .32, S.hawk.p[2], 1.4, b.yaw - Math.PI / 2, .5, 0, 0);
       const n = G.nest; if (!n) return;
-      const k = Math.min(1, .45 + n.twigs * .11);
-      S.props.nest = (S.props.nest || []).concat([n.x, n.y - .08, n.z, k, 0, .5, 0, 0]);
+      const k = Math.min(1, .45 + n.twigs * .11), yrs = Math.min(5, n.years || 1), ns = S.props.nest ||= [];
+      ns.push(n.x, n.y - .08, n.z, k * (1 + (yrs - 1) * .06), 0, .5, 0, 0);
+      // the years beneath: a layer of older, greyer sticks for each spring, each a little wider
+      for (let i = 1; i < yrs; i++) ns.push(n.x, n.y - .08 - i * .085, n.z, k * (1 + (yrs - 1 - i) * .06 + .03), i * 1.3, .5 - i * .08, 0, 0);
+      // its trinkets: the keepsakes you have found, tucked into the rim
+      const kn = Math.min(6, trinkets()), ks = S.props.keepsake ||= [];
+      for (let i = 0; i < kn; i++) { const a = i * 2.4 + n.x, r = .3 * k; ks.push(n.x + Math.cos(a) * r, n.y + .02, n.z + Math.sin(a) * r, .7, a, .5, 0, 0); }
       if (n.eggAt !== undefined && !n.chick && !n.fledged) S.props.egg = (S.props.egg || []).concat([n.x, n.y - .02, n.z, 1, 0, .5, 0, 0]);
       if (n.chick) S.props.chick = (S.props.chick || []).concat([n.x, n.y - .02, n.z, 1 + Math.sin(G.t * 3) * .04, G.t * .4 % 6.283, .5, 0, 0]);
     },

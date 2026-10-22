@@ -135,6 +135,7 @@ export function mapView(G, J, { HOME_Z, MARSH_Z }) {
     // food left on a branch (flight thread's G.caches), till it spoils
     for (const c of G.caches || []) out.push({ x: c.x, z: c.z, name: `A ${c.kind || 'catch'} left on a branch`, note: `Left on day ${Math.floor(c.day)}. It keeps two days.`, cache: c });
     for (const p of J.pins || []) out.push({ x: p.x, z: p.z, name: 'Your pin', note: '', pin: p });
+    for (const p of G.mapPlaces?.() || []) out.push(p);   // places other systems add (the neighbours' valley)
     return out;
   }
 
