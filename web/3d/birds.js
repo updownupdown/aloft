@@ -156,6 +156,27 @@ const cols = {};
 const col = h => cols[h] || (cols[h] = hex(h));
 
 // pose: the hawk's (hawk.js). Settled on a perch, the ground or water when legs and fold are both full.
+// the perched acts' head turns and fluffing (as hawk.js bend): the head turns on the neck (headYaw + to
+// the bird's left, headPitch + down), easing in over the neck ring; fluff puffs the body out
+function bend(sp, p, n) {
+  const N = sp.rings[sp.rings.length - 2], PZ = N[0] * K, PY = N[3] * K, W = .09 * K;
+  const yaw = p.headYaw || 0, pitch = p.headPitch || 0, puff = 1 + (p.fluff || 0) * .14;
+  for (let i = 0; i < n; i += 12) {
+    let x = buf[i] * puff, y = buf[i + 1] * puff, z = buf[i + 2], nx = buf[i + 3], ny = buf[i + 4], nz = buf[i + 5];
+    const w = Math.min(1, Math.max(0, (z - PZ + W * .5) / W)), k = w * w * (3 - 2 * w);
+    if (k > 0) {
+      const cp = Math.cos(pitch * k), sn = Math.sin(pitch * k), cy = Math.cos(yaw * k), sy = Math.sin(yaw * k);
+      let ry = y - PY, rz = z - PZ;
+      [ry, rz] = [ry * cp - rz * sn, ry * sn + rz * cp];
+      [ny, nz] = [ny * cp - nz * sn, ny * sn + nz * cp];
+      [x, rz] = [x * cy + rz * sy, -x * sy + rz * cy];
+      [nx, nz] = [nx * cy + nz * sy, -nx * sy + nz * cy];
+      y = ry + PY; z = rz + PZ;
+    }
+    buf[i] = x; buf[i + 1] = y; buf[i + 2] = z; buf[i + 3] = nx; buf[i + 4] = ny; buf[i + 5] = nz;
+  }
+}
+
 // an extra roll about the body's long axis, for the raven's tumble (sys/moves.js sets it)
 export const SPIN = { a: 0 };
 export function buildBird(id, pose) {
@@ -166,6 +187,7 @@ export function buildBird(id, pose) {
   sp.anim?.(p, p.t, !settled);
   o = 0; K = sp.scale;
   body(sp, p);
+  if (p.headYaw || p.headPitch || p.fluff) bend(sp, p, o);
   wing(sp, p, 1); wing(sp, p, -1);
   tail(sp, p);
   if (p.legs > .02 || sp.legs.trail) legs(sp, p);
