@@ -263,6 +263,23 @@ export function willow() {
   }
   return B.out();
 }
+// a giant sequoia: a vast fluted cinnamon trunk, bare for half its height, under a narrow,
+// lumpy, round-topped crown
+export function sequoia() {
+  seed = 101; const B = builder(), bark = [.62, .34, .22], bark2 = [.55, .3, .2], c1 = [.27, .42, .3], c2 = [.33, .48, .33];
+  prism(B, 0, 0, .13, .075, -.05, .08, 12, bark2, .7);   // the buttressed foot
+  prism(B, 0, 0, .075, .055, .08, .45, 12, bark, .8);
+  prism(B, 0, 0, .055, .025, .45, .96, 10, bark, .85);
+  limbsOf(B, 13, null, null, bark);
+  // a core of foliage up the top half, and clumps hung off it on the ends of hidden boughs
+  blob(B, 0, .74, 0, .15, c1, c2, [1, 1.9, 1], 1);
+  for (let i = 0; i < 16; i++) {
+    const u = rnd(), y = .5 + u * .42, reach = .2 * (1 - u * .7), r = .055 + .06 * (1 - u) * (.7 + rnd() * .6), a = i * 2.4 + rnd() * .6;
+    blob(B, Math.cos(a) * reach, y, Math.sin(a) * reach, r, i & 1 ? c1 : c2, i & 1 ? c2 : c1, [1.25, .6, 1.25], 1);
+  }
+  blob(B, 0, .95, 0, .07, c2, c1, [1, 1.1, 1], 1);
+  return B.out();
+}
 // far versions: a trunk and one lump
 function far(trunk, top, r, crown, y, cr, sc, col, col2) {
   return () => { seed = 41; const B = builder(); prism(B, 0, 0, r, r * .7, -.05, top, 4, trunk); if (crown) blob(B, 0, y, 0, cr, col, col2, sc); return B.out(); };
@@ -283,6 +300,7 @@ export const TREE_LOOKS = [
   { near: spruce, far: () => { seed = 73; const B = builder(); prism(B, 0, 0, .03, .01, -.05, .3, 4, PAL.bark); cone(B, .08, 1, .2, 5, [.22, .37, .3]); return B.out(); }, autumn: 0 },
   { near: juniper, far: far([.47, .39, .3], .5, .04, 1, .64, .28, [1.2, .8, 1.1], [.3, .43, .36], [.38, .5, .4]), autumn: 0 },
   { near: willow, far: far(PAL.bark, .45, .05, 1, .55, .4, [1.15, 1, 1.15], [.53, .64, .33], [.62, .7, .38]), autumn: .8 },
+  { near: sequoia, far: far([.62, .34, .22], .6, .08, 1, .72, .19, [1, 1.35, 1], [.27, .42, .3], [.33, .48, .33]), autumn: 0 },
 ];
 
 // ---- bushes (world.js bushesNear; drawn by sys/bushes.js): unit height, perched on top --------
