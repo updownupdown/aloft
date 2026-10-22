@@ -9,6 +9,7 @@
 // The meshes and the finding are sys/ruins.js; world.js asks here for solids, fences, trees to
 // clear, the villages' landmarks and the warm air over them.
 import { railNear } from './rail.js';
+import { wondersNear, wonderSolids } from './wonders.js';
 import { height, groundAt, normalAt, forest, riverAt, sightsNear } from './world.js';
 import { blend } from './biomes.js';
 import { ih, fbm, smooth } from './noise.js';
@@ -226,6 +227,7 @@ export function settlementsNear(x, z, r, sights = true) {
   for (let gz = Math.floor((z - r - 80) / D); gz <= Math.floor((z + r + 80) / D); gz++) for (let gx = Math.floor((x - r - 80) / D); gx <= Math.floor((x + r + 80) / D); gx++) {
     const S = drownedAt(gx, gz); if (S && Math.abs(S.x - x) < r + 80 && Math.abs(S.z - z) < r + 80) out.push(S);
   }
+  out.push(...wondersNear(x, z, r));
   if (sights) for (const l of sightsNear(x, z, r)) if (l.kind === 'lighthouse' || l.kind === 'lookout') { const S = ofSight(l); if (S) out.push(S); }
   return out;
 }
@@ -322,7 +324,7 @@ export function polesNear(x, z, r) {
 }
 function linkFrom(S) {
   if (linked.has(S.id) || S.kind === 'drowned') return; linked.add(S.id);
-  const nb = settlementsNear(S.x, S.z, ROAD_MAX).filter(o => o !== S && o.kind !== 'drowned').map(o => [o, Math.hypot(o.x - S.x, o.z - S.z)]).filter(o => o[1] < ROAD_MAX).sort((a, b) => a[1] - b[1]);
+  const nb = settlementsNear(S.x, S.z, ROAD_MAX).filter(o => o !== S && o.kind !== 'drowned' && o.kind !== 'wonder').map(o => [o, Math.hypot(o.x - S.x, o.z - S.z)]).filter(o => o[1] < ROAD_MAX).sort((a, b) => a[1] - b[1]);
   for (const [o] of nb.slice(0, S.kind === 'village' ? 3 : 1)) makeRoad(S, o);
   // the lanes in a settlement: door to the green, house to barn; and the trodden yard
   for (const [x0, z0, x1, z1] of S.lanes) addSeg(x0, z0, x1, z1, 2.2, .55);
@@ -359,6 +361,7 @@ export function bridgesNear(x, z, r) {
 // each building as upright columns for flight to bump into, with perches where its mesh ends:
 // the roof ridge, the chimney, the chapel tower, a ruin's wall top (pillar is world.js's)
 export function buildingSolids(b, pillar) {
+  if (!DIM[b.kind]) return wonderSolids(b, pillar);
   const d = DIM[b.kind], c = Math.cos(b.yaw), s = Math.sin(b.yaw), P = (u, w) => [b.x + c * u - s * w, b.z + s * u + c * w];
   const top = b.y + (b.v === 0 ? d.ridge : d.wall * WALL_LEFT[b.v]), r = d.W / 2 + .3;
   switch (b.kind) {
@@ -393,7 +396,7 @@ export function bridgeSolids(g, pillar) {
 }
 // how far round a building trees are kept off (world.js treesIn), and a young tree growing out
 // of each shell of a cottage (they are trees like any other: perches)
-export const clearOf = b => DIM[b.kind].clear;
+export const clearOf = b => b.clear ?? DIM[b.kind].clear;
 export const saplingIn = b => b.v === 2 && (b.kind === 'cottage' || b.kind === 'hut' || b.kind === 'farmhouse');
 export const nearRoad = (x, z) => roadShade(x, z) > .2;
 

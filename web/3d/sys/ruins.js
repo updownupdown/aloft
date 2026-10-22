@@ -9,6 +9,8 @@ import { groundAt, height, ih } from '../world.js';
 import * as M from './ruinshapes.js';
 import * as RS from './railshapes.js';
 import { railsNear } from '../rail.js';
+import { wondersNear, WONDERS } from '../wonders.js';
+import * as WS from './wondershapes.js';
 import { journal, esc } from '../journal.js';
 
 const DRAW = 650, NEST_R = 3.2;
@@ -110,8 +112,24 @@ export function ruinsSystem(G) {
     return b.state === 'fly' ? d < 45 && b.p[1] - a.y < 35 : d < 18;
   }), 'Something glints by the old walls: a thing people left. Land beside it, or skim low over it, to take it. Trinkets brighten a nest; some things are treasures.');
 
+  // ---- the wonders (wonders.js): drawn from far off, each mesh built when first near ---------
+  const WDRAW = 2400, wonderOf = new Map();
+  const WMESH = { eiffel: 'eiffel', liberty: 'liberty', giza: 'giza', colosseum: 'colosseum', taj: 'taj', opera: 'opera', redeemer: 'redeemer', stonehenge: 'stonehenge', pisa: 'pisa', picchu: 'picchu', angkor: 'angkor', moai: 'moai' };
+  const wonderShape = W => {
+    let m = wonderOf.get(W.id); if (m) return m;
+    if (W.key === 'greatwall') { m = WS.greatWall(W.path); m.shape = 'wd_' + W.key; R.shape(m.shape, m.tris); }
+    else { m = { shape: 'wd_' + W.key, at: null }; R.shape(m.shape, W.key === 'goldengate' ? WS.goldenGate(W.span || 600) : WS[WMESH[W.key]]()); }
+    wonderOf.set(W.id, m); return m;
+  };
+  let wonders = [];
+  St.wonders = {};
+  function seeWonders() {
+    for (const W of wonders) if (!St.wonders[W.key] && Math.hypot(W.x - b.p[0], W.z - b.p[2]) < (W.key === 'greatwall' ? 900 : 260))
+      St.wonders[W.key] = { day: G.day || 1 };
+  }
+
   // ---- the journal ----------------------------------------------------------------------------
-  const sec = journal(G).section(42, 'Things people left');
+  const sec = journal(G).section(42, 'Things people left'), wsec = journal(G).section(43, 'Wonders');
   sec.body.innerHTML = '<p class="j-relic"></p><ul class="list3"></ul>';
   G.menu.onOpen(() => {
     const T = Object.keys(St.treasures), all = Object.keys(M.TREASURES).length;
@@ -120,6 +138,8 @@ export function ruinsSystem(G) {
     sec.body.querySelector('.j-relic').textContent = (St.trinkets.length || T.length)
       ? `Treasures: ${T.length} of ${all}. Trinkets: ${tr.length ? tr.join(', ') : 'none yet'}.${St.nest.length ? ` In your nest: ${St.nest.length} of them.` : ''}${St.kept.length ? ` ${St.kept.length} waiting to go in a nest.` : ''}`
       : 'Nobody lives in the old farms and villages now. Things they left still glint by the doorsteps and wells: land beside one to take it.';
+    wsec.body.innerHTML = `<p>${Object.keys(St.wonders).length} of ${Object.keys(WONDERS).length} found. People built them, long ago, where the old maps put them.</p><ul class="list3">` + Object.keys(WONDERS).map(k => St.wonders[k]
+      ? `<li>${esc(WONDERS[k][0])} <small>${esc(WONDERS[k][5])} Found on day ${St.wonders[k].day}.</small></li>` : '<li class="j-dim">?</li>').join('') + '</ul>';
     sec.body.querySelector('ul').innerHTML = T.map(k => `<li>${esc(M.TREASURES[k][0])} <small>${esc(M.TREASURES[k][2])} Found on day ${St.treasures[k].day}${St.treasures[k].place ? `, at ${esc(St.treasures[k].place)}` : ''}.</small></li>`).join('');
   });
 
@@ -136,6 +156,8 @@ export function ruinsSystem(G) {
       go: () => { const S = nearest(settlementsNear(b.p[0], b.p[2], 9000, false).filter(S => S.kind === 'drowned')); if (S) toward(S, 70, 30); } },
     { id: 'r8-chimes', title: 'Wind chimes on a few porches', how: 'Land by a cottage door with a chime: it rings in gusts, in the Valley’s key.', round: 'R8 B4',
       go: () => { const bd = nearest(settlementsNear(b.p[0], b.p[2], 4000, false).flatMap(S => S.build.filter(chimeAt))); if (bd) { const c = chimeAt(bd); toward({ x: c[0], z: c[2] }, 35, 10); } } },
+    { id: 'wonders', title: 'Wonders where they stood on Earth', how: 'Find the Eiffel Tower, the Great Wall, the Statue of Liberty and more; Journal > Wonders lists them.', round: 'Earth',
+      go: () => { const L = Object.keys(WONDERS).map(k => wondersNear(b.p[0], b.p[2], 1e5).find(W => W.key === k)).filter(Boolean), W = nearest(L); if (W) toward(W, 260, 70); } },
   ];
   for (const f of dev) G.dev?.add({ area: 'World', ...f });
 
@@ -143,7 +165,7 @@ export function ruinsSystem(G) {
   return {
     id: 'ruins',
     update(dt) {
-      if ((setT -= dt) <= 0) { setT = 1; sets = settlementsNear(b.p[0], b.p[2], DRAW + 50); bridges = bridgesNear(b.p[0], b.p[2], DRAW); lines = linesNear(b.p[0], b.p[2], DRAW); rails = railsNear(b.p[0], b.p[2], DRAW); }
+      if ((setT -= dt) <= 0) { setT = 1; sets = settlementsNear(b.p[0], b.p[2], DRAW + 50); bridges = bridgesNear(b.p[0], b.p[2], DRAW); lines = linesNear(b.p[0], b.p[2], DRAW); rails = railsNear(b.p[0], b.p[2], DRAW); wonders = wondersNear(b.p[0], b.p[2], WDRAW); seeWonders(); }
       // chimes near you ring in the wind
       const wind = (G.windK ?? .3) + (G.gustWind || 0) * 1.5;
       for (const c of chimes) { const d = Math.hypot(c[0] - b.p[0], c[1] - b.p[1], c[2] - b.p[2]); if (d < 45 && Math.random() < dt * (.04 + wind * .5)) ring(c, d); }
@@ -165,8 +187,14 @@ export function ruinsSystem(G) {
     },
     scene(S) {
       const cam = S.cam;
+      for (const W of wonders) {
+        if (Math.hypot(W.x - cam[0], W.z - cam[2]) > WDRAW + 600) continue;
+        const m = wonderShape(W);
+        if (m.at) (S.props[m.shape] ||= []).push(m.at[0], 0, m.at[1], 1, 0, .5, 0, 0);
+        else (S.props[m.shape] ||= []).push(W.x, W.y, W.z, 1, W.yaw, .5, 0, 0);
+      }
       for (const T of sets) {
-        if (Math.hypot(T.x - cam[0], T.z - cam[2]) > DRAW + 40) continue;
+        if (T.kind === 'wonder' || Math.hypot(T.x - cam[0], T.z - cam[2]) > DRAW + 40) continue;
         for (const bd of T.build) {
           const v = bd.kind === 'barn' || bd.kind === 'keeper' ? Math.min(bd.v, 1) : bd.v, name = ['well', 'pump', 'cart', 'boat'].includes(bd.kind) ? 'ru_' + bd.kind : `ru_${bd.kind}${v}`;
           // the drowned cottages: only in summer, when the reservoir is low, do their roofs break the water
@@ -199,7 +227,7 @@ export function ruinsSystem(G) {
         (S.props['af_' + k] ||= []).push(n.x + Math.cos(ang) * .3, n.y + .1, n.z + Math.sin(ang) * .3, .9, ang, .5, 0, 0);
       });
     },
-    save: () => ({ found: [...St.found], treasures: St.treasures, trinkets: St.trinkets, kept: St.kept, nest: St.nest }),
-    load(o) { St.found = new Set(o?.found || []); St.treasures = o?.treasures || {}; St.trinkets = o?.trinkets || []; St.kept = o?.kept || []; St.nest = o?.nest || []; },
+    save: () => ({ found: [...St.found], treasures: St.treasures, trinkets: St.trinkets, kept: St.kept, nest: St.nest, wonders: St.wonders }),
+    load(o) { St.found = new Set(o?.found || []); St.treasures = o?.treasures || {}; St.trinkets = o?.trinkets || []; St.kept = o?.kept || []; St.nest = o?.nest || []; St.wonders = o?.wonders || {}; },
   };
 }
