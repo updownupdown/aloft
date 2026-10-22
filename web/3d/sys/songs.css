@@ -231,3 +231,5 @@
 .sgmodes3 dt.learn { color: #8a6410; background: rgba(242, 193, 78, .3); }
 .sgmodes3 dt.imitate { color: #3c6b1e; background: rgba(143, 207, 90, .3); }
 .sgmodes3 dd { margin: 0; color: var(--ink2, #4c5d69); }
+/* Journal > Songs: a heading for each continent's birds */
+.sgcont3 { margin: 18px 0 8px; font-size: 15px; font-weight: 700; color: var(--ink, #1d2b36); }

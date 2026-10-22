@@ -115,7 +115,7 @@ const cache = new Map();
 export function birdLogo(sp, cls = 'logo3') {
   const key = sp.id + cls;
   if (!cache.has(key)) {
-    const o = L[sp.name] || { body: sp.body, head: sp.cap, breast: sp.breast };
+    const o = L[sp.name] || sp.logo || { body: sp.body, head: sp.cap, breast: sp.breast };
     cache.set(key, `<svg class="${cls}" viewBox="0 0 32 32" aria-hidden="true">${o.owl ? owl(o) : songbird(o)}</svg>`);
   }
   return cache.get(key);

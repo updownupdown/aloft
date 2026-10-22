@@ -270,8 +270,15 @@ export function createAudio() {
         syl(v, { at, dur: .04, f: 240, type: 'triangle', vol: .35, bp: 600, q: 1 });
       }
     },
+    // the royal albatross: a low, braying moan that swells and sinks, through a nasal band, and a
+    // run of wooden bill-claps (dry clacks) as at the colony; soft, as at sea it says little
+    albatross(v) {
+      syl(v, { at: 0, dur: .9, f: 260, f2: 340, f3: 210, type: 'sawtooth', vol: .8, rasp: 10, raspF: 14, bp: 700, q: 1.4, breath: .18, bf: 900 });
+      syl(v, { at: 0, dur: .9, f: 520, f2: 680, f3: 420, type: 'sine', vol: .18 });
+      for (let i = 0; i < 6; i++) syl(v, { at: 1.0 + i * .085, dur: .035, f: 900 - i * 20, type: 'triangle', vol: .5 - i * .04, bp: 1400, q: 2.5, breath: .6, bf: 1800 });
+    },
   };
-  const NEAR = { osprey: .3, owl: .3, raven: .45 }, DRY = { raven: 1 };
+  const NEAR = { osprey: .3, owl: .3, raven: .45, albatross: .3 }, DRY = { raven: 1 };
   A.call = (bird, far = false, echo = null, gain = 1) => {
     if (!A.ctx) return;
     if (!CALLS[bird]) return A.scream(far, echo, gain);

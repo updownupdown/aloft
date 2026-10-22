@@ -8,8 +8,8 @@
 // Every clear dawn but in winter the whole wood sings for a few minutes (the dawn chorus); call
 // from a perch just before first light and it starts from your tree, spreading out bird by bird.
 // Most species have more than one song (src/songs.js: sp.songs, a song and its calls); each bird
-// in the world sings one of its kind's, and each land sings its own dialect of each (dialect()),
-// every one a song to learn. Imitating a bird, you sing any of its songs you know (pick it in the
+// in the world sings one of its kind's, every one a song to learn. Each continent has its own
+// birds (src/songs.js cont and lands; songbirds.js places them by earth.js continentAt). Imitating a bird, you sing any of its songs you know (pick it in the
 // birds' list); Journal > Songs lists them all and plays the ones you know.
 // Learning: perched beside a bird whose song you do not know, singing turns to learning from it.
 // It sings (each note lights its row on the pad), then waits for you; sing back and it stops to
@@ -24,12 +24,12 @@
 // (the music and courtship read it). Gifts that other systems can make real (calm weather,
 // berries, fish, a companion) are announced on the bus as G.emit('gift', ev): set ev.handled
 // and this system skips its own stand-in. G.gifts holds each running gift's seconds left.
-import { SPECIES, active, timeOfDay, dialect, homeLand, songKey } from '../../src/songs.js';
-import { BIOMES } from '../biomes.js';
+import { SPECIES, active, timeOfDay, songOf as songN, songKey } from '../../src/songs.js';
+import { continentAt } from '../earth.js';
 import { period, DAY } from '../sky.js';
 import { height, WATER, treesNear, perchesOf, thermalsNear, landmarksNear } from '../world.js';
 import { clamp, dist3 } from '../util.js';
-import { registerSongbirds, pushBird, songTreesNear, habitat, land } from './songbirds.js';
+import { registerSongbirds, pushBird, songTreesNear, habitat, land, clearSpots } from './songbirds.js';
 import { createSingUI, NOTE_COLS, KINDS } from './singui.js';
 import { journal } from '../journal.js';
 import { BIRD } from '../hawk.js';
@@ -74,9 +74,9 @@ export function songsSystem(G) {
   const say = (msg, secs = 3) => H.toast(msg, secs, 'song'), news = (msg, secs = 5) => H.toast(msg, secs, 'event');
   registerSongbirds(G.R);
   G.learned = new Set(store.get('learned', []));
-  // the dialects learned ('species id:land'); a save from before them knows each learned song's
-  // home version
-  G.dialects = new Set(store.get('dialects', [...G.learned].map(id => id + ':' + homeLand(SPECIES[id]))));
+  // the songs learned ('species id', or 'id.k' for its song k). (Saves from before the Earth are
+  // not kept: James, 10-22, while the game is this experimental.)
+  G.dialects = new Set(store.get('songsKnown', [...G.learned].map(id => songKey(SPECIES[id]))));
   G.heard = new Set(store.get('heard', []));
   G.species = SPECIES;
   G.gifts = {};
@@ -89,6 +89,14 @@ export function songsSystem(G) {
   const birds = new Map();          // songbird tree id -> { next, singT }
   let near = [], refreshT = 0, sightT = 0, perchT = 0, callT = 0, chorus = null, chorusDay = 0, picked = null, pickedK = 0;
   let visitor = null, flock = [], trailT = 0;
+  // the world wrapped round (over the open Pacific): the songbirds near by are found again, and
+  // the birds flying with you and the gifts' marks move round with you
+  G.on('wrap', dx => {
+    clearSpots(); near = []; refreshT = 0; S.chosen = null; S.close = null;
+    if (visitor) { for (const p of [visitor, visitor.from, visitor.to]) if (p) Array.isArray(p) ? p[0] += dx : p.x += dx; }
+    for (const f of flock) f.x += dx;
+    for (const p of [glintAt, bellAt]) if (p) p[0] += dx;
+  });
   const powerCD = {};                // species id -> G.clock when its gift works again
   // the song you are copying: `target` (a species), with its bird beside you (`bird`) or not
   const S = { target: null, bird: null, res: [], over: false, lastTry: -9, listening: null, hearT: 0, teachI: -1, answerT: 0, answer: '', closeId: null, learnedT: 0, mine: [], chosen: null, self: false };
@@ -99,14 +107,13 @@ export function songsSystem(G) {
   // (a bird sings its kind's first song half the time, else one of the others, fixed by its spot)
   const spotHash = id => { let h = 2166136261; for (const c of String(id)) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return (h >>> 0) / 4294967296; };
   const spotSong = s => { const n = s.sp.songs.length, u = spotHash(s.id); return n < 2 || u < .5 ? 0 : 1 + Math.floor((u - .5) * 2 * (n - 1)); };
-  const songOf = s => s.song ||= dialect(s.sp, land(s.x, s.z), spotSong(s));
+  const songOf = s => s.song ||= songN(s.sp, spotSong(s));
   // the songs of a species you know, by number (in any land), and the version of song k you know
   // best (its home land's, else the first you learned)
-  const parse = key => { const [idk, l] = key.split(':'), [id, k] = idk.split('.'); return { id: +id, k: +(k || 0), l }; };
+  const parse = key => { const [id, k] = key.split('.'); return { id: +id, k: +(k || 0) }; };
   const knownSongs = sp => { const ks = new Set(); for (const key of G.dialects) { const p = parse(key); if (p.id === sp.id) ks.add(p.k); } if (!ks.size && G.learned.has(sp.id)) ks.add(0); return [...ks].sort((a, c) => a - c); };
   const versionOf = (sp, k) => {
-    if (G.dialects.has(songKey(sp, k, homeLand(sp)))) return dialect(sp, homeLand(sp), k);
-    for (const key of G.dialects) { const p = parse(key); if (p.id === sp.id && p.k === k) return dialect(sp, p.l, k); }
+    if (G.dialects.has(songKey(sp, k))) return songN(sp, k);
     return k ? null : sp;
   };
   // the voice you sing in: the bird you imitate, else the one you learn from, else your own
@@ -127,10 +134,7 @@ export function songsSystem(G) {
     if (sp) return { kind: 'imitate', state: 'Voice only', who: sp };
     return { kind: 'free', state: 'Free song', who: null };
   }
-  const landWord = l => (BIOMES[l]?.label || l).replace(/^the /, '');
   const learnable = SPECIES.filter(q => !q.mimic);
-  // the dialects you know (the versions sung away from a species' home land)
-  const dialectCount = () => { const n = [...G.dialects].filter(key => { const p = parse(key); return p.l !== homeLand(SPECIES[p.id]); }).length; return `${n} dialect${n === 1 ? '' : 's'}`; };
   const songCount = () => learnable.reduce((a, sp) => a + knownSongs(sp).length, 0);
   const songTotal = learnable.reduce((a, sp) => a + sp.songs.length, 0);
   const PLAY = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/></svg>';
@@ -139,9 +143,9 @@ export function songsSystem(G) {
   for (const f of [
     { id: 'valley-felt', title: 'Valley again: a felted piano, richer chords, a drone', how: 'Music on; listen a few minutes. Settings > Dev tools > Music lab shapes it.' },
     { id: 'alarm-calls', title: 'Alarm calls run ahead of you', how: 'Fly 15-70 m over trees with songbirds: thin seet calls run on ahead and mice freeze. Skim low and they stay quiet.' },
-    { id: 'dialects', title: 'Song dialects: each land sings its own version', how: 'Learn a robin in the meadows, then perch by one in the marsh or the savanna: the card says Robin (marsh); Journal > Songs lists dialects.' },
     { id: 'mimic', title: 'Mimics: the starling (and the mockingbird down south)', how: 'Perch near a starling in meadows or by lakes: it sings snatches of other songs; an unknown song\'s opening fills in on its card.' },
     { id: 'more-songs', round: 9, pr: 191, title: 'Several songs per bird; Journal > Songs plays the ones you know', how: 'Perch by songbirds of one kind in different trees: each sings one of its kind\'s songs. The birds\' list (tap the song card) shows each bird\'s songs; tap one to imitate it. Journal > Songs: play buttons, question marks for songs to find.' },
+    { id: 'earth-songbirds', round: 10, pr: 216, title: 'Each continent its own songbirds: 86 real singers, at least two in every land, no dialects', how: 'Fly to Europe, Africa, Asia, South America or Oceania and perch in a wood: robins and blackbirds in Europe, bulbuls and robin-chats in Africa, kookaburras and tui in Oceania. Settings > Dev tools > Dev mode, then Journal > Songs: every bird, by continent.' },
     { id: 'sing-three', round: 9, pr: 211, title: 'At most three birds sing at once; no piano under your notes; your own bird on the rail sings as yourself', how: 'Perch in a busy wood and listen: never more than three songs overlap. Tap Sing, then your own bird at the top of the rail: Free song, even beside a bird that could teach you.' },
     { id: 'learn-near', round: 9, pr: 203, title: 'Learn from any bird near by; tap its logo to choose it; Dev mode unlocks every song in the Journal', how: 'Perch within about 45 m of a songbird whose song you do not know (amber dot on the rail), or tap its logo: Learning, notes light up, the card fills in from the first note. Settings > Dev tools > Dev mode, then Journal > Songs: play every song. The states are explained at the top of Journal > Songs.' },
     { id: 'sing-rail2', round: 9, pr: 197, title: 'Sing rail round two: you on top, birds by name, every bird at the bottom; the card comes out from under it', how: 'Perch among songbirds and tap Sing: the rail runs from under the menu button, your bird first, then the birds near by A to Z (picking one keeps the order), the list button always at the bottom. The card tucks under the rail; the You row keeps its height.' },
@@ -208,7 +212,8 @@ export function songsSystem(G) {
   // Hearing an unknown song's opening this way fills those notes in on its card.
   const borrowed = {}; let borrowSaid = -99;
   function medley(o) {
-    const d = dist3([o.x, o.y, o.z], b.p), v = .15 * clamp(1 - d / SONG.hearR, 0, 1), pool = learnable.filter(q => !q.look.owl && !q.spot);
+    // (the songs of its own continent's birds)
+    const c = continentAt(o.x, o.z), d = dist3([o.x, o.y, o.z], b.p), v = .15 * clamp(1 - d / SONG.hearR, 0, 1), pool = learnable.filter(q => !q.look.owl && q.spot !== 'falls' && (!c || q.cont.includes(c)));
     const unknown = pool.filter(q => !G.learned.has(q.id)), known = pool.filter(q => G.learned.has(q.id));
     const any = a => a[(Math.random() * a.length) | 0];
     const picks = [known.length && Math.random() < .7 ? any(known) : any(pool), unknown.length ? any(unknown) : any(pool), S.target?.base || S.target || picked || any(pool)];
@@ -293,21 +298,20 @@ export function songsSystem(G) {
   // (an opening a mimic sang you counts for every version that starts the same way)
   const seen = sp => knows(sp) ? sp.notes.length : Math.max(found[fkey(sp)] || 0, (sp.k ? 0 : alike(sp, found[sp.id] || 0)));
   const alike = (t, n) => { const s = t.base || t; let i = 0; while (i < n && t.notes[i] === s.notes[i] && t.kinds[i] === s.kinds[i]) i++; return i; };
-  // learning a song: a land's version of it (and the species, the first time)
+  // learning a song (and the species, the first time)
   function learn(t) {
     const sp = t.base || t, first = !G.learned.has(sp.id), newSong = !first && !knownSongs(sp).includes(t.k || 0);
-    if (t.dkey) { G.dialects.add(t.dkey); store.set('dialects', [...G.dialects]); }
+    if (t.dkey) { G.dialects.add(t.dkey); store.set('songsKnown', [...G.dialects]); }
     A.learned();
     if (first) {
       G.learned.add(sp.id); store.set('learned', [...G.learned]);
       songLog[sp.id] = `Learned on day ${G.day} ${PHRASE[period(G.tod)]}, in ${PLACE[habitat(b.p[0], b.p[2])]}.`;
       store.set('songlog', songLog);
-      say(`Song learned: the ${sp.name}${t.k ? `'s ${t.title.toLowerCase()}` : ''}${t.how ? `, as ${BIOMES[t.land]?.label || 'this land'} sings it` : ''}. Sing it from any perch and a ${sp.name.toLowerCase()} answers with a gift.`, 5);
+      say(`Song learned: the ${sp.name}${t.k ? `'s ${t.title.toLowerCase()}` : ''}. Sing it from any perch and a ${sp.name.toLowerCase()} answers with a gift.`, 5);
     } else if (newSong) say(`A new song: the ${sp.name}'s ${t.title.toLowerCase()}, ${t.words}. ${songCount()} of ${songTotal} songs known.`, 6);
-    else say(`A new dialect: the ${sp.name} of ${BIOMES[t.land]?.label || 'this land'} sings ${t.how || 'its song as it is sung at home'}. ${dialectCount()} learned.`, 5);
     H.did('song');
     for (let k = 0; k < 14; k++) G.part([b.p[0], b.p[1] + .4, b.p[2]], [(Math.random() - .5) * 3, 1 + Math.random() * 2, (Math.random() - .5) * 3], 1.4, [1, .85, .45], .1);
-    if (first) G.emit('learn', sp); else G.emit('dialect', t);
+    if (first) G.emit('learn', sp); else G.emit('song', t);
   }
   // choose a bird from Songs: you sing in its voice and imitate it. It sings its song once, softly,
   // as you remember it (a bird you have only heard: its voice, but no song to copy yet).
@@ -543,6 +547,8 @@ export function songsSystem(G) {
   H.tip('song', () => S.bird && !G.learned.has(S.bird.sp.id) && !S.bird.sp.mimic, 'A songbird! Tap the notes button, bottom left, to learn its song: each note it sings lights a row; find the swipe or tap that matches it.');
   H.tip('imitate', () => b.state === 'perch' && G.learned.size && !picked && perchT > 3, 'Tap the notes button, then the song card (bottom left), and pick a song to imitate. Sing it right and its bird answers with a gift.');
   H.tip('call', () => b.state === 'fly' && G.clock > 240, 'Hold Call, top right, to scream: the longer you hold, the louder. Mice freeze and far hawks answer.');
+  // Journal > Songs, a section a continent (each bird under the first it lives on)
+  const CONTS = [['n-america', 'North America'], ['s-america', 'South America'], ['europe', 'Europe'], ['africa', 'Africa'], ['asia', 'Asia'], ['oceania', 'Oceania']];
   // what Sing is doing, and what starts each, at the top of Journal > Songs
   const MODES = `<dl class="sgmodes3">
     <dt class="learn">Learning</dt><dd>Perch within about 45 m of a songbird singing a song you do not know (an amber dot on its logo in the rail), or tap its logo, and tap Sing. Each note it sings lights its row on the pad and its place on the card: copy it with the same swipe or tap. Every note you get right shows on the card, the first note first, then the next; sing the whole song right to learn it. It stops to listen while you sing and sings again when you stop.</dd>
@@ -558,8 +564,7 @@ export function songsSystem(G) {
     const book = pane.querySelector('.songbook3');
     G.menu.onOpen(() => {
       // a card for each songbird: its picture, its name, what its songs give, and each of its songs:
-      // those you know with a play button, their words and the lands whose dialect you know; the
-      // rest as question marks
+      // those you know with a play button and their words; the rest as question marks. By continent.
       const dev = store.get('devMode', false);
       const card = sp => {
         const k = dev || G.learned.has(sp.id) ? 'learned' : G.heard.has(sp.id) ? 'heard' : 'unknown';
@@ -570,18 +575,17 @@ export function songsSystem(G) {
         const gift = GIFT_TEXT[sp.powerKey] || sp.power, what = k === 'learned' ? `${gift[0].toUpperCase()}${gift.slice(1)}. ${songLog[sp.id] || (G.learned.has(sp.id) ? 'Learned.' : 'Dev mode: not learned yet.')}` : `Heard, not yet learned. ${sp.hint}.`;
         const rows = sp.songs.map(g => {
           if (!ks.includes(g.k)) return `<li class="q"><span class="sgq3">?</span><span><b>Unknown song</b></span></li>`;
-          const dia = [...G.dialects].map(parse).filter(p => p.id === sp.id && p.k === g.k && p.l !== homeLand(sp)).map(p => landWord(p.l));
-          return `<li><button class="sgplay3" data-play="${sp.id}.${g.k}" aria-label="Play the ${g.title}">${PLAY}</button><span><b>${g.title}</b><small>${g.words}${dia.length ? `. Dialects: ${dia.join(', ')}` : ''}</small></span></li>`;
+          return `<li><button class="sgplay3" data-play="${sp.id}.${g.k}" aria-label="Play the ${g.title}">${PLAY}</button><span><b>${g.title}</b><small>${g.words}</small></span></li>`;
         }).join('');
         return `<li class="${k} seen"><div class="pic">${pic}</div><div><b>${sp.name}</b><small>${what}</small></div><ol class="sglist3">${rows}</ol></li>`;
       };
-      book.innerHTML = `<p class="sub">${songCount()} of ${songTotal} songs known, from ${G.learned.size} of ${learnable.length} birds, and ${dialectCount()}. Each bird sings one of its kind's songs, and in other lands a little differently.${dev ? ' Dev mode is on: every song can be played here.' : ''}</p>${MODES}<ul class="guide3 songs3">${SPECIES.map(card).join('')}</ul>`;
+      book.innerHTML = `<p class="sub">${songCount()} of ${songTotal} songs known, from ${G.learned.size} of ${learnable.length} birds. Each continent has its own birds, and each bird sings one of its kind's songs.${dev ? ' Dev mode is on: every song can be played here.' : ''}</p>${MODES}${CONTS.map(([c, title]) => `<h3 class="sgcont3">${title}</h3><ul class="guide3 songs3">${SPECIES.filter(sp => sp.cont[0] === c).map(card).join('')}</ul>`).join('')}`;
     });
     // a known song played from the book, in its bird's voice (the version you know best)
     let playing = 0;
     book.addEventListener('click', e => {
       const btn = e.target.closest('[data-play]'); if (!btn) return;
-      const [id, k] = btn.dataset.play.split('.').map(Number), t = versionOf(SPECIES[id], k) || (store.get('devMode', false) && dialect(SPECIES[id], homeLand(SPECIES[id]), k)); if (!t) return;
+      const [id, k] = btn.dataset.play.split('.').map(Number), t = versionOf(SPECIES[id], k) || (store.get('devMode', false) && songN(SPECIES[id], k)); if (!t) return;
       A.unlock(); clearTimeout(playing);
       for (const el of book.querySelectorAll('.sgplay3.on')) el.classList.remove('on');
       btn.classList.add('on');
@@ -685,7 +689,7 @@ export function songsSystem(G) {
       // the card: the song (yours to imitate, or one to learn) or a free song, with how much of it
       // you can see, this try's marks, and who is singing within earshot
       const sp = target || picked, learn = learning();
-      const song = sp && `${sp.title || sp.songs[0].title}${sp.how ? ` (${landWord(sp.land)})` : ''}`;
+      const song = sp && (sp.title || sp.songs[0].title);
       const at = S.teachI >= 0 ? S.teachI : sp === target && S.res.length && !S.over ? S.res.length : -1;
       const mine = !sp ? (G.t - S.lastTry > 6 ? [] : S.mine) : sp === target ? S.mine.slice(0, S.res.length) : [];
       const sc = { sp, song, many: !learn && picked && knownSongs(picked).length > 1, seen: sp ? seen(sp) : 0, at, learn, mine };
