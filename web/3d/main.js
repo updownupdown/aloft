@@ -47,6 +47,7 @@ import { crittersSystem } from './sys/critters.js';
 import { huntersSystem } from './sys/hunters.js';
 import { windsSystem } from './sys/winds.js';
 import { floraSystem } from './sys/flora.js';
+import { bushesSystem } from './sys/bushes.js';
 import { sleepSystem } from './sys/sleep.js';
 import { feelSystem } from './sys/feel.js';
 import { batterySystem } from './sys/battery.js';
@@ -63,7 +64,7 @@ import { raptorsSystem } from './sys/raptors.js';
 import { wingcraftSystem } from './sys/wingcraft.js';
 import { stillSystem } from './sys/still.js';
 
-const SYSTEMS = [speciesSystem, movesSystem, lifeSystem, clockSystem, weatherSystem, watersSystem, windsSystem, floraSystem, airSystem, ringsSystem, foodSystem, aimSystem, sleepSystem, feelSystem, batterySystem, songsSystem, momentsSystem,
+const SYSTEMS = [speciesSystem, movesSystem, lifeSystem, clockSystem, weatherSystem, watersSystem, windsSystem, floraSystem, bushesSystem, airSystem, ringsSystem, foodSystem, aimSystem, sleepSystem, feelSystem, batterySystem, songsSystem, momentsSystem,
   guideSystem, journeySystem, nestSystem, storySystem, ruinsSystem, photoSystem, howtoSystem, faunaSystem, neighboursSystem, landsSystem, seasonsSystem, glowSystem, landAirSystem, crittersSystem, huntersSystem, aimsSystem, seasonSystem, ghostSystem,
   fieldsSystem, skyDaysSystem, raptorsSystem, wingcraftSystem, stillSystem];
 
