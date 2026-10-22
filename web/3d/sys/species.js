@@ -91,7 +91,7 @@ export function speciesSystem(G) {
     const a = e.target.closest('[data-step]'); if (!a || tried) return;
     use(CHOICES[(CHOICES.indexOf(BIRD) + +a.dataset.step + CHOICES.length) % CHOICES.length]); G.store.set('bird', BIRD); show();
   });
-  G.dev?.add({ id: 'albatross', area: 'Birds', round: 'Earth', pr: 214, title: 'Royal albatross: a seabird to fly, from Taiaroa Head',
+  G.dev?.add({ id: 'albatross', area: 'Birds', round: 'Earth', pr: 215, title: 'Royal albatross: a seabird to fly, from Taiaroa Head',
     how: 'Game > Your bird: the albatross, then Fly from its home. Skim low over the sea in S-turns across the wind to soar without flapping.',
     go: () => { use('albatross'); G.store.set('bird', BIRD); show(); card.querySelector('.home3').click(); } });
   let shown = false;
