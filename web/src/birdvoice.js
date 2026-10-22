@@ -21,6 +21,9 @@ export function saveVoice(v) { try { localStorage.setItem(KEY, JSON.stringify({ 
 // overtones), pure (a clean whistle, no overtones), dual (a second voice that far above).
 // Most sing in the chosen register; the owl and the dove keep their own, low ones.
 const NV = 24;   // voices, one per species
+// notes start this far ahead of now, so their attack is never already past when the audio thread
+// gets to it (on a phone a late start cut the attack: a click)
+const LEAD = .02;
 const REG = { 6: .25, 11: .5, 18: .5, 23: .3 };
 function template(voice, rnd) {
   const rep = (n, gap, dur, c, o = {}) => Array.from({ length: n }, (_, i) => ({ at: i * gap, dur, c: typeof c === 'function' ? c(i) : c, v: 1 - i * (o.fade || 0), ...o }));
@@ -123,7 +126,7 @@ export function createBirdVoice(ctx, dest, noiseBuf) {
     }
     if (e.pure) tone(1, 1.1);
     else if (e.harsh) { tone(1, .8); tone(2, .45); tone(3, .3); tone(4, .15); }
-    else { tone(1, 1); tone(2, e.soft ? .22 : .1); tone(3, .025); }
+    else { tone(1, 1); tone(2, e.soft ? .22 : .1); }   // (a third partial at 2.5% was inaudible, and a third more oscillators)
     if (e.dual) tone(e.dual, .45);
     // the other side of the syrinx: a quieter line a fifth (thrush) or a third above, drifting a little
     if (V.engine === 'syrinx') tone(e.vib ? 1.5 : 1.26 + (Math.random() - .5) * .02, .32);
@@ -162,12 +165,12 @@ export function createBirdVoice(ctx, dest, noiseBuf) {
   // a syllable shape (left out: the species' own note, as the bird song lab plays it)
   V.sing = (f, voice = 0, vol = .16, kind = null) => {
     if (kind && !OWN[kind]?.has(voice % NV)) {
-      const t = ctx.currentTime + .005, prev = V.engine, reg = REG[voice % NV], pitch = (reg ? f * reg : f * V.octave) * (1 + (Math.random() - .5) * .03);
+      const t = ctx.currentTime + LEAD, prev = V.engine, reg = REG[voice % NV], pitch = (reg ? f * reg : f * V.octave) * (1 + (Math.random() - .5) * .03);
       if (V.engine === 'whistle') V.engine = 'natural';
       for (const e of kindTemplate(kind, voice)) element(t + e.at, e, pitch, vol * (e.v ?? 1) * (reg ? 1.3 : 1.1));
       V.engine = prev; return;
     }
-    const t = ctx.currentTime + .005, prev = V.engine;
+    const t = ctx.currentTime + LEAD, prev = V.engine;
     if (V.engine === 'whistle' && voice % NV < 8) { V.engine = 'natural'; whistle(t, f, voice, vol * .85); V.engine = prev; return; }
     // a little variation every time: no bird sings a note exactly the same twice
     const j = 1 + (Math.random() - .5) * .03, reg = REG[voice % NV], pitch = reg ? f * reg * j : f * V.octave * j, rnd = Math.random;

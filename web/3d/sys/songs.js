@@ -182,7 +182,8 @@ export function songsSystem(G) {
   // a songbird (or a visitor) sings
   function sing(o) {
     if (o.sp.mimic) return medley(o);
-    const sp = o.sp, song = songOf(o), d = dist3([o.x, o.y, o.z], b.p), v = .16 * clamp(1 - d / SONG.hearR, 0, 1) * (learning() && S.bird !== o ? .3 : 1);
+    // (the bird you learn from is always clear, however far across the clearing it sits)
+    const sp = o.sp, song = songOf(o), d = dist3([o.x, o.y, o.z], b.p), v = S.bird === o ? Math.max(.1, .16 * clamp(1 - d / SONG.hearR, 0, 1)) : .16 * clamp(1 - d / SONG.hearR, 0, 1) * (learning() ? .3 : 1);
     // a bird you taught, days on, sings its own first half and then your phrase
     const t = taught[o.id], mix = t && G.day - t.day >= 2 && S.bird !== o ? SPECIES[t.from] : null;
     const half = Math.ceil(song.notes.length / 2), tune = mix ? { notes: [...song.notes.slice(0, half), ...mix.notes.slice(Math.floor(mix.notes.length / 2))], kinds: song.kinds.slice(0, half) + mix.kinds.slice(Math.floor(mix.notes.length / 2)) } : song;
@@ -194,7 +195,7 @@ export function songsSystem(G) {
     // the card shows who is singing within earshot: the bird you copy, or another one
     if (S.bird === o) S.hearT = o.singT;
     tune.notes.forEach((n, i) => later(i * song.gap, () => {
-      if (v > .005) A.note(n, sp.voice, v * (o.young && !winter() ? .8 : 1), tune.kinds[i]);
+      if (v > .012) A.note(n, sp.voice, v * (o.young && !winter() ? .8 : 1), tune.kinds[i]);   // (fainter than that is lost under the wind, and each note costs the audio thread)
       if (v > .04) hear(sp);
       if (v > .02) notePart([o.x, o.y, o.z], n, tune.kinds[i], false, song);
       // the bird you learn from: each note lights its row, and its place on the card
