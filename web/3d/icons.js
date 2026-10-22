@@ -2,6 +2,8 @@
 // Each entry is the inner markup of a 24x24 icon, stroked in currentColor. Filled parts carry fill/stroke
 // attributes inline. Wrap with icon(key) or put it in <svg viewBox="0 0 24 24"> with the stroke styles below.
 export const ICONS = {
+  // Height ladder: rising air, one to three chevrons lit by how strong (hud.js; red, 2026-10-22)
+  updraft: '<path class="u1" d="M6.5 20l5.5-4.5 5.5 4.5"/><path class="u2" d="M6.5 14l5.5-4.5 5.5 4.5"/><path class="u3" d="M6.5 8l5.5-4.5 5.5 4.5"/>',
   // Menu button: Pause
   menu: '<path d="M9 6v12M15 6v12"/>',
   // Resume: Play

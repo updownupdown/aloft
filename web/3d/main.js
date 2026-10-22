@@ -149,6 +149,8 @@ if (qs.has('fps')) G.settings.fpsCap = +qs.get('fps') || 60;
       G.emit('bump', what);
     },
     leaves: (p, s) => { audio.rustle(.5 + Math.min(.5, s / 20)); for (let i = 0; i < 8; i++) G.part(p, [(Math.random() - .5) * 4, Math.random() * 2, (Math.random() - .5) * 4], 1.2, [.4, .55, .25], .07); G.emit('leaves'); },
+    barrel: () => { audio.rustle(.7); H.did('barrel'); },
+    barrelDone: () => { G.emit('trick', 'barrel'); if (!G.flags.barrel) { G.flags.barrel = 1; H.toast('A barrel roll! Both wings round together, a full turn.', 4, 'event'); } },
     splash: (p, s) => { audio.splash(s > 15); for (let i = 0; i < 10; i++) G.part([p[0], WATER, p[2]], [(Math.random() - .5) * 3, 2 + Math.random() * 3, (Math.random() - .5) * 3], .9, [.85, .92, .95], .06); G.emit('splash'); },
   };
   G.E = E;
@@ -161,8 +163,8 @@ if (qs.has('fps')) G.settings.fpsCap = +qs.get('fps') || 60;
   H.tip('flap', () => b.state !== 'fly', 'Tap Take off (bottom right) to fly. Then tap both thumbs at once to flap.');
   H.tip('bank', () => b.state === 'fly', 'Two thumbs, two wings: tip one up and the other down to bank and turn.');
   H.tip('climb', () => b.state === 'fly', 'Push both thumbs up to climb, both down to dive.');
-  H.tip('tuck', () => b.state === 'fly' && b.p[1] - height(b.p[0], b.p[2]) > 30, 'Slide your thumbs together to tuck your wings and stoop.');
-  H.tip('flare', () => !!G.perchMark, 'A perch ahead. Slide your thumbs apart to flare, and glide onto it slowly.');
+  H.tip('tuck', () => b.state === 'fly' && b.p[1] - height(b.p[0], b.p[2]) > 30, 'Slide your thumbs together to fold your wings for a fast glide; together and down to stoop.');
+  H.tip('flare', () => !!G.perchMark, 'A perch ahead. Slide your thumbs apart to spread your wings and slow down; apart and down to brake onto it.');
   H.tip('hop', () => b.state === 'perch' && G.aim?.hops?.length > 0, 'Tap a green ring to hop to that branch. Drag sideways to turn round.');
   H.tip('ground', () => b.state === 'ground' && !(b.settle > 0), 'On the ground, tap a spot near by to hop over to it. Drag to turn round; pinch to see more or less round you.');
   const play = 'play';
@@ -192,6 +194,9 @@ if (qs.has('fps')) G.settings.fpsCap = +qs.get('fps') || 60;
   G.dev?.add({ id: 'gpu-order', area: 'Settings and performance', round: 'R8', title: 'Cheaper drawing: solid things first with no discard, nearest ground first, sky last', how: 'Nothing to see: the same picture, less GPU work. Compare battery use (Settings) with the readings from before.' });
   G.dev?.add({ id: 'rest-30', area: 'Settings and performance', round: 'R8', title: 'Rest at 30 fps when perched or on the ground and untouched', how: 'Settings > Show frame rate, perch and leave the phone 5 s: 30; touch: back to your cap. Settings > Rest at 30 fps turns it off.' });
   G.dev?.add({ id: 'heat-guard', area: 'Settings and performance', round: 'R8 G2', title: 'Heat guard: resolution steps down early when late frames creep up', how: 'Graphics on Auto, play 20+ minutes: Frame cost shows late frames and "heat guard on" when it acts.' });
+  G.dev?.add({ id: 'wings-map', area: 'Flight', round: 'Controls 10-22', title: 'Each thumb is a wing: spread wide to soar, spread and down to brake, folded for a fast glide, folded and down to stoop, folded and up to zoom', how: 'How to play > Controls shows every wing position. Try each in flight.' });
+  G.dev?.add({ id: 'barrel', area: 'Flight', round: 'Controls 10-22', title: 'Barrel roll: left stick down, right up, both a full circle anticlockwise (or the mirror, clockwise)', how: 'In flight at speed, turn both thumbs round together. Z / X on a keyboard.', go: () => { input.keyBarrel = 1; } });
+  G.dev?.add({ id: 'soar-thermal', area: 'Flight', round: 'Controls 10-22', title: 'Ride thermals by soaring: wider thermals, spread wide and steer to circle; no auto-circling, no vario beeps', how: 'Find a thermal, spread both thumbs out, tip one slightly lower. The red arrows by your height show the lift.', go: () => window.__aloft3d?.dbg.thermal() });
   H.showFps(G.settings.fps);
   G.on('pause', persist);
   document.addEventListener('visibilitychange', () => { if (document.hidden) { persist(); audio.suspend(); G.menu.set(true); } else audio.resume(); });
@@ -319,7 +324,7 @@ if (qs.has('fps')) G.settings.fpsCap = +qs.get('fps') || 60;
     pf.lap('Core', 'sound, music');
 
     glowT -= dt; setWings(b.stamina, glowT > 0 ? glow : '', b.maxStamina ?? 1);
-    H.flight = b.state === 'fly' ? { m: above.toFixed(0), kmh: (b.s * 3.6).toFixed(0), lift: b.ride ? 'ride' : b.lift > .8 ? 'rise' : '' } : null;
+    H.flight = b.state === 'fly' ? { m: above.toFixed(0), kmh: (b.s * 3.6).toFixed(0), lift: b.ride ? 'ride' : b.lift > .8 ? 'rise' : '', up: b.lift > .8 ? Math.min(3, Math.ceil(b.lift / 2)) : 0 } : null;
     H.height = above.toFixed(0);
     H.status = b.state === 'fly' ? '' : b.eating > 0 ? 'eating' : b.state === 'perch' ? 'perched' : b.state === 'swim' ? 'on the water' : 'on the ground';
     takeoffBtn.classList.toggle('gone', b.state === 'fly' || b.settle > 0);   // mid-meal, Take off carries the catch away
@@ -334,7 +339,7 @@ if (qs.has('fps')) G.settings.fpsCap = +qs.get('fps') || 60;
   window.__aloft3d = {
     G, b, R,
     dbg: {
-      thermal() { const t = thermalsNear(b.p[0], b.p[2], 600).sort((a, q) => Math.hypot(a.x - b.p[0], a.z - b.p[2]) - Math.hypot(q.x - b.p[0], q.z - b.p[2]))[0]; if (t) { b.state = 'fly'; b.p = [t.x - 30, height(t.x, t.z) + 40, t.z]; b.yaw = Math.PI / 2; b.s = 12; } return t; },
+      thermal() { const t = thermalsNear(b.p[0], b.p[2], 600).sort((a, q) => Math.hypot(a.x - b.p[0], a.z - b.p[2]) - Math.hypot(q.x - b.p[0], q.z - b.p[2]))[0]; if (t) { b.state = 'fly'; b.p = [t.x - t.r * .5, height(t.x, t.z) + 40, t.z]; b.yaw = Math.PI; b.s = 9; } return t; },
       forest() { for (let r = 50; r < 3000; r += 50) for (let a = 0; a < 6.28; a += .5) { const x = b.p[0] + Math.cos(a) * r, z = b.p[2] + Math.sin(a) * r; if (forest(x, z) > .25 && height(x, z) > 2) { b.state = 'fly'; b.p = [x, height(x, z) + 14, z]; b.s = 11; return [x, z]; } } },
       // above the nearest mouse, facing it from 40 m back, 25 m up
       mouse() { const m = [...G.systems.food.mice.values()].sort((a, q) => Math.hypot(a.x - b.p[0], a.z - b.p[2]) - Math.hypot(q.x - b.p[0], q.z - b.p[2]))[0]; if (!m) return null; b.state = 'fly'; b.yaw = 0; b.p = [m.x, m.y + 25, m.z + 40]; b.s = 13; b.gamma = 0; return m; },

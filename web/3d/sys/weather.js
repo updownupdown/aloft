@@ -123,7 +123,7 @@ export function weatherSystem(G) {
     else if (ev.kind === 'bow') { rainbowT = 80; ev.handled = true; }
     else if (ev.kind === 'thermal') {
       env.thermals = env.thermals.filter(t => t.until > G.t);
-      env.thermals.push({ x: l.x, z: l.z, r: 26, w: 4.2, top: (l.y || 0) + 420, id: 900001 + (l.x | 0) % 997, song: true, until: G.t + 300 });
+      env.thermals.push({ x: l.x, z: l.z, r: 50, w: 4.2, top: (l.y || 0) + 420, id: 900001 + (l.x | 0) % 997, song: true, until: G.t + 300 });
       ev.handled = true;
     }
   });

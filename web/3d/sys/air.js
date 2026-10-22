@@ -1,6 +1,7 @@
 // Rising air made visible: a cumulus cap over each thermal, and leaves carried up the column
 // in a slow spiral (seen when you are near; no dust or dots, James 2026-10-21).
-// The vario beeps while the hawk climbs in it. (The lift itself is world.js airLift().)
+// No vario beeps (James 2026-10-22): the height ladder shows the lift as red arrows (hud.js). (The
+// lift itself is world.js airLift().)
 // The drifting clouds cast soft shadows on the land (round eight C1): S.shadeC, the nearest few as
 // discs for render.js; shaded ground is cooler, so a thermal under a shadow weakens (env.shade).
 // Fair-weather clouds drift across the sky between them, more of them, and greyer, when overcast.
@@ -50,13 +51,12 @@ export function airSystem(G) {
   };
   G.dev?.add({ id: 'r8-shadows', title: 'Cloud shadows weaken thermals', area: 'Flight', round: 'R8 C1', how: 'On a bright day with clouds, soft shadows drift over the land; a thermal under one is weaker, so ride the sunlit ones.' });
   G.R.shape('leaf', leaf());
-  G.hud.tip('ride', () => !!b.inThermal, 'Rising air! Hold a thumb still and the hawk circles it, climbing.');
+  G.hud.tip('ride', () => !!b.inThermal, 'Rising air! Slide your thumbs apart to spread your wings wide, then tip one a little lower to circle inside it, climbing. The red arrows by your height show how strong it is.');
   return {
     id: 'air',
     update(dt) {
       if ((castT -= dt) <= 0) { castT = .25; cast(); }
       if (b.ride) G.hud.did('ride');
-      if (b.lift > .8 && b.state === 'fly') G.audio.vario(b.lift * 9);
     },
     scene(S) {
       const clouds = S.props.cloud ||= [];

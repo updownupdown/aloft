@@ -60,6 +60,8 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .alt b small { display: inline; margin-left: 2px; font-size: 11px; font-weight: 500; color: inherit; opacity: .85; }
 .alt b.v { font-size: 13px; }
 .alt b.v.rise { color: #c9f5b0; }
+.alt .up3 { width: 20px; height: 20px; vertical-align: -4px; color: #ff4136; stroke-width: 2.8; filter: drop-shadow(0 0 3px rgba(255, 65, 54, .45)); }
+.alt .up3.n1 .u2, .alt .up3.n1 .u3, .alt .up3.n2 .u3 { opacity: .2; }
 .alt b.v.st { font-weight: 500; }
 .alt b.k { font-size: 15px; margin-top: 4px; }
 .alt b:empty { display: none; }
@@ -377,10 +379,13 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .ctl3 .th { animation: thumb3 2.2s ease-in-out infinite; }
 .ctl3 .mv-tap { transform-box: fill-box; transform-origin: center; animation-name: tap3; animation-duration: 1.1s; }
 .ctl3 .mv-side { animation-name: side3; }
+.ctl3 .orb-ccw, .ctl3 .orb-cw { animation: orb3 2.4s ease-in-out infinite; }
+.ctl3 .orb-ccw { animation-direction: reverse; }
 .ctl3 .mv-hold { transform-box: fill-box; transform-origin: center; animation-name: hold3; }
 @keyframes thumb3 { 0%, 18% { transform: none; } 45%, 72% { transform: translate(var(--dx), var(--dy)); } 100% { transform: none; } }
 @keyframes tap3 { 0%, 100% { transform: scale(1); } 15% { transform: scale(.72); } 32% { transform: scale(1); } 47% { transform: scale(.72); } 64% { transform: scale(1); } }
 @keyframes side3 { 0%, 100% { transform: translateX(-6px); } 50% { transform: translateX(6px); } }
+@keyframes orb3 { 0%, 15% { transform: rotate(0deg); } 85%, 100% { transform: rotate(360deg); } }
 @keyframes hold3 { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); } }
 /* the other pages: a scene beside its words */
 /* How to play > Hints */

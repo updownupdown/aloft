@@ -588,14 +588,16 @@ export function solidsNear(x, z, r) {
 }
 
 // ---- air ---------------------------------------------------------------------------------
-// Thermals: one maybe per 240 m cell, over sunny ground. Each column leans a little downwind.
+// Thermals: one maybe per 240 m cell, over sunny ground. Each column leans a little downwind. They
+// are wide (48 to 80 m across the core's radius), so a hawk soaring on spread wings can circle inside
+// one and steer to stay in the strongest part, rather than be held in by the game.
 export const THERMAL_CELL = 240;
 export function thermalAt(gx, gz) {
   if (ih(gx, gz, 41) > .62) return null;
   const x = (gx + .2 + ih(gx, gz, 42) * .6) * THERMAL_CELL, z = (gz + .2 + ih(gx, gz, 43) * .6) * THERMAL_CELL;
   const y = height(x, z); if (y < 1) return null;   // none over lakes
   // the column tops out a few hundred metres over its ground (so mountains have them too)
-  return { x, z, r: 24 + ih(gx, gz, 44) * 16, w: 3.6 + ih(gx, gz, 45) * 2.4, top: 245 + Math.max(0, y - 15) * .9 + ih(gx, gz, 46) * 180, id: gx * 104729 + gz };
+  return { x, z, r: 48 + ih(gx, gz, 44) * 32, w: 3.6 + ih(gx, gz, 45) * 2.4, top: 245 + Math.max(0, y - 15) * .9 + ih(gx, gz, 46) * 180, id: gx * 104729 + gz };
 }
 export function thermalsNear(x, z, r) {
   const out = [], a = Math.floor((x - r) / THERMAL_CELL), b = Math.floor((x + r) / THERMAL_CELL), c = Math.floor((z - r) / THERMAL_CELL), d = Math.floor((z + r) / THERMAL_CELL);
@@ -603,9 +605,9 @@ export function thermalsNear(x, z, r) {
   // columns that come and go (a song at an arch wakes one: env.thermals, weather.js)
   for (const t of env.thermals) if (Math.abs(t.x - x) < r && Math.abs(t.z - z) < r) out.push(t);
   // sun-warmed stone: a gentle column over each empty village
-  for (const S of settlementsNear(x, z, r, false)) if (S.kind === 'village') out.push({ x: S.x, z: S.z, r: 22, w: 3, top: S.y + 280, id: 7e7 + Math.round(S.x) * 3 + Math.round(S.z) });
+  for (const S of settlementsNear(x, z, r, false)) if (S.kind === 'village') out.push({ x: S.x, z: S.z, r: 40, w: 3, top: S.y + 280, id: 7e7 + Math.round(S.x) * 3 + Math.round(S.z) });
   // the fire mountain's warm breath: a strong, wide column over its smoking cone
-  for (const l of landmarksNear(x, z, r + 60)) if (l.kind === 'volcano') out.push({ x: l.x, z: l.z, r: 48, w: 7, top: 720, id: Math.abs((l.x | 0) * 31 + (l.z | 0)), volcano: true });
+  for (const l of landmarksNear(x, z, r + 60)) if (l.kind === 'volcano') out.push({ x: l.x, z: l.z, r: 80, w: 7, top: 720, id: Math.abs((l.x | 0) * 31 + (l.z | 0)), volcano: true });
   return out;
 }
 // the column's centre at height y (it drifts with the wind as it rises)
@@ -615,7 +617,7 @@ export const thermalCentre = (t, y) => [t.x + WIND[0] * y * .12, t.z + WIND[2] *
 // vertical air speed at a point: thermals, ridge lift on windward slopes, gentle sink elsewhere
 export function airLift(x, y, z, sun) {
   let w = -.25;
-  for (const t of thermalsNear(x, z, 80)) {
+  for (const t of thermalsNear(x, z, 140)) {
     const [tx, tz] = thermalCentre(t, y), d = Math.hypot(x - tx, z - tz);
     if (d > t.r * 1.6 || y > t.top) continue;
     const k = Math.exp(-(d * d) / (t.r * t.r * .55)) * smooth(t.top, t.top - 60, y) * smooth(-2, 15, y - height(x, z));

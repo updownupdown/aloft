@@ -13,9 +13,15 @@ export const FLY = {
   // flared with both thumbs up (float): flare drag falls by up to floatDrag, the stall speed by
   // floatStall, and perches are caught from floatReach metres farther and at floatLand m/s more
   floatDrag: .45, floatStall: 1.2, floatReach: .7, floatLand: 3,
-  // flared without the thumbs up (spread wide, level): the wings dump lift and the hawk sinks by up
-  // to flareSink/1.6 m/s more, to come down gently where it is rather than float on and on
-  flareSink: 3.2,
+  // the wings spread wide and level: soaring, slow and buoyant (soarDrag of the flare's drag), the
+  // way to ride a thermal. Spread and down: braking, the wings dump lift and the hawk sinks by up to
+  // flareSink/1.6 m/s more, to come down gently where it is (a landing, a perch)
+  soarDrag: .45, flareSink: 3.2,
+  // folded in: level, a fast glide between thermals (nose down tuckGlide); folded and down, the
+  // stoop; folded and up, a swept zoom climb that carries speed (climb x 1+tuckZoom)
+  tuckGlide: .1, tuckStoop: .35, tuckZoom: .3,
+  // the barrel roll (both sticks turned a full circle together, input.js): seconds, speed kept
+  barrelT: 1.1, barrelKeep: .93,
   // flared, thumbs up and slow (under hoverS): the hawk hangs on beating wings (hoverBeat seconds
   // a beat), for hoverCost stamina a second; spent, it drops at hoverDrop m/s² more
   hoverS: 5.5, hoverBeat: .3, hoverCost: .075, hoverDrop: 5,
@@ -48,9 +54,14 @@ export function step(b, c, dt, E) {
   const tw = Math.min(1, Math.max(0, (-c.spread - .1) / .5)), tuckT = tw * tw * (3 - 2 * tw);
   b.tuck += (tuckT - b.tuck) * Math.min(1, dt * 5);
   b.flare += (Math.max(0, c.spread) - b.flare) * Math.min(1, dt * 6);
-  if (b.state !== 'fly') return still(b, c, dt, E);
-  // float: flared with the thumbs pushed up, the wings hold a long slow glide in to land
-  b.float = b.flare * Math.max(0, Math.min(1, c.pitch / .6));
+  if (b.state !== 'fly') { b.spin = 0; b.barrel = null; return still(b, c, dt, E); }
+  // the wing's shape with the thumbs up or down: spread and up floats (and hovers when slow), spread
+  // and down brakes; folded and down stoops, folded and up zooms
+  const up = Math.max(0, Math.min(1, c.pitch / .6)), dn = Math.max(0, Math.min(1, -c.pitch / .6));
+  b.float = b.flare * up;
+  b.brake = b.flare * dn;
+  b.stoop = b.tuck * dn;
+  barrel(b, c, dt, E);
   // how fast the hawk is gaining speed (smoothed): no perching while it is
   b.acc = (b.acc || 0) + ((b.s - (b.sPrev ?? b.s)) / Math.max(dt, 1e-3) - (b.acc || 0)) * Math.min(1, dt * 4);
   b.sPrev = b.s; b.view = null;
@@ -78,33 +89,35 @@ export function step(b, c, dt, E) {
   const flat = wet ? 1 : Math.max(0, (normalAt(b.p[0], b.p[2])[1] - .94) / .05);
   b.skim = agl < FLY.skimH ? Math.min(1, flat) * (1 - Math.max(0, agl) / FLY.skimH) * (1 - b.tuck) * (1 - b.flare) : 0;
   b.skimWet = wet;
-  const cd = (FLY.cd + (FLY.cdTuck - FLY.cd) * b.tuck + .004 * Math.sin(b.roll) ** 2) * (1 - FLY.skimDrag * b.skim) * (1 - .3 * (b.slip || 0)) + FLY.cdFlare * b.flare * (1 - FLY.floatDrag * b.float);
+  const cd = (FLY.cd + (FLY.cdTuck - FLY.cd) * b.tuck + .004 * Math.sin(b.roll) ** 2) * (1 - FLY.skimDrag * b.skim) * (1 - .3 * (b.slip || 0)) + FLY.cdFlare * b.flare * (FLY.soarDrag + (1 - FLY.soarDrag) * b.brake) * (1 - FLY.floatDrag * b.float);
   const cdW = cd * (1 + FLY.wetDrag * (b.wet || 0));
   const trim = Math.asin(Math.max(-1, -FLY.cd * FLY.best * FLY.best / g));
-  let gT = trim + (b.s - FLY.best) * .022 + (c.pitch > 0 ? c.pitch * FLY.climb * (1 - .7 * b.float) : c.pitch * FLY.dive) - b.tuck * .55 + b.flare * .12;
+  let gT = trim + (b.s - FLY.best) * .022 + (c.pitch > 0 ? c.pitch * FLY.climb * (1 - .7 * b.float) * (1 + FLY.tuckZoom * b.tuck) : c.pitch * FLY.dive * (1 - .75 * b.flare))
+    - b.tuck * (FLY.tuckGlide + FLY.tuckStoop * dn) + b.flare * .12;
   if (b.s < sStall) gT = Math.min(gT, -(sStall - b.s) * .13);
   gT = Math.max(-1.35, Math.min(.8, gT));
   b.gamma += (gT - b.gamma) * Math.min(1, dt * (1.1 + b.s * .1));
   b.s += (-g * Math.sin(b.gamma) - cdW * b.s * b.s) * dt;
   b.s = Math.max(0, Math.min(FLY.maxS, b.s));
 
-  // bank and turn; inside a thermal a held thumb with no bank asked for circles the core
+  // bank and turn; soaring (wings spread) in a thermal, the rising air under the outer wing eases the
+  // hawk a little toward the core: you steer the circle, it only helps you keep it
   let rT = c.roll * FLY.roll + (c.yaw || 0) * .2;
   b.inThermal = null; b.ride = false;
   b.lift = airLift(b.p[0], b.p[1], b.p[2], E.sun);
   if (b.lift > .8) {
-    for (const t of thermalsNear(b.p[0], b.p[2], 80)) {
+    for (const t of thermalsNear(b.p[0], b.p[2], 140)) {
       const [tx, tz] = thermalCentre(t, b.p[1]), d = Math.hypot(b.p[0] - tx, b.p[2] - tz);
       if (d < t.r * 1.3) { b.inThermal = { t, tx, tz, d }; break; }
     }
   }
-  if (b.inThermal && c.held && Math.abs(c.roll) < .2 && c.pitch > -.4) {
+  if (b.inThermal) {
     const { t, tx, tz, d } = b.inThermal;
     const f = fwd(b), toC = [(tx - b.p[0]) / (d || 1), (tz - b.p[2]) / (d || 1)];
     const side = Math.sign(f[0] * toC[1] - f[2] * toC[0]) || 1;     // which side the core lies on
-    const want = t.r * .4, ideal = Math.atan(b.s * b.s / (g * want));
-    rT = side * Math.min(.85, ideal + (d - want) * .02);
-    b.ride = true;
+    const soar = Math.max(0, Math.min(1, (b.flare - .25) / .4)) * (1 - b.brake);
+    rT += side * Math.max(0, Math.min(.12, (d - t.r * .35) * .006)) * soar * (1 - Math.min(1, Math.abs(c.roll) * 3));
+    b.ride = soar > .5;
   }
   b.roll += (rT - b.roll) * Math.min(1, dt * 3.2);
   // in a stoop the tail and half-closed wings still steer: the turn doesn't fade with speed as a glide's does
@@ -114,7 +127,7 @@ export function step(b, c, dt, E) {
 
   // stall sink and flap lift live in vy, which settles back to zero
   const st = stallness(b, sStall);
-  b.vy += (-g * st * .85 - b.vy * 1.6 + b.skim * 1.2 - FLY.flareSink * Math.max(0, b.flare - .2) / .8 * Math.max(0, 1 - 2 * b.float)) * dt;
+  b.vy += (-g * st * .85 - b.vy * 1.6 + b.skim * 1.2 - FLY.flareSink * b.brake) * dt;
   hover(b, c, dt, E);
 
   // steer softly round trunks a moment ahead, so threading a wood is about lines, not luck
@@ -131,6 +144,21 @@ export function step(b, c, dt, E) {
   trees(b, dt, E);
   if (b.state === 'fly') solids(b, E);
   if (b.state === 'fly') ground(b, E);
+}
+
+// the barrel roll: the sticks asked for one (c.barrel: 1 counter-clockwise, rolling left; -1
+// clockwise, right). The body turns a full circle about its long axis (b.spin, camera.js) over
+// barrelT seconds along a short corkscrew, losing a little speed
+function barrel(b, c, dt, E) {
+  if (c.barrel && !b.barrel && b.s > 6) { b.barrel = { t: 0, dir: c.barrel }; E.barrel?.(c.barrel); }
+  if (!b.barrel) { b.spin = 0; return; }
+  const B = b.barrel; B.t += dt;
+  const k = Math.min(1, B.t / FLY.barrelT), e = k * k * (3 - 2 * k);
+  b.spin = -B.dir * Math.PI * 2 * e;
+  b.vy += Math.sin(k * Math.PI * 2) * 2.2 * dt;            // up over the top, down through the bottom
+  b.yaw += -B.dir * Math.sin(k * Math.PI) * .5 * dt;        // a little sideways, the way it rolls
+  b.s *= Math.pow(FLY.barrelKeep, dt / FLY.barrelT);
+  if (k >= 1) { b.barrel = null; b.spin = 0; E.barrelDone?.(B.dir); }
 }
 
 // hover: flared hard, both thumbs up and slow, the hawk beats its wings and hangs in place (it can

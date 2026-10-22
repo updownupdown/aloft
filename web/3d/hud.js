@@ -118,14 +118,14 @@ export function createHud(G, ui, input) {
     if (lastY !== null && dt > 0) vr += ((y - lastY) / dt - vr) * Math.min(1, dt * 2.5);
     lastY = y;
     const f = H.flight, h = f ? f.m : H.height ?? '', rate = Math.abs(vr) < .05 ? '0.0' : Math.abs(vr).toFixed(1);
-    const ak = f ? `${h}|${f.kmh}|${f.lift}|${rate}|${vr > 0}` : `${h}|${H.status}`;
+    const ak = f ? `${h}|${f.kmh}|${f.lift}|${f.up}|${rate}|${vr > 0}` : `${h}|${H.status}`;
     if (ak !== altKey) {
       altKey = ak;
       alt.classList.toggle('still', !f);
       tape.style.backgroundPositionY = `${((+h || 0) * 2 % 10).toFixed(1)}px`;
       altM.innerHTML = h !== '' ? `${h}<small>m</small>` : '';
       if (f) {
-        altV.innerHTML = `${vr > .05 ? '↑' : vr < -.05 ? '↓' : ''} ${rate}<small>m/s</small>`;
+        altV.innerHTML = `${f.up ? icon('updraft', 'up3 n' + f.up) : vr > .05 ? '↑' : vr < -.05 ? '↓' : ''} ${rate}<small>m/s</small>`;   // in rising air: red chevrons, more for stronger
         altV.className = 'v' + (f.lift || vr > .3 ? ' rise' : vr < -.3 ? ' sink' : '');
         altK.innerHTML = `${f.kmh}<small>km/h</small>`;
       } else { altV.textContent = H.status; altV.className = 'v st'; altK.textContent = ''; }
