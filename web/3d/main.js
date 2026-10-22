@@ -27,6 +27,7 @@ import { ringsSystem } from './sys/rings.js';
 import { foodSystem } from './sys/food.js';
 import { aimSystem } from './sys/aim.js';
 import { songsSystem } from './sys/songs.js';
+import { momentsSystem } from './sys/moments.js';
 import { appRows } from './app.js';
 import { guideSystem } from './sys/guide.js';
 import { journeySystem } from './sys/journey.js';
@@ -62,7 +63,7 @@ import { raptorsSystem } from './sys/raptors.js';
 import { wingcraftSystem } from './sys/wingcraft.js';
 import { stillSystem } from './sys/still.js';
 
-const SYSTEMS = [speciesSystem, movesSystem, lifeSystem, clockSystem, weatherSystem, watersSystem, windsSystem, floraSystem, airSystem, ringsSystem, foodSystem, aimSystem, sleepSystem, feelSystem, batterySystem, songsSystem,
+const SYSTEMS = [speciesSystem, movesSystem, lifeSystem, clockSystem, weatherSystem, watersSystem, windsSystem, floraSystem, airSystem, ringsSystem, foodSystem, aimSystem, sleepSystem, feelSystem, batterySystem, songsSystem, momentsSystem,
   guideSystem, journeySystem, nestSystem, storySystem, ruinsSystem, photoSystem, howtoSystem, faunaSystem, neighboursSystem, landsSystem, seasonsSystem, glowSystem, landAirSystem, crittersSystem, huntersSystem, aimsSystem, seasonSystem, ghostSystem,
   fieldsSystem, skyDaysSystem, raptorsSystem, wingcraftSystem, stillSystem];
 

@@ -49,7 +49,7 @@ web/3d/journal.js       the Journal tab and its pages (Log, Songs, Landmarks, Fi
 web/3d/pics.js          still pictures of the game's own meshes (songbirdPic(sp, px)), cached data URLs
 web/3d/app.js           Update, Graphics, Haptics, Quiet meters and Quit rows; wake lock; asks for full screen on each touch while not full screen
 web/3d/action.js        the one action button, bottom right (left of the note pad) on the ground or perched (Take off, Sleep from G.actions; swipe for the other)
-web/src/                audio.js (Web Audio synth), music.js (four styles), birdvoice.js, songs.js (songbird species)
+web/src/                audio.js (Web Audio synth), music.js (Valley, the generative music), birdvoice.js, songs.js (songbird species)
 web/birds.html          bird lab: every species side by side (3d/birdlab.js)
 web/lab.html            bird song lab; web/musiclab.html music lab (both share lab.css)
 web/icons/, web/fonts/  app icons (tools/icon.html + tools/make-icons.mjs), bundled fonts (SIL OFL)
@@ -58,7 +58,7 @@ web/3d/sys/*.js         systems: air (thermal clouds/motes), rings, food (hunger
                         JOURNEY.marsh, landmarks found, route, years), map (the Map tab: fog of war, pan/zoom, tap a place), nest (twigs, egg, chick),
                         story (health -> G.tailRed, keepsakes, tricks, courtship, mate and fledglings),
                         photo (photo mode, postcards, album), howto (How to play and the controls map)
-                        songs (songbirds, learning and imitating songs on the pitch strip, gifts, Call),
+                        songs (songbirds, learning and imitating songs, dialects, mimics, alarm calls, gifts, Call), moments (music that notices),
                         aims (a daily aim and feathers, the lands collection, racing the companion),
                         season (the first season guided by the companion, one lesson a day), ghost (ghost flights by link)
 ```

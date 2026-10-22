@@ -11,9 +11,9 @@
 <body>
 <main>
   <div class="top"><h1>Music lab</h1><span class="links"><a href="./">Back to the game</a></span></div>
-  <p>Valley, taken apart: long bowed chords over a low pedal, and a soft piano repeating a slow figure, then resting. Shape it while it plays; changes are heard from the next chord or note. Keep what you like and the game plays it.</p>
+  <p>Valley, taken apart: a low drone, slow bowed chords voiced wide with 7ths and 9ths, and a soft felted piano (a low fifth then a high note, a chord rolled upward, now and then a grace note), resting between phrases. Shape it while it plays; changes are heard from the next chord or note. Keep what you like and the game plays it.</p>
 
-  <div class="opts"><button class="save" data-play>Play</button><button data-skip="chord">Next chord now</button><button data-skip="piano">Piano now</button></div>
+  <div class="opts"><button class="save" data-play>Play</button><button data-skip="chord">Next chord now</button><button data-skip="piano">Piano now</button><button data-moment>A moment</button></div>
   <div class="opts" data-k="hour"></div>
   <div class="opts"><button data-storm>Storm</button></div>
   <ul class="log"></ul>
@@ -37,19 +37,22 @@ let hour = 'day', storm = false, playing = false;
 const s = v => `${(+v).toFixed(0)} s`, pc = v => `${Math.round(v * 100)}%`, x = v => `${(+v * 1000).toFixed(0)}`;
 const SLIDERS = [
   ['strings', 'Strings volume', 0, .06, .002, x],
-  ['piano', 'Piano volume', 0, .14, .002, x],
+  ['piano', 'Piano volume', 0, .1, .002, x],
   ['chordLen', 'Chord length', 6, 40, 1, s, 'How long each chord lasts at least (up to ten seconds more).'],
   ['overlap', 'Next chord starts at', .3, 1, .02, pc, 'Of the way through the last one. Lower means more melding.'],
-  ['bright', 'Strings brightness', 400, 1600, 20, v => `${v} Hz`],
-  ['pedal', 'Low pedal note', 0, 1, .05, pc, 'How often a deep held note sits under the chords.'],
-  ['figure', 'Piano figure every', 2, 8, .1, v => `${(+v).toFixed(1)} s`],
-  ['pair', 'Between its two notes', .4, 2.5, .05, v => `${(+v).toFixed(2)} s`],
-  ['run', 'Figures before a rest', 2, 20, 1, v => v],
+  ['bright', 'Strings brightness', 400, 2000, 20, v => `${v} Hz`],
+  ['drone', 'Drone', 0, 1, .05, pc, 'How often a deep held home note sits under everything.'],
+  ['cello', 'Cello', 0, 1, .05, pc, 'How often a cello holds the chord\'s low note.'],
+  ['violins', 'High violins', 0, 1, .05, pc, 'How often high strings join near the top of the rise.'],
+  ['gesture', 'Piano every', 2, 12, .1, v => `${(+v).toFixed(1)} s`],
+  ['pair', 'Low fifth to high note', .4, 2.5, .05, v => `${(+v).toFixed(2)} s`],
+  ['roll', 'Rolled chord, note to note', .2, 1.2, .01, v => `${(+v).toFixed(2)} s`],
+  ['grace', 'Grace notes', 0, 1, .05, pc, 'How often a melody note has a grace note before it.'],
+  ['run', 'Phrases before a rest', 2, 20, 1, v => v],
   ['quiet', 'Piano rests for', 0, 90, 1, s, 'About this long, longer at night.'],
-  ['pianoOct', 'Piano octave', -1, 1, 1, v => (+v > 0 ? '+' : '') + v],
   ['arc', 'Rise and fall over', 60, 900, 10, v => `${Math.round(v / 60 * 10) / 10} min`],
-  ['room', 'Room', 0, .9, .02, pc],
-  ['echo', 'Valley echo', 0, .7, .02, pc],
+  ['room', 'Room (strings)', 0, .9, .02, pc],
+  ['pianoRoom', 'Room (piano)', 0, .9, .02, pc],
 ];
 const inputs = {};
 for (const [k, label, min, max, step, show, note] of SLIDERS) {
@@ -72,6 +75,7 @@ function draw() {
 }
 q('[data-storm]').onclick = () => { storm = !storm; draw(); };
 q('[data-play]').onclick = () => { A.unlock(); A.resume(); playing = !playing; M.setOn(playing); draw(); };
+q('[data-moment]').onclick = () => { if (playing) { M.momentT = -1e9; M.moment('from the lab', 1); } };
 for (const b of document.querySelectorAll('[data-skip]')) b.onclick = () => { if (playing) M.skip(b.dataset.skip); };
 
 // what Valley is doing, newest first
@@ -89,7 +93,7 @@ setInterval(() => {
 }, 100);
 
 q('[data-save]').onclick = () => {
-  try { localStorage.setItem('aloft.musicTune', JSON.stringify(M.tune)); q('.saved').textContent = 'Kept. The game plays it this way next time it opens.'; }
+  try { localStorage.setItem('aloft.musicTune2', JSON.stringify(M.tune)); q('.saved').textContent = 'Kept. The game plays it this way next time it opens.'; }
   catch { q('.saved').textContent = 'This browser would not save it (private mode?).'; }
 };
 q('[data-reset]').onclick = () => { M.setTune({ ...VALLEY_TUNE }); draw(); };
