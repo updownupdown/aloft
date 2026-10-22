@@ -99,7 +99,7 @@ export function songsSystem(G) {
   // the dialects you know (the versions sung away from a species' home land)
   const dialectCount = () => { const n = [...G.dialects].filter(k => { const [id, l] = k.split(':'); return l !== homeLand(SPECIES[id]); }).length; return `${n} dialect${n === 1 ? '' : 's'}`; };
   // round eight, in Settings > Dev tools > Feature list
-  const PR = 182;
+  const PR = 188;
   for (const f of [
     { id: 'valley-felt', title: 'Valley again: a felted piano, richer chords, a drone', how: 'Music on; listen a few minutes. Settings > Dev tools > Music lab shapes it.' },
     { id: 'alarm-calls', title: 'Alarm calls run ahead of you', how: 'Fly 15-70 m over trees with songbirds: thin seet calls run on ahead and mice freeze. Skim low and they stay quiet.' },

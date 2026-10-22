@@ -9,7 +9,7 @@ export function momentsSystem(G) {
   let tod = G.tod, thermT = 0, outT = 0, glided = false, was = b.state;
   const ground = () => Math.max(height(b.p[0], b.p[2]), WATER);
   const moment = (what, chance) => G.music?.moment?.(what, chance);
-  G.dev?.add({ id: 'music-moments', area: 'Songs and music', round: 8, pr: 182, title: 'Music that notices: the piano answers a few moments', how: 'With Music on: first light; climb a thermal for half a minute and fly out of it high up; land on a tall tree or a hilltop; glide a minute without flapping.', go: () => { if (G.music) G.music.momentT = -1e9; moment('the feature list', 1); } });
+  G.dev?.add({ id: 'music-moments', area: 'Songs and music', round: 8, pr: 188, title: 'Music that notices: the piano answers a few moments', how: 'With Music on: first light; climb a thermal for half a minute and fly out of it high up; land on a tall tree or a hilltop; glide a minute without flapping.', go: () => { if (G.music) G.music.momentT = -1e9; moment('the feature list', 1); } });
   return {
     id: 'moments',
     update(dt) {
