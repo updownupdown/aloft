@@ -103,7 +103,8 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .dial .season.summer { --sc: #8fae4c; } .dial .season.autumn { --sc: #c9782f; } .dial .season.winter { --sc: #9cb6cf; } .dial .season.spring { --sc: #e39bb4; }
 /* the frame rate, under the season */
 .corner3 .dial .season { margin-top: 17px; }
-#ui3:has(.sing3.on:not(.hidden)) .corner3 .dial .season { opacity: 0; }   /* the note pad (songs.css) runs up under it */
+#ui3:has(.sing3.on:not(.hidden):not(.lefty)) .corner3 .dial .season { opacity: 0; }
+#ui3:has(.sing3.on.lefty:not(.hidden)) .alt { opacity: 0; }   /* left-handed, the pad runs up under the height ladder */   /* the note pad (songs.css) runs up under it */
 #ui3 .fps3 { position: absolute; right: 0; top: 108px; width: 128px; white-space: nowrap; text-align: center; font: 600 12px var(--text); font-variant-numeric: tabular-nums; color: #fff; text-shadow: 0 1px 3px rgba(0, 0, 0, .55); }
 
 /* Take off and Sleep, bottom right while perched or on the ground, just left of the note pad when
@@ -117,6 +118,12 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
   clip-path: polygon(50% 0, 100% 50%, 64% 50%, 64% 100%, 36% 100%, 36% 50%, 0 50%); }
 #ui3 .takeoff3.gone { opacity: 0; pointer-events: none; }
 #ui3:has(.takeoff3:not(.sleep3):not(.gone)) .takeoff3.sleep3 { right: calc(var(--actr) + 150px); }
+/* left-handed (Settings > Left-handed, songs.js 'lefty'): the buttons go bottom left, right of the
+   note pad when it is out, and the Sing switch and song card take the right */
+#ui3 { --actl: calc(14px + env(safe-area-inset-left)); }
+#ui3:has(.sing3.on:not(.hidden)) { --actl: calc(14px + 96px + 10px + env(safe-area-inset-left)); }
+#ui3:has(.sing3.lefty) .takeoff3, #ui3:has(.sing3.lefty) .act3 { right: auto; left: var(--actl); }
+#ui3:has(.sing3.lefty):has(.takeoff3:not(.sleep3):not(.gone)) .takeoff3.sleep3 { right: auto; left: calc(var(--actl) + 150px); }
 /* the one action button (action.js), bottom right in Take off's place: it stands in for Take off, Sleep and the
    songs' reopen button, with a dot for each action that fits now when there are more than one */
 #ui3.act3on .takeoff3 { display: none !important; }

@@ -12,6 +12,7 @@ export const AREAS = ['Flight', 'Ground and perch', 'World', 'Wildlife', 'Food a
 
 // [id, area, pr, title, how to try it]
 const SHIPPED = [
+  ['lefty', 'Settings and performance', 181, 'Left-handed layout', 'Settings > Gameplay > Left-handed: Take off and the note pad go left, Sing goes right.'],
   ['mice-farms', 'Wildlife', 179, 'Mice gather round the old farms', 'Fly over a barn, farmyard or village: more mice than in open country.'],
   ['ruins', 'World', 178, 'Abandoned farmsteads, villages, tracks and bridges', 'Explore: villages show in Journal > Landmarks; things people left glint near ruins.'],
   ['drink-tap', 'Food and water', 177, 'Drink by tapping the water, puddles too', 'Land by water or a puddle after rain and tap the water.'],
