@@ -306,6 +306,15 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .card3 .choice3 > div { flex: none; display: flex; padding: 3px; gap: 2px; border-radius: 20px; background: rgba(29, 43, 54, .08); }
 .card3 .choice3 button { min-width: 48px; min-height: 34px; padding: 0 12px; border: 0; border-radius: 17px; background: none; font: inherit; font-size: 13.5px; font-weight: 600; color: var(--ink2); cursor: pointer; }
 .card3 .choice3 button.on { background: var(--ink); color: #fff; }
+.card3 .range3 { margin: 8px 0 0; padding: 10px 16px; border-radius: 15px; background: rgba(255, 255, 255, .78); box-shadow: 0 1px 4px rgba(20, 40, 50, .1); display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; }
+.card3 .range3 > span { flex: 1 1 140px; display: flex; flex-direction: column; gap: 2px; font-weight: 600; }
+.card3 .range3 small { font-size: 12.5px; font-weight: 500; line-height: 1.4; color: var(--ink2); }
+.card3 .range3 input { flex: 2 1 180px; height: 34px; margin: 0; background: none; appearance: none; -webkit-appearance: none; cursor: pointer; }
+.card3 .range3 input::-webkit-slider-runnable-track { height: 6px; border-radius: 3px; background: linear-gradient(90deg, var(--ink) var(--v, 50%), rgba(29, 43, 54, .14) var(--v, 50%)); }
+.card3 .range3 input::-moz-range-track { height: 6px; border-radius: 3px; background: linear-gradient(90deg, var(--ink) var(--v, 50%), rgba(29, 43, 54, .14) var(--v, 50%)); }
+.card3 .range3 input::-webkit-slider-thumb { -webkit-appearance: none; width: 24px; height: 24px; margin-top: -9px; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(20, 40, 50, .35); }
+.card3 .range3 input::-moz-range-thumb { width: 24px; height: 24px; border: 0; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(20, 40, 50, .35); }
+.card3 .range3 b { flex: none; width: 42px; text-align: right; font-size: 13.5px; font-weight: 600; color: var(--ink2); font-variant-numeric: tabular-nums; }
 .card3 .btn em { text-align: right; }
 .stack3 .sw + .btn { margin-top: 12px; }
 .stack3 .group3 .main3 { min-height: 50px; margin: 6px 0 2px; gap: 10px; font-size: 16px; }

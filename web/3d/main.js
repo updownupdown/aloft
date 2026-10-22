@@ -169,6 +169,11 @@ if (qs.has('fps')) G.settings.fpsCap = +qs.get('fps') || 60;
   G.menu.tab(play, 'Play');
   G.menu.toggle(play, { label: 'Sound', get: () => G.settings.sound, set: v => { G.settings.sound = v; audio.setOn(v); store.set('sound', v); } });
   G.menu.toggle(play, { label: 'Music', get: () => G.settings.music, set: v => { G.settings.music = v; music.setOn(v); store.set('music', v); } });
+  // volumes: music, the wind, and the birds with every other sound
+  for (const [k, label] of [['music', 'Music volume'], ['wind', 'Wind volume'], ['fx', 'Birds and effects']]) {
+    audio.vol[k] = store.get('vol.' + k, audio.vol[k]);
+    G.menu.range(play, { label, get: () => audio.vol[k], set: v => { audio.setVol(k, v); store.set('vol.' + k, v); } });
+  }
   G.menu.toggle(play, { label: 'Invert climb and dive', sub: 'thumbs up to dive', get: () => G.settings.invert, set: v => { G.settings.invert = input.invert = v; store.set('invert3d', v); } });
   // Frame rate: a cap of 30, 60 or 90 frames a second; fewer frames, less battery
   if (G.settings.fpsCap < 30) G.settings.fpsCap = 30;
