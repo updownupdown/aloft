@@ -5,6 +5,7 @@
 import { SPECIES } from '../../src/songs.js';
 import { forest, treesNear, perchesOf, ih, biomeAt, rocksNear, landmarksNear, groundAt, WATER } from '../world.js';
 import { builder, blob, reseed } from '../shapes.js';
+import { continentAt } from '../earth.js';
 
 const c01 = c => c.map(v => v / 255);
 const dark = (c, k) => c.map(v => v * k);
@@ -72,8 +73,8 @@ export const land = (x, z) => biomeAt(x, z).name;
 // Where songbirds sit near (x, z): trees (the end of a broadleaf's low limb, or the tip of a
 // pine; woods have one in twenty-five, a lone tree one in five), the tops of rocks in the
 // canyons and the high country, and the wet rocks by a waterfall. Each spot is fixed by what it
-// sits on, like everything else. A spot's species: one of the land's own birds (most of the
-// time, where it has some), else one native to its old habitat.
+// sits on, like everything else. A spot's species: one of the birds of its continent and its land
+// (src/songs.js cont and lands); none at sea or on the ice.
 const cache = new Map();
 const keep = (k, s) => { cache.set(k, s); if (cache.size > 5000) cache.delete(cache.keys().next().value); return s; };
 // a pick by weight: birds that sing only at night take half a share, so the day woods stay full,
@@ -84,11 +85,17 @@ function pickW(pool, u) {
   for (const q of pool) if ((w -= weight(q)) < 0) return q;
   return pool[pool.length - 1];
 }
-const own = (raw, spot) => SPECIES.filter(q => (q.spot || 'tree') === spot && q.lands?.includes(raw));
+// the birds of a continent's land that sit on this kind of spot (a rock bird sits on bare ground
+// too, where there are no rocks), cached by continent, land and spot
+const owners = new Map();
+function own(x, z, spot) {
+  const c = continentAt(x, z), raw = land(x, z), k = c + raw + spot;
+  if (!owners.has(k)) owners.set(k, c ? SPECIES.filter(q => q.cont.includes(c) && q.lands.includes(raw) && ((q.spot || 'tree') === spot || spot === 'ground' && q.spot === 'rock')) : []);
+  return owners.get(k);
+}
 function treeSpot(t) {
   if (ih(t.id, 3, 91) >= (forest(t.x, t.z) > .32 ? .04 : .2)) return null;
-  const raw = land(t.x, t.z), bio = HABITAT[raw] || raw, mine = own(raw, 'tree');
-  const pool = mine.length && (ih(t.id, 6, 94) < .5 || !SPECIES.some(q => !q.spot && q.biomes.includes(bio))) ? mine : SPECIES.filter(q => !q.spot && q.biomes.includes(bio));
+  const raw = land(t.x, t.z), bio = HABITAT[raw] || raw, pool = own(t.x, t.z, 'tree');
   if (!pool.length) return null;
   const sp = pickW(pool, ih(t.id, 4, 92)), ps = perchesOf(t), p = ps[ps.length - 1];
   // a little to one side of the perch, so a hawk landing there does not sit on it
@@ -100,7 +107,7 @@ function treeSpot(t) {
 const TOP = { tor: 1, hoodoo: 1, boulder: .75 };
 function rockSpot(o) {
   if (!TOP[o.kind] || ih(o.id, 3, 96) >= .35) return null;
-  const pool = own(land(o.x, o.z), 'rock'); if (!pool.length) return null;
+  const pool = own(o.x, o.z, 'rock'); if (!pool.length) return null;
   const sp = pool[Math.floor(ih(o.id, 4, 97) * pool.length)], a = ih(o.id, 5, 98) * 6.283, r = o.kind === 'hoodoo' ? .05 : .3;
   return { id: 'r' + o.id, ph: ih(o.id, 7, 99) * 99, sp, rock: o, x: o.x + Math.cos(a) * r * o.s * .3, y: o.y - .3 + o.s * TOP[o.kind] + .02, z: o.z + Math.sin(a) * r * o.s * .3, heading: a + 1.2 };
 }
@@ -109,7 +116,7 @@ const GCELL = 48;
 function groundSpot(gx, gz) {
   if (ih(gx, gz, 101) >= .07) return null;
   const x = (gx + .2 + ih(gx, gz, 102) * .6) * GCELL, z = (gz + .2 + ih(gx, gz, 103) * .6) * GCELL;
-  const pool = own(land(x, z), 'ground'); if (!pool.length) return null;
+  const pool = own(x, z, 'ground'); if (!pool.length) return null;
   const y = groundAt(x, z); if (y < 2) return null;
   return { id: 'g' + gx + '_' + gz, ph: ih(gx, gz, 104) * 99, sp: pool[Math.floor(ih(gx, gz, 105) * pool.length)], x, y: y + .02, z, heading: ih(gx, gz, 106) * 6.283 };
 }
@@ -123,6 +130,8 @@ function fallsSpot(l) {
   }
   return { id: 'f' + l.id, ph: 7, sp: pool[0], x: best.x, y: Math.max(best.y, WATER + .15) + .02, z: best.z, heading: Math.atan2(l.x - best.x, -(l.z - best.z)) };
 }
+// the world wrapped round (main.js 'wrap'): the spots were cached at the old x
+export const clearSpots = () => cache.clear();
 export function songTreesNear(x, z, r) {
   const out = [];
   for (const t of treesNear(x, z, r)) {
