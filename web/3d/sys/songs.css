@@ -58,6 +58,13 @@
   max-width: min(46vw, 400px); border: 1px solid var(--blkedge); border-radius: 26px; background: var(--blk); box-shadow: var(--shadow); color: #fff; }
 .songcard3 > .pic3 { align-self: flex-start; }
 .txt3 { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+.sgname3 { display: flex; align-items: center; gap: 6px; min-width: 0; }
+/* the dots: one per song you know of the bird you imitate, the one you sing filled; tap for the next */
+.sgdots3 { flex: none; display: flex; gap: 4px; align-items: center; padding: 6px 7px; margin: -6px 0; border: 0; border-radius: 12px; background: rgba(255, 255, 255, .12); cursor: pointer; }
+.sgdots3[hidden] { display: none; }
+.sgdots3 i, .sdots3 i { width: 6px; height: 6px; border-radius: 50%; box-shadow: inset 0 0 0 1.2px rgba(255, 255, 255, .7); }
+.sgdots3 i.on, .sdots3 i.on { background: #fff; box-shadow: none; }
+.sdots3 { display: flex; gap: 3px; justify-content: center; }
 .txt3 b { font-weight: 700; font-size: 14px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 4px; }
 /* the birds' X: white on black, over the cards' top right corner */
 .sgless3 { position: absolute; z-index: 1; top: 8px; right: 8px; width: 38px; height: 38px; padding: 0; border: 1px solid rgba(255, 255, 255, .3); border-radius: 50%;
@@ -151,3 +158,19 @@
 
 /* while the song controls are out, the message line (top centre) keeps clear of the note pad */
 #ui3:has(.sing3.on:not(.hidden)) .toast3 { max-width: min(560px, calc(100vw - 460px - env(safe-area-inset-left) - env(safe-area-inset-right)), calc(100vw - 2 * (var(--padw, 96px) + 40px))); }
+
+/* Journal > Songs: each bird's songs under its card (round nine): a play button for each song
+   you know (its words and dialects beside it), a question mark for each still to find */
+.songs3 { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+.songs3 > li.seen { flex-wrap: wrap; align-items: flex-start; }
+.songs3 > li.seen > div:nth-child(2) { flex: 1; min-width: 0; }
+.sglist3 { list-style: none; margin: 2px 0 0; padding: 0; width: 100%; display: flex; flex-direction: column; gap: 6px; }
+.sglist3 li { display: flex; align-items: center; gap: 10px; padding: 0; background: none; }
+.sglist3 b { font-size: 13px; }
+.sglist3 small { display: block; color: var(--ink2, #4c5d69); }
+.sglist3 li.q b { opacity: .55; font-weight: 500; }
+.sgplay3, .sgq3 { flex: none; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; }
+.sgplay3 { border: 0; padding: 0; background: #1d2b36; color: #fff; cursor: pointer; }
+.sgplay3 svg { width: 16px; height: 16px; margin-left: 2px; }
+.sgplay3.on { background: #2f6b5a; }
+.sgq3 { border: 1.5px dashed rgba(29, 43, 54, .3); color: rgba(29, 43, 54, .45); font-weight: 700; font-size: 14px; }
