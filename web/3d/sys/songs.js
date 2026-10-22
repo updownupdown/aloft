@@ -91,7 +91,7 @@ export function songsSystem(G) {
   let visitor = null, flock = [], trailT = 0;
   const powerCD = {};                // species id -> G.clock when its gift works again
   // the song you are copying: `target` (a species), with its bird beside you (`bird`) or not
-  const S = { target: null, bird: null, res: [], over: false, lastTry: -9, listening: null, hearT: 0, teachI: -1, answerT: 0, answer: '', closeId: null, learnedT: 0, mine: [], chosen: null };
+  const S = { target: null, bird: null, res: [], over: false, lastTry: -9, listening: null, hearT: 0, teachI: -1, answerT: 0, answer: '', closeId: null, learnedT: 0, mine: [], chosen: null, self: false };
   // how far into each song you have not learned you have found its notes (by species id)
   const found = store.get('songFound', {});
   const lefty = () => store.get('lefty', false);
@@ -142,6 +142,7 @@ export function songsSystem(G) {
     { id: 'dialects', title: 'Song dialects: each land sings its own version', how: 'Learn a robin in the meadows, then perch by one in the marsh or the savanna: the card says Robin (marsh); Journal > Songs lists dialects.' },
     { id: 'mimic', title: 'Mimics: the starling (and the mockingbird down south)', how: 'Perch near a starling in meadows or by lakes: it sings snatches of other songs; an unknown song\'s opening fills in on its card.' },
     { id: 'more-songs', round: 9, pr: 191, title: 'Several songs per bird; Journal > Songs plays the ones you know', how: 'Perch by songbirds of one kind in different trees: each sings one of its kind\'s songs. The birds\' list (tap the song card) shows each bird\'s songs; tap one to imitate it. Journal > Songs: play buttons, question marks for songs to find.' },
+    { id: 'sing-three', round: 9, pr: 209, title: 'At most three birds sing at once; no piano under your notes; your own bird on the rail sings as yourself', how: 'Perch in a busy wood and listen: never more than three songs overlap. Tap Sing, then your own bird at the top of the rail: Free song, even beside a bird that could teach you.' },
     { id: 'learn-near', round: 9, pr: 203, title: 'Learn from any bird near by; tap its logo to choose it; Dev mode unlocks every song in the Journal', how: 'Perch within about 45 m of a songbird whose song you do not know (amber dot on the rail), or tap its logo: Learning, notes light up, the card fills in from the first note. Settings > Dev tools > Dev mode, then Journal > Songs: play every song. The states are explained at the top of Journal > Songs.' },
     { id: 'sing-rail2', round: 9, pr: 197, title: 'Sing rail round two: you on top, birds by name, every bird at the bottom; the card comes out from under it', how: 'Perch among songbirds and tap Sing: the rail runs from under the menu button, your bird first, then the birds near by A to Z (picking one keeps the order), the list button always at the bottom. The card tucks under the rail; the You row keeps its height.' },
     { id: 'sing-rail', round: 9, pr: 196, title: 'Sing rail: the birds near by down the side, theirs over yours on the card', how: 'Perch among songbirds and tap Sing: their logos run down the left (an amber dot on one that could teach you, your own bird at the bottom); tap one to learn from or imitate it. The card shows its score and, under it, what you sang, ringed by how it went. Tap the song name for the next song you know.' },
@@ -158,7 +159,7 @@ export function songsSystem(G) {
 
   const ui = createSingUI(document.getElementById('ui3'), {
     audio: A, voice: () => SPECIES[voiceId() ?? 1].voice, store,
-    onSyll: (lane, kind) => { notePart(b.p, lane, kind, true); G.music.echo(lane); singNote(lane, kind); },
+    onSyll: (lane, kind) => { notePart(b.p, lane, kind, true); singNote(lane, kind); },   // (no piano echo: James, 10-22)
     onPick: pick, onCall: call, onNext: nextSong,
   });
 
@@ -314,6 +315,8 @@ export function songsSystem(G) {
   function pick(id, k = null) {
     // a bird of that kind singing within earshot a song you do not know yet: learn from it
     S.chosen = id === null || k !== null ? null : teacherOf(id);
+    // your own bird: sing as yourself, whoever sings near by, until you pick a bird or stop singing
+    S.self = id === null;
     if (S.chosen) id = null;
     picked = id === null ? null : SPECIES[id]; pickedK = k ?? (picked ? knownSongs(picked)[0] ?? 0 : 0);
     S.res = []; S.over = false;
@@ -531,7 +534,7 @@ export function songsSystem(G) {
     if (G.paused || e.repeat) return;
     const n = '12345'.indexOf(e.key), k = '67890'.indexOf(e.key);
     if (n >= 0 && ui.ready && !ui.open) ui.sing(true);
-    if (n >= 0 && ui.open) { A.note(n, SPECIES[voiceId() ?? 1].voice, .18, ui.kind); ui.glow(n); notePart(b.p, n, ui.kind, true); G.music.echo(n); singNote(n, ui.kind); }
+    if (n >= 0 && ui.open) { A.note(n, SPECIES[voiceId() ?? 1].voice, .18, ui.kind); ui.glow(n); notePart(b.p, n, ui.kind, true); singNote(n, ui.kind); }
     if (k >= 0 && ui.open) ui.setKind(KINDS[k][0]);
     if (e.code === 'KeyC') call(.6);
   });
@@ -616,6 +619,8 @@ export function songsSystem(G) {
       }
       placeK += ((S.echoed ? 1 : 0) - placeK) * Math.min(1, dt * .8);
       if (Math.abs(placeK - placeSent) > .05) { placeSent = placeK; A.setPlace?.(placeK); }
+      // (how many birds other than your teacher are mid-song)
+      let singing = 0; for (const s of near) if (s.out && s.singT > 0 && s !== S.bird) singing++;
       let close = null, cd = SONG.nearR, fresh = null, fd = SONG.nearR; const nearby = new Set(), teachers = new Set();   // kinds singing within earshot, and those with a song you do not know
       for (const s of near) {
         let st = birds.get(s.id);
@@ -628,7 +633,11 @@ export function songsSystem(G) {
         // again a moment after you stop; the others sing less while you learn
         if (S.bird === s && learning()) { st.next = Math.min(st.next, 6); if (G.t - S.lastTry < 3) st.next = Math.max(st.next, 1.5); }
         // mornings are busy, so each bird sings half as often then
+        // at most three birds sing at once (the one you learn from among them), so a busy wood stays
+        // clear and light on the phone; the others wait a moment
+        if (st.next <= 0 && S.bird !== s && singing >= (S.bird ? 2 : 3)) st.next = .8 + Math.random() * 1.5;
         if (st.next <= 0) {
+          if (S.bird !== s) singing++;
           const morning = chorus || timeOfDay(G.tod) === 'dawn';
           st.next = (chorus ? 2.5 + Math.random() * 3 : 7 + Math.random() * 5) * (morning ? 2 : 1) * (1 + (G.hush || 0) * 2) * (learning() && S.bird !== s ? 2 : 1); sing(s);   // fewer songs in a hush
           // tawny owls call as a pair: the nearest other one answers
@@ -659,7 +668,8 @@ export function songsSystem(G) {
       // perched near a new bird whose song you do not know: singing turns to learning from it
       // (the nearest one with a song you do not know, before a nearer one you know)
       if ((fresh?.id ?? null) !== S.closeId) { S.closeId = fresh?.id ?? null; if (fresh && !S.chosen) picked = null; }
-      const teacher = S.chosen || fresh || close;
+      if (!ui.open) S.self = false;
+      const teacher = S.self ? null : S.chosen || fresh || close;
       const target = imitating() || (teacher ? songOf(teacher) : null), bird = teacher && teacher.sp === (target?.base || target) ? teacher : null;
       if (target !== S.target || bird !== S.bird) {
         Object.assign(S, { target, bird, res: [], over: false, hearT: 0, teachI: -1 });
