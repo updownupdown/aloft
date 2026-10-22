@@ -8,10 +8,13 @@ import { buildHawk, HAWK_SCALE } from './hawk.js';
 
 // instanced shapes that are cloud: see-through when the camera is close or inside
 const CLOUDY = new Set(['cloud', 'storm', 'puff', 'lens', 'devil']);
+// instanced shapes that hoar frost whitens (the plants and stones; not the animals)
+const FROSTY = new Set(['tuft', 'scrub', 'bush', 'reeds', 'stone', 'flowerY', 'flowerW', 'flowerP', 'hay', 'hayLaid', 'bale', 'barrel']);
 const COMMON_FS = `
 uniform vec3 uCam, uSun, uSunCol, uSkyAmb, uGndAmb, uFogCol, uFocus;
 uniform vec3 uZenith;
 uniform float uFogDen, uDither, uSeek, uCut, uFade, uWater, uLift, uTime;
+uniform vec4 uShadeC[8], uFrost; uniform vec2 uFrostDir;
 in vec3 vPos, vNrm, vCol, vColB; in float vLeaf, vFade, vGone;
 out vec4 frag;
 float h21(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
@@ -32,10 +35,24 @@ vec4 waterAt(vec3 P, float depth) {
   c = mix(c, sky, .12 + fr * .2);
   return vec4(mix(c, vec3(.95) * lit, foam * .8), mix(.55, 1., smoothstep(0., .6, depth)));
 }
-vec3 shade(vec3 col, vec3 n) {
+// the drifting clouds' shadows (sys/air.js S.shadeC: x, z, radius, depth): soft discs that take
+// some of the sun off whatever is under them
+float sunlit(vec3 p) {
+  if (p.y > 260.) return 1.;
+  float s = 0.;
+  for (int i = 0; i < 8; i++) { vec4 c = uShadeC[i]; if (c.z <= 0.) break; s = max(s, c.w * smoothstep(c.z, c.z * .55, length(p.xz - c.xy))); }   // nearest first; none left, stop
+  return 1. - s;
+}
+// hoar frost (sys/skydays.js S.frost: amount, the melt line, where it is measured from): white
+// where the line hasn't passed; it goes first from ground facing the sun and nearer the sun's side
+vec3 frosted(vec3 col, vec3 n, vec3 p) {
+  float v = dot(p.xz - uFrost.zw, uFrostDir) / 300. + dot(n, uSun) * .8 + (h21(floor(p.xz * .7)) - .5) * .12;
+  return mix(col, vec3(.88, .92, .97), uFrost.x * smoothstep(uFrost.y + .05, uFrost.y - .05, v) * .85);
+}
+vec3 shade(vec3 col, vec3 n, float sun) {
   float d = dot(n, uSun), wrap = max((d + .3) / 1.3, 0.);
   vec3 amb = mix(uGndAmb, uSkyAmb, n.y * .5 + .5);
-  return col * (amb + uSunCol * wrap);
+  return col * (amb + uSunCol * wrap * sun);
 }
 vec3 haze(vec3 c, vec3 p) {
   // the haze lies low: high ground thins it, so far hills and peaks stand out on the skyline
@@ -99,7 +116,8 @@ void main() {
 #endif
   vec3 n = normalize(vNrm), col = vCol;
   if (!gl_FrontFacing) { n = -n; col = vColB; }
-  vec3 c = shade(col, n), hp = vPos;
+  if (uFrost.x > 0. && uDither < 1.5 && vPos.y + uLift > uWater) col = frosted(col, n, vPos);
+  vec3 c = shade(col, n, sunlit(vPos)), hp = vPos;
   // under the water (uLift: the far tiles are sunk a little under the near ground)
   float y = vPos.y + uLift;
   if (y < uWater && uDither < 1.5) {
@@ -421,6 +439,14 @@ export function createRenderer(gl) {
     gl.uniform3fv(P.u.uCam, S.cam); gl.uniform3fv(P.u.uSun, S.sun); gl.uniform3fv(P.u.uSunCol, S.sunCol);
     gl.uniform3fv(P.u.uSkyAmb, S.skyAmb); gl.uniform3fv(P.u.uGndAmb, S.gndAmb); gl.uniform3fv(P.u.uFogCol, S.horizon);
     gl.uniform1f(P.u.uFogDen, S.fogDen); gl.uniform3fv(P.u.uFocus, S.focus); gl.uniform1f(P.u.uDither, 0); gl.uniform1f(P.u.uCut, 0); gl.uniform1f(P.u.uFade, 0); gl.uniform1f(P.u.uWater, S.water ?? 0); gl.uniform1f(P.u.uLift, 0); gl.uniform3fv(P.u.uZenith, S.zenith); gl.uniform1f(P.u.uTime, S.time); if (P.u.uSeek) gl.uniform1f(P.u.uSeek, S.seek || 0);
+    gl.uniform4fv(P.u.uShadeC, shadeC(S)); gl.uniform4fv(P.u.uFrost, S.frost || NOFROST); gl.uniform2fv(P.u.uFrostDir, S.frostDir || [1, 0]);
+  }
+  // the cloud shadows as 8 vec4s (unused ones radius 0)
+  const SHADE = new Float32Array(32), NOFROST = [0, 0, 0, 0];
+  function shadeC(S) {
+    SHADE.fill(0);
+    (S.shadeC || []).slice(0, 8).forEach((c, i) => SHADE.set(c, i * 4));
+    return SHADE;
   }
 
   R.draw = (S, W, cw, ch) => {
@@ -441,11 +467,12 @@ export function createRenderer(gl) {
     // hawk
     pf?.pass('hawk');
     gl.useProgram(solid.p); setLight(solid, S); gl.uniformMatrix4fv(solid.u.uVP, false, vp);
+    gl.uniform4fv(solid.u.uFrost, NOFROST);   // no hoar frost on the hawk
     const hm = buildHawk(S.pose);
     gl.bindBuffer(gl.ARRAY_BUFFER, hawk.buf); gl.bufferData(gl.ARRAY_BUFFER, hm, gl.DYNAMIC_DRAW);
     gl.uniformMatrix4fv(solid.u.uModel, false, basis(S.hawk.p, S.hawk.r, S.hawk.u, S.hawk.f, HAWK_SCALE));
     gl.bindVertexArray(hawk.vao); gl.drawArrays(gl.TRIANGLES, 0, hm.length / 12); tris += hm.length / 36;
-    gl.uniformMatrix4fv(solid.u.uModel, false, IDENT);
+    gl.uniformMatrix4fv(solid.u.uModel, false, IDENT); gl.uniform4fv(solid.u.uFrost, S.frost || NOFROST);
 
     // props: anything instanced that a system adds (rings, mice, flora, marks...)
     gl.useProgram(solidInst.p); setLight(solidInst, S);
@@ -456,7 +483,7 @@ export function createRenderer(gl) {
       upload(m.ibuf, d);
       gl.bindVertexArray(m.vao); gl.drawArraysInstanced(gl.TRIANGLES, 0, m.count, d.length / 8); tris += m.count / 3 * d.length / 8;
     };
-    for (const key in S.props) if (!CLOUDY.has(key)) { pf?.pass(R.propPasses ? key : 'props'); prop(key); }
+    for (const key in S.props) if (!CLOUDY.has(key)) { pf?.pass(R.propPasses ? key : 'props'); if (S.frost) gl.uniform4fv(solidInst.u.uFrost, FROSTY.has(key) ? S.frost : NOFROST); prop(key); }
 
     // ground: only the chunks inside the view (their box against the frustum's sides), nearest first
     pf?.pass('ground');

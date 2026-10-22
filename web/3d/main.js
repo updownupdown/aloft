@@ -56,9 +56,13 @@ import { lifeSystem } from './sys/life.js';
 import { neighboursSystem } from './sys/neighbours.js';
 import { seasonSystem } from './sys/season.js';
 import { ghostSystem } from './sys/ghost.js';
+import { fieldsSystem } from './sys/fields.js';
+import { skyDaysSystem } from './sys/skydays.js';
+import { raptorsSystem } from './sys/raptors.js';
 
 const SYSTEMS = [speciesSystem, movesSystem, lifeSystem, clockSystem, weatherSystem, watersSystem, windsSystem, floraSystem, airSystem, ringsSystem, foodSystem, aimSystem, sleepSystem, feelSystem, batterySystem, songsSystem,
-  guideSystem, journeySystem, nestSystem, storySystem, ruinsSystem, photoSystem, howtoSystem, faunaSystem, neighboursSystem, landsSystem, seasonsSystem, glowSystem, landAirSystem, crittersSystem, huntersSystem, aimsSystem, seasonSystem, ghostSystem];
+  guideSystem, journeySystem, nestSystem, storySystem, ruinsSystem, photoSystem, howtoSystem, faunaSystem, neighboursSystem, landsSystem, seasonsSystem, glowSystem, landAirSystem, crittersSystem, huntersSystem, aimsSystem, seasonSystem, ghostSystem,
+  fieldsSystem, skyDaysSystem, raptorsSystem];
 
 export function start(canvas, ui) {
   const gl = createGL(canvas);
@@ -298,7 +302,7 @@ if (qs.has('fps')) G.settings.fpsCap = +qs.get('fps') || 60;
 
     // sound
     const above = b.p[1] - Math.max(height(b.p[0], b.p[2]), WATER), L = G.light;
-    audio.ambience(Math.min(1, b.s / 30 + (G.storm || 0) * .3), G.rain || 0, { height: above * 2, stoop: clamp((b.s - 25) / 18, 0, 1), night: L.night, frogs: L.night * (height(b.p[0], b.p[2]) < 3 ? 1 : 0), falls: G.babble || 0 });
+    audio.ambience(Math.min(1, b.s / 30 + (G.storm || 0) * .3), G.rain || 0, { height: above * 2, stoop: clamp((b.s - 25) / 18, 0, 1), night: L.night, frogs: L.night * (height(b.p[0], b.p[2]) < 3 ? 1 : 0), falls: G.babble || 0, hush: G.hush || 0 });
     music.update(dt, { night: L.night, storm: G.storm || 0, learned: G.learned || new Set(), species: G.species || [], speed: b.s * 4, wind: G.windK ?? .3, height: above * 2 });
     pf.lap('Core', 'sound, music');
 

@@ -34,7 +34,7 @@ export function setWater(y) { WATER = y; }
 
 // what systems change at run time: the snowline (0 summer .. 1 deep winter, chunks must be
 // rebuilt when it moves), the thermals' strength, and extra lift (storm cells, waves, kettles)
-export const env = { snow: 0, season: 'summer', seasonDay: 0, thermal: 1, lifts: [], thermals: [] };
+export const env = { snow: 0, season: 'summer', seasonDay: 0, thermal: 1, lifts: [], thermals: [], shade: null };   // shade(x, z): cloud shadow 0..1 (sys/air.js)
 
 // how much of each kind of country a point is, 0..1 each (older callers read these)
 export function bands(x, z, bl = blend(x, z)) {
@@ -619,7 +619,9 @@ export function airLift(x, y, z, sun) {
     const [tx, tz] = thermalCentre(t, y), d = Math.hypot(x - tx, z - tz);
     if (d > t.r * 1.6 || y > t.top) continue;
     const k = Math.exp(-(d * d) / (t.r * t.r * .55)) * smooth(t.top, t.top - 60, y) * smooth(-2, 15, y - height(x, z));
-    w += t.w * k * (.35 + .65 * sun) * env.thermal - (d > t.r ? .6 : 0);
+    // a cloud's shadow over the column's foot cools the ground: the thermal weakens (round eight C1)
+    const sh = env.shade && !t.volcano ? env.shade(t.x, t.z) : 0;
+    w += t.w * k * (.35 + .65 * sun) * env.thermal * (1 - .65 * sh) - (d > t.r ? .6 : 0);
   }
   const g = height(x, z), above = y - g;
   if (above < 70) {

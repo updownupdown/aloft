@@ -129,6 +129,7 @@ export function foodSystem(G) {
     }
     return out;
   }
+  G.mouseCells = cellMice;   // sys/fields.js reads the homes for its signs and the fox
   function refresh() {
     const r = FOOD.near, c0 = Math.floor((b.p[0] - r) / FOOD.cell), c1 = Math.floor((b.p[0] + r) / FOOD.cell);
     const d0 = Math.floor((b.p[2] - r) / FOOD.cell), d1 = Math.floor((b.p[2] + r) / FOOD.cell), seen = new Set();
@@ -144,6 +145,8 @@ export function foodSystem(G) {
   function simulate(m, dt) {
     // wander near the burrow in short scurries; run from a low, close shadow
     const dx = m.x - b.p[0], dz = m.z - b.p[2], hd = Math.hypot(dx, dz), hh = b.p[1] - height(b.p[0], b.p[2]), low = hh < 14, air = b.state === 'fly';
+    const w = G.wary?.(m.hx, m.hz) || 0;   // a meadow where you missed a few times: its mice are on edge (sys/fields.js)
+    if (m.seen > 0) m.seen -= dt;
     if (m.hidden > 0) { m.hidden -= dt; m.x = m.bx; m.z = m.bz; m.y = height(m.x, m.z); return; }
     // digging down: a moment of flying earth, then it is gone
     if (m.dig > 0) {
@@ -154,18 +157,18 @@ export function foodSystem(G) {
     }
     // you landed (or hopped down) close by: it runs for its burrow
     if ((b.state === 'ground' || b.state === 'perch' && b.p[1] - m.y < 6) && hd < 7 && !m.bolt) { m.bolt = true; m.flee = 3; m.freeze = 0; }
-    if (air && hd < 10 && low && m.flee <= 0 && !G.silent) { m.flee = 1.2; m.yaw = Math.atan2(dx, -dz) + (Math.random() - .5); }
+    if (air && hd < 10 + 12 * w && low && m.flee <= 0 && !G.silent) { m.flee = 1.2; m.yaw = Math.atan2(dx, -dz) + (Math.random() - .5); }
     // a shadow sweeping over from high up: it freezes (and stops rustling the grass)
-    if (air && hd < 5 && !low && m.flee <= 0) m.freeze = FOOD.freeze;
+    if (air && hd < 5 + 22 * w && !low && m.flee <= 0) m.freeze = FOOD.freeze;
     // a stoop at it: it bolts for its burrow, and if it gets there it is gone a while
-    if (air && !G.silent && G.aim?.target === m && G.aim.focus > .35 && hd < 30 && !m.bolt) {
+    if (air && !G.silent && G.aim?.target === m && G.aim.focus > .35 - .2 * w && hd < 30 + 30 * w && !m.bolt) {
       m.bolt = true; m.flee = 3; m.freeze = 0;
     }
     if (m.bolt) {
       m.yaw = Math.atan2(m.bx - m.x, -(m.bz - m.z));
       // home (or out of breath, then down any hole): it digs in
       if (Math.hypot(m.x - m.bx, m.z - m.bz) < .4 || m.flee <= 0) {
-        m.bolt = false; m.flee = 0; m.dig = FOOD.dig; m.go = 0;
+        m.bolt = false; m.flee = 0; m.dig = FOOD.dig; m.go = 0; G.emit('escaped', m);
         if (!G.flags.burrow) { G.flags.burrow = 1; G.hud.toast('It dug into its burrow. Mice bolt when they see you stoop or land near: come in fast and low, or from behind.', 4); }
         return;
       }
@@ -180,6 +183,8 @@ export function foodSystem(G) {
     const nx = m.x + Math.sin(m.yaw) * sp * dt, nz = m.z - Math.cos(m.yaw) * sp * dt;
     if (height(nx, nz) > 1) { m.x = nx; m.z = nz; } else m.yaw += 2;
     m.y = height(m.x, m.z);
+    // still in tall hay it can't be made out (sys/fields.js), until it moves or squeaks
+    m.cover = sp < .5 && !(m.seen > 0) && (G.grassCover?.(m.x, m.z) || 0) > .6;
   }
 
   // a meal fills you as you finish it; take off before then and you carry it away in your feet
@@ -312,7 +317,7 @@ export function foodSystem(G) {
       if ((rustleT -= dt) <= 0) {
         rustleT = .25;
         const hunt = b.state === 'fly' && (G.aim?.focus || 0) > .35, k = (hunt ? FOOD.squeakHunt : FOOD.squeak) * (BIRD === 'owl' ? 1.5 : 1);
-        for (const m of mice.values()) if (!(m.hidden > 0) && !(m.dig > 0) && !(m.freeze > 0 && m.flee <= 0) && Math.random() < (m.flee > 0 ? .4 : k) && !squeaks.some(q => q.m === m)) squeaks.push({ m, t: 0 });
+        for (const m of mice.values()) if (!(m.hidden > 0) && !(m.dig > 0) && !(m.freeze > 0 && m.flee <= 0) && Math.random() < (m.flee > 0 ? .4 : k) && !squeaks.some(q => q.m === m)) { squeaks.push({ m, t: 0 }); m.seen = 2; }
       }
     },
     scene(S) {

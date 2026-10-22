@@ -28,6 +28,18 @@ export function lizard() {
   for (const [x, s] of [[.06, 1], [.06, -1], [-.07, 1], [-.07, -1]]) tube(B, [x, .03, .02 * s], [x + .03, .0, .08 * s], .008, sk2);
   return B.out();
 }
+// a grass snake basking in loose S-curves (or stretched, slipping away): olive above, a pale
+// yellow collar behind the head, along +x
+export function snake(slip) {
+  reseed(209); const B = builder(), olive = [.42, .46, .26], olive2 = [.34, .38, .22], collar = [.9, .82, .4], N = 14, pts = [];
+  for (let i = 0; i <= N; i++) { const t = i / N, x = (t - .55) * (slip ? 1.05 : .8); pts.push([x, .03, Math.sin(t * Math.PI * (slip ? 1.2 : 2.4)) * (slip ? .05 : .12)]); }
+  for (let i = 0; i < N; i++) {
+    const r = .022 * Math.sin(Math.min(1, (i + .5) / N * 1.15) * Math.PI) ** .5 + .006;
+    tube(B, pts[i], pts[i + 1], r, i === N - 2 ? collar : i % 2 ? olive : olive2);
+  }
+  blob(B, pts[N][0] + .03, .035, pts[N][2], .03, olive2, olive2, [1.5, .7, 1]);
+  return B.out();
+}
 // a marmot sitting up to whistle (up) or low and running (down)
 export function marmot(up) {
   reseed(203); const B = builder(), fur = [.5, .38, .26], fur2 = [.42, .32, .22], pale = [.74, .64, .5];
@@ -122,7 +134,7 @@ function flier(up, { body, wing, head, bill = [.85, .7, .3], span = 1, size = 1,
   blob(B, .2 * k, .02 * k, 0, .065 * k, head, head);
   B.tri([.26 * k, .02 * k, -.012 * k], [.26 * k, .02 * k, .012 * k], [.32 * k, 0, 0], bill);
   B.tri([-.16 * k, 0, -.06 * k * tail], [-.16 * k, 0, .06 * k * tail], [-.36 * k, -.01 * k, 0], wing);
-  const y = up ? .18 : -.12, tip = up ? .14 : -.06;
+  const y = up === 'glide' ? .05 : up ? .18 : -.12, tip = up === 'glide' ? .08 : up ? .14 : -.06;   // 'glide': wings held out flat, soaring
   for (const s of [1, -1]) {
     B.tri([.08 * k, .02 * k, .04 * s * k], [-.08 * k, .02 * k, .04 * s * k], [-.02 * k, y * k, .34 * s * k * span], wing);
     B.tri([.04 * k, y * k, .32 * s * k * span], [-.06 * k, y * k, .34 * s * k * span], [-.1 * k, tip * k, .58 * s * k * span], wing);
@@ -132,6 +144,8 @@ function flier(up, { body, wing, head, bill = [.85, .7, .3], span = 1, size = 1,
 export const crow = up => { reseed(212); return flier(up, { body: [.1, .1, .12], wing: [.07, .07, .09], head: [.1, .1, .12], bill: [.08, .08, .09], size: 1.1 }); };
 export const eagle = up => { reseed(213); return flier(up, { body: [.25, .18, .12], wing: [.2, .14, .1], head: [.95, .94, .9], bill: [.95, .8, .2], size: 2.4, span: 1.15 }); };
 export const kestrel = up => { reseed(214); return flier(up, { body: [.66, .4, .24], wing: [.6, .36, .22], head: [.55, .55, .62], size: .85, span: .95, tail: 1.3 }); };
+// a broad-winged hawk soaring (round eight F1, the river of raptors): wings out flat, banded tail
+export const broadwing = () => { reseed(216); return flier('glide', { body: [.42, .3, .2], wing: [.36, .26, .18], head: [.38, .27, .18], bill: [.3, .3, .32], size: 1.15, span: 1.1, tail: 1.1 }); };
 export const gull = up => { reseed(215); return flier(up, { body: [.95, .95, .95], wing: [.72, .74, .78], head: [.97, .97, .97], size: 1.3, span: 1.2 }); };
 export const raven = up => { reseed(216); return flier(up, { body: [.08, .08, .1], wing: [.06, .06, .08], head: [.08, .08, .1], bill: [.06, .06, .07], size: 1.6, span: 1.1 }); };
 // what is left of a deer on the open hill (the ravens find it first)
