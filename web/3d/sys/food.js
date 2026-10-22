@@ -328,7 +328,7 @@ export function foodSystem(G) {
       let reach = 0;
       for (const m of mice.values()) {
         simulate(m, dt);
-        if (b.state !== 'fly' || m.hidden > 0) continue;
+        if (b.state !== 'fly' || m.hidden > 0 || b.carry) continue;   // (feet full: a second catch dropped the first)
         const above = b.p[1] - m.y, hd = Math.hypot(b.p[0] - m.x, b.p[2] - m.z);
         if (above < 7 && hd < 7) reach = 1;
         const focus = G.aim?.focus || 0, r = FOOD.catchR + FOOD.catchDive * focus;

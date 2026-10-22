@@ -80,7 +80,7 @@ export function huntersSystem(G) {
       }
       // carrion: ravens over it; come down beside it for a meal
       if ((carrionT -= dt) <= 0) { carrionT = 2; carrions = carrionNear(700); }
-      if (b.state === 'fly') for (const c of carrions) {
+      if (b.state === 'fly' && !b.carry) for (const c of carrions) {
         if (b.p[1] - c.y < 2.5 && Math.hypot(b.p[0] - c.x, b.p[2] - c.z) < 2.5) {
           eaten[c.id] = G.day; carrions = carrions.filter(o => o !== c);
           G.systems.food?.take?.({ x: c.x + 1, y: c.y, z: c.z, kind: 'carrion', food: .45, wet: .05, name: 'a share of the carrion' });
