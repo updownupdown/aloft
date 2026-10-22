@@ -378,7 +378,7 @@ export function songsSystem(G) {
       };
       book.innerHTML = `<p class="sub">${G.learned.size} of ${SPECIES.length} songs learned. Perch near a singing bird to learn its song.</p><ul class="guide3 songs3">${SPECIES.map(card).join('')}</ul>`;
     });
-    G.menu.toggle('play', { label: 'Left-handed singing', sub: 'notes on the left, birds on the right', get: lefty, set: v => store.set('lefty', v) });
+    G.menu.toggle('play', { label: 'Left-handed', sub: 'note pad and Take off on the left, Sing on the right', get: lefty, set: v => store.set('lefty', v) });
   }
 
   // ---- each frame --------------------------------------------------------------------------------
