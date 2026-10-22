@@ -39,7 +39,7 @@ import { songbirdPic } from '../pics.js';
 const ECHO_LANDS = new Set(['canyon', 'badlands', 'fjord', 'cliffs', 'coast', 'karst']);
 export const SONG = {
   hearR: 90,        // a songbird is heard (and joins the left pools) within this
-  nearR: 24,        // close enough to learn from, sitting or standing
+  nearR: 45,        // close enough to learn from, sitting or standing (any tree near by, not only yours)
   simR: 140,        // songbirds simulated around the hawk
   powerCD: 40,      // seconds before a song's gift works again (a companion's, four times that)
   chorus: 150,      // how long the dawn chorus lasts
@@ -91,7 +91,7 @@ export function songsSystem(G) {
   let visitor = null, flock = [], trailT = 0;
   const powerCD = {};                // species id -> G.clock when its gift works again
   // the song you are copying: `target` (a species), with its bird beside you (`bird`) or not
-  const S = { target: null, bird: null, res: [], over: false, lastTry: -9, listening: null, hearT: 0, teachI: -1, answerT: 0, answer: '', closeId: null, learnedT: 0, mine: [] };
+  const S = { target: null, bird: null, res: [], over: false, lastTry: -9, listening: null, hearT: 0, teachI: -1, answerT: 0, answer: '', closeId: null, learnedT: 0, mine: [], chosen: null };
   // how far into each song you have not learned you have found its notes (by species id)
   const found = store.get('songFound', {});
   const lefty = () => store.get('lefty', false);
@@ -142,6 +142,7 @@ export function songsSystem(G) {
     { id: 'dialects', title: 'Song dialects: each land sings its own version', how: 'Learn a robin in the meadows, then perch by one in the marsh or the savanna: the card says Robin (marsh); Journal > Songs lists dialects.' },
     { id: 'mimic', title: 'Mimics: the starling (and the mockingbird down south)', how: 'Perch near a starling in meadows or by lakes: it sings snatches of other songs; an unknown song\'s opening fills in on its card.' },
     { id: 'more-songs', round: 9, pr: 191, title: 'Several songs per bird; Journal > Songs plays the ones you know', how: 'Perch by songbirds of one kind in different trees: each sings one of its kind\'s songs. The birds\' list (tap the song card) shows each bird\'s songs; tap one to imitate it. Journal > Songs: play buttons, question marks for songs to find.' },
+    { id: 'learn-near', round: 9, pr: 203, title: 'Learn from any bird near by; tap its logo to choose it; Dev mode unlocks every song in the Journal', how: 'Perch within about 45 m of a songbird whose song you do not know (amber dot on the rail), or tap its logo: Learning, notes light up, the card fills in from the first note. Settings > Dev tools > Dev mode, then Journal > Songs: play every song. The states are explained at the top of Journal > Songs.' },
     { id: 'sing-rail2', round: 9, pr: 197, title: 'Sing rail round two: you on top, birds by name, every bird at the bottom; the card comes out from under it', how: 'Perch among songbirds and tap Sing: the rail runs from under the menu button, your bird first, then the birds near by A to Z (picking one keeps the order), the list button always at the bottom. The card tucks under the rail; the You row keeps its height.' },
     { id: 'sing-rail', round: 9, pr: 196, title: 'Sing rail: the birds near by down the side, theirs over yours on the card', how: 'Perch among songbirds and tap Sing: their logos run down the left (an amber dot on one that could teach you, your own bird at the bottom); tap one to learn from or imitate it. The card shows its score and, under it, what you sang, ringed by how it went. Tap the song name for the next song you know.' },
     { id: 'bird-logos', round: 9, pr: 195, title: 'Song card in one: bird, Learning or Imitating, every bird, close; each songbird a little logo', how: 'Perch by a songbird and tap Sing: the top says who and what, the bottom shows its logo, the song name and notes. While it teaches, its logo pops up in each row it sings, with a ring.' },
@@ -310,13 +311,23 @@ export function songsSystem(G) {
   // as you remember it (a bird you have only heard: its voice, but no song to copy yet).
   // (k: which of its songs; none, the first you know). Sing as yourself: id null.
   function pick(id, k = null) {
-    // the bird beside you, whose song you do not know yet: learn from it
-    if (id !== null && S.close?.sp.id === id && !knows(songOf(S.close))) id = null;
+    // a bird of that kind singing within earshot a song you do not know yet: learn from it
+    S.chosen = id === null || k !== null ? null : teacherOf(id);
+    if (S.chosen) id = null;
     picked = id === null ? null : SPECIES[id]; pickedK = k ?? (picked ? knownSongs(picked)[0] ?? 0 : 0);
     S.res = []; S.over = false;
     if (!picked || !G.learned.has(id)) return;
     H.did('imitate');
     preview(imitating());
+  }
+  // the nearest bird of a kind within earshot singing a song you do not know
+  function teacherOf(id) {
+    let best = null, bd = SONG.hearR;
+    for (const s of near) {
+      if (!s.out || s.sp.id !== id || knows(songOf(s))) continue;
+      const d = dist3([s.x, s.y, s.z], b.p); if (d < bd) { bd = d; best = s; }
+    }
+    return best;
   }
   // the next song you know of the bird you imitate
   function nextSong() {
@@ -528,6 +539,13 @@ export function songsSystem(G) {
   H.tip('song', () => S.bird && !G.learned.has(S.bird.sp.id) && !S.bird.sp.mimic, 'A songbird! Tap the notes button, bottom left, to learn its song: each note it sings lights a row; find the swipe or tap that matches it.');
   H.tip('imitate', () => b.state === 'perch' && G.learned.size && !picked && perchT > 3, 'Tap the notes button, then the song card (bottom left), and pick a song to imitate. Sing it right and its bird answers with a gift.');
   H.tip('call', () => b.state === 'fly' && G.clock > 240, 'Hold Call, top right, to scream: the longer you hold, the louder. Mice freeze and far hawks answer.');
+  // what Sing is doing, and what starts each, at the top of Journal > Songs
+  const MODES = `<dl class="sgmodes3">
+    <dt class="learn">Learning</dt><dd>Perch within about 45 m of a songbird singing a song you do not know (an amber dot on its logo in the rail), or tap its logo, and tap Sing. Each note it sings lights its row on the pad and its place on the card: copy it with the same swipe or tap. Every note you get right shows on the card, the first note first, then the next; sing the whole song right to learn it. It stops to listen while you sing and sings again when you stop.</dd>
+    <dt class="imitate">Imitating</dt><dd>Tap the logo of a bird whose song you know (or pick a song from the list). Sing it and a bird of that kind near by answers with a gift. Tap the song's name for the next song you know of that bird.</dd>
+    <dt>Voice only</dt><dd>A bird you have heard but whose song you do not know, with none of its kind singing near: you sing in its voice, with no song to copy yet.</dd>
+    <dt>Free song</dt><dd>Your own bird, at the top of the rail: sing anything you like.</dd>
+    <dt>Learned, Answered</dt><dd>For a moment after you learn a song, or a bird answers yours.</dd></dl>`;
   // (after the core's own tabs, which main.js adds once the systems are made)
   queueMicrotask(songsTab);
   function songsTab() {
@@ -538,13 +556,14 @@ export function songsSystem(G) {
       // a card for each songbird: its picture, its name, what its songs give, and each of its songs:
       // those you know with a play button, their words and the lands whose dialect you know; the
       // rest as question marks
+      const dev = store.get('devMode', false);
       const card = sp => {
-        const k = G.learned.has(sp.id) ? 'learned' : G.heard.has(sp.id) ? 'heard' : 'unknown';
+        const k = dev || G.learned.has(sp.id) ? 'learned' : G.heard.has(sp.id) ? 'heard' : 'unknown';
         const pic = `<img alt="" src="${songbirdPic(sp, 128)}">`;
-        const n = sp.songs.length, ks = knownSongs(sp);
+        const n = sp.songs.length, ks = dev ? sp.songs.map(g => g.k) : knownSongs(sp);
         if (k === 'unknown') return `<li class="unknown"><div class="pic">${pic}</div><div><b>Not yet heard</b><small>${sp.hint}.${n > 1 && !sp.mimic ? ` ${n} songs to find.` : ''}</small></div></li>`;
         if (sp.mimic) return `<li class="heard seen"><div class="pic">${pic}</div><div><b>${sp.name}</b><small>A mimic: no song of its own, only pieces of the songs around it. Listen to one for the openings of songs you do not know. ${sp.hint}.</small></div></li>`;
-        const gift = GIFT_TEXT[sp.powerKey] || sp.power, what = k === 'learned' ? `${gift[0].toUpperCase()}${gift.slice(1)}. ${songLog[sp.id] || 'Learned.'}` : `Heard, not yet learned. ${sp.hint}.`;
+        const gift = GIFT_TEXT[sp.powerKey] || sp.power, what = k === 'learned' ? `${gift[0].toUpperCase()}${gift.slice(1)}. ${songLog[sp.id] || (G.learned.has(sp.id) ? 'Learned.' : 'Dev mode: not learned yet.')}` : `Heard, not yet learned. ${sp.hint}.`;
         const rows = sp.songs.map(g => {
           if (!ks.includes(g.k)) return `<li class="q"><span class="sgq3">?</span><span><b>Unknown song</b></span></li>`;
           const dia = [...G.dialects].map(parse).filter(p => p.id === sp.id && p.k === g.k && p.l !== homeLand(sp)).map(p => landWord(p.l));
@@ -552,19 +571,20 @@ export function songsSystem(G) {
         }).join('');
         return `<li class="${k} seen"><div class="pic">${pic}</div><div><b>${sp.name}</b><small>${what}</small></div><ol class="sglist3">${rows}</ol></li>`;
       };
-      book.innerHTML = `<p class="sub">${songCount()} of ${songTotal} songs known, from ${G.learned.size} of ${learnable.length} birds, and ${dialectCount()}. Perch near a singing bird to learn its song: each bird sings one of its kind's songs, and in other lands a little differently.</p><ul class="guide3 songs3">${SPECIES.map(card).join('')}</ul>`;
+      book.innerHTML = `<p class="sub">${songCount()} of ${songTotal} songs known, from ${G.learned.size} of ${learnable.length} birds, and ${dialectCount()}. Each bird sings one of its kind's songs, and in other lands a little differently.${dev ? ' Dev mode is on: every song can be played here.' : ''}</p>${MODES}<ul class="guide3 songs3">${SPECIES.map(card).join('')}</ul>`;
     });
     // a known song played from the book, in its bird's voice (the version you know best)
     let playing = 0;
     book.addEventListener('click', e => {
       const btn = e.target.closest('[data-play]'); if (!btn) return;
-      const [id, k] = btn.dataset.play.split('.').map(Number), t = versionOf(SPECIES[id], k); if (!t) return;
+      const [id, k] = btn.dataset.play.split('.').map(Number), t = versionOf(SPECIES[id], k) || (store.get('devMode', false) && dialect(SPECIES[id], homeLand(SPECIES[id]), k)); if (!t) return;
       A.unlock(); clearTimeout(playing);
       for (const el of book.querySelectorAll('.sgplay3.on')) el.classList.remove('on');
       btn.classList.add('on');
       t.notes.forEach((n, i) => setTimeout(() => A.note(n, t.voice, .16, t.kinds[i]), 100 + i * t.gap * 1000));
       playing = setTimeout(() => btn.classList.remove('on'), 300 + t.notes.length * t.gap * 1000);
     });
+    G.menu.toggle('play', { label: 'Dev mode', sub: 'every song unlocked in Journal > Songs, to listen to them all', group: 'dev', get: () => store.get('devMode', false), set: v => store.set('devMode', v) });
     G.menu.toggle('play', { label: 'Left-handed', sub: 'note pad and Take off on the left, Sing on the right', get: lefty, set: v => store.set('lefty', v) });
   }
 
@@ -595,7 +615,7 @@ export function songsSystem(G) {
       }
       placeK += ((S.echoed ? 1 : 0) - placeK) * Math.min(1, dt * .8);
       if (Math.abs(placeK - placeSent) > .05) { placeSent = placeK; A.setPlace?.(placeK); }
-      let close = null, cd = SONG.nearR; const nearby = new Set();   // kinds singing within earshot
+      let close = null, cd = SONG.nearR, fresh = null, fd = SONG.nearR; const nearby = new Set(), teachers = new Set();   // kinds singing within earshot, and those with a song you do not know
       for (const s of near) {
         let st = birds.get(s.id);
         if (!st) { st = { next: 1 + Math.random() * 6, out: false }; birds.set(s.id, st); }
@@ -616,8 +636,9 @@ export function songsSystem(G) {
           }
         }
         const d = dist3([s.x, s.y, s.z], b.p);
-        if (d < SONG.hearR) nearby.add(s.sp.id);
+        if (d < SONG.hearR) { nearby.add(s.sp.id); if (!s.sp.mimic && !knows(songOf(s))) teachers.add(s.sp.id); }
         if (d < cd && b.state !== 'fly' && !s.sp.mimic) { cd = d; close = s; }
+        if (d < fd && b.state !== 'fly' && !s.sp.mimic && !knows(songOf(s))) { fd = d; fresh = s; }
       }
       if (birds.size > 800) for (const id of [...birds.keys()].slice(0, 200)) birds.delete(id);
       updateVisitor(dt); updateFlock(dt);
@@ -631,9 +652,14 @@ export function songsSystem(G) {
       // the song you are copying: the bird you chose to imitate (once learned), else a songbird
       // close by.
       S.close = close;
-      // perched beside a new bird whose song you do not know: singing turns to learning from it
-      if ((close?.id ?? null) !== S.closeId) { S.closeId = close?.id ?? null; if (close && !knows(songOf(close))) picked = null; }
-      const target = imitating() || (close ? songOf(close) : null), bird = close && close.sp === (target?.base || target) ? close : null;
+      // the bird you chose to learn from stays your teacher while it sings within earshot
+      const ch = S.chosen;
+      if (ch && (!ch.out || b.state === 'fly' || dist3([ch.x, ch.y, ch.z], b.p) > SONG.hearR)) S.chosen = null;
+      // perched near a new bird whose song you do not know: singing turns to learning from it
+      // (the nearest one with a song you do not know, before a nearer one you know)
+      if ((fresh?.id ?? null) !== S.closeId) { S.closeId = fresh?.id ?? null; if (fresh && !S.chosen) picked = null; }
+      const teacher = S.chosen || fresh || close;
+      const target = imitating() || (teacher ? songOf(teacher) : null), bird = teacher && teacher.sp === (target?.base || target) ? teacher : null;
       if (target !== S.target || bird !== S.bird) {
         Object.assign(S, { target, bird, res: [], over: false, hearT: 0, teachI: -1 });
       }
@@ -657,7 +683,7 @@ export function songsSystem(G) {
       for (const id of [sp?.base?.id ?? sp?.id, ...nearby]) {
         if (id == null || rail.some(r => r.sp.id === id) || SPECIES[id].mimic) continue;
         const on = id === (sp?.base?.id ?? sp?.id);
-        rail.push({ sp: SPECIES[id], on, state: on ? mode.kind : close?.sp.id === id && !knows(songOf(close)) ? 'teach' : '' });
+        rail.push({ sp: SPECIES[id], on, state: on ? mode.kind : teachers.has(id) ? 'teach' : '' });
       }
       rail.sort((p, q) => p.sp.name.localeCompare(q.sp.name));
       if (target) {

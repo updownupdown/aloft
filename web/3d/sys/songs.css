@@ -228,3 +228,9 @@
 .sgplay3 svg { width: 16px; height: 16px; margin-left: 2px; }
 .sgplay3.on { background: #2f6b5a; }
 .sgq3 { border: 1.5px dashed rgba(29, 43, 54, .3); color: rgba(29, 43, 54, .45); font-weight: 700; font-size: 14px; }
+/* Journal > Songs: what each state of Sing means and what starts it */
+.sgmodes3 { display: grid; grid-template-columns: max-content 1fr; gap: 6px 12px; margin: 0 0 14px; font-size: 13px; line-height: 1.4; }
+.sgmodes3 dt { font-weight: 700; justify-self: start; align-self: start; padding: 1px 9px; border-radius: 10px; background: rgba(29, 43, 54, .08); }
+.sgmodes3 dt.learn { color: #8a6410; background: rgba(242, 193, 78, .3); }
+.sgmodes3 dt.imitate { color: #3c6b1e; background: rgba(143, 207, 90, .3); }
+.sgmodes3 dd { margin: 0; color: var(--ink2, #4c5d69); }
