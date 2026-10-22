@@ -86,9 +86,16 @@ export function createMusic(audio) {
   M.log = () => {};   // the lab listens here: what Valley just played
   M.setOn = on => {
     M.on = on;
-    if (M.out) for (const g of [M.out, M.pgain]) g.gain.setTargetAtTime(on ? 1 : 0, audio.ctx.currentTime, .8);
+    if (M.out) for (const g of [M.out, M.pgain]) g.gain.setTargetAtTime(on && !M.menu ? 1 : 0, audio.ctx.currentTime, .8);
   };
   M.hush = 0;          // 0..1: the hush after snow, an eclipse (set from the moments system): softer
+  // with the menu open the music fades away slowly (about fifteen seconds), and comes back more
+  // quickly when it closes
+  M.hold = on => {
+    if (!!on === !!M.menu) return;
+    M.menu = !!on;
+    if (M.out && M.on) for (const g of [M.out, M.pgain]) g.gain.setTargetAtTime(M.menu ? 0 : 1, audio.ctx.currentTime, M.menu ? 5 : 1.5);
+  };
   M.setMode = () => {};   // one style now (older saves still call this)
 
   // ---- the strings ---------------------------------------------------------------------------

@@ -245,7 +245,8 @@ if (qs.has('fps')) G.settings.fpsCap = +qs.get('fps') || 60;
     if (owe < gap - 1.5) return;
     owe = Math.max(0, owe - gap);
     const dt = Math.min(.075, (now - last) / 1000); last = now;   // room for 15 fps (.067) so the game keeps time
-    if (G.paused) return;
+    // paused (the menu open): the wind and water fade right out, the music slowly (and back after)
+    if (G.paused) { audio.ambience(0, 0, { menu: true }); music.hold(G.menu.open); return; }
     const pf = G.perf; pf.begin();
     G.t += dt; G.clock += dt;
     frames++; resT += dt;
@@ -309,7 +310,7 @@ if (qs.has('fps')) G.settings.fpsCap = +qs.get('fps') || 60;
     // sound
     const above = b.p[1] - Math.max(height(b.p[0], b.p[2]), WATER), L = G.light;
     audio.ambience(Math.min(1, b.s / 30 + (G.storm || 0) * .3), G.rain || 0, { height: above * 2, stoop: clamp((b.s - 25) / 18, 0, 1), night: L.night, frogs: L.night * (height(b.p[0], b.p[2]) < 3 ? 1 : 0), falls: G.babble || 0, hush: G.hush || 0 });
-    music.update(dt, { night: L.night, storm: G.storm || 0, learned: G.learned || new Set(), species: G.species || [], speed: b.s * 4, wind: G.windK ?? .3, height: above * 2 });
+    music.hold(false); music.update(dt, { night: L.night, storm: G.storm || 0, learned: G.learned || new Set(), species: G.species || [], speed: b.s * 4, wind: G.windK ?? .3, height: above * 2 });
     pf.lap('Core', 'sound, music');
 
     glowT -= dt; setWings(b.stamina, glowT > 0 ? glow : '', b.maxStamina ?? 1);
