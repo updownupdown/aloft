@@ -9,6 +9,9 @@
 // The meshes and the finding are sys/ruins.js; world.js asks here for solids, fences, trees to
 // clear, the villages' landmarks and the warm air over them.
 import { railNear } from './rail.js';
+import { earthBiome, continentAt, regionAt } from './earth.js';
+import { wondersNear, wonderSolids } from './wonders.js';
+import { derelictsNear, derelictSolids } from './sea.js';
 import { height, groundAt, normalAt, forest, riverAt, sightsNear } from './world.js';
 import { blend } from './biomes.js';
 import { ih, fbm, smooth } from './noise.js';
@@ -22,7 +25,22 @@ const KINDS = {
   moor: [['farm', .2], ['fold', .24]], birch: [['farm', .2]], forest: [['farm', .06]], coast: [['hamlet', .5]],
   mountains: [['fold', .16]], fjord: [['hamlet', .25]],
   maquis: [['village', .14], ['farm', .3]], steppe: [['fold', .16], ['farm', .1]], taiga: [['farm', .05]], tundra: [['fold', .04]],
+  desert: [['village', .05], ['farm', .04]], canyon: [['farm', .04]], badlands: [['farm', .04]], swamp: [['village', .1]], marsh: [['village', .1], ['farm', .08]],
+  rainforest: [['village', .06]], karst: [['village', .12], ['farm', .2]], alpine: [['fold', .14]], volcano: [['farm', .06]],
 };
+// how thickly people lived, by continent (the Earth remap, 2026-10-22): Europe most, nobody on the ice
+const DENSITY = { europe: 1.25, asia: .85, 'n-america': .8, africa: .65, 's-america': .65, oceania: .5, antarctica: 0 };
+// how they built (ruinshapes.js styled): by the land first, then the region and the continent
+const CROFT = new Set(['highlands', 'lochness', 'ireland', 'iceland', 'lakes', 'britain']);
+export function styleOf(x, z) {
+  const land = earthBiome(x, z), reg = regionAt(x, z)?.key, cont = continentAt(x, z);
+  if (land === 'swamp' || land === 'marsh' || land === 'rainforest') return 'stilt';
+  if (['desert', 'canyon', 'badlands', 'saltflat'].includes(land) || (land === 'savanna' && cont === 'africa') || reg === 'arabia' || reg === 'sahel' || reg === 'atlas') return 'adobe';
+  if (land === 'taiga' || land === 'tundra' || reg === 'finland' || reg === 'sweden' || reg === 'norway' || reg === 'russia' || reg === 'canada' || reg === 'alaska') return 'log';
+  if (CROFT.has(reg)) return 'croft';
+  if (cont === 'n-america' || cont === 'oceania') return 'timber';
+  return 'stone';
+}
 // building sizes (m): L long (local x), W wide, wall height, ridge height, how far round to clear
 // trees. A building's door is on its +z side (the chapel's and the barn's on the +x end).
 export const DIM = {
@@ -149,8 +167,9 @@ function settlementAt(gx, gz) {
   const key = gx * 100003 + gz; if (cache.has(key)) return cache.get(key);
   let S = null;
   const x0 = (gx + .25 + ih(gx, gz, 601) * .5) * SETTLE_CELL, z0 = (gz + .25 + ih(gx, gz, 602) * .5) * SETTLE_CELL;
-  if (Math.hypot(x0, z0 + 60) > 320) {
-    const list = KINDS[blend(x0, z0)[0].name], p = ih(gx, gz, 603);
+  const dens = DENSITY[continentAt(x0, z0)] || 0;
+  if (dens) {
+    const list = KINDS[blend(x0, z0)[0].name], p = ih(gx, gz, 603) / dens;
     let kind = null, acc = 0;
     if (list) for (const [k, w] of list) if (p < (acc += w)) { kind = k; break; }
     // a few tries round the middle of the cell; a hamlet walks out from the bay to the shore
@@ -163,6 +182,7 @@ function settlementAt(gx, gz) {
       }
       if (spotOK(x, z, kind)) S = layout(kind, x, z, gx, gz);
     }
+    if (S) { S.style = styleOf(S.x, S.z); for (const b of S.build) b.style = S.style; }
   }
   cache.set(key, S); if (cache.size > 3000) cache.delete(cache.keys().next().value);
   return S;
@@ -200,7 +220,7 @@ function drownedAt(gx, gz) {
   const key = gx * 100003 + gz; if (drownCache.has(key)) return drownCache.get(key);
   let S = null;
   const x0 = (gx + .5) * DROWN_CELL, z0 = (gz + .5) * DROWN_CELL;
-  if (Math.hypot(x0, z0 + 60) > 600 && ih(gx, gz, 731) < (DROWN_LANDS[blend(x0, z0)[0].name] || 0)) {
+  if (ih(gx, gz, 731) < (DROWN_LANDS[blend(x0, z0)[0].name] || 0)) {
     for (let i = 0; i < 90 && !S; i++) {
       const a = i * 2.39996, r = 20 + i * 9, x = x0 + Math.cos(a) * r, z = z0 + Math.sin(a) * r, y = height(x, z);
       if (y > -4.5 || y < -7 || riverAt(x, z)?.d < 60) continue;
@@ -226,12 +246,14 @@ export function settlementsNear(x, z, r, sights = true) {
   for (let gz = Math.floor((z - r - 80) / D); gz <= Math.floor((z + r + 80) / D); gz++) for (let gx = Math.floor((x - r - 80) / D); gx <= Math.floor((x + r + 80) / D); gx++) {
     const S = drownedAt(gx, gz); if (S && Math.abs(S.x - x) < r + 80 && Math.abs(S.z - z) < r + 80) out.push(S);
   }
+  out.push(...wondersNear(x, z, r), ...derelictsNear(x, z, r + 80));
   if (sights) for (const l of sightsNear(x, z, r)) if (l.kind === 'lighthouse' || l.kind === 'lookout') { const S = ofSight(l); if (S) out.push(S); }
   return out;
 }
 export function buildingsNear(x, z, r) {
   const out = [];
-  for (const S of settlementsNear(x, z, r, false)) for (const b of S.build) if (Math.abs(b.x - x) < r && Math.abs(b.z - z) < r) out.push(b);
+  // (a wonder reaches as far as its clearing)
+  for (const S of settlementsNear(x, z, r, false)) for (const b of S.build) { const e = r + (b.kind === 'wonder' ? b.clear : 0); if (Math.abs(b.x - x) < e && Math.abs(b.z - z) < e) out.push(b); }
   for (const S of settlementsNear(x, z, r)) if (S.kind === 'light') for (const b of S.build) if (Math.abs(b.x - x) < r && Math.abs(b.z - z) < r) out.push(b);
   return out;
 }
@@ -322,7 +344,7 @@ export function polesNear(x, z, r) {
 }
 function linkFrom(S) {
   if (linked.has(S.id) || S.kind === 'drowned') return; linked.add(S.id);
-  const nb = settlementsNear(S.x, S.z, ROAD_MAX).filter(o => o !== S && o.kind !== 'drowned').map(o => [o, Math.hypot(o.x - S.x, o.z - S.z)]).filter(o => o[1] < ROAD_MAX).sort((a, b) => a[1] - b[1]);
+  const nb = settlementsNear(S.x, S.z, ROAD_MAX).filter(o => o !== S && o.kind !== 'drowned' && o.kind !== 'wonder' && o.kind !== 'derelict').map(o => [o, Math.hypot(o.x - S.x, o.z - S.z)]).filter(o => o[1] < ROAD_MAX).sort((a, b) => a[1] - b[1]);
   for (const [o] of nb.slice(0, S.kind === 'village' ? 3 : 1)) makeRoad(S, o);
   // the lanes in a settlement: door to the green, house to barn; and the trodden yard
   for (const [x0, z0, x1, z1] of S.lanes) addSeg(x0, z0, x1, z1, 2.2, .55);
@@ -359,6 +381,7 @@ export function bridgesNear(x, z, r) {
 // each building as upright columns for flight to bump into, with perches where its mesh ends:
 // the roof ridge, the chimney, the chapel tower, a ruin's wall top (pillar is world.js's)
 export function buildingSolids(b, pillar) {
+  if (!DIM[b.kind]) return b.kind === 'derelict' ? derelictSolids(b, pillar) : wonderSolids(b, pillar);
   const d = DIM[b.kind], c = Math.cos(b.yaw), s = Math.sin(b.yaw), P = (u, w) => [b.x + c * u - s * w, b.z + s * u + c * w];
   const top = b.y + (b.v === 0 ? d.ridge : d.wall * WALL_LEFT[b.v]), r = d.W / 2 + .3;
   switch (b.kind) {
@@ -393,7 +416,7 @@ export function bridgeSolids(g, pillar) {
 }
 // how far round a building trees are kept off (world.js treesIn), and a young tree growing out
 // of each shell of a cottage (they are trees like any other: perches)
-export const clearOf = b => DIM[b.kind].clear;
+export const clearOf = b => b.clear ?? DIM[b.kind].clear;
 export const saplingIn = b => b.v === 2 && (b.kind === 'cottage' || b.kind === 'hut' || b.kind === 'farmhouse');
 export const nearRoad = (x, z) => roadShade(x, z) > .2;
 
