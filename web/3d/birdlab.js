@@ -75,6 +75,12 @@ export function poseAt(mode, t) {
   if (mode === 'lead') { const [f, h] = beat((t % 1.1), glide); return { pose: { ...base, flapL: f, handL: h, flapR: glide + (f - glide) * .35 }, roll: -.25, pitch: .05 }; }
   if (mode === 'steer') return { pose: { ...base, flapL: glide - .12, flapR: glide - .12, fold: .75 }, roll: Math.sin(t * 1.6) * .5, pitch: -.7 };
   if (mode === 'circle') return { pose: { ...base, tail: .8 }, roll: -.4, pitch: .05, spin: t * .7 };
+  // the wing shapes How to play adds (2026-10-22): soaring spread wide, a fast glide folded halfway,
+  // a zoom climb folded, and a barrel roll
+  if (mode === 'soar') return { pose: { ...base, flapL: .16, flapR: .16, flare: .45, tail: .9 }, roll: -.25 + Math.sin(t * .5) * .08, pitch: .04, spin: t * .5 };
+  if (mode === 'fast') return { pose: { ...base, flapL: glide - .06, flapR: glide - .06, fold: .45 }, roll: Math.sin(t * .6) * .08, pitch: -.12 };
+  if (mode === 'zoom') return { pose: { ...base, flapL: glide - .08, flapR: glide - .08, fold: .55, tail: .4 }, roll: 0, pitch: .55 };
+  if (mode === 'barrel') { const u = (t % 2.6) / 1.4, e = u < 1 ? u * u * (3 - 2 * u) : 1; return { pose: { ...base, tail: .5 }, roll: -e * Math.PI * 2, pitch: .05 }; }
   if (mode === 'stoop') return { pose: { ...base, flapL: glide - .12, flapR: glide - .12, fold: .75 }, roll: 0, pitch: -.7 };
   if (mode === 'flare') return { pose: { ...base, flapL: .35, flapR: .35, flare: 1, legs: .9, tail: 1, tailPitch: .3 }, roll: 0, pitch: .45 };
   return { pose: { ...base, flapL: .05, flapR: .05, fold: 1, flare: 0, legs: 1, tail: .05 }, roll: 0, pitch: .4, still: true };

@@ -113,7 +113,7 @@ export function aimSystem(G) {
     id: 'aim',
     update(dt) {
       const A = G.aim;
-      A.focus += ((b.state === 'fly' ? b.tuck : 0) - A.focus) * Math.min(1, dt * 5);
+      A.focus += ((b.state === 'fly' ? b.stoop || 0 : 0) - A.focus) * Math.min(1, dt * 5);
       A.path = []; A.impact = null; A.target = null; A.perch = null; A.ring = null; A.mode = 'ink';
       A.hops = b.state !== 'fly' && b.settle <= 0 && !(b.eating > 0) && !G.menu?.open ? hopPerches(b) : [];
       if (b.state !== 'fly' || b.s < 3) { A.perches = []; return; }

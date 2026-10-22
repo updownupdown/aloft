@@ -63,7 +63,7 @@ export function createCamera(G) {
     // the hawk's frame: forward with a body pitch, banked by roll
     const pv = b.state === 'fly' ? b.gamma * .8 + b.flare * .45 - b.tuck * .1 : b.state === 'perch' ? .5 : b.state === 'ground' ? .3 : .08;
     const f = [Math.sin(vyaw) * Math.cos(pv), Math.sin(pv), -Math.cos(vyaw) * Math.cos(pv)];
-    const r0 = [Math.cos(vyaw), 0, Math.sin(vyaw)], u0 = cross(r0, f), cr = Math.cos(b.roll), sr = Math.sin(b.roll);
+    const r0 = [Math.cos(vyaw), 0, Math.sin(vyaw)], u0 = cross(r0, f), cr = Math.cos(b.roll + (b.spin || 0)), sr = Math.sin(b.roll + (b.spin || 0));   // spin: a barrel roll
     const r = [r0[0] * cr - u0[0] * sr, r0[1] * cr - u0[1] * sr, r0[2] * cr - u0[2] * sr];
     const u = [u0[0] * cr + r0[0] * sr, u0[1] * cr + r0[1] * sr, u0[2] * cr + r0[2] * sr];
 

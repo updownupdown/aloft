@@ -1,15 +1,23 @@
 // Two thumbs are the two wings. Each half of the screen is a floating stick that starts where
-// the thumb lands. Read together:
+// the thumb lands, and each stick is where its wing goes: up, down, out (spread wide) or in
+// (folded against the body). Read together (How to play shows the same):
+//   no thumbs                    glide: the hawk trims to its best glide
 //   both up / both down          climb / dive (pitch)
+//   both out and up              float: a slow glide in to land; slow enough, hover on beating wings
+//   both out                     soar: wings wide, slow and buoyant, turning tight; ride thermals so
+//   both out and down            brake: dump lift and come down gently where you are (land, perch)
+//   both in                      tuck halfway: a fast glide between thermals
+//   both in and down             stoop: wings closed, a steep fast dive (slide both left/right to steer)
+//   both in and up               zoom: a swept climb that keeps its speed longer
 //   one up, the other down       bank toward the lower wing
-//   thumbs slide together        tuck the wings: a fast stoop (then slide both left/right to steer it)
-//   thumbs slide apart           spread and flare: slow, hover, land
 //   both slide left / right      yaw: the tail swings the bird round without much bank
+//   both turned a full circle    barrel roll: left stick down and right up, then both round
+//                                counter-clockwise rolls left; left up and right down, clockwise, right
 //   tap both at once             a full flap; one thumb alone flaps one wing (a weak flap and a nudge);
 //                                the closer together the two taps, the less the flap tires you (sync)
 // A single held thumb works as a small stick on its own (up/down pitch, left/right bank).
 // Keyboard for desktop: W/S or Up/Down pitch, A/D or Left/Right bank, Shift or Q tuck,
-// E flare, Space flap.
+// E flare, Space flap, Z / X barrel roll left / right.
 // Perched or standing, a drag sideways turns the bird (read as dragX), perched a drag up or down
 // tips the view (dragY: down looks up, as if pulling the sky into view), on the ground two fingers
 // pinch the view in or out (pinch), and a tap may be taken by
@@ -17,10 +25,14 @@
 // turning the phone (gyro, while I.gyroOn), look round instead (read as look: [x, y]).
 
 const TAP_TIME = .3, TAP_MOVE = .06, PAIR = .2;
+// the barrel roll: a stick counts as turning past ROLL_ON of its reach (and stops below ROLL_OFF);
+// both must turn ROLL_TURN of a circle the same way within ROLL_TIME seconds, from the start
+// poses give or take ROLL_START radians
+const ROLL_ON = .55, ROLL_OFF = .3, ROLL_TURN = .85, ROLL_TIME = 2.5, ROLL_START = 1.2;
 
 export function createInput(el) {
   const I = { L: pad(), R: pad(), keys: new Set(), taps: [], invert: false, onAny: null, onTap: null, radius: 70, drag: 0, dragY: 0, pinch: 1, lk: [0, 0], gyroOn: false };
-  function pad() { return { id: null, x0: 0, y0: 0, x: 0, y: 0, t0: 0, moved: 0, dx: 0, dy: 0 }; }
+  function pad() { return { id: null, x0: 0, y0: 0, x: 0, y: 0, t0: 0, moved: 0, dx: 0, dy: 0, a: null, a0: 0, turn: 0, tt: 0 }; }
   const size = () => Math.min(innerWidth, innerHeight);
   el.addEventListener('touchstart', e => {
     e.preventDefault(); I.onAny?.();
@@ -45,7 +57,7 @@ export function createInput(el) {
     for (const t of e.changedTouches) for (const [side, P] of [[-1, I.L], [1, I.R]]) if (P.id === t.identifier) {
       const now = performance.now() / 1000;
       if (now - P.t0 < TAP_TIME && P.moved < TAP_MOVE * size() && !I.onTap?.(P.x0, P.y0)) I.taps.push({ side, t: P.t0, y: P.y0 / innerHeight });
-      P.id = null; P.dx = P.dy = 0;
+      P.id = null; P.dx = P.dy = 0; P.a = null; P.turn = 0;
     }
   };
   el.addEventListener('touchend', end); el.addEventListener('touchcancel', end);
@@ -53,6 +65,7 @@ export function createInput(el) {
   addEventListener('keydown', e => {
     I.onAny?.();
     if (e.code === 'Space' && !e.repeat) I.taps.push({ side: 0, t: performance.now() / 1000 - 1 });
+    if ((e.code === 'KeyZ' || e.code === 'KeyX') && !e.repeat) I.keyBarrel = e.code === 'KeyZ' ? 1 : -1;
     I.keys.add(e.code);
     if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
   });
@@ -78,6 +91,7 @@ export function createInput(el) {
       P.dx = clampU((P.x - P.x0) / r); P.dy = clampU((P.y - P.y0) / r);
     }
     const L = I.L, R = I.R, l = L.id !== null, rr = R.id !== null;
+    const barrel = l && rr ? circles(L, R) : I.keyBarrel || 0; I.keyBarrel = 0;
     let pitch = 0, roll = 0, spread = 0, keyRoll = 0, yaw = 0;
     const k = I.invert ? -1 : 1;
     if (l && rr) {
@@ -113,8 +127,33 @@ export function createInput(el) {
     const dragX = I.drag / size(), dragY = I.dragY / size(), pinch = I.pinch; I.drag = I.dragY = 0; I.pinch = 1;
     const look = [-I.lk[0] / size() * 3 + I.gyro[0], I.lk[1] / size() * 2 + I.gyro[1]];   // drag grabs the view; the gyro turns it
     I.lk = [0, 0]; I.gyro = [0, 0];   // used up each frame (left running, a flight's two-thumb moves piled up and the view stuck looking up)
-    return { pitch: clampU(pitch), roll: clampU(roll), yaw, keyRoll, dragX, dragY, pinch, look, spread: clampU(spread), flap, held: l || rr || K.size > 0, both: l && rr };
+    let out = { pitch: clampU(pitch), roll: clampU(roll), yaw, keyRoll, dragX, dragY, pinch, look, spread: clampU(spread), flap, held: l || rr || K.size > 0, both: l && rr, barrel };
+    // while both sticks are going round together the wings hold what they had: the circle passes
+    // through tuck, bank and flare, and the hawk shouldn't lurch through each on the way
+    const going = l && rr && Math.abs(L.turn) > .5 && Math.abs(R.turn) > .5 && Math.sign(L.turn) === Math.sign(R.turn);
+    if (going && I.hold) out = { ...out, pitch: I.hold.pitch, roll: I.hold.roll, yaw: I.hold.yaw, spread: I.hold.spread };
+    else if (Math.abs(L.turn) < .3 || Math.abs(R.turn) < .3) I.hold = out;   // the pose from before the circle began
+    return out;
   };
+  // each stick's angle round its centre, unwrapped: a full circle is 2π. Returns 1 when both have
+  // gone round counter-clockwise from left down / right up, -1 clockwise from left up / right down
+  function circles(L, R) {
+    const now = performance.now() / 1000;
+    for (const P of [L, R]) {
+      const m = Math.hypot(P.dx, P.dy), a = Math.atan2(-P.dy, P.dx);
+      if (m < ROLL_OFF) { P.a = null; P.turn = 0; continue; }
+      if (P.a == null) { if (m > ROLL_ON) { P.a = P.a0 = a; P.turn = 0; P.tt = now; } continue; }
+      let d = a - P.a; d -= Math.round(d / (2 * Math.PI)) * 2 * Math.PI;
+      P.turn += d; P.a = a;
+      if (now - P.tt > ROLL_TIME && Math.abs(P.turn) < 2 * Math.PI * ROLL_TURN) { P.a0 = a; P.turn = 0; P.tt = now; }   // too slow: start again from here
+    }
+    const full = 2 * Math.PI * ROLL_TURN;
+    if (Math.abs(L.turn) < full || Math.abs(R.turn) < full || Math.sign(L.turn) !== Math.sign(R.turn)) return 0;
+    const dir = Math.sign(L.turn), near = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b))) < ROLL_START;
+    const ok = dir > 0 ? near(L.a0, -Math.PI / 2) && near(R.a0, Math.PI / 2) : near(L.a0, Math.PI / 2) && near(R.a0, -Math.PI / 2);
+    for (const P of [L, R]) { P.turn = 0; P.a0 = P.a; P.tt = now; }
+    return ok ? dir : 0;
+  }
   return I;
 }
 const dead = (v, d) => (Math.abs(v) < d ? 0 : (v - Math.sign(v) * d) / (1 - d));
