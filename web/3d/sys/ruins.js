@@ -11,6 +11,7 @@ import * as RS from './railshapes.js';
 import { railsNear } from '../rail.js';
 import { wondersNear, WONDERS } from '../wonders.js';
 import * as WS from './wondershapes.js';
+import * as SS from './seashapes.js';
 import { journal, esc } from '../journal.js';
 
 const DRAW = 650, NEST_R = 3.2;
@@ -121,6 +122,14 @@ export function ruinsSystem(G) {
     else { m = { shape: 'wd_' + W.key, at: null }; R.shape(m.shape, W.key === 'goldengate' ? WS.goldenGate(W.span || 600) : WS[WMESH[W.key]]()); }
     wonderOf.set(W.id, m); return m;
   };
+  // the regional styles (settle.js styleOf), each built when first seen; the things at sea
+  const STYLED = new Set(['cottage', 'farmhouse', 'hut', 'keeper']), styledOf = new Set();
+  const houseShape = (bd, v) => {
+    if (!bd.style || bd.style === 'stone' || !STYLED.has(bd.kind)) return `ru_${bd.kind}${v}`;
+    const name = `ru_${bd.kind}${v}_${bd.style}`; if (!styledOf.has(name)) { styledOf.add(name); R.shape(name, M.styled(bd.kind, v, bd.style)); } return name;
+  };
+  for (const k of ['freighter', 'yacht', 'buoy', 'rig']) R.shape('sea_' + k, SS[k]());
+  R.shape('sea_rocklight', SS.rockLight());
   let wonders = [];
   St.wonders = {};
   function seeWonders() {
@@ -158,6 +167,10 @@ export function ruinsSystem(G) {
       go: () => { const bd = nearest(settlementsNear(b.p[0], b.p[2], 4000, false).flatMap(S => S.build.filter(chimeAt))); if (bd) { const c = chimeAt(bd); toward({ x: c[0], z: c[2] }, 35, 10); } } },
     { id: 'wonders', title: 'Wonders where they stood on Earth', how: 'Find the Eiffel Tower, the Great Wall, the Statue of Liberty and more; Journal > Wonders lists them.', round: 'Earth',
       go: () => { const L = Object.keys(WONDERS).map(k => wondersNear(b.p[0], b.p[2], 1e5).find(W => W.key === k)).filter(Boolean), W = nearest(L); if (W) toward(W, 260, 70); } },
+    { id: 'regional-ruins', title: 'Ruins built the way each region built', how: 'Whitewashed crofts in Scotland and Ireland, log cabins in the north, stilt houses in swamps, mud brick in dry lands, clapboard in America.', round: 'Earth',
+      go: () => { const S = nearest(settlementsNear(b.p[0], b.p[2], 6000, false).filter(S => S.style && S.style !== 'stone')); if (S) toward(S, 80, 25); } },
+    { id: 'sea-derelicts', title: 'Things left at sea: wrecks, bell buoys, rock lights, rigs', how: 'Fly out over the sea: rest on a wreck or a rig; a bell buoy rings in the swell.', round: 'Earth',
+      go: () => { const S = nearest(settlementsNear(b.p[0], b.p[2], 9000, false).filter(S => S.kind === 'derelict')); if (S) toward(S, 90, 25); } },
   ];
   for (const f of dev) G.dev?.add({ area: 'World', ...f });
 
@@ -166,6 +179,8 @@ export function ruinsSystem(G) {
     id: 'ruins',
     update(dt) {
       if ((setT -= dt) <= 0) { setT = 1; sets = settlementsNear(b.p[0], b.p[2], DRAW + 50); bridges = bridgesNear(b.p[0], b.p[2], DRAW); lines = linesNear(b.p[0], b.p[2], DRAW); rails = railsNear(b.p[0], b.p[2], DRAW); wonders = wondersNear(b.p[0], b.p[2], WDRAW); seeWonders(); }
+      // a bell buoy near you rings as the swell rocks it, low and slow
+      for (const T of sets) if (T.what === 'buoy') { const d = Math.hypot(T.x - b.p[0], T.y - b.p[1], T.z - b.p[2]); if (d < 90 && Math.random() < dt * .25 && G.audio.tone && G.audio.hz) { const f = G.audio.hz(-24), v = .06 * (1 - d / 90) ** 2; G.audio.tone({ f, dur: 4.5, vol: v, lp: 1400 }); G.audio.tone({ f: f * 2.4, dur: 1.6, vol: v * .3 }); } }
       // chimes near you ring in the wind
       const wind = (G.windK ?? .3) + (G.gustWind || 0) * 1.5;
       for (const c of chimes) { const d = Math.hypot(c[0] - b.p[0], c[1] - b.p[1], c[2] - b.p[2]); if (d < 45 && Math.random() < dt * (.04 + wind * .5)) ring(c, d); }
@@ -195,8 +210,13 @@ export function ruinsSystem(G) {
       }
       for (const T of sets) {
         if (T.kind === 'wonder' || Math.hypot(T.x - cam[0], T.z - cam[2]) > DRAW + 40) continue;
+        if (T.kind === 'derelict') {   // a buoy rides the swell
+          const bob = T.what === 'buoy' ? Math.sin(G.t * 1.1 + T.x) * .25 : 0;
+          (S.props['sea_' + T.what] ||= []).push(T.x, T.y + bob, T.z, 1, T.yaw + (T.what === 'buoy' ? Math.sin(G.t * .7 + T.z) * .08 : 0), .5, 0, 0);
+          continue;
+        }
         for (const bd of T.build) {
-          const v = bd.kind === 'barn' || bd.kind === 'keeper' ? Math.min(bd.v, 1) : bd.v, name = ['well', 'pump', 'cart', 'boat'].includes(bd.kind) ? 'ru_' + bd.kind : `ru_${bd.kind}${v}`;
+          const v = bd.kind === 'barn' || bd.kind === 'keeper' ? Math.min(bd.v, 1) : bd.v, name = ['well', 'pump', 'cart', 'boat'].includes(bd.kind) ? 'ru_' + bd.kind : houseShape(bd, v);
           // the drowned cottages: only in summer, when the reservoir is low, do their roofs break the water
           (S.props[name] ||= []).push(bd.x, bd.under && G.season?.name !== 'summer' ? bd.y - 1.8 : bd.y, bd.z, 1, bd.yaw, .5, 0, 0);
           const c = Math.hypot(bd.x - cam[0], bd.z - cam[2]) < 160 && chimeAt(bd);   // turning a little in the wind

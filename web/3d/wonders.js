@@ -66,7 +66,7 @@ function spiral(x0, z0, R, step, score) {
 }
 export function wonderAt(key) {
   if (cache.has(key)) return cache.get(key);
-  const [name, lat, lon, ground, rr] = WONDERS[key], p = toXZ(lat, lon);
+  const [name, , , ground, rr] = WONDERS[key], p = realXZ(key);
   let W = null;
   const [x0, z0] = p || [];
   if (p) {
@@ -131,10 +131,12 @@ function wallPath(W) {
 }
 // the wonders whose spot could be within r (a box) of (x, z): worked out only when its real place
 // is within reach, so the far ones cost nothing
+const real = new Map();
+const realXZ = key => { if (!real.has(key)) { const [, lat, lon] = WONDERS[key]; real.set(key, toXZ(lat, lon)); } return real.get(key); };
 export function wondersNear(x, z, r) {
   const out = [];
   for (const key in WONDERS) {
-    const [, lat, lon] = WONDERS[key], p = toXZ(lat, lon);
+    const p = realXZ(key);
     if (!p || Math.abs(p[0] - x) > r + 3000 || Math.abs(p[1] - z) > r + 3000) continue;
     const W = wonderAt(key); if (W && Math.abs(W.x - x) < r + 1600 && Math.abs(W.z - z) < r + 1600) out.push(W);
   }

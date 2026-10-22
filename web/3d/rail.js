@@ -9,10 +9,12 @@
 //   railsNear(x, z, r): { cells } for drawing and solids (sys/ruins.js, world.js solidsNear)
 import { baseHeight } from './world.js';
 import { ih, fbm } from './noise.js';
+import { continentAt, earthBiome } from './earth.js';
 
 export const RAIL_CELL = 3200, STEP = 20, BED = 3.5, REACH = 32;
+const RAIL_DENS = { europe: 1, 'n-america': .7, asia: .55, africa: .3, 's-america': .35, oceania: .4 }, NO_RAIL = new Set(['ice', 'tundra', 'rainforest', 'swamp', 'sea']);
 const C = RAIL_CELL, WATER = 0, B64 = 64;
-const bandOn = j => ih(j, 7, 801) < .5;
+const bandOn = j => ih(j, 7, 801) < .65;
 const zb = (i, j) => (j + .32 + .36 * ih(i, j, 802)) * C;
 // the line's middle at x, in band j
 export function lineZ(x, j) {
@@ -38,7 +40,9 @@ function cell(i, j) {
     // the grade: the ground smoothed over 1.2 km, never below the highest water
     for (let k = 0; k <= n; k++) { let s = 0, m = 0; for (let q = Math.max(0, k - 30); q <= Math.min(n, k + 30); q++) { s += Math.max(P[q].h, 3); m++; } P[k].g = Math.max(s / m, 3.2); }
     // where there could be no line: the high mountains, long water
-    const ok = P.map(p => p.h < 170);
+    // and only where people built railways: thick in Europe, thin elsewhere, none on the ice,
+    // the tundra or through the rainforest and swamps
+    const rr = ih(i, j, 809), ok = P.map(p => p.h < 170 && rr < (RAIL_DENS[continentAt(p.x, p.z)] || 0) && !NO_RAIL.has(earthBiome(p.x, p.z)));
     for (let k = 0; k <= n;) {
       if (P[k].h >= WATER + 1) { k++; continue; }
       let e = k; while (e <= n && P[e].h < WATER + 1) e++;
