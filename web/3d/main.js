@@ -11,6 +11,7 @@
 // Weather (sys/weather.js) sets G.rain, G.storm, G.windK (0..1); the tail colour reads G.tailRed.
 import { createGL } from './gl.js';
 import { createRenderer } from './render.js';
+import { createPerf } from './perf.js';
 import { createInput } from './input.js';
 import { createHawk, step, perchAhead } from './flight.js';
 import { height, WATER, thermalsNear, forest, treesNear, perchesOf } from './world.js';
@@ -78,6 +79,8 @@ export function start(canvas, ui) {
     emit: (name, ...a) => { for (const fn of listeners.get(name) || []) fn(...a); },
     part: (p, v, life, col, size) => { if (G.parts.length < 400) G.parts.push({ p: [...p], v, life, max: life, col, size }); },
   };
+  G.perf = R.prof = createPerf(gl);   // Settings > Dev tools > Frame cost
+  if (/[?&]perf=deep/.test(location.search)) G.perf.deep = true;
   G.hud = createHud(G, ui, input);
   G.menu = createMenu(G, ui);
   const camera = createCamera(G);
@@ -109,7 +112,8 @@ if (qs.has('fps')) G.settings.fpsCap = +qs.get('fps') || 60;
   G.pinRes = qs.has('res') ? +qs.get('res') : null; if (G.pinRes) G.res = G.pinRes;
   input.invert = G.settings.invert;
   music.setOn(G.settings.music);
-  input.onAny = () => { audio.unlock(); G.emit('gesture'); };
+  let touchedAt = 0;   // the last touch or key: resting (below) waits a few seconds after it
+  input.onAny = () => { audio.unlock(); G.emit('gesture'); touchedAt = performance.now(); };
   G.on('gesture', () => audio.unlock());
 
   // ---- flight events -------------------------------------------------------------------------
@@ -163,12 +167,18 @@ if (qs.has('fps')) G.settings.fpsCap = +qs.get('fps') || 60;
   G.menu.choice(play, { label: 'Frame rate', options: [[30, '30'], [60, '60'], [90, '90']], get: () => G.settings.fpsCap,
     set: v => { G.settings.fpsCap = v; store.set('fpsCap3d', v); },
     sub: v => v <= 30 ? 'frames a second: 30 saves the most battery' : v >= 90 ? 'frames a second: 90 is smoothest, uses the most battery' : 'frames a second: smooth, a fair battery' });
+  G.settings.rest = store.get('rest3d', true);
+  G.menu.toggle(play, { label: 'Rest at 30 fps', sub: 'perched or on the ground and left alone a few seconds: half the frames, less battery', get: () => G.settings.rest, set: v => { G.settings.rest = v; store.set('rest3d', v); } });
   G.menu.toggle(play, { label: 'Show frame rate', get: () => G.settings.fps, set: v => { G.settings.fps = v; store.set('fps3d', v); H.showFps(v); } });
   G.menu.button(play, { label: 'Music lab', sub: 'shape the music: strings, piano, pace', href: 'musiclab.html', group: 'sound' });
   G.menu.button(play, { label: 'Start a new journey', sub: 'from the valley', group: 'play', onClick: el => {
     if (el.dataset.sure) { G.resetting = true; store.set('save3d', null); location.reload(); } else { el.dataset.sure = 1; el.firstChild.textContent = 'Tap again to start over '; }
   } });
   appRows(G);
+  G.dev?.add({ id: 'frame-cost', area: 'Settings and performance', round: 'R8', title: 'Frame cost: milliseconds per system and per render pass', how: 'Fly a minute, then Settings > Dev tools > Frame cost. GPU times show where the phone offers timer queries; add ?perf=deep to time them anyway (slower).' });
+  G.dev?.add({ id: 'gpu-order', area: 'Settings and performance', round: 'R8', title: 'Cheaper drawing: solid things first with no discard, nearest ground first, sky last', how: 'Nothing to see: the same picture, less GPU work. Compare battery use (Settings) with the readings from before.' });
+  G.dev?.add({ id: 'rest-30', area: 'Settings and performance', round: 'R8', title: 'Rest at 30 fps when perched or on the ground and untouched', how: 'Settings > Show frame rate, perch and leave the phone 5 s: 30; touch: back to your cap. Settings > Rest at 30 fps turns it off.' });
+  G.dev?.add({ id: 'heat-guard', area: 'Settings and performance', round: 'R8 G2', title: 'Heat guard: resolution steps down early when late frames creep up', how: 'Graphics on Auto, play 20+ minutes: Frame cost shows late frames and "heat guard on" when it acts.' });
   H.showFps(G.settings.fps);
   G.on('pause', persist);
   document.addEventListener('visibilitychange', () => { if (document.hidden) { persist(); audio.suspend(); G.menu.set(true); } else audio.resume(); });
@@ -196,6 +206,10 @@ if (qs.has('fps')) G.settings.fpsCap = +qs.get('fps') || 60;
   // goes and the frames are still slow, step the level down; long smooth at full resolution, step it
   // up. Quick in the first 20 seconds, gentle after, and never twice within 20 seconds.
   let lowT = 0, highT = 0, sinceT = 0, playT = 0;
+  // Heat guard (Auto graphics): a phone that warms up slows down in fits, so late frames (well past
+  // their time) creep up before the average frame rate drops. When they pass 4% (over about half a
+  // minute), the resolution steps down early, and holds there two minutes before it may come back.
+  let late = 0, heat = 0, guardT = 0, capWas = 0, mixed = false, drawnAt = 0;
   function autoQuality(fps, target) {
     const W = 1.5; playT += W; sinceT += W;
     if (G.gfx?.preset !== 'auto' || G.pinRes) return;
@@ -214,26 +228,44 @@ if (qs.has('fps')) G.settings.fpsCap = +qs.get('fps') || 60;
     requestAnimationFrame(frame);
     // the frame rate cap (Settings > Frame rate): frames are owed at the cap's pace and drawn on the
     // screen refresh that comes due, so 60 on a 90 Hz screen is 60, not every other refresh (45)
-    const gap = 1000 / G.settings.fpsCap;
+    // resting (Settings > Rest at 30 fps): perched or standing, untouched for 4 s, 30 is plenty
+    const rest = G.settings.rest && b.state !== 'fly' && !(b.settle > 0) && now - touchedAt > 4000 && !G.singing && !G.camSing && !G.paused;
+    const cap = G.capNow = rest ? Math.min(30, G.settings.fpsCap) : G.settings.fpsCap;
+    if (cap !== capWas) { mixed = true; capWas = cap; }
+    const gap = 1000 / cap;
     owe = Math.min(gap * 2, owe + now - (prevRaf || now)); prevRaf = now;
     if (owe < gap - 1.5) return;
     owe = Math.max(0, owe - gap);
     const dt = Math.min(.075, (now - last) / 1000); last = now;   // room for 15 fps (.067) so the game keeps time
     if (G.paused) return;
+    const pf = G.perf; pf.begin();
     G.t += dt; G.clock += dt;
     frames++; resT += dt;
+    if (drawnAt && now - drawnAt > gap * 1.6) late++;
+    drawnAt = now;
     if (resT > 1.5) {
-      const fps = frames / resT; frames = 0; resT = 0;
-      const target = Math.min(G.settings.fpsCap, 90) * .9 - 1;   // 60: 53, 90: 80, 30: 26
-      if (G.pinRes) { /* pinned */ } else if (fps < target && G.res > .5) { G.res = Math.max(.5, G.res - .1); resize(); }
-      else if (fps > target + 4 && G.res < 1) { G.res = Math.min(1, G.res + .05); resize(); }
+      const fps = frames / resT, lateShare = late / frames; frames = 0; resT = 0; late = 0;
+      const target = Math.min(cap, 90) * .9 - 1;   // 60: 53, 90: 80, 30: 26
+      // a window that went into or out of resting says nothing about the phone: skip it
+      if (mixed) mixed = false;
+      else {
+        guardT = Math.max(0, guardT - 1.5); heat += (lateShare - heat) * .05;
+        const auto = !G.pinRes && (G.gfx?.preset ?? 'auto') === 'auto';
+        if (G.pinRes) { /* pinned */ } else if (fps < target && G.res > .5) { G.res = Math.max(.5, G.res - .1); resize(); }
+        else if (auto && heat > .04 && G.res > .5 && !guardT) { G.res = Math.max(.5, G.res - .1); resize(); guardT = 120; heat = .02; }
+        else if (fps > target + 4 && G.res < 1 && !guardT) { G.res = Math.min(1, G.res + .05); resize(); }
+        autoQuality(fps, target);
+      }
       H.fps(fps); G.stats = { fps, res: G.res, chunks: R.stats.chunks, tris: R.stats.tris };
-      autoQuality(fps, target);
+      pf.note = `${fps.toFixed(0)} fps of ${cap}${rest ? ' (resting)' : ''} · resolution ${Math.round(G.res * 100)}% · late frames ${(heat * 100).toFixed(1)}%${guardT ? ' · heat guard on' : ''} · main thread ${pf.cpu.toFixed(1)} ms${pf.gpu != null ? ` · GPU ${pf.gpu.toFixed(1)} ms` : ''} (${pf.gpuHow})`;
     }
 
+    pf.lap('Core', 'frame rate, resolution');
     input.gyroOn = b.state === 'perch' && b.settle <= 0 && !(G.singing || G.camSing);   // not while singing: tapping notes shakes the phone
     const c = input.read();
+    pf.lap('Core', 'input');
     G.systems.clock.update(dt, c);
+    pf.lap('Systems', 'clock');
     step(b, c, dt, E);
     if (Math.abs(c.roll) > .5) H.did('bank');
     if (Math.abs(c.pitch) > .5) H.did('climb');
@@ -241,25 +273,34 @@ if (qs.has('fps')) G.settings.fpsCap = +qs.get('fps') || 60;
     if (c.spread > .5) H.did('flare');
     G.perchMark = perchAhead(b);
     tricks(dt);
-    for (const s of systems) if (s.id !== 'clock') s.update?.(dt, c);
+    pf.lap('Core', 'flight');
+    for (const s of systems) if (s.id !== 'clock' && s.update) { s.update(dt, c); pf.lap('Systems', s.id); }
 
     for (const p of G.parts) { p.life -= dt; p.v[1] -= 1.5 * dt; for (let k = 0; k < 3; k++) p.p[k] += p.v[k] * dt; }
     G.parts = G.parts.filter(p => p.life > 0);
+    pf.lap('Core', 'particles');
 
     // the scene: light, camera and hawk, then whatever each system adds
     const S = { ...G.light, time: G.t, wind: (G.windK ?? .3) + (G.gustWind || 0), fogDen: .0042 + .0012 * (G.light.night || 0), autumnCol: [.8, .5, .22], props: {}, motes: [] };
     camera.update(dt, S);
-    for (const s of systems) s.scene?.(S);
+    pf.lap('Core', 'camera, hawk pose');
+    for (const s of systems) if (s.scene) { s.scene(S); pf.lap('Systems', s.id); }
     for (const q of G.parts) S.motes.push(...q.p, ...q.col, q.size * Math.min(1, q.life / q.max * 2));
+    pf.lap('Core', 'particles');
     R.fogView = 2.1 / S.fogDen;   // past this the haze hides everything: nothing is drawn there (night, rain, fog)
     R.updateChunks(S.cam, 3);
+    pf.lap('Core', 'ground chunks');
     R.updateTrees(b.p, G.season);
+    pf.lap('Core', 'trees (pick, sort)');
     R.draw(S, null, canvas.width, canvas.height);
+    pf.lap('Core', 'draw calls');
+    pf.poll();
 
     // sound
     const above = b.p[1] - Math.max(height(b.p[0], b.p[2]), WATER), L = G.light;
     audio.ambience(Math.min(1, b.s / 30 + (G.storm || 0) * .3), G.rain || 0, { height: above * 2, stoop: clamp((b.s - 25) / 18, 0, 1), night: L.night, frogs: L.night * (height(b.p[0], b.p[2]) < 3 ? 1 : 0), falls: G.babble || 0 });
     music.update(dt, { night: L.night, storm: G.storm || 0, learned: G.learned || new Set(), species: G.species || [], speed: b.s * 4, wind: G.windK ?? .3, height: above * 2 });
+    pf.lap('Core', 'sound, music');
 
     glowT -= dt; setWings(b.stamina, glowT > 0 ? glow : '', b.maxStamina ?? 1);
     H.flight = b.state === 'fly' ? { m: above.toFixed(0), kmh: (b.s * 3.6).toFixed(0), lift: b.ride ? 'ride' : b.lift > .8 ? 'rise' : '' } : null;
@@ -267,7 +308,10 @@ if (qs.has('fps')) G.settings.fpsCap = +qs.get('fps') || 60;
     H.status = b.state === 'fly' ? '' : b.eating > 0 ? 'eating' : b.state === 'perch' ? 'perched' : b.state === 'swim' ? 'on the water' : 'on the ground';
     takeoffBtn.classList.toggle('gone', b.state === 'fly' || b.settle > 0);   // mid-meal, Take off carries the catch away
     H.update(dt);
+    pf.lap('Core', 'HUD');
     saveT += dt; if (saveT > 5) { saveT = 0; persist(); }
+    pf.lap('Core', 'saving');
+    pf.end();
   }
 
   // debug helpers
