@@ -1,4 +1,4 @@
-/* Song controls (songs system): the Sing button, the note pad, the song card with its score, the birds to imitate, the notes rising from a beak and the Call button.
+/* Song controls (songs system): Sing, the note pad, the song card with its score, the birds to imitate, the notes rising from a beak and the Call button.
    The song controls sit in black frames with white text, so the note colours stand out; bird
    pictures sit in white rounds. Colours: --note and --lit on each row, --note on each score glyph.
    Everything here can be restyled without touching singui.js. */
@@ -8,27 +8,20 @@
   --padw: 96px; --gap: 8px; }
 .sing3 button { font-family: var(--text); color: #fff; touch-action: manipulation; }
 .songcard3, .sgplate3, .birds3 { -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); }
-.sing3:not(.on) :is(.notepad3, .songcard3, .birds3), .sing3:not(.big) .birds3, .sing3.big .sgplate3 { display: none; }
+.sing3:not(.on) :is(.notepad3, .songcard3, .birds3), .sing3:not(.big) .birds3, .sing3.on .sgplate3, .sing3.big .songcard3 { display: none; }
 .sing3 svg { flex: none; }
-/* a bird's picture in a white round */
-.sing3 .pic3 { flex: none; display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; background: #fff; overflow: hidden; }
-.sing3 .pic3 img { width: 40px; height: 30px; }
-.sing3 .pic3 svg { width: 22px; height: 22px; color: #1d2b36; }
+/* a bird's little flat logo (birdlogos.js), no round behind it */
+.sing3 .logo3 { display: block; width: 100%; height: 100%; }
 
-/* the Sing plate, bottom left while the hawk can sing: a round notes button (struck through while
-   off) and what singing does here, coloured by the mode (amber learning, green imitating) */
-.sgplate3 { pointer-events: auto; box-sizing: border-box; width: min(46vw, 400px); min-height: 52px; display: flex; align-items: center; gap: 10px; padding: 5px 14px 5px 5px; text-align: left;
-  border: 1px solid var(--blkedge); border-radius: 26px; background: var(--blk); box-shadow: var(--shadow); cursor: pointer; --mode: #fff; }
-.sgplate3[data-mode=learn] { --mode: #f2c14e; }
-.sgplate3[data-mode=imitate] { --mode: #8fcf5a; }
-.sgtog3 { flex: none; display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; background: rgba(255, 255, 255, .14); border: 1.5px solid rgba(255, 255, 255, .45); color: #fff; transition: background .2s; }
+/* Sing, off: a round notes button struck through, and the logo of a bird beside you that could
+   teach you */
+.sgplate3 { pointer-events: auto; box-sizing: border-box; min-height: 52px; display: flex; align-items: center; gap: 10px; padding: 5px 16px 5px 5px;
+  border: 1px solid var(--blkedge); border-radius: 26px; background: var(--blk); box-shadow: var(--shadow); cursor: pointer; font-size: 15px; font-weight: 700; }
+.sgtog3 { flex: none; display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; background: rgba(255, 255, 255, .14); border: 1.5px solid rgba(255, 255, 255, .45); color: #fff; }
 .sgtog3 svg { width: 22px; height: 22px; }
-.sgtog3 .x3 { stroke-width: 2.4; transition: opacity .2s; }
-.sing3.on .sgtog3 { background: #fff; border-color: #fff; color: #1d2b36; }
-.sing3.on .sgtog3 .x3 { opacity: 0; }
-.sgmode3 { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-.sgmode3 b { font-size: 14.5px; font-weight: 700; line-height: 1.2; color: var(--mode); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sgmode3 small { font-size: 12px; font-weight: 500; line-height: 1.3; color: var(--dim); }
+.sgtog3 .x3 { stroke-width: 2.4; }
+.sghint3 { width: 34px; height: 34px; margin: -4px -6px -4px 0; }
+.sghint3:empty { display: none; }
 .sw3 { position: relative; flex: none; width: 36px; height: 22px; border-radius: 11px; background: rgba(255, 255, 255, .24); transition: background .2s; }
 .sw3 i { position: absolute; left: 3px; top: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .2s; }
 .on > .sw3 { background: #5fb46e; }
@@ -65,19 +58,39 @@
 .notepad3 i.no { --said: #f0584a; animation: said3 .9s ease-out, shake3 .3s; }
 @keyframes said3 { 0%, 40% { border-color: var(--said); box-shadow: 0 0 0 3px var(--said), 0 0 18px var(--said); } 100% { } }
 @keyframes shake3 { 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+/* the bird you learn from sang this note: the row lights, its logo pops up in the middle and a
+   white ring spreads out from it */
+.tlogo3 { position: absolute; left: 50%; top: 50%; width: 38px; height: 38px; margin: -19px 0 0 -19px; opacity: 0; pointer-events: none; z-index: 1; }
+.tlogo3::before { content: ''; position: absolute; inset: 2px; border-radius: 50%; border: 2.5px solid #fff; opacity: 0; }
+.notepad3 i.teach { animation: teach3 1s ease-out; }
+.notepad3 i.teach .tlogo3 { animation: tlogo3 1s ease-out; }
+.notepad3 i.teach .tlogo3::before { animation: ring3 .8s ease-out; }
+@keyframes teach3 { 0%, 30% { filter: brightness(1.8); box-shadow: 0 0 0 3px #fff, 0 0 26px var(--lit), var(--shadow); } 100% { } }
+@keyframes tlogo3 { 0% { opacity: 0; transform: scale(.5); } 15%, 65% { opacity: 1; transform: scale(1.1); } 100% { opacity: 0; transform: scale(1); } }
+@keyframes ring3 { 0% { opacity: .9; transform: scale(.6); } 100% { opacity: 0; transform: scale(2.2); } }
 
-/* bottom left: the Sing switch over the song card (the switch hides while the birds are open) */
+/* bottom left: Sing (off) or the song card (on) */
 .sgleft3 { position: absolute; left: var(--side); bottom: var(--bot); display: flex; flex-direction: column; align-items: flex-start; gap: 8px; pointer-events: none; }
 
-/* the song card, as wide as the plate: the bird, its name and song over its score, and a chevron;
-   a tap anywhere on it opens the birds to imitate */
-.songcard3 { pointer-events: auto; box-sizing: border-box; display: flex; align-items: center; gap: 9px; min-height: 52px; width: min(46vw, 400px); padding: 5px 12px 5px 5px; cursor: pointer;
-  border: 1px solid var(--blkedge); border-radius: 26px; background: var(--blk); box-shadow: var(--shadow); color: #fff; }
-.songcard3 > .pic3 { align-self: flex-start; }
-.txt3 { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
-.txt3 b { font-weight: 700; font-size: 14px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 4px; }
-.sgchev3 { align-self: flex-start; display: grid; place-items: center; width: 18px; height: 22px; margin-top: 3px; }
-.sgchev3 svg { width: 16px; height: 16px; stroke: #fff; }
+/* the song card, one black card. The top: the bird you sing as, what you are doing (amber
+   learning, green imitating), every bird and X to stop. The bottom: the logo, the song's name and
+   its score; a tap there opens every bird too. */
+.songcard3 { pointer-events: auto; box-sizing: border-box; width: min(44vw, 380px); padding: 8px 8px 9px 12px; display: flex; flex-direction: column; gap: 4px;
+  border: 1px solid var(--blkedge); border-radius: 24px; background: var(--blk); box-shadow: var(--shadow); color: #fff; --mode: #fff; }
+.songcard3[data-mode=learn] { --mode: #f2c14e; }
+.songcard3[data-mode=imitate] { --mode: #8fcf5a; }
+.sghead3 { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.sgwho3 { flex: 0 1 auto; min-width: 0; font-size: 15px; font-weight: 700; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+.sgstate3 { flex: none; padding: 3px 9px; border-radius: 11px; font-style: normal; font-size: 12px; font-weight: 700; letter-spacing: .02em; color: var(--mode);
+  background: color-mix(in srgb, var(--mode) 18%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--mode) 45%, transparent); }
+.sghead3 button { flex: none; width: 34px; height: 34px; padding: 0; display: grid; place-items: center; border: 0; border-radius: 50%; background: rgba(255, 255, 255, .12); cursor: pointer; }
+.sgmore3 { margin-left: auto; }
+.sghead3 button svg { width: 18px; height: 18px; }
+.sgbody3 { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.sglogo3 { flex: none; width: 44px; height: 44px; margin-left: -4px; }
+.sglogo3 > svg:not(.logo3) { width: 34px; height: 34px; margin: 6px; color: #fff; }
+.txt3 { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.sgsong3 { font-size: 12px; font-weight: 500; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* the birds' X: white on black, over the list's top right corner */
 .sgless3 { position: absolute; z-index: 1; top: 8px; right: 8px; width: 38px; height: 38px; padding: 0; border: 1px solid rgba(255, 255, 255, .3); border-radius: 50%;
   background: #000; box-shadow: var(--shadow); display: grid; place-items: center; cursor: pointer; color: #fff; }
@@ -93,7 +106,7 @@
 .score3 svg { width: 100%; height: 100%; stroke: var(--note); fill: var(--note); display: block; }
 .score3 span.q { opacity: .45; filter: none; }
 /* the note being sung (by the bird teaching you) or due next (in your try) */
-.score3 span.at { background: rgba(255, 255, 255, .16); opacity: 1; box-shadow: inset 0 -2px 0 #fff; }
+.score3 span.at { background: rgba(255, 255, 255, .24); border-radius: 50%; opacity: 1; }
 .score3 span:is(.r-good, .r-ok, .r-meh, .r-wrong)::after { content: ''; position: absolute; inset: 0; border-radius: 50%; border: 1.5px solid var(--r); opacity: 0;
   animation: mark3 2s linear var(--md, 0s) both; }
 @keyframes mark3 { 0%, 70% { opacity: 1; } 100% { opacity: 0; } }
@@ -115,8 +128,7 @@
 .brow3.on { border-color: rgba(255, 255, 255, .35); background: rgba(255, 255, 255, .13); }
 .bwho3 { position: relative; flex: none; width: 128px; display: flex; align-items: center; gap: 8px; padding: 0 4px 0 0; border: 0; background: none; font-size: 13px; font-weight: 700; text-align: left; line-height: 1.15; cursor: pointer; }
 .brow3.heard .bwho3 { opacity: .55; }
-.bwho3 .pic3 { width: 40px; height: 40px; }
-.bwho3 .pic3 img { width: 38px; height: 28.5px; }
+.bwho3 .logo3 { flex: none; width: 40px; height: 40px; }
 .bsongs3 { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; gap: 5px; }
 .bsong3 { box-sizing: border-box; min-height: 40px; display: flex; flex-direction: column; justify-content: center; gap: 3px; padding: 4px 10px; border: 1px solid transparent; border-radius: 12px;
   background: rgba(255, 255, 255, .1); font-size: 11.5px; font-weight: 600; text-align: left; cursor: pointer; }
@@ -127,7 +139,7 @@
 .mini3 i { width: 11px; height: 11px; margin-bottom: calc(var(--lane) * 1.6px); }
 .mini3 svg { width: 100%; height: 100%; display: block; stroke: var(--note); fill: var(--note); }
 .bsong3.on .mini3 svg { filter: brightness(.75) saturate(1.3); }
-.near3 { position: absolute; top: -2px; left: 30px; width: 14px; height: 14px; stroke: #9be7a9; fill: #9be7a9; }
+.near3 { position: absolute; top: -3px; left: 32px; width: 14px; height: 14px; stroke: #9be7a9; fill: #9be7a9; }
 .cards3 p { margin: 6px 8px; font-size: 12.5px; color: var(--dim); }
 /* the bottom: Nearby (a switch), Sing as yourself, and Call, a round */
 .sgbar3 { flex: none; display: flex; gap: 6px; align-items: center; }
