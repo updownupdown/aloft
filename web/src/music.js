@@ -148,7 +148,9 @@ export function createMusic(audio) {
   // on a real string, the lower ones three strings a cent apart that beat slowly; a soft felt
   // attack, a quick first fall then a quiet ring that dies within a few seconds; the hammer's
   // thump, muffled. `v` 0..1 is how hard it is played: harder is louder and a shade brighter.
-  function piano(f, t, vol, v = .5) {
+  // `light`: one string per partial (no slow beating), for the soft echoes of your own notes,
+  // which can come several a second and would otherwise swamp a phone's audio thread.
+  function piano(f, t, vol, v = .5, light = false) {
     const ctx = audio.ctx, lp = ctx.createBiquadFilter(), g = ctx.createGain();
     const oct = Math.log2(f / 220);                                       // 0 at A3
     const ring = Math.max(1.2, 2.4 - oct * .6);                           // the aftersound's time constant
@@ -157,14 +159,15 @@ export function createMusic(audio) {
     lp.frequency.setValueAtTime(Math.min(2200, f * (2 + 2 * v)), t); lp.frequency.setTargetAtTime(Math.min(1200, f * 1.4), t + .03, .35);
     g.gain.value = vol * (.35 + .8 * v); lp.connect(g).connect(pianoBus);
     for (const [n, a] of [[1, 1], [2, tone], [3, tone * tone * 1.5], [4, tone * tone * tone * 2]]) {
-      const fn = f * n * Math.sqrt(1 + .0003 * n * n), d = ring / (1 + (n - 1) * .8);
-      for (const det of n <= 2 ? [-.8, 0, .7] : [0]) {
-        const o = ctx.createOscillator(), og = ctx.createGain(), k = a / (n <= 2 ? 3 : 1);
+      if (light && n > 3) break;
+      const fn = f * n * Math.sqrt(1 + .0003 * n * n), d = ring / (1 + (n - 1) * .8), dets = n <= 2 && !light ? [-.8, 0, .7] : [0];
+      for (const det of dets) {
+        const o = ctx.createOscillator(), og = ctx.createGain(), k = a / dets.length;
         o.frequency.value = fn; o.detune.value = det + (Math.random() - .5) * .5;
         og.gain.setValueAtTime(0, t); og.gain.linearRampToValueAtTime(k, t + .014 + .01 * (1 - v));
         og.gain.setTargetAtTime(k * .32, t + .02, .1);             // the prompt sound falls away
         og.gain.setTargetAtTime(0, t + .3, d);                      // then a quiet, short ring
-        o.connect(og).connect(lp); o.start(t); o.stop(t + .3 + d * 7);
+        o.connect(og).connect(lp); o.start(t); o.stop(t + .3 + d * 4.5);
       }
     }
     // the hammer's felt: a soft, dark thump under the pitch
@@ -175,7 +178,13 @@ export function createMusic(audio) {
   }
   // a note the hawk held in tune on the string joins the music: the same note, an octave down,
   // touched softly on the piano
-  M.echo = lane => { if (M.on && ensure()) piano(hz(LANE[lane]) / 2, audio.ctx.currentTime + .05, M.tune.piano * .7, .3); };
+  // (at most one every 0.3 s, so a quick run of notes does not crowd the audio thread)
+  let echoT = -1;
+  M.echo = lane => {
+    if (!M.on || !ensure()) return;
+    const now = audio.ctx.currentTime; if (now - echoT < .3) return; echoT = now;
+    piano(hz(LANE[lane]) / 2, now + .05, M.tune.piano * .7, .3, true);
+  };
 
   // ---- what the piano plays ------------------------------------------------------------------
   // the melody: high up (B4 to C#6), stepping from where it was to a note of the chord or one of
