@@ -1,5 +1,5 @@
 // Singing from a perch, and the hawk's call. While the hawk sits (or stands near a singing
-// songbird), Sing waits bottom left: a round notes button, struck through while off (and the
+// songbird), Sing waits bottom left: the notes and the word (and the
 // picture of a bird beside you that could teach you). Tap it and the song controls open, in black
 // frames so the note colours stand out:
 //   right edge  the note pad, five rows from low (bottom) to high, each its own colour. The row
@@ -7,12 +7,14 @@
 //               up, down for one sliding down, right for a steady whistle, left for a trill, and
 //               tap for a chip. Each touch sings one syllable, the row answering in its own way,
 //               and two thumbs can sing.
-//   left edge   the rail: the logos of the birds singing near by (and the one you sing as, ringed
-//               in its state's colour; an amber dot on one that could teach you a song), tap one
-//               to learn from it or imitate it; at the bottom, your own bird, to sing as yourself.
-//   bottom left beside the rail, one black card. Along the top: the bird you sing as, what you
-//               are doing (Learning, Imitating, Free song; Learned, Answered for a moment), a
-//               button to see every bird, and X to stop singing. Then the song's name (tap it for
+//   left edge   the rail, from under the menu button down: your own bird (sing as yourself), the
+//               logos of the birds singing near by in the order of their names (the one you sing
+//               as ringed in its state's colour; an amber dot on one that could teach you a song;
+//               tap one to learn from it or imitate it), and at the bottom a button to see every
+//               bird.
+//   bottom left out from under the rail, one black card. Along the top: the bird you sing as,
+//               what you are doing (Learning, Imitating, Free song; Learned, Answered for a
+//               moment) and X to stop singing. Then the song's name (tap it for
 //               the next song you know of that bird) and theirs over yours: the bird's score (each
 //               note's arrow at its pitch, a question mark for a note not found yet, the note being
 //               sung or due on a round grey ground) and under it what you sang this try, each note
@@ -56,9 +58,8 @@ import { birdLogo } from '../birdlogos.js';
 import { project } from '../shot.js';
 import { icon, ICONS, birdIcon } from '../icons.js';
 import { BIRD } from '../hawk.js';
-// the Sing button: two notes, struck through while singing is off
+// the Sing button: two notes
 const NOTES = '<path d="M9 17.5V6l10-2v11.5"/><path d="M9 17.5a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0zM19 15.5a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0z"/>';
-const STRIKE = '<path class="x3" d="M3.5 3.5l17 17"/>';
 // the button that opens every bird: a list
 const LIST = '<path d="M9 6.5h11M9 12h11M9 17.5h11"/><circle cx="4.5" cy="6.5" r=".9" fill="currentColor"/><circle cx="4.5" cy="12" r=".9" fill="currentColor"/><circle cx="4.5" cy="17.5" r=".9" fill="currentColor"/>';
 const svg24 = body => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
@@ -69,11 +70,11 @@ if (!document.querySelector(`link[href="${css}"]`)) document.head.append(Object.
 export function createSingUI(ui, { audio, voice, onSyll, onPick, onCall, onNext, store }) {
   ui.insertAdjacentHTML('beforeend', `<div class="rise3"></div><div class="sing3 hidden">
       <div class="notepad3">${NOTE_COLS.map((c, i) => `<i data-lane="${i}" style="--note:${c};--lit:${NOTE_LIT[i]}"></i>`).reverse().join('')}</div>
-      <div class="sgrail3"><div class="sgbirds3"></div><button class="sgyou3" aria-label="Sing as yourself">${birdIcon(BIRD)}</button></div>
+      <div class="sgrail3"><button class="sgyou3" aria-label="Sing as yourself">${birdIcon(BIRD)}</button><div class="sgbirds3"></div><button class="sgmore3" aria-label="Every bird">${svg24(LIST)}</button></div>
       <div class="sgleft3">
-        <button class="sgplate3" aria-label="Sing"><span class="sgtog3">${svg24(NOTES + STRIKE)}</span><b>Sing</b><span class="sghint3"></span></button>
+        <button class="sgplate3" aria-label="Sing"><span class="sgtog3">${svg24(NOTES)}</span><b>Sing</b><span class="sghint3"></span></button>
         <div class="songcard3">
-          <div class="sghead3"><b class="sgwho3"></b><em class="sgstate3"></em><button class="sgmore3" aria-label="Every bird">${svg24(LIST)}</button><button class="sgclose3" aria-label="Stop singing">${svg24(ICONS.done)}</button></div>
+          <div class="sghead3"><b class="sgwho3"></b><em class="sgstate3"></em><button class="sgclose3" aria-label="Stop singing">${svg24(ICONS.done)}</button></div>
           <button class="sgsong3"></button>
           <div class="sgrow3"><span class="sglogo3"></span><span class="score3"></span></div>
           <div class="sgrow3 mine"><span class="sgme3">You</span><span class="score3 mine3"></span></div>
@@ -183,7 +184,9 @@ export function createSingUI(ui, { audio, voice, onSyll, onPick, onCall, onNext,
   function setRail(list, mode) {
     const key = list.map(r => r.sp.id + r.state + (r.on ? '*' : '')).join() + mode;
     if (key === S.rail) return; S.rail = key;
+    const top = railBirds.scrollTop;
     railBirds.innerHTML = list.map(r => `<button data-sp="${r.sp.id}" class="${r.state}${r.on ? ' on' : ''}" aria-label="${r.sp.name}" title="${r.sp.name}">${birdLogo(r.sp)}</button>`).join('');
+    railBirds.scrollTop = top;
     you.classList.toggle('on', mode === 'free');
   }
   // the top of the card: the bird you sing as and what you are doing; off, the bird beside you

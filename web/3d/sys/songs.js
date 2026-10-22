@@ -142,6 +142,7 @@ export function songsSystem(G) {
     { id: 'dialects', title: 'Song dialects: each land sings its own version', how: 'Learn a robin in the meadows, then perch by one in the marsh or the savanna: the card says Robin (marsh); Journal > Songs lists dialects.' },
     { id: 'mimic', title: 'Mimics: the starling (and the mockingbird down south)', how: 'Perch near a starling in meadows or by lakes: it sings snatches of other songs; an unknown song\'s opening fills in on its card.' },
     { id: 'more-songs', round: 9, pr: 191, title: 'Several songs per bird; Journal > Songs plays the ones you know', how: 'Perch by songbirds of one kind in different trees: each sings one of its kind\'s songs. The birds\' list (tap the song card) shows each bird\'s songs; tap one to imitate it. Journal > Songs: play buttons, question marks for songs to find.' },
+    { id: 'sing-rail2', round: 9, pr: 197, title: 'Sing rail round two: you on top, birds by name, every bird at the bottom; the card comes out from under it', how: 'Perch among songbirds and tap Sing: the rail runs from under the menu button, your bird first, then the birds near by A to Z (picking one keeps the order), the list button always at the bottom. The card tucks under the rail; the You row keeps its height.' },
     { id: 'sing-rail', round: 9, pr: 196, title: 'Sing rail: the birds near by down the side, theirs over yours on the card', how: 'Perch among songbirds and tap Sing: their logos run down the left (an amber dot on one that could teach you, your own bird at the bottom); tap one to learn from or imitate it. The card shows its score and, under it, what you sang, ringed by how it went. Tap the song name for the next song you know.' },
     { id: 'bird-logos', round: 9, pr: 195, title: 'Song card in one: bird, Learning or Imitating, every bird, close; each songbird a little logo', how: 'Perch by a songbird and tap Sing: the top says who and what, the bottom shows its logo, the song name and notes. While it teaches, its logo pops up in each row it sings, with a ring.' },
     { id: 'sing-modes', round: 9, pr: 194, title: 'Sing plate: the mode (learning, imitating, free), a bird that teaches and waits', how: 'Perch beside a songbird you do not know and tap the notes button: it sings, each note lighting its row; sing back, it stops to listen, and tries again when you stop. Wrong notes show on the rows (green, amber, red). Tap the card: a row a bird, Nearby, Sing as yourself, Call.' },
@@ -651,13 +652,14 @@ export function songsSystem(G) {
       const at = S.teachI >= 0 ? S.teachI : sp === target && S.res.length && !S.over ? S.res.length : -1;
       const mine = !sp ? (G.t - S.lastTry > 6 ? [] : S.mine) : sp === target ? S.mine.slice(0, S.res.length) : [];
       const sc = { sp, song, many: !learn && picked && knownSongs(picked).length > 1, seen: sp ? seen(sp) : 0, at, learn, mine };
-      // the rail: the birds singing within earshot, the one you sing as first
+      // the rail: the birds singing within earshot and the one you sing as, by name
       const mode = modeOf(sp, learn), rail = [];
       for (const id of [sp?.base?.id ?? sp?.id, ...nearby]) {
         if (id == null || rail.some(r => r.sp.id === id) || SPECIES[id].mimic) continue;
         const on = id === (sp?.base?.id ?? sp?.id);
         rail.push({ sp: SPECIES[id], on, state: on ? mode.kind : close?.sp.id === id && !knows(songOf(close)) ? 'teach' : '' });
       }
+      rail.sort((p, q) => p.sp.name.localeCompare(q.sp.name));
       if (target) {
         const listening = close && young(close) && close.sp !== target && G.learned.has(target.id) ? close : null;
         if (listening && listening !== S.listening && ui.open) say(`A young ${close.sp.name.toLowerCase()} is listening`);
