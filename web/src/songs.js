@@ -42,6 +42,40 @@ export const SPECIES = [
   { name: 'Mockingbird', mimic: true, winter: true, notes: [3, 1, 4, 2], kinds: 'rcdu', gap: 0.22, words: 'phrase after phrase of other birds\' songs, each sung two or three times', body: '#8a8a86', cap: '#7a7a76', breast: '#e8e8e2', biomes: [], lands: ['savanna', 'desert', 'swamp', 'coast', 'marsh'], times: ['dawn', 'day', 'dusk'], power: 'nothing of its own: listen for pieces of songs you do not know', powerKey: 'mimic', hint: 'Down south, in the savanna, desert, swamp and on the coast; it borrows the songs around it', voice: 1, look: { size: 1.05, tail: 1.5 } },
 ].map((s, i) => ({ ...s, id: i, voice: s.voice ?? i, cols: { body: hx(s.body), cap: hx(s.cap), breast: hx(s.breast) }, look: { size: 1, tail: 1, bill: 1, ...s.look } }));
 
+// More songs (round nine): most songbirds have more than one song or call, written as above from
+// the real bird's. [title, notes, kinds, gap, words]. The first song keeps its place (and its
+// gift); each bird in the world sings one of its kind's songs, and each is learned on its own.
+const MORE = {
+  Chickadee: ['Fee-bee song', ['Chick-a-dee call', [4, 4, 2, 2, 2], 'cclll', .13, 'chick-a-dee-dee-dee: two sharp chips, then buzzy dees, more of them the greater the danger']],
+  Robin: ['Cheerily song', ['Tut call', [2, 2, 3, 3], 'cccc', .22, 'tut, tut, tut: low clucks, quicker when something is wrong'], ['Whinny', [4, 4, 3, 2, 1], 'ddddd', .08, 'a quick, descending, horse-like whinny']],
+  Warbler: ['Sweet song', ['Unaccented song', [3, 3, 3, 2, 2, 2, 4], 'rrrcccu', .14, 'see-see-see, tit-tit-tit, see: a song for the nest, without the emphatic ending']],
+  Wren: ['Tea-kettle song', ['Cheery chant', [2, 4, 2, 4, 2, 4], 'ududud', .16, 'cheery-cheery-cheery: a rollicking two-note chant'], ['Scold', [1, 1, 1, 1], 'llll', .12, 'a harsh, buzzy rattle at anything that comes too close']],
+  Thrush: ['Ee-oh-lay song', ['Second phrase', [2, 4, 3, 1], 'urdl', .3, 'ah-ee-ay: a new flute phrase on another pitch, ending in a trill'], ['Pip call', [3, 3, 3], 'ccc', .3, 'pip, pip, pip: soft, sharp calls from the undergrowth']],
+  Finch: ['Warble', ['Long warble', [3, 2, 4, 3, 2, 4, 1], 'cdcudul', .15, 'a long, jumbled warble ending in a rising zree'], ['Cheep call', [3, 4, 3], 'ucd', .2, 'cheep, cheep: bright calls between flock mates']],
+  Owl: ['Hoots', ['Mate\'s duet', [2, 1, 1, 2, 1, 1], 'rrrrrd', .45, 'her answering hoots, a little higher than his']],
+  Lark: ['Tinkling song', ['Flight song', [3, 4, 3, 4, 4, 3, 4, 4], 'cclcclcl', .11, 'a longer, higher song sung while circling high over the field']],
+  Cardinal: ['Cheer song', ['Purty song', [4, 2, 4, 2, 4, 2], 'dcdcdc', .22, 'purty-purty-purty: slurred whistles dropping to a chip'], ['Wheet song', [2, 2, 2, 2], 'uuuu', .25, 'wheet, wheet, wheet: rising whistles, quickening']],
+  Meadowlark: ['Flute song', ['Spring-of-the-year', [4, 3, 4, 2], 'rdrd', .3, 'see-you, see-yeer: clear slurred whistles, falling'], ['Dzert call', [1, 1, 1], 'lll', .2, 'a dry, buzzy chatter']],
+  'Red-winged blackbird': ['Conk-la-ree', ['Check call', [2, 2, 2], 'ccc', .28, 'check, check: a low, hard call'], ['Her chatter', [3, 3, 3, 4], 'cccl', .1, 'chit-chit-chit-chee: the female\'s quick chatter, ending buzzy']],
+  'Mourning dove': ['Mourning coo', ['Nest coo', [1, 3, 1], 'udd', .45, 'coo-OO-oo: a shorter coo, given at the nest']],
+  'Blue jay': ['Jay call', ['Pumphandle', [2, 3, 2, 3], 'ucuc', .25, 'queedle-queedle: a squeaky, rolling whistle like a pump handle'], ['Hawk scream', [4, 4, 2], 'rdd', .3, 'kee-yer: its copy of a red-shouldered hawk\'s scream']],
+  'Song sparrow': ['Tea-kettle song', ['Second song', [4, 4, 2, 3, 3, 3, 1], 'rrclllu', .13, 'two bright notes, a burr, a long trill and a rising end: another song from its repertoire']],
+  'White-throated sparrow': ['Peabody song', ['Canada song', [0, 3, 3, 2, 2, 2], 'rrrlll', .38, 'oh sweet Canada, Canada: the ending broken into quick triplets']],
+  Veery: ['Spiral', ['Veer call', [4, 2, 1], 'ddd', .2, 'vee-ur: one falling, slurred note']],
+  'Cactus wren': ['Chug song', ['Scold', [2, 2, 2], 'lll', .15, 'a rasping buzz']],
+  'Canyon wren': ['Cascade', ['Jeet call', [3, 3, 3], 'ccc', .3, 'jeet: sharp, ringing calls off the rock']],
+  Ptarmigan: ['Rattle', ['Go-back call', [2, 1, 2, 1], 'ucuc', .2, 'go-back, go-back: a gruff, croaking call']],
+  Dipper: ['Warble', ['Zeet call', [4, 4, 4], 'ccc', .2, 'zeet, zeet: sharp calls over the water']],
+  Bellbird: ['Bell song', ['Chime', [4, 2, 3, 1, 2], 'rrrrr', .4, 'a run of liquid chimes']],
+  Nightingale: ['Piu song', ['Jug-jug', [1, 1, 1, 3], 'cccu', .2, 'jug-jug-jug, then a long rising whistle'], ['Swelling note', [2, 2, 2, 2], 'rrrr', .45, 'one pure note, again and again, swelling each time']],
+  'Whip-poor-will': ['Whip-poor-will', ['Quit call', [2, 2, 2], 'ccc', .35, 'quit, quit: soft calls in the dark']],
+  'Tawny owl': ['Duet', ['Ke-wick', [4, 3, 4, 3], 'urur', .3, 'ke-wick: her sharp contact call alone'], ['His hoot', [3, 0, 0, 1, 0], 'rrrrd', .45, 'hoo ... hu-hu-hoooo: his long hoot alone']],
+};
+for (const sp of SPECIES) {
+  const [title, ...more] = MORE[sp.name] || ['Song'];
+  sp.songs = [{ k: 0, title, notes: sp.notes, kinds: sp.kinds, gap: sp.gap, words: sp.words }, ...more.map(([t, notes, kinds, gap, words], i) => ({ k: i + 1, title: t, notes, kinds, gap, words }))];
+}
+
 // Dialects (round eight): a species sings its own song in its home land (its first land), and in
 // every other land a version of it, fixed by the species and the land: an extra note at the end,
 // a trill for one of its whistles (or a whistle for a chip), or one note a step higher or lower.
@@ -50,10 +84,12 @@ const ORD = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 
 const hs = str => { let h = 2166136261; for (const c of str) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return (h >>> 0) / 4294967296; };
 export const homeLand = sp => sp.lands?.[0] || sp.biomes[0];
 const versions = new Map();
-export function dialect(sp, land) {
-  const key = sp.id + ':' + land;
+// (song k of a species: 0 its first song; the key of song k > 0 is 'id.k:land')
+export const songKey = (sp, k, land) => sp.id + (k ? '.' + k : '') + ':' + land;
+export function dialect(sp, land, k = 0) {
+  const key = songKey(sp, k, land), base = sp.songs[k] || sp.songs[0];
   if (versions.has(key)) return versions.get(key);
-  const notes = [...sp.notes], kinds = [...sp.kinds], u = hs(sp.name + land), v = hs(land + sp.name), i = Math.floor(v * notes.length);
+  const notes = [...base.notes], kinds = [...base.kinds], u = hs(sp.name + land + (k || '')), v = hs(land + sp.name + (k || '')), i = Math.floor(v * notes.length);
   let how = null;
   if (land !== homeLand(sp) && !sp.mimic) {
     const w = kinds.indexOf('r'), c = kinds.indexOf('c');
@@ -68,7 +104,7 @@ export function dialect(sp, land) {
       notes[i] += up ? 1 : -1; how = `its ${ORD[i]} note a step ${up ? 'higher' : 'lower'}`;
     }
   }
-  const song = Object.assign(Object.create(sp), { base: sp, land, dkey: key, how, notes, kinds: kinds.join('') });
+  const song = Object.assign(Object.create(sp), { base: sp, k, title: base.title, gap: base.gap, words: base.words, land, dkey: key, how, notes, kinds: kinds.join('') });
   versions.set(key, song);
   return song;
 }
