@@ -17,11 +17,16 @@ export function createAudio() {
   A.unlock = () => {
     if (A.ctx) { if (A.ctx.state === 'suspended' && !document.hidden) A.ctx.resume(); return; }
     const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
-    const ctx = A.ctx = new AC();
+    // 'balanced' asks for a bigger buffer than 'interactive' on phones, so a busy frame does not
+    // starve the audio (the crackle when many birds sang at once)
+    const ctx = A.ctx = new AC({ latencyHint: 'balanced' });
     A.out = ctx.createGain(); A.out.gain.value = A.on ? .8 : 0;
     // fog (and anything else that should dull the world) closes this filter
     A.muffleLp = ctx.createBiquadFilter(); A.muffleLp.type = 'lowpass'; A.muffleLp.frequency.value = 20000;
-    A.out.connect(A.muffleLp).connect(ctx.destination);
+    // a limiter last, so a chorus, an echo and a call together never clip (clipping crackles)
+    const lim = ctx.createDynamicsCompressor();
+    lim.threshold.value = -6; lim.knee.value = 3; lim.ratio.value = 20; lim.attack.value = .003; lim.release.value = .25;
+    A.out.connect(A.muffleLp).connect(lim).connect(ctx.destination);
     // three volumes (Settings > Audio): birds and effects (A.master, where most sounds go), the
     // wind (wind and the stoop whistle) and the music (music.js plays into A.musicBus)
     const bus = k => { const g = ctx.createGain(); g.gain.value = A.vol[k]; g.connect(A.out); return g; };
@@ -68,9 +73,13 @@ export function createAudio() {
   // are close; high up they fade and there is only the wind (and the music).
   // Night has its season: spring peepers and frogs, summer crickets, autumn katydids, and
   // near silence over winter snow (`scene.night`, `scene.sea`).
-  let nextFrog = 0, nextBug = 0;
+  // (called every frame, but the beds change slowly: a dozen updates a second is plenty, and
+  // fewer automation events keeps the audio thread light)
+  let nextFrog = 0, nextBug = 0, nextBed = 0, lastMenu = null;
   A.ambience = (windAmt, rainAmt, scene = {}) => {
     if (!A.ctx) return; const t = A.ctx.currentTime;
+    if (t < nextBed && !!scene.menu === lastMenu) return;
+    nextBed = t + .08; lastMenu = !!scene.menu;
     const pines = scene.bio === 'forest' ? 1 : 0, surf = scene.bio === 'cliffs' || scene.bio === 'mountains' ? 1 : 0;
     const high = Math.min(1, Math.max(0, ((scene.height ?? 0) - 50) / 250)), low = 1 - high;
     const sigh = .5 + .5 * Math.sin(t * (surf ? .45 : .25) + Math.sin(t * .11));   // a slow swell
@@ -107,8 +116,11 @@ export function createAudio() {
   function cricket(vol) { const f = 4300 + Math.random() * 300; for (let k = 0; k < 3; k++) tone({ f, dur: .025, vol: .022 * vol, delay: k * .045, vib: 60, vibF: 90 }); }
   // a katydid: a rasp of noise in three beats, "ka-ty-did"
   function katydid(vol, delay) { for (let k = 0; k < 3; k++) burst({ f: 5200, q: 4, dur: .06, vol: .05 * vol, delay: delay + k * .11 }); }
+  // one-shot sounds start a moment ahead (LEAD), so the attack is never already in the past by
+  // the time the audio thread runs it (that cut the attack short: a click)
+  const LEAD = .02;
   function burst({ f = 800, type = 'bandpass', q = 1, dur = .2, vol = .3, f2 = null, delay = 0 }) {
-    if (!A.ctx) return; const ctx = A.ctx, t = ctx.currentTime + delay;
+    if (!A.ctx) return; const ctx = A.ctx, t = ctx.currentTime + LEAD + delay;
     const src = ctx.createBufferSource(); src.buffer = noiseBuf;
     const fl = ctx.createBiquadFilter(); fl.type = type; fl.frequency.setValueAtTime(f, t); fl.Q.value = q;
     if (f2) fl.frequency.exponentialRampToValueAtTime(f2, t + dur);
@@ -116,7 +128,7 @@ export function createAudio() {
     src.connect(fl).connect(g).connect(A.master); src.start(t, Math.random()); src.stop(t + dur + .05);
   }
   function tone({ f, f2 = null, dur = .15, vol = .2, type = 'sine', delay = 0, vib = 0, vibF = 28, lp = 0 }) {
-    if (!A.ctx) return; const ctx = A.ctx, t = ctx.currentTime + delay;
+    if (!A.ctx) return; const ctx = A.ctx, t = ctx.currentTime + LEAD + delay;
     const o = ctx.createOscillator(); o.type = type; o.frequency.setValueAtTime(f, t);
     if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + dur);
     if (vib) { const l = ctx.createOscillator(), lg = ctx.createGain(); l.frequency.value = vibF; lg.gain.value = vib; l.connect(lg).connect(o.frequency); l.start(t); l.stop(t + dur + .05); }
