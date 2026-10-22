@@ -8,7 +8,7 @@
   --padw: 96px; --gap: 8px; }
 .sing3 button { font-family: var(--text); color: #fff; touch-action: manipulation; }
 .songcard3, .sgplate3, .birds3 { -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); }
-.sing3:not(.on) :is(.notepad3, .songcard3, .birds3), .sing3:not(.big) .birds3, .sing3.on .sgplate3, .sing3.big .songcard3 { display: none; }
+.sing3:not(.on) :is(.notepad3, .songcard3, .birds3, .sgrail3), .sing3:not(.big) .birds3, .sing3.big .sgrail3, .sing3.on .sgplate3, .sing3.big .songcard3 { display: none; }
 .sing3 svg { flex: none; }
 /* a bird's little flat logo (birdlogos.js), no round behind it */
 .sing3 .logo3 { display: block; width: 100%; height: 100%; }
@@ -86,11 +86,34 @@
 .sghead3 button { flex: none; width: 34px; height: 34px; padding: 0; display: grid; place-items: center; border: 0; border-radius: 50%; background: rgba(255, 255, 255, .12); cursor: pointer; }
 .sgmore3 { margin-left: auto; }
 .sghead3 button svg { width: 18px; height: 18px; }
-.sgbody3 { display: flex; align-items: center; gap: 8px; cursor: pointer; }
-.sglogo3 { flex: none; width: 44px; height: 44px; margin-left: -4px; }
-.sglogo3 > svg:not(.logo3) { width: 34px; height: 34px; margin: 6px; color: #fff; }
-.txt3 { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
-.sgsong3 { font-size: 12px; font-weight: 500; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* the song's name (a chevron when you know more than one of the bird's songs: tap for the next),
+   then theirs over yours: the bird's score, and under it what you sang this try */
+.sgsong3 { align-self: flex-start; max-width: 100%; padding: 0; border: 0; background: none; font-size: 12px; font-weight: 500; color: var(--dim) !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+.sgsong3.many { pointer-events: auto; cursor: pointer; }
+.sgsong3.many::after { content: ' \203A'; font-weight: 700; color: #fff; }
+.sgrow3 { display: flex; align-items: flex-end; gap: 8px; min-height: 28px; }
+.sglogo3 { flex: none; width: 40px; height: 40px; margin-left: -4px; align-self: center; }
+.sgme3 { flex: none; width: 36px; align-self: center; text-align: center; font-size: 11px; font-weight: 700; color: var(--dim); }
+.songcard3.free .sgrow3:not(.mine) { display: none; }
+.songcard3:not(.free) .sgrow3.mine:not(:has(span)) .sgme3 { opacity: .5; }
+
+/* the rail: the birds singing near by down the left, yourself at the bottom */
+.sgrail3 { pointer-events: auto; position: absolute; left: var(--side); top: var(--top); bottom: var(--bot); width: 60px; box-sizing: border-box; padding: 6px 0;
+  display: flex; flex-direction: column; align-items: center; gap: 6px; border: 1px solid var(--blkedge); border-radius: 30px; background: var(--blk); box-shadow: var(--shadow);
+  -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); }
+.sgbirds3 { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; overflow-y: auto; scrollbar-width: none; }
+.sgrail3 button { position: relative; flex: none; width: 48px; height: 48px; padding: 5px; border: 0; border-radius: 50%; background: none; cursor: pointer; --mode: #fff; }
+.sgrail3 button.on { background: color-mix(in srgb, var(--mode) 22%, transparent); box-shadow: inset 0 0 0 2px var(--mode); }
+.sgrail3 button.learn { --mode: #f2c14e; }
+.sgrail3 button.imitate { --mode: #8fcf5a; }
+/* a bird beside you that could teach you its song */
+.sgrail3 button.teach::after { content: ''; position: absolute; right: 3px; top: 3px; width: 10px; height: 10px; border-radius: 50%; background: #f2c14e; box-shadow: 0 0 0 2px #0e1318; }
+.sgyou3 { margin-top: auto; background: rgba(255, 255, 255, .12) !important; }
+.sgyou3 > svg { width: 30px; height: 30px; margin: 4px; color: #fff; }
+.sgyou3.on { box-shadow: inset 0 0 0 2px #fff; }
+.sing3.on .sgleft3 { left: calc(var(--side) + 68px); }
+/* the height ladder under the menu button steps aside for the rail */
+#ui3:has(.sing3.on:not(.big)) .alt { opacity: 0; pointer-events: none; }
 /* the birds' X: white on black, over the list's top right corner */
 .sgless3 { position: absolute; z-index: 1; top: 8px; right: 8px; width: 38px; height: 38px; padding: 0; border: 1px solid rgba(255, 255, 255, .3); border-radius: 50%;
   background: #000; box-shadow: var(--shadow); display: grid; place-items: center; cursor: pointer; color: #fff; }
@@ -152,6 +175,8 @@
 /* left-handed: the sides swap */
 .sing3.lefty .notepad3 { right: auto; left: var(--side); }
 .sing3.lefty .sgleft3 { left: auto; right: var(--side2); align-items: flex-end; }
+.sing3.lefty .sgrail3 { left: auto; right: var(--side2); }
+.sing3.lefty.on .sgleft3 { left: auto; right: calc(var(--side2) + 68px); }
 .sing3.lefty .birds3 { left: auto; right: var(--side2); }
 .sing3.lefty .brow3:first-child { margin-right: 0; margin-left: 0; }
 
