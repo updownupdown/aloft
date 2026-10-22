@@ -299,7 +299,8 @@ function trees(b, dt, E) {
       b.p[0] = t.x + dx / (hd || 1) * tr; b.p[2] = t.z + dz / (hd || 1) * tr;
       if (b.t - b.lastHit > .5) { b.s *= .45; b.lastHit = b.t; b.stamina = Math.max(0, b.stamina - .08); E.bump(b.p, 'trunk'); }
     }
-    // leaves are soft: they slow you, and slow enough you settle on the nearest perch
+    // leaves are soft: they slow you; slow enough, you settle on the limb you were lined up on (never
+    // one you didn't pick, and never the foliage itself)
     let inside = false;
     if (!t.kind) {
       const cy = y - t.s * TREE.crownY, R = t.s * TREE.crownR * 1.15;
@@ -312,10 +313,8 @@ function trees(b, dt, E) {
       b.s *= 1 - Math.min(.9, dt * (1.6 + b.s * .05));
       if (b.canopy < .2) E.leaves(b.p, b.s);
       b.canopy = 1;
-      // settle on the nearest limb (never the crown's top: coming in over it you sink through)
-      const limbs = perchesOf(t).filter(p => !p.top), over = y > t.s * (t.kind ? .8 : TREE.crownY + TREE.crownR * .45);
-      const mine = limbs.find(aimed);
-      if (b.s < 6 && mayPerch && !over && limbs.length && (mine || !b.aimPerch)) { settleOn(b, mine || nearestPerch(limbs, b.p), t, E); return; }
+      const mine = perchesOf(t).find(p => !p.top && aimed(p)), over = y > t.s * (t.kind ? .8 : TREE.crownY + TREE.crownR * .45);
+      if (b.s < 6 && mayPerch && !over && mine) { settleOn(b, mine, t, E); return; }
     }
     // a perch close by while slow: land on it
     if (mayPerch && groundSpeed(b) < FLY.landS + FLY.floatLand * (b.float || 0) && b.vy < 3) for (const p of perchesOf(t)) if (!p.top && (!b.aimPerch || aimed(p))) {
@@ -347,7 +346,6 @@ function solids(b, E) {
 }
 // how high the hawk's centre sits above a perch point (the top of the limb), feet on it
 const PERCH_Y = .14;
-const nearestPerch = (ps, q) => ps.reduce((a, p) => (Math.hypot(p.x - q[0], p.y - q[1], p.z - q[2]) < Math.hypot(a.x - q[0], a.y - q[1], a.z - q[2]) ? p : a));
 function settleOn(b, p, t, E, dur) {
   // the glide onto it takes longer the farther it has to go, so it never jumps
   const far = Math.hypot(p.x - b.p[0], p.y + PERCH_Y - b.p[1], p.z - b.p[2]);

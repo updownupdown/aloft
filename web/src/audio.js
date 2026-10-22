@@ -140,6 +140,8 @@ export function createAudio() {
   A.splash = big => { burst({ f: 1800, f2: 500, q: .7, dur: big ? .6 : .35, vol: big ? .45 : .25 }); };
   A.thump = (vol = .5) => { burst({ f: 180, type: 'lowpass', dur: .25, vol }); };
   A.rustle = (vol = 1) => { burst({ f: 3200, q: .6, dur: .3, vol: .15 * vol }); burst({ f: 2400, q: .6, dur: .2, vol: .1 * vol, delay: .08 }); };
+  // flying through foliage: a soft, low swish of leaves parting (not the perch's rustle and thump)
+  A.brush = (vol = 1) => { burst({ f: 1300, f2: 800, q: .5, dur: .45, vol: .06 * vol }); burst({ f: 2600, q: .8, dur: .25, vol: .025 * vol, delay: .1 }); };
   A.drink = () => { tone({ f: 620, f2: 380, dur: .12, vol: .18 }); tone({ f: 760, f2: 500, dur: .1, vol: .12, delay: .1 }); };
   A.eat = () => { tone({ f: 300, f2: 180, dur: .08, vol: .25, type: 'triangle' }); burst({ f: 1500, q: 2, dur: .06, vol: .15, delay: .02 }); };
   A.ring = () => { [0, 2, 4].forEach((n, i) => tone({ f: BASE[n] * keyMul() / 2, dur: .9, vol: .12, delay: i * .07, type: 'triangle' })); };

@@ -148,7 +148,7 @@ if (qs.has('fps')) G.settings.fpsCap = +qs.get('fps') || 60;
       if (what === 'trunk') H.toast('Bonk. Trunks are hard: aim for the gaps, or slow down and land on a limb.');
       G.emit('bump', what);
     },
-    leaves: (p, s) => { audio.rustle(.5 + Math.min(.5, s / 20)); for (let i = 0; i < 8; i++) G.part(p, [(Math.random() - .5) * 4, Math.random() * 2, (Math.random() - .5) * 4], 1.2, [.4, .55, .25], .07); G.emit('leaves'); },
+    leaves: (p, s) => { audio.brush(.6 + Math.min(.6, s / 20)); for (let i = 0; i < 8; i++) G.part(p, [(Math.random() - .5) * 4, Math.random() * 2, (Math.random() - .5) * 4], 1.2, [.4, .55, .25], .07); G.emit('leaves'); },
     barrel: () => { audio.rustle(.7); H.did('barrel'); },
     barrelDone: () => { G.emit('trick', 'barrel'); if (!G.flags.barrel) { G.flags.barrel = 1; H.toast('A barrel roll! Both wings round together, a full turn.', 4, 'event'); } },
     splash: (p, s) => { audio.splash(s > 15); for (let i = 0; i < 10; i++) G.part([p[0], WATER, p[2]], [(Math.random() - .5) * 3, 2 + Math.random() * 3, (Math.random() - .5) * 3], .9, [.85, .92, .95], .06); G.emit('splash'); },
