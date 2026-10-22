@@ -65,10 +65,11 @@ import { skyDaysSystem } from './sys/skydays.js';
 import { raptorsSystem } from './sys/raptors.js';
 import { wingcraftSystem } from './sys/wingcraft.js';
 import { stillSystem } from './sys/still.js';
+import { swellsSystem } from './sys/swells.js';
 
 const SYSTEMS = [speciesSystem, movesSystem, lifeSystem, clockSystem, weatherSystem, watersSystem, windsSystem, floraSystem, bushesSystem, airSystem, ringsSystem, foodSystem, aimSystem, sleepSystem, feelSystem, batterySystem, songsSystem, momentsSystem,
   guideSystem, journeySystem, nestSystem, storySystem, ruinsSystem, photoSystem, howtoSystem, faunaSystem, neighboursSystem, landsSystem, seasonsSystem, glowSystem, landAirSystem, crittersSystem, huntersSystem, aimsSystem, seasonSystem, ghostSystem,
-  fieldsSystem, skyDaysSystem, raptorsSystem, wingcraftSystem, stillSystem, polesSystem];
+  fieldsSystem, skyDaysSystem, raptorsSystem, wingcraftSystem, stillSystem, swellsSystem, polesSystem];
 
 // Where each bird first flies, in its own country (earth.js toXZ: latitude, longitude): the
 // red-tail at a forest edge in the Finger Lakes, the osprey over a Scottish loch, the barn owl in
