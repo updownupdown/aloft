@@ -181,7 +181,7 @@ export function crittersSystem(G) {
     }
   }
   function tryCatch() {
-    if (b.state !== 'fly') return;
+    if (b.state !== 'fly' || b.carry) return;   // (feet full)
     const focus = G.aim?.focus || 0, r = CRIT.catchR + CRIT.catchDive * focus;
     for (const o of live.values()) {
       if (!PREY[o.kind] || o.hidden > 0) continue;

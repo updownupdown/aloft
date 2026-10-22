@@ -193,7 +193,7 @@ export function faunaSystem(G) {
   // the fish's height: under the surface, rising to it, or arcing through the air
   const fishY = f => f.jump >= 0 ? WATER + Math.sin(f.jump * Math.PI) * 1.3 - .1 : WATER - .45 + Math.min(1, f.up) * .32;
   function tryCatch() {
-    if (b.state !== 'fly') return;
+    if (b.state !== 'fly' || b.carry) return;   // (feet full)
     const focus = G.aim?.focus || 0, deep = b.plunge > 0;
     for (const f of fishes.values()) {
       if (!deep && f.up < .5 && f.jump < 0) continue;
