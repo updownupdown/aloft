@@ -79,10 +79,14 @@ export const RIVER = { scale: 1500, seed: 91, half: 8, bed: -2.2 };
 export function riverAt(x, z) {
   const m = fbm(x / 2600, z / 2600, RIVER.seed + 7, 1);
   if (m < .02 || Math.hypot(x, z + 60) < 320) return null;
-  // the channel line is warped by a second noise, so it swings in meanders and bends
-  const wx = x + fbm(x / 520, z / 520, RIVER.seed + 11, 2) * 170, wz = z + fbm(x / 520, z / 520, RIVER.seed + 13, 2) * 170;
+  // the channel line is warped by noises at three sizes, so it swings in big meanders, bends
+  // within them, and small kinks and wiggles close up (so no stretch of it reads as straight)
+  const ax = fbm(x / 150, z / 150, RIVER.seed + 21, 2), az = fbm(x / 150, z / 150, RIVER.seed + 23, 2), bx = fbm(x / 48, z / 48, RIVER.seed + 25, 1), bz = fbm(x / 48, z / 48, RIVER.seed + 27, 1);
+  const wx = x + fbm(x / 520, z / 520, RIVER.seed + 11, 2) * 170 + ax * 40 + bx * 6, wz = z + fbm(x / 520, z / 520, RIVER.seed + 13, 2) * 170 + az * 40 + bz * 6;
   const v = fbm(wx / RIVER.scale, wz / RIVER.scale, RIVER.seed, 2) + fbm(wx / (RIVER.scale / 5), wz / (RIVER.scale / 5), RIVER.seed + 2, 1) * .12;
-  const wide = .65 + .7 * (fbm(x / 340, z / 340, RIVER.seed + 17, 1) * .5 + .5);
+  // the width wanders too: long reaches broad or narrow, pools and narrows within them
+  const u = (sd, k) => fbm(x / k, z / k, RIVER.seed + sd, 1) * .5 + .5;
+  const wide = (.5 + 1.0 * u(17, 340)) * (.7 + .6 * u(29, 1100)) * (.82 + .36 * u(31, 95));
   return { d: Math.abs(v) * RIVER.scale * .55, w: RIVER.half * wide * smooth(.02, .2, m), m, side: v < 0 ? -1 : 1, lean: clamp(fbm(x / 260, z / 260, RIVER.seed + 19, 1) * 2.2, -1, 1) };
 }
 function riverCut(x, z, h) {
@@ -226,7 +230,7 @@ export const TREE = {
   limbR: [.018, .015],                           // limb thickness at the trunk (it tapers to half)
 };
 // the looks: 0 broadleaf, 1 pine, then the trees of the other lands, each with its own limbs
-export const LOOK = { broadleaf: 0, pine: 1, birch: 2, redwood: 3, acacia: 4, saguaro: 5, joshua: 6, mangrove: 7 };
+export const LOOK = { broadleaf: 0, pine: 1, birch: 2, redwood: 3, acacia: 4, saguaro: 5, joshua: 6, mangrove: 7, oak: 8, poplar: 9, spruce: 10, juniper: 11, willow: 12 };
 export const LOOKS = [
   { kind: 0, limbs: TREE.limbs[0], limbR: TREE.limbR[0] },
   { kind: 1, limbs: TREE.limbs[1], limbR: TREE.limbR[1] },
@@ -236,22 +240,55 @@ export const LOOKS = [
   { kind: 1, limbs: [[0, .42, .14], [3.1, .55, .12]], limbR: .035 },                                    // saguaro arms
   { kind: 1, limbs: [[0, .5, .22], [2.1, .56, .2], [4.1, .46, .22]], limbR: .03 },                      // Joshua tree
   { kind: 0, limbs: [[0, .44, .3], [2.3, .5, .28], [4.2, .4, .28]], limbR: .018 },                      // mangrove
+  { kind: 0, limbs: [[0, .36, .38], [2.2, .42, .36], [4.3, .32, .37]], limbR: .026 },                   // spreading oak
+  { kind: 0, limbs: [[0, .22, .14], [2.6, .28, .13]], limbR: .012 },                                    // poplar
+  { kind: 1, limbs: [[0, .2, .2], [2.1, .27, .19], [4.2, .34, .17]], limbR: .011 },                     // spruce
+  { kind: 0, limbs: [[.6, .38, .3], [3, .44, .27]], limbR: .022 },                                      // juniper
+  { kind: 0, limbs: [[0, .4, .28], [2.1, .46, .3], [4.2, .38, .27]], limbR: .022 },                     // willow
 ];
-// what grows where: [look, share] lists and the scale range, by biome
-const lookFor = (b, x, z, y, r) => {
-  const pineish = y > 60 || fbm(x / 300, z / 300, 31, 2) > .25;
-  switch (b) {
-    case 'birch': return r < .78 ? [LOOK.birch, 12, 7] : [LOOK.pine, 13, 8];
-    case 'redwood': return r < .7 ? [LOOK.redwood, 34, 18] : [LOOK.broadleaf, 13, 8];
-    case 'alpine': case 'fjord': case 'coast': return [LOOK.pine, 11, 8];
-    case 'desert': return r < .65 ? [LOOK.saguaro, 6, 5] : [LOOK.joshua, 6, 4];
-    case 'canyon': case 'badlands': return r < .6 ? [LOOK.pine, 5, 3] : [LOOK.saguaro, 6, 4];
-    case 'savanna': return [LOOK.acacia, 8, 4];
-    case 'swamp': return r < .8 ? [LOOK.mangrove, 9, 5] : [LOOK.broadleaf, 11, 6];
-    case 'marsh': return [LOOK.broadleaf, 10, 6];
-    default: return pineish ? [LOOK.pine, 13, 9] : [LOOK.broadleaf, 11, 9];
-  }
+// what grows where: each land's trees as [look, weight] (a weight may depend on the spot), mixed
+// by a roll; each kind also comes and goes in its own slow patches, so a wood has stands of one
+// kind running into another rather than an even salt-and-pepper. Willows and poplars keep to
+// low wet ground, spruce to the heights, the dry lands have junipers and cacti (no pines).
+const SIZE_OF = [[11, 8], [13, 8], [12, 7], [34, 18], [8, 4], [6, 5], [6, 4], [9, 5], [10, 7], [16, 7], [15, 9], [5, 4], [10, 5]];   // by look: [smallest grown height, extra]
+const MIX = {
+  meadow: (y, wet) => [[0, 5], [8, 3], [2, 1], [1, 1], [9, wet * 4], [12, wet * 3]],
+  forest: (y, wet, hi) => [[0, 6], [8, 3], [2, 1.5], [1, 2 + hi * 4], [10, hi * 3], [9, wet * 2], [12, wet * 2]],
+  lakeland: (y, wet, hi) => [[0, 4], [2, 2], [1, 2 + hi * 3], [8, 1.5], [12, wet * 5], [9, wet * 2]],
+  birch: (y, wet, hi) => [[2, 8], [1, 1.5], [10, 1 + hi * 2], [0, .6]],
+  redwood: (y, wet) => [[3, 7], [10, 1], [0, 1], [12, wet * 2]],
+  moor: (y, wet) => [[2, 3], [1, 1.5], [11, 1.5], [8, .6], [12, wet * 2]],
+  mountains: (y, wet, hi) => [[1, 3], [10, 2 + hi * 3], [2, 1], [0, 1 - hi]],
+  alpine: (y, wet, hi) => [[10, 5], [1, 3], [11, 1 - hi * .8]],
+  cliffs: () => [[1, 3], [11, 2], [10, 1]],
+  fjord: () => [[10, 4], [1, 3], [2, 1.5]],
+  coast: () => [[1, 4], [11, 1.5], [8, 1]],
+  karst: (y, wet) => [[0, 3], [11, 2], [1, 1.5], [8, 1], [9, wet * 2]],
+  volcano: () => [[11, 3], [1, 1.5], [2, .5]],
+  desert: (y, wet) => [[5, 5], [6, 3], [11, 1], [9, wet * 4]],
+  canyon: (y, wet) => [[11, 6], [5, 1], [9, wet * 5]],
+  badlands: (y, wet) => [[11, 6], [6, .4], [9, wet * 5]],
+  savanna: (y, wet) => [[4, 7], [11, .6], [9, wet * 2]],
+  swamp: () => [[7, 6], [12, 2], [0, 1]],
+  marsh: (y, wet) => [[12, 3 + wet * 2], [0, 2], [9, 1.5]],
 };
+// how big the trees of a land grow (stunted on the moor and the heights, tall in sheltered woods)
+const SIZE_K = { moor: .7, alpine: .8, cliffs: .75, coast: .8, fjord: .9, volcano: .75, canyon: .85, badlands: .8, forest: 1.08, redwood: 1.1 };
+function lookFor(b, x, z, y, r, f) {
+  const wet = smooth(5, 1.5, y), hi = smooth(45, 110, y);
+  const list = (MIX[b] || MIX.meadow)(y, wet, hi);
+  let sum = 0; const w = list.map(([look, wt], i) => { const v = Math.max(0, wt) * Math.max(.05, 1 + 1.4 * fbm(x / 190, z / 190, 40 + look, 2)); sum += v; return v; });
+  let pick = list[0][0], acc = 0;
+  for (let i = 0; i < list.length; i++) if (r * sum < (acc += w[i])) { pick = list[i][0]; break; }
+  return pick;
+}
+// a tree's height: its kind's range, the land's, the grove's (old woods and young ones), and its
+// own age: some saplings, most grown, now and then an old giant
+function sizeOf(look, b, x, z, f, a, e) {
+  const [s0, ds] = SIZE_OF[look], age = a < .16 ? .45 + a / .16 * .3 : a > .95 ? 1.2 + (a - .95) * 3 : 1;
+  const grove = 1 + .16 * fbm(x / 420, z / 420, 39, 2), edge = .82 + .18 * smooth(-.1, .35, f);
+  return (s0 + e * ds) * age * grove * edge * (SIZE_K[b] || 1);
+}
 // trees per 10 m spot, by how wooded the place is
 const densityOf = (b, f, x, z) => {
   switch (b) {
@@ -279,8 +316,8 @@ export function treesIn(cx, cz) {
     const nm = normalAt(x, z); if (nm[1] < .82) continue;
     if (Math.hypot(x, z + 60) < 22) continue;   // keep the starting spot clear
     if (roadShade(x, z) > .25 || railNear(x, z) < 6) continue;   // nor on the old tracks and the railway
-    const [look, s0, ds] = lookFor(e.name, x, z, y, ih(gx, gz, 28));
-    const s = s0 + ih(gx, gz, 24) * ds;
+    const look = lookFor(e.name, x, z, y, ih(gx, gz, 28), f);
+    const s = sizeOf(look, e.name, x, z, f, ih(gx, gz, 29), ih(gx, gz, 24));
     t.push({ x, y: y - .3, z, s, yaw: ih(gx, gz, 25) * 6.283, kind: LOOKS[look].kind, look, id: gx * 7919 + gz, tint: ih(gx, gz, 26) });
   }
   // clear the ground round each landmark; the giant oaks and willows are trees themselves
@@ -290,7 +327,7 @@ export function treesIn(cx, cz) {
     for (let i = t.length - 1; i >= 0; i--) if (Math.hypot(t[i].x - l.x, t[i].z - l.z) < clear) t.splice(i, 1);
     if (l.kind !== 'oak' && l.kind !== 'willow' && l.kind !== 'giant') continue;
     if (Math.floor(l.x / CHUNK) !== cx || Math.floor(l.z / CHUNK) !== cz) continue;
-    const look = l.kind === 'giant' ? LOOK.redwood : LOOK.broadleaf;
+    const look = l.kind === 'giant' ? LOOK.redwood : l.kind === 'willow' ? LOOK.willow : LOOK.oak;
     t.push({ x: l.x, y: l.y - .5, z: l.z, s: l.h, yaw: l.yaw, kind: LOOKS[look].kind, look, id: 900001 + (cx * 31 + cz) * 7, tint: l.kind === 'willow' ? .9 : .2, landmark: l.id });
   }
   // and off the old buildings, but a young tree grows up through each roofless shell
@@ -311,6 +348,58 @@ export function treesNear(x, z, r) {
   for (let cz = d0; cz <= d1; cz++) for (let cx = c0; cx <= c1; cx++) for (const t of treesIn(cx, cz)) if (Math.abs(t.x - x) < r && Math.abs(t.z - z) < r) out.push(t);
   return out;
 }
+// ---- bushes --------------------------------------------------------------------------------
+// Bushes 1 to 3 m tall: leafy shrubs at wood edges and in meadow thickets, gorse on the moors and
+// the coast, sagebrush in the dry lands, thorn bushes on the savanna. A bird can stand on top of
+// one (solidsNear gives each a perch there, soft: true). { x, y, z, s (height), w (width/height),
+// yaw, kind (prop name, shapes.js BUSH_SHAPES), tint, id }. Drawn by sys/bushes.js.
+const BUSH_LANDS = {
+  moor: ['gorse', .09, 1.2, .8], coast: ['gorse', .06, 1.1, .7], cliffs: ['gorse', .04, 1, .6],
+  desert: ['sage', .035, 1, .6], canyon: ['sage', .06, 1.1, .6], badlands: ['sage', .045, 1, .6], volcano: ['sage', .015, .9, .5],
+  savanna: ['thorn', .06, 1.6, 1.1], saltflat: null, alpine: ['gorse', .02, .8, .5],
+};
+const bushCache = new Map();
+export function bushesIn(cx, cz) {
+  const key = cx + ',' + cz; let out = bushCache.get(key); if (out) return out;
+  out = []; const G = 8, n = CHUNK / G, trees = treesIn(cx, cz);
+  for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
+    const gx = cx * n + i, gz = cz * n + j, p = ih(gx, gz, 161); if (p > .2) continue;
+    const x = (gx + .15 + ih(gx, gz, 162) * .7) * G, z = (gz + .15 + ih(gx, gz, 163) * .7) * G;
+    const bl = blend(x, z), b = rollBiome(bl, ih(gx, gz, 164)).name, f = forestOf(x, z, bl);
+    const clump = smooth(-.1, .5, fbm(x / 70, z / 70, 165, 2));   // they grow in thickets
+    let L = b in BUSH_LANDS ? BUSH_LANDS[b] : null;
+    if (!L && b !== 'saltflat') {   // the green lands: wood edges thick with them, a few thickets out in the open, few under the trees
+      const d = f > .32 ? .02 : f > -.1 ? .13 : .025 + .07 * clump;
+      L = ['bush', d, 1.6, 1];
+    }
+    if (!L || p > L[1] * (.4 + 1.2 * clump)) continue;
+    const y = groundAt(x, z); if (y < 1 || y > 170) continue;
+    if (normalAt(x, z)[1] < .78 || Math.hypot(x, z + 60) < 22) continue;
+    if (roadShade(x, z) > .25 || railNear(x, z) < 6) continue;
+    if (trees.some(t => Math.abs(t.x - x) < 3 && Math.abs(t.z - z) < 3)) continue;
+    const s = L[2] * (.6 + ih(gx, gz, 166) * .5 + clump * .25) + L[3] * ih(gx, gz, 167) * .5;
+    out.push({ x, y: y - .1, z, s, w: L[0] === 'sage' ? 1.3 : L[0] === 'thorn' ? 1.4 : 1.15, yaw: ih(gx, gz, 168) * 6.283, kind: L[0], tint: ih(gx, gz, 169), id: 5e7 + gx * 7919 + gz });
+  }
+  for (const bd of buildingsNear((cx + .5) * CHUNK, (cz + .5) * CHUNK, CHUNK / 2 + 16)) {
+    const clear = clearOf(bd);
+    for (let i = out.length - 1; i >= 0; i--) if (Math.hypot(out[i].x - bd.x, out[i].z - bd.z) < clear) out.splice(i, 1);
+  }
+  for (const l of landmarksNear((cx + .5) * CHUNK, (cz + .5) * CHUNK, CHUNK / 2 + 30)) {
+    if (l.kind === 'sight') continue;
+    for (let i = out.length - 1; i >= 0; i--) if (Math.hypot(out[i].x - l.x, out[i].z - l.z) < (l.kind === 'falls' ? 26 : l.r + 6)) out.splice(i, 1);
+  }
+  bushCache.set(key, out);
+  if (bushCache.size > 600) bushCache.delete(bushCache.keys().next().value);
+  return out;
+}
+export function bushesNear(x, z, r) {
+  const out = [], c0 = Math.floor((x - r) / CHUNK), c1 = Math.floor((x + r) / CHUNK), d0 = Math.floor((z - r) / CHUNK), d1 = Math.floor((z + r) / CHUNK);
+  for (let cz = d0; cz <= d1; cz++) for (let cx = c0; cx <= c1; cx++) for (const o of bushesIn(cx, cz)) if (Math.abs(o.x - x) < r && Math.abs(o.z - z) < r) out.push(o);
+  return out;
+}
+// how high the top of a bush's mesh is (unit height; the round shrub and gorse dome a little under 1)
+export const BUSH_TOP = { bush: 1.01, gorse: .97, sage: .98, thorn: .95 };
+
 // where a hawk can sit on a tree: the crown top, and out along each of its look's limbs
 export function perchesOf(t) {
   const L = LOOKS[t.look ?? t.kind] || LOOKS[t.kind];
@@ -582,6 +671,8 @@ export function solidsNear(x, z, r) {
   for (const g of bridgesNear(x, z, r + 30)) bridgeSolids(g, pillar);
   for (const o of polesNear(x, z, r + 6)) poleSolids(o, pillar);
   railSolids(x, z, r, pillar);
+  // bushes: stand on top; the sides are leaves (soft: brush through, don't bump)
+  for (const o of bushesNear(x, z, r + 4)) { pillar(o.x, o.z, o.s * o.w * .3, o.y - .5, o.y + o.s * BUSH_TOP[o.kind]); Object.assign(out[out.length - 1], { soft: true, bush: o }); }
   // fence posts (perch on top) and the walls' coping stones
   for (const f of fencesNear(x, z, r + 4)) for (const p of f.posts) if (Math.abs(p[0] - x) < r + 4 && Math.abs(p[2] - z) < r + 4) pillar(p[0], p[2], f.kind === 'wall' ? .5 : .09, p[1] - 1, p[1] + p[3]);
   return out;

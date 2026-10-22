@@ -9,7 +9,7 @@ import { buildHawk, HAWK_SCALE } from './hawk.js';
 // instanced shapes that are cloud: see-through when the camera is close or inside
 const CLOUDY = new Set(['cloud', 'storm', 'puff', 'lens', 'devil']);
 // instanced shapes that hoar frost whitens (the plants and stones; not the animals)
-const FROSTY = new Set(['tuft', 'scrub', 'bush', 'reeds', 'stone', 'flowerY', 'flowerW', 'flowerP', 'hay', 'hayLaid', 'bale', 'barrel']);
+const FROSTY = new Set(['tuft', 'scrub', 'bush', 'gorse', 'sage', 'thorn', 'reeds', 'stone', 'flowerY', 'flowerW', 'flowerP', 'hay', 'hayLaid', 'bale', 'barrel']);
 const COMMON_FS = `
 uniform vec3 uCam, uSun, uSunCol, uSkyAmb, uGndAmb, uFogCol, uFocus;
 uniform vec3 uZenith;
