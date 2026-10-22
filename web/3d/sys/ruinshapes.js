@@ -3,7 +3,7 @@
 // pump with broken vanes, a cart with a wheel off, an upturned boat, the old bridges, and the
 // small things people left behind (ARTEFACTS). No lit windows anywhere: the glass is dark.
 import { builder, blob, prism, tube, reseed, rnd } from '../shapes.js';
-import { DIM, WALL_LEFT } from '../settle.js';
+import { DIM, WALL_LEFT, POLE } from '../settle.js';
 
 const STONE = [[.6, .58, .53], [.54, .52, .48], [.66, .63, .57]], MOSS = [.44, .5, .33], MOSS2 = [.38, .46, .3];
 const SLATE = [.37, .38, .41], SLATE2 = [.31, .33, .36], DARK = [.11, .11, .12], WOOD = [.45, .39, .32], WOOD2 = [.37, .32, .27];
@@ -247,3 +247,71 @@ export const ARTEFACT_SHAPES = {
   spyglass: B => { tube(B, [-.18, .03, 0], [.04, .03, 0], .03, BRASS); tube(B, [.04, .03, 0], [.18, .03, 0], .022, BRASS); },
 };
 export function artefactMesh(kind) { reseed(500 + kind.length); const B = builder(); ARTEFACT_SHAPES[kind](B); return B.out(); }
+
+// ---- pole lines (settle.js poleLine) ----------------------------------------------------------
+// a weathered pole with its crossarm (across the line, local z) and glass insulators; state 1
+// leans toward +z, state 2 lies fallen along +z in the grass
+export function pole(state) {
+  reseed(601 + state); const B = builder(), H = POLE.h, t = state === 2 ? 1.5 : state === 1 ? POLE.lean : 0, c = Math.cos(t), s = Math.sin(t);
+  const T = ([x, y, z]) => [x, y * c - z * s + (state === 2 ? .15 : 0), y * s + z * c];   // tip toward +z about the foot
+  const wood = [.42, .36, .3], wood2 = [.34, .3, .26], glass = [.5, .62, .6];
+  tube(B, T([0, state === 2 ? 0 : -.6, 0]), T([0, H, 0]), .13, wood);
+  tube(B, T([0, H - .4, -.8]), T([0, H - .4, .8]), .07, wood2);
+  for (const k of [-.65, .65]) tube(B, T([0, H - .35, k]), T([0, H - .2, k]), .045, glass);
+  if (state === 2) for (let k = 0; k < 3; k++) blob(B, (rnd() - .5) * .6, .1, 1 + k * 2.4, .35, [.4, .5, .3], [.46, .54, .32]);   // grass grown over it
+  return B.out();
+}
+// the wires of one line, sagging from pole to pole (coordinates from its first pole, y as is);
+// a snapped one hangs down from its pole toward the grass
+export function wires(L) {
+  reseed(611); const B = builder(), [ox, , oz] = [L.poles[0].x, 0, L.poles[0].z], col = [.2, .19, .18], P = L.poles;
+  const arm = (o, k) => { const a = o.line + Math.PI / 2; return [o.top[0] - ox + Math.cos(a) * k, o.top[1] - .25, o.top[2] - oz + Math.sin(a) * k]; };
+  for (let i = 0; i + 1 < P.length; i++) {
+    const a = P[i], b = P[i + 1];
+    if (a.state === 2 || Math.hypot(b.x - a.x, b.z - a.z) > POLE.step * 1.5) continue;
+    for (const k of [-.65, .65]) {
+      const p = arm(a, k);
+      if (b.state === 2 || (a.snap && k > 0)) {   // snapped: it hangs from this pole to the ground
+        const dx = b.x - a.x, dz = b.z - a.z, l = Math.hypot(dx, dz);
+        tube(B, p, [p[0] + dx / l * 1.5, p[1] - 3, p[2] + dz / l * 1.5], .018, col);
+        tube(B, [p[0] + dx / l * 1.5, p[1] - 3, p[2] + dz / l * 1.5], [p[0] + dx / l * 3.5, a.y + .05, p[2] + dz / l * 3.5], .018, col);
+        continue;
+      }
+      const q = arm(b, k), N = 6;
+      for (let j = 0; j < N; j++) {
+        const u0 = j / N, u1 = (j + 1) / N, at = u => [p[0] + (q[0] - p[0]) * u, p[1] + (q[1] - p[1]) * u - .7 * 4 * u * (1 - u), p[2] + (q[2] - p[2]) * u];
+        tube(B, at(u0), at(u1), .018, col);
+      }
+    }
+  }
+  return { tris: B.out(), at: [ox, oz] };
+}
+// a wind chime left hanging under a porch eave: a little wooden disc and five tubes on threads
+// (it hangs down from its origin)
+export function chime() {
+  reseed(621); const B = builder(), tin = [.72, .7, .64], wood = [.45, .38, .3];
+  prism(B, 0, 0, .14, .14, -.08, -.04, 8, wood);
+  for (let i = 0; i < 5; i++) {
+    const a = i / 5 * 6.283, x = Math.cos(a) * .1, z = Math.sin(a) * .1, l = .28 + i * .07;
+    tube(B, [x, -.08, z], [x, -.2, z], .004, [.3, .28, .26]);
+    tube(B, [x, -.2, z], [x, -.2 - l, z], .013, tin);
+  }
+  blob(B, 0, -.36, 0, .035, wood, wood);
+  return B.out();
+}
+// the drowned church's tower and spire (B3): stone stained dark green below the waterline, open
+// belfry arches, a slate spire and an iron weathervane, a cockerel still pointing the wind
+export function spire() {
+  reseed(631); const B = builder(), weed = [.3, .36, .28], weed2 = [.27, .32, .26], iron = [.25, .23, .22];
+  box(B, 0, -1.2, 0, 4, 6.6, 4, 0, weed, weed2);
+  box(B, 0, 5.4, 0, 4, 8.6, 4, 0, pick(STONE), MOSS);
+  for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2; opening(B, Math.cos(a) * 2.03, 10.6, Math.sin(a) * 2.03, a + Math.PI / 2, 1, 2); }
+  box(B, 0, 13.9, 0, 4.5, .3, 4.5, 0, STONE[1]);
+  const P = [[-2.1, -2.1], [2.1, -2.1], [2.1, 2.1], [-2.1, 2.1]];
+  for (let k = 0; k < 4; k++) { const [x0, z0] = P[k], [x1, z1] = P[(k + 1) % 4]; B.tri([x0, 14.2, z0], [x1, 14.2, z1], [0, 21.2, 0], k & 1 ? SLATE : SLATE2); }
+  tube(B, [0, 21, 0], [0, 23.3, 0], .05, iron);
+  for (const [a, b] of [[[-.6, 22.4, 0], [.6, 22.4, 0]], [[0, 22.4, -.6], [0, 22.4, .6]]]) tube(B, a, b, .025, iron);
+  B.tri([-.5, 22.9, 0], [.55, 22.9, 0], [.1, 23.5, 0], iron); B.tri([-.5, 22.9, 0], [.1, 23.5, 0], [-.3, 23.3, 0], iron);   // the cockerel
+  ivy(B, 1.8, 5.6, 1.8, 4);
+  return B.out();
+}
