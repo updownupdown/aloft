@@ -50,15 +50,24 @@ export function createCamera(G) {
       want = [p[0] - d[0] * 2.6 * zm, p[1] + .9 * zm - Math.max(-.5, Math.min(.6, lp)) * .9, p[2] - d[2] * 2.6 * zm];
       const hz = 4.1 * zm, a0 = Math.atan2(.9 * zm - .05, hz), a = Math.max(-1.1, Math.min(1.25, lp - a0));
       look = [p[0] + d[0] * 1.5 * zm, want[1] + hz * Math.tan(a), p[2] + d[2] * 1.5 * zm];
+      // asleep (b.skyView, sys/sleep.js): the view sinks below and behind the bird and turns up to the
+      // stars, the roosting bird dark against them at the foot of the picture
+      C.sky = (C.sky || 0) + ((b.skyView ? 1 : 0) - (C.sky || 0)) * Math.min(1, dt * .7);
+      if (C.sky > .001) {
+        const k = C.sky * C.sky * (3 - 2 * C.sky), sw = [p[0] - d[0] * 2.4, p[1] - 1.1, p[2] - d[2] * 2.4], el = .72;
+        const sl = [sw[0] + d[0] * Math.cos(el) * 10, sw[1] + Math.sin(el) * 10, sw[2] + d[2] * Math.cos(el) * 10];
+        for (let i = 0; i < 3; i++) { want[i] += (sw[i] - want[i]) * k; look[i] += (sl[i] - look[i]) * k; }
+      }
     }
     if (!C.cam) C.cam = want.slice();
-    const k = b.state === 'fly' && !C.still ? 1 : Math.min(1, dt * 2);
+    const k = (b.state === 'fly' && !C.still) || b.snapCam ? 1 : Math.min(1, dt * 2);
     for (let i = 0; i < 3; i++) C.cam[i] += (want[i] - C.cam[i]) * k;
     if (b.state === 'fly' && Math.hypot(want[0] - C.cam[0], want[1] - C.cam[1], want[2] - C.cam[2]) < .05) C.still = false;
     if (b.state !== 'fly') C.still = true;
     C.cam[1] = Math.max(C.cam[1], height(C.cam[0], C.cam[2]) + 1.1, WATER + .6);
     if (!C.look) C.look = look.slice();
-    for (let i = 0; i < 3; i++) C.look[i] += (look[i] - C.look[i]) * Math.min(1, dt * (b.state === 'fly' ? 12 : 4));
+    for (let i = 0; i < 3; i++) C.look[i] += (look[i] - C.look[i]) * (b.snapCam ? 1 : Math.min(1, dt * (b.state === 'fly' ? 12 : 4)));
+    b.snapCam = false;   // a travel (main.js G.travelTo): the view jumps with the bird, once
 
     // the hawk's frame: forward with a body pitch, banked by roll
     const pv = b.state === 'fly' ? b.gamma * .8 + b.flare * .45 - b.tuck * .1 : b.state === 'perch' ? .5 : b.state === 'ground' ? .3 : .08;

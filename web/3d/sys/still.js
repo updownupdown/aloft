@@ -92,7 +92,8 @@ export function stillSystem(G) {
     let want = null, k = 0;
     const rainy = (G.rain || 0) > .25, sunny = !rainy && (G.light?.night ?? 0) < .3 && (G.light?.sun?.[1] ?? 1) > .12 && !(G.overcast > .6);
     b.sunning = settled() && (b.wet || 0) > .12 && sunny;
-    if (watch) want = watchPose();
+    if (b.eating > 0 && b.eatPose) want = b.eatPose;   // food.js: bent to the feet, tearing
+    else if (watch) want = watchPose();
     else if (b.sunning) want = sunPose;
     else if (settled() && rainy) want = hunch;
     if (want) { act = null; k = 1; }

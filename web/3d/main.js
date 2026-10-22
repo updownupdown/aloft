@@ -14,7 +14,7 @@ import { createRenderer } from './render.js';
 import { createPerf } from './perf.js';
 import { createInput } from './input.js';
 import { createHawk, step, perchAhead } from './flight.js';
-import { height, WATER, WIND, thermalsNear, forest, treesNear, perchesOf } from './world.js';
+import { height, WATER, WIND, thermalsNear, forest, treesNear, perchesOf, solidsNear } from './world.js';
 import { createAudio } from '../src/audio.js';
 import { createMusic } from '../src/music.js';
 import { store, clamp } from './util.js';
@@ -130,7 +130,7 @@ if (qs.has('fps')) G.settings.fpsCap = +qs.get('fps') || 60;
   // one button to take off, top centre, whenever the hawk is perched, on the ground or on the water
   // (3d.css styles it with the rest of the UI; it hides with the menu and in photo mode)
   ui.insertAdjacentHTML('beforeend', `<button class="takeoff3 gone" aria-label="Take off">Take off</button>`);
-  const takeoffBtn = ui.querySelector('.takeoff3:not(.sleep3)');
+  const takeoffBtn = ui.querySelector('.takeoff3:not(.sleep3):not(.eat3)');
   const takeoff = e => { e.preventDefault(); e.stopPropagation(); audio.unlock?.(); b.wantOff = .6; };   // flight.js takes off as soon as it can
   takeoffBtn.addEventListener('pointerdown', takeoff);
   // the actions other UI can offer (menu.js's one action button): run() and when() it fits now
@@ -155,6 +155,30 @@ if (qs.has('fps')) G.settings.fpsCap = +qs.get('fps') || 60;
     splash: (p, s) => { audio.splash(s > 15); for (let i = 0; i < 10; i++) G.part([p[0], WATER, p[2]], [(Math.random() - .5) * 3, 2 + Math.random() * 3, (Math.random() - .5) * 3], .9, [.85, .92, .95], .06); G.emit('splash'); },
   };
   G.E = E;
+
+  // travel (the map's double tap): the menu shuts, the view fades to black, the hawk is set down on
+  // the nearest perch to the spot (a branch, a bush, a stone; within TRAVEL_R m), else on the
+  // ground or the water there, and the view fades back in
+  const TRAVEL_R = 45;
+  ui.insertAdjacentHTML('beforeend', '<div class="fade3" style="position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;transition:opacity .4s;z-index:30"></div>');
+  const fade = ui.querySelector('.fade3');
+  G.travelTo = (x, z, done) => {
+    G.menu.set(false); fade.style.pointerEvents = 'auto'; fade.style.opacity = 1;
+    setTimeout(() => {
+      let best = null, bd = TRAVEL_R;
+      const near = (p, t) => { const d = Math.hypot(p.x - x, p.z - z); if (d < bd) { bd = d; best = { p, t }; } };
+      for (const t of treesNear(x, z, TRAVEL_R)) for (const p of perchesOf(t)) if (!p.top) near(p, t);
+      for (const o of solidsNear(x, z, TRAVEL_R)) if (o.perch) near(o.perch, null);
+      Object.assign(b, { s: 0, vy: 0, gamma: 0, roll: 0, settle: 0, hop: 0, acc: 0, sPrev: 0, from: null, aimPerch: null, goTo: null, wantOff: 0, canopy: 0, snapCam: true });
+      if (best) { b.state = 'perch'; b.perch = best.p; b.tree = best.t; b.p = [best.p.x, best.p.y + .14, best.p.z]; }
+      else {
+        const g = height(x, z); b.perch = b.tree = null;
+        if (g < WATER) { b.state = 'swim'; b.p = [x, WATER + .12, z]; } else { b.state = 'ground'; b.p = [x, g + .35, z]; }
+      }
+      done?.();
+      setTimeout(() => { fade.style.opacity = 0; fade.style.pointerEvents = 'none'; }, 250);
+    }, 450);
+  };
 
   // ---- HUD and menu rows for the core -----------------------------------------------------
   const setWings = H.meter('wings', { label: 'wings', colour: 'linear-gradient(90deg,#8a6240,#b8862f)' });

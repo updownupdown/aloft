@@ -172,7 +172,7 @@ void main() { vP = aP; gl_Position = vec4(aP, 1., 1.); }   // at the back: drawn
 const SKY_FS = `#version 300 es
 precision highp float;
 in vec2 vP; out vec4 frag;
-uniform mat4 uInvVP; uniform vec3 uZenith, uHorizon, uSun, uSunCol, uCloud; uniform float uNight, uTime, uAurora;
+uniform mat4 uInvVP; uniform vec3 uZenith, uHorizon, uSun, uSunCol, uCloud; uniform float uNight, uTime, uAurora, uStarA;
 float h21(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
 float vn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f);
   return mix(mix(h21(i), h21(i + vec2(1, 0)), f.x), mix(h21(i + vec2(0, 1)), h21(i + vec2(1, 1)), f.x), f.y); }
@@ -189,8 +189,17 @@ void main() {
     float n = vn(q) * .6 + vn(q * 2.3 + 7.) * .3 + vn(q * 5.1 + 3.) * .1;
     cl = smoothstep(.52, .78, n) * smoothstep(.02, .25, d.y);
     c = mix(c, uCloud, cl * .3);   // only faint high haze: the clouds themselves are meshes (sys/air.js)
-    if (uNight > 0.) { vec2 g = floor(d.xz / (d.y + .3) * 140.); float st = step(.996, h21(g)) * (1. - cl) * smoothstep(.05, .3, d.y);
-      c += vec3(st) * uNight * (.6 + .4 * sin(uTime * 2. + h21(g + 3.) * 40.)); }
+    // stars: round points on a sphere that turns about the pole star in the north (uStarA, from the
+    // time of day: they wheel slowly through the night, fast while you sleep, sys/sleep.js)
+    if (uNight > 0.) {
+      vec3 ax = vec3(0., .64, -.768); float ca = cos(uStarA), sa = sin(uStarA);
+      vec3 r = d * ca + cross(ax, d) * sa + ax * dot(ax, d) * (1. - ca);
+      float lat = asin(clamp(r.y, -1., 1.)), lon = atan(r.z, r.x);
+      vec2 q = vec2(lon, lat) * 300., g = floor(q), f = fract(q) - .5;
+      float hs = h21(g), mag = h21(g + 5.);
+      f -= (vec2(h21(g + 1.), h21(g + 2.)) - .5) * .5; f.x *= max(cos(lat), .05);
+      float st = step(1. - .02 * cos(lat), hs) * smoothstep(.06 + .1 * mag, .02, length(f)) * (1. - cl) * smoothstep(.05, .3, d.y);
+      c += vec3(st) * uNight * (.5 + .5 * mag) * (.75 + .25 * sin(uTime * 2. + h21(g + 3.) * 40.)); }
   }
   // northern lights: thin curtains high in the north, added to the sky (stars show through). The
   // view ray is stepped up through a layer of sky; where it meets a curtain's wavy line it glows,
@@ -525,7 +534,7 @@ export function createRenderer(gl) {
     gl.useProgram(sky.p);
     gl.uniformMatrix4fv(sky.u.uInvVP, false, invert(vp));
     gl.uniform3fv(sky.u.uZenith, S.zenith); gl.uniform3fv(sky.u.uHorizon, S.horizon); gl.uniform3fv(sky.u.uSun, S.sun);
-    gl.uniform3fv(sky.u.uSunCol, S.sunCol); gl.uniform3fv(sky.u.uCloud, S.cloud); gl.uniform1f(sky.u.uNight, S.night); gl.uniform1f(sky.u.uTime, S.time); gl.uniform1f(sky.u.uAurora, S.aurora || 0);
+    gl.uniform3fv(sky.u.uSunCol, S.sunCol); gl.uniform3fv(sky.u.uCloud, S.cloud); gl.uniform1f(sky.u.uNight, S.night); gl.uniform1f(sky.u.uTime, S.time); gl.uniform1f(sky.u.uAurora, S.aurora || 0); gl.uniform1f(sky.u.uStarA, S.starA || 0);
     gl.bindVertexArray(tri.vao); gl.drawArrays(gl.TRIANGLES, 0, 3);
     gl.depthMask(true); gl.depthFunc(gl.LESS);
 

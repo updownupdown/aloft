@@ -7,6 +7,10 @@
 // that sees you coming bolts and digs down out of reach, leaving a scrape of earth.
 // Catching is forgiving: come down low over one and the feet reach for it; dive with wings
 // tucked (the aim tightens, see aim.js) and the reach is longer.
+// A catch (a mouse, a worm, a fish, other prey) is held in the feet (b.carry) and eaten only when you
+// tap Eat (the action button): the hawk bends and tears at it until it is gone. Or carry it off:
+// to a branch (a calmer meal, worth more; Leave it there to cache it), or home, where it drops into
+// the nest by itself (for the chick, or kept there for later).
 import { height, normalAt, forest, WATER, ih, fbm } from '../world.js';
 import { mouseRich } from '../settle.js';
 import { builder, blob, reseed } from '../shapes.js';
@@ -22,7 +26,7 @@ export const FOOD = {
   catchR: 1.5, catchDive: 1.6, catchH: 2.6,  // reach, extra reach diving, how low to be
   freeze: 2.5, bolt: 3, burrow: 25, dig: .8,  // a passing shadow freezes a mouse; a stoop sends it bolting home to dig down (gone a while)
   squeak: .05, squeakHunt: .2,                // chance a mouse squeaks each quarter second; hunting (wings tucked) as often as before
-  meal: 2.4, perchMeal: 1.15, cacheDays: 2,   // seconds to eat; a calm meal on a perch is worth more; a cache keeps two days
+  meal: 2.4, wormMeal: 1.1, perchMeal: 1.15, cacheDays: 2,   // seconds to eat (a worm); a calm meal on a perch is worth more; a cache keeps two days
 };
 
 // a worm: one rough tapered tube, gently curved, with the pale saddle band near its head
@@ -82,8 +86,8 @@ export function foodSystem(G) {
   const squeaks = [];   // { m, t }: marks over squeaking mice, each a moment long
   const worms = []; let wormT = 0; G.wet = 0;
   const caches = G.caches = [];   // { x, y, z, kind, food, wet, day }: catches left on branches
-  G.hud.tip('carry', () => b.eating > 0 && !!b.meal, 'Tap Take off while you eat to carry your catch up to a branch: a meal there is calmer and worth more.');
-  G.hud.tip('worms', () => b.state === 'ground' && worms.length > 0, 'After rain, worms come up. Tap to hop to the nearest one and eat it.');
+  G.hud.tip('carry', () => !!b.carry && b.state !== 'fly' && !(b.eating > 0), 'Tap Eat to eat your catch here, or take off with it in your feet: on a branch it is a calmer meal, and at your nest it drops in for later.');
+  G.hud.tip('worms', () => b.state === 'ground' && worms.length > 0, 'After rain, worms come up. Tap to hop to the nearest one and pick it up, then Eat.');
   G.hunger = 1; G.thirst = 1;
   const setHunger = G.hud.meter('hunger', { label: 'food', colour: 'linear-gradient(90deg,#a8483a,#c96a4e)' });
   const setThirst = G.hud.meter('thirst', { label: 'water', colour: 'linear-gradient(90deg,#3f6f9a,#6c9ac0)' });
@@ -187,47 +191,84 @@ export function foodSystem(G) {
     m.cover = sp < .5 && !(m.seen > 0) && (G.grassCover?.(m.x, m.z) || 0) > .6;
   }
 
-  // a meal fills you as you finish it; take off before then and you carry it away in your feet
-  function meal(food, wet, kind, k = 1) { b.eating = FOOD.meal; b.meal = { food: food * k, wet: wet * k, kind }; }
+  // what the feet hold: nothing is eaten until Eat is tapped
+  function hold(food, wet, kind) { b.carry = { food, wet, kind }; G.emit('hold', b.carry); }
+  // Eat: the meal takes a moment (a worm less), the catch shrinks in the feet as the hawk tears at it
+  // and fills you as it ends; take off before then and the rest comes with you
+  function startMeal() {
+    const c = b.carry; if (!c || b.state === 'fly' || b.eating > 0) return;
+    const k = b.state === 'perch' ? FOOD.perchMeal : 1;
+    b.carry = null; b.meal = { food: c.food * k, wet: c.wet * k, kind: c.kind };
+    b.eating = b.mealT = c.kind === 'worm' ? FOOD.wormMeal : FOOD.meal;
+    if (k > 1) G.hud.toast('A calm meal up on the branch.', 2);
+    G.hud.did('carry'); G.hud.did('eat');
+  }
   function finish() {
     const m = b.meal; b.meal = null; if (!m) return;
     G.hunger = Math.min(1, G.hunger + m.food); G.thirst = Math.min(1, G.thirst + m.wet);
+    G.emit('ate', m.kind);
   }
-  // with a catch in your feet: on a perch you eat it in peace, or if not hungry, leave it there
-  function arrive() {
-    const c = b.carry; if (!c || b.settle > 0) return;
-    if (b.state === 'ground') { b.carry = null; meal(c.food, c.wet, c.kind); return; }
-    if (b.state !== 'perch') return;
-    b.carry = null;
-    if (G.hunger < .85) { meal(c.food, c.wet, c.kind, FOOD.perchMeal); G.hud.toast('A calm meal up on the branch.', 2); G.hud.did('carry'); return; }
+  // perched with a catch: Leave it here tucks it into the fork of the branch for later
+  function leave() {
+    const c = b.carry; if (!c || b.state !== 'perch') return;
+    b.carry = null; noPick = b.perch;
     caches.push({ x: b.perch.x, y: b.perch.y, z: b.perch.z, kind: c.kind, food: c.food, wet: c.wet, day: G.day + G.tod, yaw: b.yaw });
-    G.hud.toast('Not hungry yet: you tuck it into the fork of the branch for later. It shows on the map.', 3.5);
+    G.hud.toast('You tuck it into the fork of the branch for later. It shows on the map.', 3);
     G.emit('cache', caches[caches.length - 1]);
   }
+  // landing with a catch at the nest: it drops in (nest.js feeds the chick; else it keeps there);
+  // landing where you left one: you pick it up again
+  let noPick = null, landed = false;
+  G.on('land', () => { landed = true; });
+  function arrive() {
+    if (!landed || b.settle > 0) return;
+    landed = false;
+    if (b.state !== 'perch') return;
+    const n = G.nest, atNest = n && Math.hypot(b.perch.x - n.x, b.perch.y - n.y, b.perch.z - n.z) < 3;
+    if (b.carry && atNest) {
+      const c = b.carry; b.carry = null;
+      if (G.nestDrop?.(c)) return;
+      caches.push({ x: n.x, y: n.y + .05, z: n.z, kind: c.kind, food: c.food, wet: c.wet, day: G.day + G.tod, yaw: b.yaw, nest: true });
+      G.hud.toast('You drop your catch into the nest, for later.', 3); G.emit('cache', caches[caches.length - 1]);
+      noPick = b.perch; return;
+    }
+    if (!b.carry && b.perch !== noPick) {
+      const i = caches.findIndex(c => Math.hypot(c.x - b.p[0], c.y - b.p[1], c.z - b.p[2]) < (c.nest ? 3 : 1.5));
+      if (i >= 0) { const c = caches.splice(i, 1)[0]; hold(c.food, c.wet, c.kind); G.hud.toast(c.nest ? 'You take a meal from the nest.' : 'Back to your cache: it is in your feet again.', 2.5); G.emit('cache', null); }
+    }
+    noPick = null;
+  }
+  // with the one action button off: an Eat button of its own (left of Take off)
+  const ui = document.getElementById('ui3') || document.body;
+  ui.insertAdjacentHTML('beforeend', '<button class="takeoff3 eat3 gone" aria-label="Eat">Eat</button><style>#ui3 .takeoff3.eat3 { right: calc(var(--actr) + 150px); }</style>');
+  const eatBtn = ui.querySelector('.eat3');
+  eatBtn.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); startMeal(); });
+  (G.actions ||= {}).eat = { run: startMeal, when: () => !!b.carry && b.state !== 'fly' && !(b.settle > 0) && !(b.eating > 0) && !b.asleep };
+  G.actions.leave = { run: leave, when: () => !!b.carry && b.state === 'perch' && !(b.settle > 0) && !(b.eating > 0) };
   function eat(m) {
     caught.set(m.id, G.clock); mice.delete(m.id);
     b.state = 'ground'; b.from = [...b.p]; b.p = [m.x, Math.max(m.y, WATER) + .35, m.z]; b.settle = .45; b.s = 0;
-    meal(FOOD.mouse, FOOD.mouseWet, 'mouse');
+    hold(FOOD.mouse, FOOD.mouseWet, 'mouse');
     // make it plain: a strike and a squeak, a puff of grass, a rising glint, then the meal
     const A = G.audio;
     A.thump(.6); A.rustle(1.2); A.tone?.({ f: 2400, f2: 3100, dur: .07, vol: .07, delay: .05 }); A.tone?.({ f: 2600, f2: 2100, dur: .06, vol: .05, delay: .16 });
-    setTimeout(() => A.feather(), 350); setTimeout(() => A.eat(), 800); setTimeout(() => A.eat(), 1400); setTimeout(() => A.eat(), 2000);
+    setTimeout(() => A.feather(), 350);
     for (let i = 0; i < 18; i++) { const a = i / 18 * 6.283; G.part([m.x, m.y + .15, m.z], [Math.cos(a) * 2.6, 1.2 + Math.random() * 1.5, Math.sin(a) * 2.6], .8, i % 3 ? [.6, .7, .34] : [.55, .44, .3], .1); }
     for (let i = 0; i < 8; i++) G.part([m.x + (Math.random() - .5) * .6, m.y + .5, m.z + (Math.random() - .5) * .6], [0, 1.6 + Math.random(), 0], 1.4, [1, .86, .45], .14);
     G.hud.toast('Caught a mouse', 2);
     G.hud.did('hunt'); G.emit('catch', { kind: 'mouse', x: m.x, z: m.z });
-    if (!G.flags.firstMouse) { G.flags.firstMouse = 1; G.hud.toast('Caught! A mouse fills you up a good way.'); }
+    if (!G.flags.firstMouse) { G.flags.firstMouse = 1; G.hud.toast('Caught! Tap Eat to eat it here, or carry it in your feet to a branch or your nest.', 5); }
   }
 
   // other prey (sys/critters.js: jackrabbits, lizards, marmots, crabs, squirrels): the same
   // strike as a mouse; one taken off a branch (carry) rides in your feet to a perch
   function take(p) {
     const A = G.audio;
-    if (p.carry) { b.carry = { food: p.food, wet: p.wet, kind: p.kind }; A.feather(); }
+    hold(p.food, p.wet, p.kind);
+    if (p.carry) A.feather();
     else {
       b.state = 'ground'; b.from = [...b.p]; b.p = [p.x, Math.max(p.y, WATER) + .35, p.z]; b.settle = .45; b.s = 0;
-      meal(p.food, p.wet, p.kind);
-      A.thump(.6); A.rustle(1); setTimeout(() => A.eat(), 800); setTimeout(() => A.eat(), 1400);
+      A.thump(.6); A.rustle(1);
     }
     for (let i = 0; i < 12; i++) { const a = i / 12 * 6.283; G.part([p.x, p.y + .15, p.z], [Math.cos(a) * 2.2, 1.2 + Math.random() * 1.5, Math.sin(a) * 2.2], .8, [.55, .46, .34], .1); }
     for (let i = 0; i < 6; i++) G.part([p.x + (Math.random() - .5) * .6, p.y + .5, p.z + (Math.random() - .5) * .6], [0, 1.6 + Math.random(), 0], 1.4, [1, .86, .45], .14);
@@ -243,10 +284,9 @@ export function foodSystem(G) {
       const w = worms[i], d = Math.hypot(w.x - b.p[0], w.z - b.p[2]);
       w.t += dt;
       if (d > 14 || (!here && b.state !== 'ground')) { worms.splice(i, 1); continue; }
-      if (b.state === 'ground' && d < .55 && b.settle <= 0) {   // landed on it: eat
-        worms.splice(i, 1); b.eating = .9;
-        G.hunger = Math.min(1, G.hunger + FOOD.worm); G.thirst = Math.min(1, G.thirst + FOOD.worm * .3);
-        G.audio.eat(); setTimeout(() => G.audio.eat(), 300); G.hud.did('worms');
+      if (b.state === 'ground' && d < .55 && b.settle <= 0 && !b.carry && !(b.eating > 0)) {   // landed on it: pick it up
+        worms.splice(i, 1); hold(FOOD.worm, FOOD.worm * .3, 'worm');
+        G.audio.rustle(.3); G.hud.did('worms');
         for (let k = 0; k < 6; k++) G.part([w.x, w.y + .1, w.z], [(Math.random() - .5) * 1.4, 1 + Math.random(), (Math.random() - .5) * 1.4], .6, [.45, .36, .26], .08);
         G.emit('catch', { kind: 'worm', x: w.x, z: w.z });
       }
@@ -269,20 +309,21 @@ export function foodSystem(G) {
 
   return {
     id: 'food',
-    mice, take,
+    mice, take, hold,
     update(dt) {
       G.hunger = Math.max(0, G.hunger - dt / FOOD.hungerTime);
       G.thirst = Math.max(0, G.thirst - dt / FOOD.thirstTime);
       if ((refreshT -= dt) <= 0) { refreshT = .5; refresh(); }
-      // took off mid-meal: the catch comes too
-      if (b.state === 'fly' && b.meal) { b.carry = b.meal; b.meal = null; b.eating = 0; }
+      // took off mid-meal: what is left comes too
+      if (b.state === 'fly' && b.meal) { const k = Math.max(.2, b.eating / (b.mealT || FOOD.meal)); b.carry = { ...b.meal, food: b.meal.food * k, wet: b.meal.wet * k }; b.meal = null; b.eating = 0; }
+      if (b.eating > 0) {   // the meal: bend to the feet and tear, a bite at a time
+        const t0 = b.mealT - b.eating, t1 = t0 + dt;
+        if (Math.floor(t1 / .55) > Math.floor(t0 / .55) && b.eating > .3) { G.audio.eat(); const q = [b.p[0], b.p[1] - .25, b.p[2]]; for (let k = 0; k < 3; k++) G.part(q, [(Math.random() - .5) * .8, .5 + Math.random() * .6, (Math.random() - .5) * .8], .5, b.meal?.kind === 'fish' ? [.75, .8, .82] : [.55, .44, .34], .05); }
+        b.eatPose = { headPitch: .7 + .35 * Math.max(0, Math.sin(t1 * 11.4)), headYaw: Math.sin(t1 * 3.1) * .2, fluff: .15 };
+      } else b.eatPose = null;
       if (b.eating > 0 && b.eating - dt <= 0) finish();
       arrive();
-      // back at a cache, hungry: eat it
-      if (b.state === 'perch' && b.settle <= 0 && !(b.eating > 0) && !b.carry && G.hunger < .85) {
-        const i = caches.findIndex(c => Math.hypot(c.x - b.p[0], c.y - b.p[1], c.z - b.p[2]) < 1.5);
-        if (i >= 0) { const c = caches.splice(i, 1)[0]; meal(c.food, c.wet, c.kind, FOOD.perchMeal); G.hud.toast('Back to your cache.', 2); G.emit('cache', null); }
-      }
+      eatBtn.classList.toggle('gone', !G.actions.eat.when() || !!G.menu?.open);
       for (let i = caches.length - 1; i >= 0; i--) if (G.day + G.tod - caches[i].day > FOOD.cacheDays) caches.splice(i, 1);
       let reach = 0;
       for (const m of mice.values()) {
@@ -327,7 +368,12 @@ export function foodSystem(G) {
       // at night a mouse's eyes catch the moon; an owl's song (known, or its gift) makes them easy to find
       const owl = Math.min(1, (G.learned?.has(6) ? .45 : 0) + (G.gifts?.night > 0 ? 1 : 0)), eye = (S.night || 0) * (.35 + owl * .65);
       // the catch in your feet, and catches left on branches
-      if (b.carry && S.hawk) { const h = S.hawk, u = h.u; d.push(h.p[0] - u[0] * .3, h.p[1] - u[1] * .3 - .05, h.p[2] - u[2] * .3, 1.6, b.yaw - Math.PI / 2, .5, 0, 0); }
+      const held = b.carry || (b.eating > 0 ? b.meal : null);
+      if (held && S.hawk) {
+        const h = S.hawk, u = h.u, k = b.carry ? 1 : Math.max(0, b.eating / (b.mealT || FOOD.meal)) ** .7;   // eaten away to nothing
+        const kind = held.kind === 'worm' ? 'worm' : held.kind === 'fish' ? 'fish' : 'mouse', sc = { worm: 2.2, fish: .8, mouse: 1.6 }[kind] * k;
+        if (sc > .02) (S.props[kind] ||= []).push(h.p[0] - u[0] * .3, h.p[1] - u[1] * .3 - .05, h.p[2] - u[2] * .3, sc, b.yaw - Math.PI / 2, .5, 0, 0);
+      }
       for (const c of caches) if (Math.hypot(c.x - S.cam[0], c.z - S.cam[2]) < 120) d.push(c.x, c.y + .02, c.z, 1.6, c.yaw, .35, 0, 0);
       const hole = S.props.burrow ||= [], sq = S.props.squeak ||= [];
       for (const m of mice.values()) {

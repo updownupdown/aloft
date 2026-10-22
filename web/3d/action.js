@@ -1,15 +1,18 @@
 // One action button, bottom middle (placed by sys/songs.css): it shows the one action that fits now
-// (Sleep on a roost at night, else Take off), and a swipe up or down on it turns to the other when
+// (Eat with a catch in your feet, Sleep on a roost at night, else Take off; Leave it here with a
+// catch on a branch), and a swipe up or down on it turns to the other when
 // both fit, shown as dots. Each action comes from the system that owns it (G.actions: takeoff in
 // main.js, sleep in sys/sleep.js) as { run(), when() }. Settings can turn it off for the separate
 // buttons.
 import { icon } from './icons.js';
 
 const ACTS = {
+  eat: ['Eat', 'prey'],
+  leave: ['Leave it here', 'nest'],
   sleep: ['Sleep', 'sleep'],
   takeoff: ['Take off', 'takeoff'],
 };
-const ORDER = ['sleep', 'takeoff'];   // the first that fits is shown first
+const ORDER = ['eat', 'sleep', 'takeoff', 'leave'];   // the first that fits is shown first
 
 export function actionButton(G, ui) {
   ui.insertAdjacentHTML('beforeend', `<button class="act3 gone" aria-label=""><i class="ic"></i><span></span><i class="dots"></i></button>`);
