@@ -116,28 +116,16 @@ export function songsSystem(G) {
   const fkey = t => t.dkey || t.id;
   // learning: the song you copy is one you do not know, sung by the bird beside you
   const learning = () => !!(S.target && S.bird && !knows(S.target) && ui.open);
-  // the Sing plate: what singing does here, and what to do next
+  // the card's top: the bird you sing as and what you are doing (and, while off, a bird beside you
+  // that could teach you)
   function modeOf(sp, learn) {
-    const nm = t => t.name.toLowerCase(), song = t => t.songs.length > 1 ? (t.title || t.songs[0].title).toLowerCase() : 'song';
-    if (!ui.open) {
-      if (S.target && S.bird && !knows(S.target)) return { kind: 'off', title: 'Sing', sub: `A ${nm(S.bird.sp)} beside you can teach you its ${song(S.target)}` };
-      return { kind: 'off', title: 'Sing', sub: picked && G.learned.has(picked.id) ? `Imitate the ${nm(picked)}, or sing freely` : 'Tap to sing' };
-    }
-    if (S.learnedT > 0) return { kind: 'learn', title: 'Learned!', sub: `The ${nm(sp)}'s ${song(sp)} is yours to sing` };
-    if (learn) {
-      const n = seen(sp), of = `${n} of ${sp.notes.length} notes found`;
-      const title = `Learning from the ${nm(S.bird.sp)}`;
-      if (S.hearT > 0) return { kind: 'learn', title, sub: 'Listen: each note lights its row' };
-      if (S.res.length && !S.over) return { kind: 'learn', title, sub: `Keep going, from the card's lit note · ${of}` };
-      if (S.over && S.res.at(-1) === 'wrong') return { kind: 'learn', title, sub: `Not that one. It sings again soon · ${of}` };
-      return { kind: 'learn', title, sub: `Your turn: sing it back from the first note · ${of}` };
-    }
-    if (sp && knows(sp)) {
-      if (S.answerT > 0) return { kind: 'imitate', title: S.answer, sub: `To your ${song(sp)}` };
-      return { kind: 'imitate', title: `Imitating the ${nm(sp)}`, sub: `Sing its ${song(sp)} and one answers with a gift` };
-    }
-    if (sp) return { kind: 'imitate', title: `In the ${nm(sp)}'s voice`, sub: S.target ? `Learn its ${song(S.target)} from one perched beside you` : 'Perch beside one to learn its song' };
-    return { kind: 'free', title: 'Singing freely', sub: 'In your own voice. Tap the card below to imitate a bird' };
+    const teacher = S.target && S.bird && !knows(S.target) ? S.bird.sp : null;
+    if (!ui.open) return { kind: 'off', state: '', who: null, teacher };
+    if (S.learnedT > 0) return { kind: 'learn', state: 'Learned', who: sp };
+    if (learn) return { kind: 'learn', state: 'Learning', who: sp };
+    if (sp && knows(sp)) return { kind: 'imitate', state: S.answerT > 0 ? 'Answered' : 'Imitating', who: sp };
+    if (sp) return { kind: 'imitate', state: 'Voice only', who: sp };
+    return { kind: 'free', state: 'Free song', who: null };
   }
   const landWord = l => (BIOMES[l]?.label || l).replace(/^the /, '');
   const learnable = SPECIES.filter(q => !q.mimic);
@@ -154,6 +142,7 @@ export function songsSystem(G) {
     { id: 'dialects', title: 'Song dialects: each land sings its own version', how: 'Learn a robin in the meadows, then perch by one in the marsh or the savanna: the card says Robin (marsh); Journal > Songs lists dialects.' },
     { id: 'mimic', title: 'Mimics: the starling (and the mockingbird down south)', how: 'Perch near a starling in meadows or by lakes: it sings snatches of other songs; an unknown song\'s opening fills in on its card.' },
     { id: 'more-songs', round: 9, pr: 191, title: 'Several songs per bird; Journal > Songs plays the ones you know', how: 'Perch by songbirds of one kind in different trees: each sings one of its kind\'s songs. The birds\' list (tap the song card) shows each bird\'s songs; tap one to imitate it. Journal > Songs: play buttons, question marks for songs to find.' },
+    { id: 'bird-logos', round: 9, pr: 195, title: 'Song card in one: bird, Learning or Imitating, every bird, close; each songbird a little logo', how: 'Perch by a songbird and tap Sing: the top says who and what, the bottom shows its logo, the song name and notes. While it teaches, its logo pops up in each row it sings, with a ring.' },
     { id: 'sing-modes', round: 9, pr: 194, title: 'Sing plate: the mode (learning, imitating, free), a bird that teaches and waits', how: 'Perch beside a songbird you do not know and tap the notes button: it sings, each note lighting its row; sing back, it stops to listen, and tries again when you stop. Wrong notes show on the rows (green, amber, red). Tap the card: a row a bird, Nearby, Sing as yourself, Call.' },
     { id: 'dawn-start', title: 'Start the dawn chorus with your call', how: 'Perch before first light and hold Call: the chorus spreads out from your tree. Try it sets the clock to just before dawn.', go: () => { G.tod = .16; } },
   ]) G.dev?.add({ area: 'Songs and music', round: 8, pr: PR, ...f });
@@ -206,7 +195,7 @@ export function songsSystem(G) {
       if (v > .04) hear(sp);
       if (v > .02) notePart([o.x, o.y, o.z], n, tune.kinds[i], false, song);
       // the bird you learn from: each note lights its row, and its place on the card
-      if (S.bird === o) { ui.glow(n); S.teachI = i; }
+      if (S.bird === o) { ui.teach(n, sp); S.teachI = i; }
     }, o));
   }
   // a mimic's medley: three snatches of other birds' songs, each in that bird's own voice; often
@@ -646,9 +635,9 @@ export function songsSystem(G) {
       // the card: the song (yours to imitate, or one to learn) or a free song, with how much of it
       // you can see, this try's marks, and who is singing within earshot
       const sp = target || picked, learn = learning();
-      const label = sp && `${sp.name}${sp.how ? ` (${landWord(sp.land)})` : ''}${sp.songs.length > 1 ? ` · ${(sp.title || sp.songs[0].title)}` : ''}`;
+      const song = sp && `${sp.title || sp.songs[0].title}${sp.how ? ` (${landWord(sp.land)})` : ''}`;
       const at = S.teachI >= 0 ? S.teachI : sp === target && S.res.length && !S.over ? S.res.length : -1;
-      const sc = { sp, label, seen: sp ? seen(sp) : 0, res: sp === target ? S.res : [], at, learn };
+      const sc = { sp, song, seen: sp ? seen(sp) : 0, res: sp === target ? S.res : [], at, learn };
       if (target) {
         const listening = close && young(close) && close.sp !== target && G.learned.has(target.id) ? close : null;
         if (listening && listening !== S.listening && ui.open) say(`A young ${close.sp.name.toLowerCase()} is listening`);
