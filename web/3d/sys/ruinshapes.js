@@ -83,6 +83,46 @@ function house(o) {
   if (rnd() < .6) ivy(B, -l + .2, 0, -w + .2, H * .8);
   return B.out();
 }
+// ---- regional styles (settle.js gives each settlement one by its region) ----------------------
+// stone (the default: slate and stone), croft (whitewashed, thatched, low), timber (clapboard,
+// shingles), log (log walls, steep dark roof), stilt (timber up on posts over wet ground), adobe
+// (mud brick, flat roofs and parapets; built apart below)
+const STYLE = {
+  croft: { cols: [[.88, .87, .82], [.84, .83, .78], [.9, .89, .85]], roof: [[.55, .47, .3], [.5, .42, .27]], moss: .45 },
+  timber: { cols: [[.74, .72, .66], [.62, .66, .68], [.7, .68, .62]], roof: [[.34, .3, .28], [.3, .27, .25]], moss: .2 },
+  log: { cols: [[.45, .34, .24], [.4, .3, .21], [.5, .38, .27]], roof: [[.28, .26, .24], [.24, .22, .2]], moss: .4 },
+  stilt: { cols: [[.5, .42, .32], [.46, .38, .29], [.55, .46, .35]], roof: [[.6, .52, .34], [.55, .47, .3]], moss: .25 },
+};
+const KIND_OPTS = { cottage: { windows: [-.28, .28] }, keeper: { windows: [-.3, .3] }, hut: { windows: [.3], chimney: false }, farmhouse: { windows: [-.33, .33] } };
+export function styled(kind, v, style) {
+  if (style === 'adobe') return adobe(kind, v);
+  const S = STYLE[style]; reseed(301 + v + style.length * 7 + kind.length);
+  const t = house({ d: DIM[kind], v, cols: S.cols, roof: S.roof, moss: S.moss, ...KIND_OPTS[kind], chimney: style === 'stilt' ? false : KIND_OPTS[kind].chimney });
+  if (style !== 'stilt') return t;
+  // up on posts: lift the house, stand it on piles, a ladder to the door
+  const d = DIM[kind], B = builder(), lift = 2.2;
+  for (let i = 1; i < t.length; i += 12) t[i] += lift;
+  for (const u of [-d.L / 2, 0, d.L / 2]) for (const w of [-d.W / 2, d.W / 2]) tube(B, [u, -1, w], [u, lift - 1.1, w], .14, WOOD2);
+  box(B, 0, lift - 1.3, d.W / 2 + .6, 2.4, .12, 1.4, 0, WOOD);
+  for (const k of [-.35, .35]) tube(B, [k, -.2, d.W / 2 + 2.4], [k, lift - 1.2, d.W / 2 + 1.2], .05, WOOD2);
+  const o = B.out(), a = new Float32Array(t.length + o.length); a.set(t); a.set(o, t.length); return a;
+}
+// mud brick: plain walls, a flat roof behind a low parapet, small dark windows, the roof beams
+// poking out; v 1 a corner fallen with the beams showing, v 2 only broken walls
+function adobe(kind, v) {
+  reseed(371 + v + kind.length); const B = builder(), d = DIM[kind], H = Math.min(d.wall, 3.6), l = d.L / 2, w = d.W / 2;
+  const MUD = [[.76, .6, .44], [.72, .56, .4], [.8, .64, .48]], top = [.66, .52, .38];
+  const sides = [[-l, w, l, w], [-l, -w, l, -w], [-l, -w, -l, w], [l, -w, l, w]];
+  for (const [x0, z0, x1, z1] of sides) wall(B, x0, z0, x1, z1, -1.2, H + .5, .5, MUD, v === 2 ? .45 : v === 1 ? .15 : 0);
+  if (v < 2) {
+    box(B, v ? -l * .3 : 0, H - .1, 0, v ? d.L * .7 : d.L - .4, .3, d.W - .4, 0, top);
+    for (let u = -l + .8; u < l; u += 1.2) tube(B, [u, H - .05, w - .2], [u, H - .05, w + .45], .08, WOOD2);
+  }
+  opening(B, 0, -.2, w + .26, 0, .95, 1.9);
+  for (const u of [-.3, .3]) { opening(B, u * d.L, 1.4, w + .26, 0, .5, .6); opening(B, u * d.L, 1.4, -w - .26, 0, .5, .6); }
+  for (let k = 0; k < (v ? 6 : 2); k++) box(B, (rnd() - .5) * d.L, -.3, (rnd() - .5) * d.W * 1.4, .5, .3, .4, rnd() * 6, MUD[0]);
+  return B.out();
+}
 export const cottage = v => { reseed(301 + v); return house({ d: DIM.cottage, v, cols: STONE, roof: [SLATE, SLATE2], windows: [-.28, .28] }); };
 export const keeper = v => { reseed(311 + v); return house({ d: DIM.keeper, v, cols: [[.86, .85, .8], [.82, .81, .77], [.88, .87, .83]], roof: [[.3, .3, .32], [.26, .26, .28]], windows: [-.3, .3], moss: .15 }); };
 export const hut = v => { reseed(321 + v); return house({ d: DIM.hut, v, cols: STONE, roof: [SLATE, SLATE2], windows: [.3], chimney: false }); };
