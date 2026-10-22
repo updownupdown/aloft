@@ -49,6 +49,7 @@ const LIT_FS = `#version 300 es
 precision highp float;
 ${COMMON_FS}
 void main() {
+#ifndef SOLID
   // far tiles give way to the near ground inside uCut metres
   if (uCut > 0. && length(vPos.xz - uCam.xz) < uCut) discard;
   // trees changing detail (uFade 1 the near mesh, 2 the far one) dissolve through each other
@@ -91,6 +92,11 @@ void main() {
       if ((bayer[i] + .5) / 16. > k) discard;
     }
   }
+#else
+  // SOLID: the same shader with no discard anywhere, so the GPU can drop hidden pixels before
+  // shading them (early depth; a discard in a shader turns that off for everything it draws)
+  float alpha = 1.;
+#endif
   vec3 n = normalize(vNrm), col = vCol;
   if (!gl_FrontFacing) { n = -n; col = vColB; }
   vec3 c = shade(col, n), hp = vPos;
@@ -144,7 +150,7 @@ void main() {
 }`;
 const SKY_VS = `#version 300 es
 layout(location=0) in vec2 aP; out vec2 vP;
-void main() { vP = aP; gl_Position = vec4(aP, .9999, 1.); }`;
+void main() { vP = aP; gl_Position = vec4(aP, 1., 1.); }   // at the back: drawn last, where depth is still clear`;
 const SKY_FS = `#version 300 es
 precision highp float;
 in vec2 vP; out vec4 frag;
@@ -256,6 +262,8 @@ function toneMatch(near, far) {
 
 export function createRenderer(gl) {
   const lit = program(gl, LIT_VS, LIT_FS), inst = program(gl, INST_VS, LIT_FS), sky = program(gl, SKY_VS, SKY_FS);
+  const SOLID_FS = LIT_FS.replace('precision highp float;', 'precision highp float;\n#define SOLID');
+  const solid = program(gl, LIT_VS, SOLID_FS), solidInst = program(gl, INST_VS, SOLID_FS);
   const flat = program(gl, FLAT_VS, FLAT_FS);
   const tri = mesh(gl, new Float32Array([-1, -1, 3, -1, -1, 3]), [[0, 2]]);
   // one pair of meshes (near, far) per tree look (shapes.js TREE_LOOKS; a tree's look ?? kind)
@@ -269,6 +277,14 @@ export function createRenderer(gl) {
   shape('ring', ring()); shape('cloud', cloud());
   const hawk = mesh(gl, new Float32Array(12), LAYOUT, { dynamic: true });
   const fx = mesh(gl, new Float32Array(7), [[0, 3], [1, 4]], { dynamic: true });
+  // per-frame data goes up through one reused Float32Array, not a new one each time (less garbage
+  // for the collector to sweep, which costs battery too)
+  let scratch = new Float32Array(1 << 16);
+  const upload = (buf, d) => {
+    let f = d;
+    if (!(d instanceof Float32Array)) { if (scratch.length < d.length) scratch = new Float32Array(d.length * 1.5 | 0); scratch.set(d); f = scratch.subarray(0, d.length); }
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.bufferData(gl.ARRAY_BUFFER, f, gl.DYNAMIC_DRAW);
+  };
   const chunks = new Map();
   const R = { chunks, view: 520, treeView: 360, nearTrees: 110, stats: { chunks: 0, trees: 0, tris: 0 }, treeAt: null };
   gl.disable(gl.CULL_FACE);
@@ -396,8 +412,8 @@ export function createRenderer(gl) {
     }
     R.stats.trees = drawn;
     for (let k = 0; k < kinds.length; k++) for (let l = 0; l < 2; l++) {
-      const m = l ? kinds[k].far : kinds[k].near, data = new Float32Array(buckets[k][l]);
-      gl.bindBuffer(gl.ARRAY_BUFFER, m.ibuf); gl.bufferData(gl.ARRAY_BUFFER, data, gl.DYNAMIC_DRAW); m.icount = data.length / 8;
+      const m = l ? kinds[k].far : kinds[k].near, data = buckets[k][l];
+      upload(m.ibuf, data); m.icount = data.length / 8;
     }
   }
 
@@ -415,27 +431,47 @@ export function createRenderer(gl) {
     R.vp = vp;
     { const fx = S.look[0] - S.cam[0], fy = S.look[1] - S.cam[1], fz = S.look[2] - S.cam[2], l = Math.hypot(fx, fy, fz) || 1; R.viewInfo = { cam: S.cam, f: [fx / l, fy / l, fz / l], fov: S.fov, aspect: w / h }; }
     let tris = 0;
-    // sky
-    gl.depthMask(false); gl.disable(gl.DEPTH_TEST);
-    gl.useProgram(sky.p);
-    const inv = invert(vp);
-    gl.uniformMatrix4fv(sky.u.uInvVP, false, inv);
-    gl.uniform3fv(sky.u.uZenith, S.zenith); gl.uniform3fv(sky.u.uHorizon, S.horizon); gl.uniform3fv(sky.u.uSun, S.sun);
-    gl.uniform3fv(sky.u.uSunCol, S.sunCol); gl.uniform3fv(sky.u.uCloud, S.cloud); gl.uniform1f(sky.u.uNight, S.night); gl.uniform1f(sky.u.uTime, S.time); gl.uniform1f(sky.u.uAurora, S.aurora || 0);
-    gl.bindVertexArray(tri.vao); gl.drawArrays(gl.TRIANGLES, 0, 3);
+    const pf = R.prof;   // perf.js: each pass timed on the GPU, when that is on
+    // Solid things first, nearest first, in the shaders with no discard (SOLID), so the GPU can skip
+    // shading whatever ends up hidden; then what needs discard (far land, trees); the sky last, only
+    // where nothing was drawn; then the see-through things. Same picture, less shading.
+    gl.clearColor(S.horizon[0], S.horizon[1], S.horizon[2], 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     gl.depthMask(true); gl.enable(gl.DEPTH_TEST);
-
-    // ground
-    gl.useProgram(lit.p); setLight(lit, S);
-    gl.uniformMatrix4fv(lit.u.uVP, false, vp); gl.uniformMatrix4fv(lit.u.uModel, false, IDENT);
-    // only the chunks inside the view (their box against the frustum's sides)
     const P = planes(vp);
-    let n = 0;
+    // hawk
+    pf?.pass('hawk');
+    gl.useProgram(solid.p); setLight(solid, S); gl.uniformMatrix4fv(solid.u.uVP, false, vp);
+    const hm = buildHawk(S.pose);
+    gl.bindBuffer(gl.ARRAY_BUFFER, hawk.buf); gl.bufferData(gl.ARRAY_BUFFER, hm, gl.DYNAMIC_DRAW);
+    gl.uniformMatrix4fv(solid.u.uModel, false, basis(S.hawk.p, S.hawk.r, S.hawk.u, S.hawk.f, HAWK_SCALE));
+    gl.bindVertexArray(hawk.vao); gl.drawArrays(gl.TRIANGLES, 0, hm.length / 12); tris += hm.length / 36;
+    gl.uniformMatrix4fv(solid.u.uModel, false, IDENT);
+
+    // props: anything instanced that a system adds (rings, mice, flora, marks...)
+    gl.useProgram(solidInst.p); setLight(solidInst, S);
+    gl.uniformMatrix4fv(solidInst.u.uVP, false, vp); gl.uniform1f(solidInst.u.uTime, S.time); gl.uniform3fv(solidInst.u.uAutumn, S.autumnCol); gl.uniform1f(solidInst.u.uSnowLine, S.snowLine ?? 999);
+    gl.uniform1f(solidInst.u.uSway, 0);
+    const prop = key => {
+      const d = S.props[key], m = shapes.get(key); if (!m || !d.length) return;
+      upload(m.ibuf, d);
+      gl.bindVertexArray(m.vao); gl.drawArraysInstanced(gl.TRIANGLES, 0, m.count, d.length / 8); tris += m.count / 3 * d.length / 8;
+    };
+    for (const key in S.props) if (!CLOUDY.has(key)) { pf?.pass(R.propPasses ? key : 'props'); prop(key); }
+
+    // ground: only the chunks inside the view (their box against the frustum's sides), nearest first
+    pf?.pass('ground');
+    gl.useProgram(solid.p);
+    const near = [];
     for (const c of chunks.values()) {
       if (!boxIn(P, c.cx * CHUNK, c.y0 - 3, c.cz * CHUNK, (c.cx + 1) * CHUNK, c.y1, (c.cz + 1) * CHUNK)) continue;
-      gl.bindVertexArray(c.m.vao); gl.drawArrays(gl.TRIANGLES, 0, c.m.count); n++; tris += c.m.count / 3;
+      near.push(c); c.d = ((c.cx + .5) * CHUNK - S.cam[0]) ** 2 + ((c.cz + .5) * CHUNK - S.cam[2]) ** 2;
     }
-    R.stats.chunks = n;
+    near.sort((a, q) => a.d - q.d);
+    for (const c of near) { gl.bindVertexArray(c.m.vao); gl.drawArrays(gl.TRIANGLES, 0, c.m.count); tris += c.m.count / 3; }
+    R.stats.chunks = near.length;
+    pf?.pass('far land');
+    gl.useProgram(lit.p); setLight(lit, S);
+    gl.uniformMatrix4fv(lit.u.uVP, false, vp); gl.uniformMatrix4fv(lit.u.uModel, false, IDENT);
     gl.uniform1f(lit.u.uCut, Math.min(R.view, R.fogView || 1e9)); gl.uniform1f(lit.u.uLift, FAR_DROP);
     let nf = 0;
     for (const t of far.values()) {
@@ -444,13 +480,8 @@ export function createRenderer(gl) {
     }
     gl.uniform1f(lit.u.uCut, 0); gl.uniform1f(lit.u.uLift, 0); R.stats.far = nf + '/' + far.size;
 
-    // hawk
-    const hm = buildHawk(S.pose);
-    gl.bindBuffer(gl.ARRAY_BUFFER, hawk.buf); gl.bufferData(gl.ARRAY_BUFFER, hm, gl.DYNAMIC_DRAW);
-    gl.uniformMatrix4fv(lit.u.uModel, false, basis(S.hawk.p, S.hawk.r, S.hawk.u, S.hawk.f, HAWK_SCALE));
-    gl.bindVertexArray(hawk.vao); gl.drawArrays(gl.TRIANGLES, 0, hm.length / 12); tris += hm.length / 36;
-
-    // trees and rings
+    // trees
+    pf?.pass('trees');
     gl.useProgram(inst.p); setLight(inst, S);
     gl.uniformMatrix4fv(inst.u.uVP, false, vp); gl.uniform1f(inst.u.uTime, S.time); gl.uniform3fv(inst.u.uAutumn, S.autumnCol); gl.uniform1f(inst.u.uSnowLine, S.snowLine ?? 999);
     gl.uniform1f(inst.u.uSway, .012 + S.wind * .02); gl.uniform1f(inst.u.uDither, 1);
@@ -460,15 +491,21 @@ export function createRenderer(gl) {
       gl.bindVertexArray(m.vao); gl.drawArraysInstanced(gl.TRIANGLES, 0, m.count, m.icount); tris += m.count / 3 * m.icount;
     }
     gl.uniform1f(inst.u.uDither, 0); gl.uniform1f(inst.u.uSway, 0); gl.uniform1f(inst.u.uFade, 0);
-    // props: anything instanced that a system adds (rings, clouds, mice, marks...)
-    const prop = key => {
-      const d = S.props[key], m = shapes.get(key); if (!m || !d.length) return;
-      gl.bindBuffer(gl.ARRAY_BUFFER, m.ibuf); gl.bufferData(gl.ARRAY_BUFFER, d instanceof Float32Array ? d : new Float32Array(d), gl.DYNAMIC_DRAW);
-      gl.bindVertexArray(m.vao); gl.drawArraysInstanced(gl.TRIANGLES, 0, m.count, d.length / 8); tris += m.count / 3 * d.length / 8;
-    };
-    for (const key in S.props) if (!CLOUDY.has(key)) prop(key);
+
+    // sky, just where nothing else is (it sits at the very back of the depth range)
+    pf?.pass('sky');
+    gl.depthMask(false); gl.depthFunc(gl.LEQUAL);
+    gl.useProgram(sky.p);
+    gl.uniformMatrix4fv(sky.u.uInvVP, false, invert(vp));
+    gl.uniform3fv(sky.u.uZenith, S.zenith); gl.uniform3fv(sky.u.uHorizon, S.horizon); gl.uniform3fv(sky.u.uSun, S.sun);
+    gl.uniform3fv(sky.u.uSunCol, S.sunCol); gl.uniform3fv(sky.u.uCloud, S.cloud); gl.uniform1f(sky.u.uNight, S.night); gl.uniform1f(sky.u.uTime, S.time); gl.uniform1f(sky.u.uAurora, S.aurora || 0);
+    gl.bindVertexArray(tri.vao); gl.drawArrays(gl.TRIANGLES, 0, 3);
+    gl.depthMask(true); gl.depthFunc(gl.LESS);
+
     // clouds last, see-through (at most half there), over everything solid: first their depth
     // alone, then their colour on just that nearest skin, so a cloud's inner faces never show
+    pf?.pass('clouds');
+    gl.useProgram(inst.p);
     gl.uniform1f(inst.u.uDither, 2);
     gl.colorMask(false, false, false, false);
     for (const key in S.props) if (CLOUDY.has(key)) prop(key);
@@ -479,6 +516,7 @@ export function createRenderer(gl) {
 
     gl.uniform1f(inst.u.uDither, 0);
     // see-through bits: shadow, water, motes
+    pf?.pass('shadow, foam');
     gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA); gl.depthMask(false);
     gl.useProgram(flat.p); gl.uniformMatrix4fv(flat.u.uVP, false, vp); gl.uniform1f(flat.u.uPx, h * .9);
     const sh = shadowVerts(S);
@@ -492,22 +530,23 @@ export function createRenderer(gl) {
     // ribbons: thin see-through strips a system lays in the world (the aim line), 7 floats a vertex
     if (S.ribbon?.length) {
       gl.uniform1f(flat.u.uPoints, 0);
-      gl.bindBuffer(gl.ARRAY_BUFFER, fx.buf); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(S.ribbon), gl.DYNAMIC_DRAW);
+      upload(fx.buf, S.ribbon);
       gl.bindVertexArray(fx.vao); gl.drawArrays(gl.TRIANGLES, 0, S.ribbon.length / 7);
     }
     // the water itself is drawn in the lit shader (waterAt); on it, strips laid on its surface (river foam)
     if (S.surface?.length) {
       gl.useProgram(flat.p); gl.uniform1f(flat.u.uPoints, 0);
-      gl.bindBuffer(gl.ARRAY_BUFFER, fx.buf); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(S.surface), gl.DYNAMIC_DRAW);
+      upload(fx.buf, S.surface);
       gl.bindVertexArray(fx.vao); gl.drawArrays(gl.TRIANGLES, 0, S.surface.length / 7);
     }
+    pf?.pass('motes');
     if (S.motes.length) {
       gl.useProgram(flat.p); gl.uniform1f(flat.u.uPoints, 1);
-      const md = new Float32Array(S.motes);
-      gl.bindBuffer(gl.ARRAY_BUFFER, fx.buf); gl.bufferData(gl.ARRAY_BUFFER, md, gl.DYNAMIC_DRAW);
-      gl.bindVertexArray(fx.vao); gl.drawArrays(gl.POINTS, 0, md.length / 7);
+      upload(fx.buf, S.motes);
+      gl.bindVertexArray(fx.vao); gl.drawArrays(gl.POINTS, 0, S.motes.length / 7);
     }
     gl.depthMask(true); gl.disable(gl.BLEND);
+    pf?.pass(null);
     R.stats.tris = tris | 0;
   };
 
