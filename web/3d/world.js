@@ -5,7 +5,8 @@
 import { store } from './util.js';
 import { ih, fbm, smooth, clamp, WORLD, newWorld } from './noise.js';
 import { BIOMES, PAL, JOURNEY, blend, weightOf, share, rollBiome, cellsNear } from './biomes.js';
-import { settlementsNear, buildingsNear, bridgesNear, roadShade, buildingSolids, bridgeSolids, clearOf, saplingIn } from './settle.js';
+import { railCut, railShade, railNear, railSolids, railLandmarks } from './rail.js';
+import { settlementsNear, buildingsNear, bridgesNear, roadShade, buildingSolids, bridgeSolids, polesNear, poleSolids, clearOf, saplingIn } from './settle.js';
 export { ih, fbm, WORLD, newWorld, PAL, JOURNEY, blend };
 
 export const CHUNK = 96;
@@ -53,8 +54,10 @@ export function placeName(x, z) {
 }
 
 // ---- terrain -----------------------------------------------------------------------------
-// The shared rolling ground, then each biome near the point shapes its own, blended by weight.
-export function height(x, z) {
+// The shared rolling ground, then each biome near the point shapes its own, blended by weight;
+// then the old railway's cuttings and embankments (rail.js, which reads baseHeight)
+export const height = (x, z) => railCut(x, z, baseHeight(x, z));
+export function baseHeight(x, z) {
   const bl = blend(x, z), B = { big: fbm(x / 520, z / 520, 1, 3), mid: fbm(x / 150, z / 150, 2, 3), fine: fbm(x / 32, z / 32, 5, 2) };
   let h = 0;
   for (const e of bl) h += e.w * e.b.h(x, z, B, e);
@@ -154,6 +157,9 @@ function groundColour(x, y, z, ny, bl = blend(x, z)) {
   // the old tracks between the empty farms and villages (settle.js), worn earth half grown over
   const rd = y > .3 ? roadShade(x, z) : 0;
   if (rd > 0) c = mixc(c, [.74, .66, .5], rd * (.6 + .4 * smooth(-.3, .25, fbm(x / 70, z / 70, 695, 2))));
+  // the railway's ballast, grey stone with grass coming through
+  const bal = y > .3 ? railShade(x, z) : 0;
+  if (bal > 0) c = mixc(c, [.5, .48, .45], bal * (.65 + .35 * smooth(-.3, .3, fbm(x / 9, z / 9, 696, 2))));
   // snow on the heights, and in winter right down to the meadows (not on cliffs, not below water)
   const line = 185 - env.snow * 200;
   c = mixc(c, PAL.snow, smooth(line - 5, line + 25, y + fbm(x / 40, z / 40, 7, 2) * 12) * smooth(.45, .25, steep) * (y > .3 ? 1 : 0) * (1 - noSnow * .85));
@@ -272,7 +278,7 @@ export function treesIn(cx, cz) {
     if ((wet ? y < -1.2 || y > 3 : y < 1.2) || y > 140) continue;
     const nm = normalAt(x, z); if (nm[1] < .82) continue;
     if (Math.hypot(x, z + 60) < 22) continue;   // keep the starting spot clear
-    if (roadShade(x, z) > .25) continue;          // nor on the old tracks
+    if (roadShade(x, z) > .25 || railNear(x, z) < 6) continue;   // nor on the old tracks and the railway
     const [look, s0, ds] = lookFor(e.name, x, z, y, ih(gx, gz, 28));
     const s = s0 + ih(gx, gz, 24) * ds;
     t.push({ x, y: y - .3, z, s, yaw: ih(gx, gz, 25) * 6.283, kind: LOOKS[look].kind, look, id: gx * 7919 + gz, tint: ih(gx, gz, 26) });
@@ -459,6 +465,7 @@ export function sightsNear(x, z, r) {
 export function landmarksNear(x, z, r) {
   const out = sightsNear(x, z, r);
   for (const S of settlementsNear(x, z, r, false)) if (S.lm && Math.abs(S.x - x) < r && Math.abs(S.z - z) < r) out.push(S.lm);
+  out.push(...railLandmarks(x, z, r));
   return out;
 }
 
@@ -573,6 +580,8 @@ export function solidsNear(x, z, r) {
   // the empty houses, barns, chapels and wells, and the bridges' parapets
   for (const bd of buildingsNear(x, z, r + 14)) buildingSolids(bd, pillar);
   for (const g of bridgesNear(x, z, r + 30)) bridgeSolids(g, pillar);
+  for (const o of polesNear(x, z, r + 6)) poleSolids(o, pillar);
+  railSolids(x, z, r, pillar);
   // fence posts (perch on top) and the walls' coping stones
   for (const f of fencesNear(x, z, r + 4)) for (const p of f.posts) if (Math.abs(p[0] - x) < r + 4 && Math.abs(p[2] - z) < r + 4) pillar(p[0], p[2], f.kind === 'wall' ? .5 : .09, p[1] - 1, p[1] + p[3]);
   return out;

@@ -4,9 +4,11 @@
 // land beside it (or skim low over it) and you take it. Trinkets brighten your nest (they are
 // set round its rim when you next land there) and count as keepsakes, for a mate and for the
 // raven's hoard; the treasures are one of a kind, and each tells a little of who lived here.
-import { settlementsNear, bridgesNear } from '../settle.js';
-import { groundAt, ih } from '../world.js';
+import { settlementsNear, bridgesNear, linesNear, DIM } from '../settle.js';
+import { groundAt, height, ih } from '../world.js';
 import * as M from './ruinshapes.js';
+import * as RS from './railshapes.js';
+import { railsNear } from '../rail.js';
 import { journal, esc } from '../journal.js';
 
 const DRAW = 650, NEST_R = 3.2;
@@ -18,6 +20,35 @@ export function ruinsSystem(G) {
   for (const v of [0, 1]) { R.shape('ru_keeper' + v, M.keeper(v)); R.shape('ru_barn' + v, M.barn(v)); }
   for (const k of ['well', 'pump', 'cart', 'boat']) R.shape('ru_' + k, M[k]());
   for (const k in M.ARTEFACT_SHAPES) R.shape('af_' + k, M.artefactMesh(k));
+  for (const k of [0, 1, 2]) R.shape('ru_pole' + k, M.pole(k));
+  R.shape('ru_chime', M.chime()); R.shape('ru_spire0', M.spire());
+  // wind chimes left on a few porches (B4): where one hangs, under the eave by the door
+  const CHIMED = { cottage: 1, keeper: 1, farmhouse: 1 };
+  const chimeAt = bd => {
+    if (!CHIMED[bd.kind] || bd.v > 1 || bd.under || ih(Math.round(bd.x), Math.round(bd.z), 720) > .3) return null;
+    const d = DIM[bd.kind], u = 1.4, w = d.W / 2 + .45, c = Math.cos(bd.yaw), s = Math.sin(bd.yaw);
+    return [bd.x + c * u - s * w, bd.y + d.wall - .25, bd.z + s * u + c * w];
+  };
+  // a chime rings in the Valley's key (audio.hz: the pentatonic the songs use, an octave down),
+  // more often in wind and gusts, softer with distance
+  const CHIME_ST = [-12, -10, -8, -5, -3, 0];
+  function ring(p, d) {
+    const A = G.audio; if (!A.tone || !A.hz) return;
+    const vol = .05 * (1 - d / 45) ** 2, n = 1 + Math.floor(Math.random() * 3);
+    for (let i = 0; i < n; i++) {
+      const f = A.hz(CHIME_ST[Math.floor(Math.random() * CHIME_ST.length)]), at = i * (.18 + Math.random() * .35);
+      A.tone({ f, dur: 3.2, vol, delay: at, lp: 2600 });
+      A.tone({ f: f * 2.76, dur: .9, vol: vol * .22, delay: at });
+    }
+  }
+  let chimes = [];
+  const wireOf = new Map();
+  const wireShape = L => { let m = wireOf.get(L.id); if (!m) { m = M.wires(L); m.shape = 'ru_wire_' + L.id; R.shape(m.shape, m.tris); wireOf.set(L.id, m); } return m; };
+  // the railway (B2): track pieces and viaducts each built once, as they come near
+  for (const v of [0, 1]) R.shape('ru_car' + v, RS.carriage(v));
+  R.shape('ru_station', RS.station()); R.shape('ru_portal', RS.portal());
+  const railOf = new Map();
+  const railShape = (o, make) => { let m = railOf.get(o.id); if (!m) { m = make(o); m.shape = 'ru_rail_' + o.id; R.shape(m.shape, m.tris); railOf.set(o.id, m); } return m; };
   const bridgeOf = new Map();
   const bridgeShape = g => { let m = bridgeOf.get(g.id); if (!m) { m = M.bridge(g); m.shape = 'ru_bridge_' + g.id; R.shape(m.shape, m.tris); bridgeOf.set(g.id, m); } return m; };
 
@@ -92,14 +123,34 @@ export function ruinsSystem(G) {
     sec.body.querySelector('ul').innerHTML = T.map(k => `<li>${esc(M.TREASURES[k][0])} <small>${esc(M.TREASURES[k][2])} Found on day ${St.treasures[k].day}${St.treasures[k].place ? `, at ${esc(St.treasures[k].place)}` : ''}.</small></li>`).join('');
   });
 
-  let sets = [], bridges = [], near = [], setT = 0, nearT = 0;
+  // the feature list (Settings > Dev tools): each with a Try it that flies you there
+  const flyTo = (x, z, tx, tz, up = 30) => { b.state = 'fly'; b.p = [x, Math.max(height(x, z), 0) + up, z]; b.yaw = Math.atan2(tx - x, -(tz - z)); b.s = 12; b.gamma = 0; };
+  const nearest = (L, f = o => o) => L.sort((p, q) => Math.hypot(f(p).x - b.p[0], f(p).z - b.p[2]) - Math.hypot(f(q).x - b.p[0], f(q).z - b.p[2]))[0];
+  const toward = (o, back = 60, up = 30) => { const a = Math.atan2(o.z - b.p[2], o.x - b.p[0]); flyTo(o.x - Math.cos(a) * back, o.z - Math.sin(a) * back, o.x, o.z, up); };
+  const dev = [
+    { id: 'r8-poles', title: 'Pole lines along the old tracks', how: 'Follow a long track: leaning poles with sagging wires, some fallen. Perch on top to watch the verge.', round: 'R8 B1',
+      go: () => { const o = nearest(linesNear(b.p[0], b.p[2], 4000).flatMap(L => L.poles.filter(o => o.state === 0))); if (o) toward(o, 40, 14); } },
+    { id: 'r8-railway', title: 'The old railway: cuttings, viaducts, a station, carriages', how: 'Find the grassed-over line (Map: Landmarks). Fly through a viaduct’s arches; perch on a carriage.', round: 'R8 B2',
+      go: () => { const R8 = railsNear(b.p[0], b.p[2], 6000), o = nearest(R8.flatMap(R => R.station ? [R.station] : R.lms)) || nearest(R8.flatMap(R => R.vias.map(v => v.pts[v.pts.length >> 1]))); if (o) toward(o, 90, 35); } },
+    { id: 'r8-drowned', title: 'The drowned village: a spire out of a lake', how: 'Perch on the weathervane; in late summer the low water shows roofs and walls.', round: 'R8 B3',
+      go: () => { const S = nearest(settlementsNear(b.p[0], b.p[2], 9000, false).filter(S => S.kind === 'drowned')); if (S) toward(S, 70, 30); } },
+    { id: 'r8-chimes', title: 'Wind chimes on a few porches', how: 'Land by a cottage door with a chime: it rings in gusts, in the Valley’s key.', round: 'R8 B4',
+      go: () => { const bd = nearest(settlementsNear(b.p[0], b.p[2], 4000, false).flatMap(S => S.build.filter(chimeAt))); if (bd) { const c = chimeAt(bd); toward({ x: c[0], z: c[2] }, 35, 10); } } },
+  ];
+  for (const f of dev) G.dev?.add({ area: 'World', ...f });
+
+  let sets = [], bridges = [], lines = [], rails = [], near = [], setT = 0, nearT = 0;
   return {
     id: 'ruins',
     update(dt) {
-      if ((setT -= dt) <= 0) { setT = 1; sets = settlementsNear(b.p[0], b.p[2], DRAW + 50); bridges = bridgesNear(b.p[0], b.p[2], DRAW); }
+      if ((setT -= dt) <= 0) { setT = 1; sets = settlementsNear(b.p[0], b.p[2], DRAW + 50); bridges = bridgesNear(b.p[0], b.p[2], DRAW); lines = linesNear(b.p[0], b.p[2], DRAW); rails = railsNear(b.p[0], b.p[2], DRAW); }
+      // chimes near you ring in the wind
+      const wind = (G.windK ?? .3) + (G.gustWind || 0) * 1.5;
+      for (const c of chimes) { const d = Math.hypot(c[0] - b.p[0], c[1] - b.p[1], c[2] - b.p[2]); if (d < 45 && Math.random() < dt * (.04 + wind * .5)) ring(c, d); }
       if ((nearT -= dt) <= 0) {
         nearT = .5; near = [];
         for (const S of sets) if (Math.hypot(S.x - b.p[0], S.z - b.p[2]) < 260) near.push(...artefactsOf(S));
+        chimes = []; for (const S of sets) if (Math.hypot(S.x - b.p[0], S.z - b.p[2]) < 200) for (const bd of S.build) { const c = chimeAt(bd); if (c) chimes.push(c); }
       }
       // taking: standing or perched beside it, or plucked up skimming low over it
       for (const a of near) {
@@ -118,8 +169,26 @@ export function ruinsSystem(G) {
         if (Math.hypot(T.x - cam[0], T.z - cam[2]) > DRAW + 40) continue;
         for (const bd of T.build) {
           const v = bd.kind === 'barn' || bd.kind === 'keeper' ? Math.min(bd.v, 1) : bd.v, name = ['well', 'pump', 'cart', 'boat'].includes(bd.kind) ? 'ru_' + bd.kind : `ru_${bd.kind}${v}`;
-          (S.props[name] ||= []).push(bd.x, bd.y, bd.z, 1, bd.yaw, .5, 0, 0);
+          // the drowned cottages: only in summer, when the reservoir is low, do their roofs break the water
+          (S.props[name] ||= []).push(bd.x, bd.under && G.season?.name !== 'summer' ? bd.y - 1.8 : bd.y, bd.z, 1, bd.yaw, .5, 0, 0);
+          const c = Math.hypot(bd.x - cam[0], bd.z - cam[2]) < 160 && chimeAt(bd);   // turning a little in the wind
+          if (c) (S.props.ru_chime ||= []).push(c[0], c[1], c[2], 1, bd.yaw + Math.sin(G.t * 1.3 + bd.x) * (.2 + (G.windK ?? .3) * .8), .5, 0, 0);
         }
+      }
+      // the pole lines: each pole near enough, and the wires of a line while any of it is close
+      for (const L of lines) {
+        let any = false;
+        for (const o of L.poles) if (Math.abs(o.x - cam[0]) < DRAW && Math.abs(o.z - cam[2]) < DRAW) { any = true; (S.props['ru_pole' + o.state] ||= []).push(o.x, o.y, o.z, 1, o.yaw, .5, 0, 0); }
+        if (any) { const m = wireShape(L); (S.props[m.shape] ||= []).push(m.at[0], 0, m.at[1], 1, 0, .5, 0, 0); }
+      }
+      // the railway
+      const close = (x, z, r = DRAW) => Math.abs(x - cam[0]) < r && Math.abs(z - cam[2]) < r;
+      for (const T of rails) {
+        for (const ch of T.chunks) { const p = ch.pts[ch.pts.length >> 1]; if (close(p.x, p.z, DRAW + 100)) { const m = railShape(ch, RS.track); (S.props[m.shape] ||= []).push(m.at[0], 0, m.at[1], 1, 0, .5, 0, 0); } }
+        for (const v of T.vias) if (v.pts.some(p => close(p.x, p.z, DRAW + 60))) { const m = railShape(v, RS.viaduct); (S.props[m.shape] ||= []).push(m.at[0], 0, m.at[1], 1, 0, .5, 0, 0); }
+        const st = T.station; if (st && close(st.x, st.z)) (S.props.ru_station ||= []).push(st.x, st.y, st.z, 1, st.yaw, .5, 0, 0);
+        for (const c of T.cars) if (close(c.x, c.z)) (S.props['ru_car' + c.v] ||= []).push(c.x, c.y, c.z, 1, c.yaw, .5, 0, 0);
+        for (const o of T.portals) if (close(o.x, o.z)) (S.props.ru_portal ||= []).push(o.x, o.y, o.z, 1, o.yaw, .5, 0, 0);
       }
       for (const g of bridges) { const m = bridgeShape(g); (S.props[m.shape] ||= []).push(m.at[0], 0, m.at[1], 1, 0, .5, 0, 0); }
       for (const a of near) if (Math.hypot(a.x - cam[0], a.z - cam[2]) < 160) (S.props['af_' + a.kind] ||= []).push(a.x, a.y + .01, a.z, 1.5, a.yaw, .5, 0, 0);
