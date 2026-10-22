@@ -123,13 +123,18 @@ export function floraSystem(G) {
         if (sk) { const d = Math.hypot(x - sk.x, z - sk.z); if (d < 7) k += (1 - d / 7) * sk.k; }
         return k;
       };
+      // only the cells in front of the camera (a cone a little wider than the view, as the trees);
+      // looking steeply down, all of them
+      const v = G.R.viewInfo, fx = v ? v.f[0] : 0, fz = v ? v.f[2] : 0, fl = Math.hypot(fx, fz);
+      const cone = v && v.f[1] > -.55 && fl > .01 ? Math.cos(Math.min(Math.PI, Math.atan(Math.tan(v.fov / 2) * v.aspect) + .6)) : -2;
       for (let cz = d0; cz <= d1; cz++) for (let cx = a; cx <= b; cx++) {
         const mx = (cx + .5) * C - cam[0], mz = (cz + .5) * C - cam[2], dd = mx * mx + mz * mz;
         if (dd > N * N) continue;
+        if (dd > 2 * C * C && (mx * fx + mz * fz) / (Math.sqrt(dd) * fl) < cone) continue;   // off to the side or behind
         const far = dd > (N * .6) ** 2;
         for (const [kind, x, y, z, sc, yaw, tint, gold] of cell(cx, cz)) {
           if (far && kind !== 'stone') continue;   // small things only close up
-          const k = (g || sk || ws) && (kind === 'tuft' || kind === 'flower') ? stir(x, z) : 0;
+          const k = (g || sk || ws) && (kind === 'tuft' || kind.startsWith('flower')) ? stir(x, z) : 0;
           (S.props[kind] ||= []).push(x, y, z, sc * (1 - k * .3), yaw + k * 1.2, tint + k * 3, gold ? .9 : kind === 'tuft' ? autumn * .6 : 0, 0);
         }
       }

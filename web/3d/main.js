@@ -252,7 +252,7 @@ if (qs.has('fps')) G.settings.fpsCap = +qs.get('fps') || 60;
   // Heat guard (Auto graphics): a phone that warms up slows down in fits, so late frames (well past
   // their time) creep up before the average frame rate drops. When they pass 4% (over about half a
   // minute), the resolution steps down early, and holds there two minutes before it may come back.
-  let late = 0, heat = 0, guardT = 0, capWas = 0, mixed = false, drawnAt = 0;
+  let late = 0, heat = 0, guardT = 0, capWas = 0, mixed = false, drawnAt = 0, upT = 0, downAgo = 99;
   function autoQuality(fps, target) {
     const W = 1.5; playT += W; sinceT += W;
     if (G.gfx?.preset !== 'auto' || G.pinRes) return;
@@ -295,9 +295,13 @@ if (qs.has('fps')) G.settings.fpsCap = +qs.get('fps') || 60;
       else {
         guardT = Math.max(0, guardT - 1.5); heat += (lateShare - heat) * .05;
         const auto = !G.pinRes && (G.gfx?.preset ?? 'auto') === 'auto';
-        if (G.pinRes) { /* pinned */ } else if (fps < target && G.res > .5) { G.res = Math.max(.5, G.res - .1); resize(); }
-        else if (auto && heat > .04 && G.res > .5 && !guardT) { G.res = Math.max(.5, G.res - .1); resize(); guardT = 120; heat = .02; }
-        else if (fps > target + 4 && G.res < 1 && !guardT) { G.res = Math.min(1, G.res + .05); resize(); }
+        // (back up only after two smooth windows in a row and 9 s after the last step down: on a
+        // phone right at the edge it hunted down and up every few seconds, and every resize of the
+        // canvas is a hitch)
+        upT = fps > target + 4 ? upT + 1 : 0; downAgo += 1.5;
+        if (G.pinRes) { /* pinned */ } else if (fps < target && G.res > .5) { G.res = Math.max(.5, G.res - .1); resize(); downAgo = 0; }
+        else if (auto && heat > .04 && G.res > .5 && !guardT) { G.res = Math.max(.5, G.res - .1); resize(); guardT = 120; heat = .02; downAgo = 0; }
+        else if (upT >= 2 && downAgo >= 9 && G.res < 1 && !guardT) { G.res = Math.min(1, G.res + .05); resize(); upT = 0; }
         autoQuality(fps, target);
       }
       H.fps(fps); G.stats = { fps, res: G.res, chunks: R.stats.chunks, tris: R.stats.tris };

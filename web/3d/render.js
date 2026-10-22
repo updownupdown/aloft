@@ -487,9 +487,9 @@ export function createRenderer(gl) {
     gl.useProgram(solidInst.p); setLight(solidInst, S);
     gl.uniformMatrix4fv(solidInst.u.uVP, false, vp); gl.uniform1f(solidInst.u.uTime, S.time); gl.uniform3fv(solidInst.u.uAutumn, S.autumnCol); gl.uniform1f(solidInst.u.uSnowLine, S.snowLine ?? 999);
     gl.uniform1f(solidInst.u.uSway, 0);
-    const prop = key => {
+    const prop = (key, again = false) => {
       const d = S.props[key], m = shapes.get(key); if (!m || !d.length) return;
-      upload(m.ibuf, d);
+      if (!again) upload(m.ibuf, d);   // (the clouds draw twice, depth then colour: one upload)
       gl.bindVertexArray(m.vao); gl.drawArraysInstanced(gl.TRIANGLES, 0, m.count, d.length / 8); tris += m.count / 3 * d.length / 8;
     };
     for (const key in S.props) if (!CLOUDY.has(key)) { pf?.pass(R.propPasses ? key : 'props'); if (S.frost) gl.uniform4fv(solidInst.u.uFrost, FROSTY.has(key) ? S.frost : NOFROST); prop(key); }
@@ -547,7 +547,7 @@ export function createRenderer(gl) {
     for (const key in S.props) if (CLOUDY.has(key)) prop(key);
     gl.colorMask(true, true, true, true); gl.depthFunc(gl.LEQUAL); gl.depthMask(false);
     gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-    for (const key in S.props) if (CLOUDY.has(key)) prop(key);
+    for (const key in S.props) if (CLOUDY.has(key)) prop(key, true);
     gl.depthMask(true); gl.disable(gl.BLEND); gl.depthFunc(gl.LESS);
 
     gl.uniform1f(inst.u.uDither, 0);
