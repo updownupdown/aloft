@@ -79,14 +79,19 @@ export const RIVER = { scale: 1500, seed: 91, half: 8, bed: -2.2 };
 export function riverAt(x, z) {
   const m = fbm(x / 2600, z / 2600, RIVER.seed + 7, 1);
   if (m < .02 || Math.hypot(x, z + 60) < 320) return null;
-  // the channel line is warped by noises at three sizes, so it swings in big meanders, bends
-  // within them, and small kinks and wiggles close up (so no stretch of it reads as straight)
-  const ax = fbm(x / 150, z / 150, RIVER.seed + 21, 2), az = fbm(x / 150, z / 150, RIVER.seed + 23, 2), bx = fbm(x / 48, z / 48, RIVER.seed + 25, 1), bz = fbm(x / 48, z / 48, RIVER.seed + 27, 1);
-  const wx = x + fbm(x / 520, z / 520, RIVER.seed + 11, 2) * 170 + ax * 40 + bx * 6, wz = z + fbm(x / 520, z / 520, RIVER.seed + 13, 2) * 170 + az * 40 + bz * 6;
-  const v = fbm(wx / RIVER.scale, wz / RIVER.scale, RIVER.seed, 2) + fbm(wx / (RIVER.scale / 5), wz / (RIVER.scale / 5), RIVER.seed + 2, 1) * .12;
-  // the width wanders too: long reaches broad or narrow, pools and narrows within them
+  // the channel line is warped by noises at four sizes, so it swings in big meanders (some
+  // reaches wild, some calmer), bends and doglegs within them, and small kinks close up
   const u = (sd, k) => fbm(x / k, z / k, RIVER.seed + sd, 1) * .5 + .5;
-  const wide = (.5 + 1.0 * u(17, 340)) * (.7 + .6 * u(29, 1100)) * (.82 + .36 * u(31, 95));
+  const big = 110 + 140 * u(33, 900), mid = 90 + 170 * u(35, 600);
+  const ax = fbm(x / 150, z / 150, RIVER.seed + 21, 2), az = fbm(x / 150, z / 150, RIVER.seed + 23, 2);
+  const cx = fbm(x / 85, z / 85, RIVER.seed + 37, 2), cz = fbm(x / 85, z / 85, RIVER.seed + 39, 2);
+  const bx = fbm(x / 40, z / 40, RIVER.seed + 25, 1), bz = fbm(x / 40, z / 40, RIVER.seed + 27, 1);
+  const wx = x + fbm(x / 520, z / 520, RIVER.seed + 11, 2) * big + ax * mid + cx * 55 + bx * 16, wz = z + fbm(x / 520, z / 520, RIVER.seed + 13, 2) * big + az * mid + cz * 55 + bz * 16;
+  const v = fbm(wx / RIVER.scale, wz / RIVER.scale, RIVER.seed, 2) + fbm(wx / (RIVER.scale / 5), wz / (RIVER.scale / 5), RIVER.seed + 2, 1) * .12;
+  // the width wanders a lot: long reaches broad or narrow, pools and narrows, and now and then
+  // a slack wide pool where the river spreads out
+  const pool = smooth(.62, .85, u(41, 220));
+  const wide = (.45 + 1.2 * u(17, 340)) * (.55 + .9 * u(29, 1100)) * (.7 + .6 * u(31, 95)) * (1 + 1.4 * pool);
   return { d: Math.abs(v) * RIVER.scale * .55, w: RIVER.half * wide * smooth(.02, .2, m), m, side: v < 0 ? -1 : 1, lean: clamp(fbm(x / 260, z / 260, RIVER.seed + 19, 1) * 2.2, -1, 1) };
 }
 function riverCut(x, z, h) {
@@ -230,7 +235,7 @@ export const TREE = {
   limbR: [.018, .015],                           // limb thickness at the trunk (it tapers to half)
 };
 // the looks: 0 broadleaf, 1 pine, then the trees of the other lands, each with its own limbs
-export const LOOK = { broadleaf: 0, pine: 1, birch: 2, redwood: 3, acacia: 4, saguaro: 5, joshua: 6, mangrove: 7, oak: 8, poplar: 9, spruce: 10, juniper: 11, willow: 12 };
+export const LOOK = { broadleaf: 0, pine: 1, birch: 2, redwood: 3, acacia: 4, saguaro: 5, joshua: 6, mangrove: 7, oak: 8, poplar: 9, spruce: 10, juniper: 11, willow: 12, sequoia: 13 };
 export const LOOKS = [
   { kind: 0, limbs: TREE.limbs[0], limbR: TREE.limbR[0] },
   { kind: 1, limbs: TREE.limbs[1], limbR: TREE.limbR[1] },
@@ -245,20 +250,22 @@ export const LOOKS = [
   { kind: 1, limbs: [[0, .2, .2], [2.1, .27, .19], [4.2, .34, .17]], limbR: .011 },                     // spruce
   { kind: 0, limbs: [[.6, .38, .3], [3, .44, .27]], limbR: .022 },                                      // juniper
   { kind: 0, limbs: [[0, .4, .28], [2.1, .46, .3], [4.2, .38, .27]], limbR: .022 },                     // willow
+  { kind: 1, limbs: [[0, .5, .17], [2.3, .58, .15], [4.4, .46, .16]], limbR: .016 },                    // giant sequoia
 ];
 // what grows where: each land's trees as [look, weight] (a weight may depend on the spot), mixed
 // by a roll; each kind also comes and goes in its own slow patches, so a wood has stands of one
 // kind running into another rather than an even salt-and-pepper. Willows and poplars keep to
-// low wet ground, spruce to the heights, the dry lands have junipers and cacti (no pines).
-const SIZE_OF = [[11, 8], [13, 8], [12, 7], [34, 18], [8, 4], [6, 5], [6, 4], [9, 5], [10, 7], [16, 7], [15, 9], [5, 4], [10, 5]];   // by look: [smallest grown height, extra]
+// low wet ground, spruce to the heights, giant sequoias stand in groves in the high country and
+// among the redwoods, the dry lands have junipers and cacti (no pines).
+const SIZE_OF = [[11, 8], [13, 8], [12, 7], [34, 18], [8, 4], [6, 5], [6, 4], [9, 5], [10, 7], [16, 7], [15, 9], [5, 4], [10, 5], [38, 18]];   // by look: [smallest grown height, extra]
 const MIX = {
   meadow: (y, wet) => [[0, 5], [8, 3], [2, 1], [1, 1], [9, wet * 4], [12, wet * 3]],
   forest: (y, wet, hi) => [[0, 6], [8, 3], [2, 1.5], [1, 2 + hi * 4], [10, hi * 3], [9, wet * 2], [12, wet * 2]],
   lakeland: (y, wet, hi) => [[0, 4], [2, 2], [1, 2 + hi * 3], [8, 1.5], [12, wet * 5], [9, wet * 2]],
   birch: (y, wet, hi) => [[2, 8], [1, 1.5], [10, 1 + hi * 2], [0, .6]],
-  redwood: (y, wet) => [[3, 7], [10, 1], [0, 1], [12, wet * 2]],
+  redwood: (y, wet) => [[3, 7], [13, 1.2], [10, 1], [0, 1], [12, wet * 2]],
   moor: (y, wet) => [[2, 3], [1, 1.5], [11, 1.5], [8, .6], [12, wet * 2]],
-  mountains: (y, wet, hi) => [[1, 3], [10, 2 + hi * 3], [2, 1], [0, 1 - hi]],
+  mountains: (y, wet, hi) => [[1, 3], [10, 2 + hi * 3], [13, 2.2 * (1 - hi * .6)], [2, 1], [0, 1 - hi]],
   alpine: (y, wet, hi) => [[10, 5], [1, 3], [11, 1 - hi * .8]],
   cliffs: () => [[1, 3], [11, 2], [10, 1]],
   fjord: () => [[10, 4], [1, 3], [2, 1.5]],
