@@ -123,7 +123,8 @@ export function songsSystem(G) {
   const young = s => s.young && !winter();
   // a chorus you started reaches a bird once it has spread that far from your tree
   const reached = s => !chorus.o || Math.hypot(s.x - chorus.o[0], s.z - chorus.o[1]) < (G.t - chorus.at) * SONG.chorusSpread;
-  const isOut = s => active(s.sp, G.tod, storm(), winter()) || ((G.gifts.sing > 0 || chorus && !s.sp.look.owl && reached(s)) && storm() < .6);
+  // (in an eclipse the songbirds fall silent)
+  const isOut = s => !(G.eclipse > .4) && active(s.sp, G.tod, storm(), winter()) || ((G.gifts.sing > 0 || chorus && !s.sp.look.owl && reached(s)) && storm() < .6);
   // a syllable rising from a beak: a songbird's (at its perch), or the hawk's (a little ahead of
   // where it sits)
   let lastS = null;
@@ -527,7 +528,7 @@ export function songsSystem(G) {
         // mornings are busy, so each bird sings half as often then
         if (st.next <= 0) {
           const morning = chorus || timeOfDay(G.tod) === 'dawn';
-          st.next = (chorus ? 2.5 + Math.random() * 3 : 7 + Math.random() * 5) * (morning ? 2 : 1); sing(s);
+          st.next = (chorus ? 2.5 + Math.random() * 3 : 7 + Math.random() * 5) * (morning ? 2 : 1) * (1 + (G.hush || 0) * 2); sing(s);   // fewer songs in a hush
           // tawny owls call as a pair: the nearest other one answers
           if (s.sp.name === 'Tawny owl') for (const o of near) if (o !== s && o.sp === s.sp && o.out && birds.get(o.id)) {
             birds.get(o.id).next = s.sp.notes.length * s.sp.gap + .8 + Math.random(); break;

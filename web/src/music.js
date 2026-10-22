@@ -88,6 +88,7 @@ export function createMusic(audio) {
     M.on = on;
     if (M.out) for (const g of [M.out, M.pgain]) g.gain.setTargetAtTime(on ? 1 : 0, audio.ctx.currentTime, .8);
   };
+  M.hush = 0;          // 0..1: the hush after snow, an eclipse (set from the moments system): softer
   M.setMode = () => {};   // one style now (older saves still call this)
 
   // ---- the strings ---------------------------------------------------------------------------
@@ -210,7 +211,7 @@ export function createMusic(audio) {
   function valley(now, { night, storm, learned, species }, mode) {
     const T = M.tune, dark = night > .7, set = CHORDS[mode];
     // the slow rise and fall: louder, brighter and busier at the top of each arc
-    const arc = .5 - .5 * Math.cos((now - M.t0) / T.arc * Math.PI * 2), quiet = 1 - storm * .4;
+    const arc = .5 - .5 * Math.cos((now - M.t0) / T.arc * Math.PI * 2), quiet = (1 - storm * .4) * (1 - M.hush * .6);
     if (now > M.droneT - .5 && Math.random() < T.drone) {
       const dur = 90 + Math.random() * 60;
       drone(hz(-24), Math.max(now, M.droneT), dur, T.strings * 1.6 * quiet);

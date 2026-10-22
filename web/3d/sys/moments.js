@@ -13,6 +13,8 @@ export function momentsSystem(G) {
   return {
     id: 'moments',
     update(dt) {
+      // the hush after snow and an eclipse quiet the music too
+      if (G.music) G.music.hush = G.hush || 0;
       if (tod < .22 && G.tod >= .22 && (G.storm || 0) < .5) moment('first light', .9);
       tod = G.tod;
       if (b.state === 'fly') {
