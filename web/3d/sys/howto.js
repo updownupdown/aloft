@@ -89,7 +89,7 @@ const SCENES = {
   slope: `${sky()}<polygon points="0,90 0,70 70,62 120,34 160,30 160,90" fill="#b6c99a"/><polygon points="70,62 120,34 104,62" fill="#a5bb87"/><polygon points="0,90 0,80 80,78 160,64 160,90" fill="#8fae6c"/>
     <g class="wind3" stroke="#4f7fa6" stroke-width="1.4" fill="none" stroke-linecap="round"><path d="M10 60q30 -2 52 -6t30 -18"/><path d="M14 48q24 -2 44 -6t26 -16"/></g>${hawk('h lift3', 108, 22, 22, 80)}`,
   south: `<rect width="160" height="90" fill="#e4ebef"/><polygon points="0,0 160,0 160,22 0,26" fill="#8fae6c"/><polygon points="0,26 160,22 160,62 0,66" fill="#b6c99a"/><polygon points="0,66 160,62 160,90 0,90" fill="#9cc0c8"/>
-    <text x="8" y="14" font-size="8" font-weight="700" fill="#1d2b36">N  home</text><text x="8" y="84" font-size="8" font-weight="700" fill="#1d2b36">S  marsh</text>
+    <text x="8" y="14" font-size="8" font-weight="700" fill="#1d2b36">N  ice</text><text x="8" y="84" font-size="8" font-weight="700" fill="#1d2b36">S  ice</text>
     <path class="route3" d="M80 10q-26 18 -6 34t4 36" fill="none" stroke="#1d2b36" stroke-width="1.6" stroke-dasharray="3 3"/>${hawk('h south3', 80, 12, 18, 180)}`,
   nest: `${sky()}${hills(70)}${tree(80, 90, 1.7)}
     <g class="twigs3" stroke="#8a5a32" stroke-width="1.6" stroke-linecap="round"><path d="M88 62l12 -2"/><path d="M90 64l10 -5"/><path d="M89 60l13 1"/><path d="M91 63l10 0"/></g>
@@ -118,9 +118,9 @@ export function howtoSystem(G) {
     ${card('ring', 'Rings', 'Fly through the rings of cloud for a burst of speed.')}
   </div>`;
   trip.innerHTML = `<div class="hows3">
-    ${card('south', 'South for the winter', 'The day turns on the dial, top right, and the seasons every eight days. In autumn follow the hawks south to the wintering marsh, and home again in spring. The compass, top middle, points the way; the Journal keeps your landmarks, and each one sends a postcard to the album.')}
+    ${card('south', 'The whole Earth', 'The world is a small Earth: every continent, the oceans narrowed so they can be crossed, the ice at either end. Fly east or west long enough and you come round to where you began. The day turns on the dial, top right, with the date; the season is the place’s own, so the north has summer while the south has winter. The Map shows where you have been; the Journal keeps the countries and landmarks you find, and each landmark sends a postcard to the album.')}
     ${card('nest', 'A nest', 'Twigs lie under some broadleaf trees. Land beside one to pick it up, then perch on a branch to start a nest. Five twigs and there is an egg; when it hatches, keep part of each mouse and carry it home. Five meals and your chick fledges.')}
-    ${card('mate', 'A mate', 'Keep well fed and watered and your hawk grows healthy: after the first migration its tail turns deep red. In the marsh a hawk may come to look you over. A red tail, keepsakes, songs and acrobatics (a full stoop, a wingover) win it as your mate.')}
+    ${card('mate', 'A mate', 'Keep well fed and watered and your hawk grows healthy: after its first year its tail turns deep red. In spring a hawk may come to look you over. A red tail, keepsakes, songs and acrobatics (a full stoop, a wingover) win it as your mate.')}
     ${card('keepsake', 'Keepsakes and pictures', 'Rare keepsakes glint in the grass: land beside one to keep it. Animals seen up close get a page in the field guide. Photo mode (Settings) holds the world still for a picture.')}
   </div>`;
   hintsPage(G);

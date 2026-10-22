@@ -21,6 +21,7 @@ const KINDS = {
   meadow: [['village', .22], ['farm', .45]], lakeland: [['village', .16], ['farm', .38]], savanna: [['farm', .26]],
   moor: [['farm', .2], ['fold', .24]], birch: [['farm', .2]], forest: [['farm', .06]], coast: [['hamlet', .5]],
   mountains: [['fold', .16]], fjord: [['hamlet', .25]],
+  maquis: [['village', .14], ['farm', .3]], steppe: [['fold', .16], ['farm', .1]], taiga: [['farm', .05]], tundra: [['fold', .04]],
 };
 // building sizes (m): L long (local x), W wide, wall height, ridge height, how far round to clear
 // trees. A building's door is on its +z side (the chapel's and the barn's on the +x end).

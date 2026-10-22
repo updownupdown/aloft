@@ -1,13 +1,12 @@
 // The long arc of a hawk's year: health built up by eating, drinking and flying well (it shows in
-// how red the tail is), keepsakes gathered for a nest, acrobatics, songs, and the courtship down
-// south they all add up to. Nothing here ever punishes: low meters only slow the health down,
+// how red the tail is), keepsakes gathered for a nest, acrobatics, songs, and the courtship in
+// spring they all add up to. Nothing here ever punishes: low meters only slow the health down,
 // and a courtship that doesn't take can be tried again another day.
 // Other hawks of your own (a suitor, your mate, your fledglings) fly here too, as shapes built
 // from the hawk's own mesh.
 import { height, WATER, ih } from '../world.js';
 import { buildHawk } from '../hawk.js';
 import { builder, blob, reseed } from '../shapes.js';
-import { MARSH_Z } from './journey.js';
 import { journal } from '../journal.js';
 import { clamp, lerp, angleTo } from '../util.js';
 
@@ -44,8 +43,9 @@ export function storySystem(G) {
   const ownKind = () => ['hawkGlide', 'hawkUp', 'hawkDown'].forEach((k, i) => G.R.shape(k, hawkShape([{}, { flapL: 1, flapR: 1, handL: -.3, handR: -.3 }, { flapL: -.7, flapR: -.7, handL: .4, handR: .4 }][i])));
   ownKind(); G.on('bird', ownKind);
   G.R.shape('keepsake', keepsakeShape());
-  const inMarsh = () => b.p[2] > MARSH_Z;
-  const adult = () => (G.journey?.journeys || 0) > 0;
+  // courting time: your own spring (sky.js G.season, by latitude), or any day in the tropics
+  const inMarsh = () => G.season.name === 'spring' || G.season.tropic;
+  const adult = () => (G.journey?.year || 1) > 1 || G.day > 16;
 
   // ---- other hawks of your own ----------------------------------------------------------
   const kin = [];   // { kind, p, yaw, s, phase, r, leave }
@@ -128,7 +128,7 @@ export function storySystem(G) {
       if (!inMarsh() || St.courtDay === G.day || b.state !== 'fly') return;
       St.courtDay = G.day; St.bonus = 0;
       St.suitor = { t: 0, k: addKin('suitor', 24) }; G.audio.scream?.(true);
-      G.hud.toast('A hawk comes circling over the reeds to look at you. Show it what you can do: stoops, wingovers, songs, a red tail, keepsakes.', 7);
+      G.hud.toast('A hawk comes circling up on the spring air to look at you. Show it what you can do: stoops, wingovers, songs, a red tail, keepsakes.', 7);
       return;
     }
     S.t += dt;
@@ -141,6 +141,7 @@ export function storySystem(G) {
       G.hud.toast(`The hawk circles a while, then drifts off. ${tip()} Another may come another day.`, 8);
     }
   }
+  G.on('wrap', dx => { for (const k of kin) k.p[0] += dx; });
   G.on('fledged', () => addKin('young', 16 + kin.filter(k => k.kind === 'young').length * 5));
   G.on('newYear', () => { for (const k of kin) if (k.kind === 'young') k.leave = .01; G.hud.toast('Last year’s young are grown, and fly off to find their own country.', 5); });
 
@@ -151,7 +152,7 @@ export function storySystem(G) {
     const ks = St.keepsakes.length ? ` Keepsakes: ${St.keepsakes.map(k => KEEPSAKES[k] ?? k).join(', ')}.` : '';   // names: things people left (ruins.js)
     sec.body.querySelector('.j-health').textContent = `Health: ${healthWord(St.health)}.${ks}`;
     sec.body.querySelector('.j-court').textContent = St.mate ? `Your mate, met ${St.mate.note.replace(/\.$/, '').replace(/^Day/, 'on day')}, flies with you.`
-      : `Courtship, down south: health ${healthWord(St.health).split(',')[0]}, ${St.keepsakes.length} of ${COURT.keep} keepsakes, ${G.learned?.size || 0} of ${COURT.songs} songs, ${Math.min(St.tricks, COURT.tricks)} of ${COURT.tricks} acrobatics.`;
+      : `Courtship, in spring: health ${healthWord(St.health).split(',')[0]}, ${St.keepsakes.length} of ${COURT.keep} keepsakes, ${G.learned?.size || 0} of ${COURT.songs} songs, ${Math.min(St.tricks, COURT.tricks)} of ${COURT.tricks} acrobatics.`;
   });
 
   return {

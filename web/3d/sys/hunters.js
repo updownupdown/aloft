@@ -6,7 +6,7 @@
 import { height, groundAt, forest, blend, ih, WATER } from '../world.js';
 import { crow, eagle, kestrel, gull, raven, carrion } from './critshapes.js';
 
-const CARRION_CELL = 600, CARRION_LANDS = { moor: .4, mountains: .3, alpine: .25, savanna: .4, badlands: .3, meadow: .12 };
+const CARRION_CELL = 600, CARRION_LANDS = { moor: .4, mountains: .3, alpine: .25, savanna: .4, badlands: .3, meadow: .12, steppe: .35, tundra: .25, maquis: .15 };
 
 export function huntersSystem(G) {
   const b = G.b, R = G.R, H = G.hud;

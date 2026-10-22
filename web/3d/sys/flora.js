@@ -67,6 +67,10 @@ const GROUND = {
   moor: r => r < .45 ? 'gold' : r < .55 ? 'stone' : r < .62 ? 'flowerP' : null,
   volcano: (r, n) => r < .2 ? 'stone' : r < .3 && n > .85 ? 'tuft' : null,
   alpine: (r, n) => n < .8 || r < .3 ? (r < .6 ? 'stone' : null) : r < .55 ? 'tuft' : r < .62 ? 'flowerW' : null,
+  ice: r => r < .03 ? 'stone' : null,
+  tundra: r => r < .3 ? 'tuft' : r < .38 ? 'stone' : r < .42 ? 'flowerW' : null,
+  steppe: r => r < .6 ? 'gold' : r < .64 ? 'scrub' : null,
+  maquis: r => r < .25 ? 'scrub' : r < .35 ? 'gold' : r < .4 ? 'stone' : r < .44 ? 'flowerP' : null,
 };
 export function floraSystem(G) {
   const R = G.R;
@@ -88,7 +92,7 @@ export function floraSystem(G) {
       const scree = smooth(.1, .45, fbm(x / 120, z / 120, 271, 2));            // stones lie in patches
       const f = forest(x, z), sc = .8 + ih(cx, cz, 230 + i) * .6, yaw = ih(cx, cz, 240 + i) * 6.283;
       const tint = ih(cx, cz, 250 + i); let gold = 0;
-      const snowy = y > 185 - env.snow * 200;
+      const snowy = y > env.snowLine;
       let kind = null;
       if (y < .9 || (k.marsh > .5 && r < .5)) kind = y > WATER - .2 && (k.marsh > .3 || y < .5) ? 'reeds' : null;   // at the water's edge
       else if (ground) { kind = ground(r, n); if (kind === 'gold') { kind = 'tuft'; gold = 1; } if (kind === 'stone' && ih(cx, cz, 280 + i) > scree) kind = null; }                  // the dry and bare lands

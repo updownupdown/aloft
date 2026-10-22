@@ -3,7 +3,6 @@
 // stamina) until you leave or climb high over. Their valley shows on the Map. One spring in a
 // while it comes free: the pair is gone and the valley is yours if you want it.
 import { height, WATER, ih } from '../world.js';
-import { HOME_Z } from './journey.js';
 import { PIG } from '../facet.js';
 
 export const NEIGHBOURS = {
@@ -13,23 +12,23 @@ export const NEIGHBOURS = {
   freeChance: .25,  // each new year, the chance their valley comes free
 };
 
-// the deepest valley floor in a ring 1.4-2.6 km from home: the lowest ground against its surroundings
-function findValley() {
+// the deepest valley floor in a ring 1.4-2.6 km from where you began: the lowest ground against its surroundings
+function findValley([HX, HZ]) {
   let best = null;
   for (let i = 0; i < 28; i++) {
     const a = ih(i, 3, 611) * 6.283, d = 1400 + ih(i, 4, 612) * 1200;
-    const x = Math.cos(a) * d, z = HOME_Z + Math.sin(a) * d, y = height(x, z);
+    const x = HX + Math.cos(a) * d, z = HZ + Math.sin(a) * d, y = height(x, z);
     if (y < WATER + 3 || y > 80) continue;
     let rim = 0; for (let k = 0; k < 8; k++) rim += height(x + Math.cos(k * .785) * 320, z + Math.sin(k * .785) * 320);
     const score = rim / 8 - y;
     if (!best || score > best.score) best = { x, z, score };
   }
-  return best || { x: 1800, z: HOME_Z - 600 };
+  return best || { x: HX + 1800, z: HZ - 600 };
 }
 
 export function neighboursSystem(G) {
   const b = G.b, H = G.hud, N = NEIGHBOURS;
-  const V = findValley();
+  const V = findValley(G.home || [G.b.p[0], G.b.p[2]]);
   const st = { free: false, met: false, freeYear: 0 };
   const pair = [0, 1].map(i => ({ p: [V.x, height(V.x, V.z) + 60, V.z], yaw: 0, phase: i * Math.PI }));
   let chase = 0, callT = 0, told = false;

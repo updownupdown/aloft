@@ -103,7 +103,6 @@ export function nestSystem(G) {
   }
 
   // the year turns: the nest becomes last year's, waiting to be built on
-  G.on('marsh', () => { if (G.nest) old = { x: G.nest.x, y: G.nest.y, z: G.nest.z, place: G.nest.place, years: G.nest.years || 1 }; });
   G.on('newYear', () => { if (G.nest) { old = { x: G.nest.x, y: G.nest.y, z: G.nest.z, place: G.nest.place, years: G.nest.years || 1 }; G.nest = null; } if (old) say('Your old nest tree still stands; a few twigs there start this year’s nest.', 5); });
   G.on('newDay', () => { taken = new Set(); });
 

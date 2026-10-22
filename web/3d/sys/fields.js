@@ -166,7 +166,7 @@ export function fieldsSystem(G) {
     p = { track }; paths.set(m.id, p); if (paths.size > 600) paths.delete(paths.keys().next().value);
     return p;
   }
-  const snowAt = (x, z, y) => { const line = 185 - env.snow * 200; return smooth(line - 5, line + 25, y + fbm(x / 40, z / 40, 7, 2) * 12); };
+  const snowAt = (x, z, y) => { const line = env.snowLine; return smooth(line - 5, line + 25, y + fbm(x / 40, z / 40, 7, 2) * 12); };
   function strip(out, pts, w, col, a) {
     for (let i = 0; i < pts.length - 1; i++) {
       const [x0, z0] = pts[i], [x1, z1] = pts[i + 1], dx = x1 - x0, dz = z1 - z0, l = Math.hypot(dx, dz) || 1, sx = -dz / l * w, sz = dx / l * w;

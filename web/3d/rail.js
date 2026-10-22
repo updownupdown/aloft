@@ -37,8 +37,8 @@ function cell(i, j) {
     for (let k = 0; k <= n; k++) { const x = x0 + k * STEP, z = lineZ(x, j); P.push({ x, z, h: baseHeight(x, z), k: Math.round(x / STEP) }); }
     // the grade: the ground smoothed over 1.2 km, never below the highest water
     for (let k = 0; k <= n; k++) { let s = 0, m = 0; for (let q = Math.max(0, k - 30); q <= Math.min(n, k + 30); q++) { s += Math.max(P[q].h, 3); m++; } P[k].g = Math.max(s / m, 3.2); }
-    // where there could be no line: the high mountains, near the start, long water
-    const ok = P.map(p => p.h < 170 && Math.hypot(p.x, p.z + 60) > 800);
+    // where there could be no line: the high mountains, long water
+    const ok = P.map(p => p.h < 170);
     for (let k = 0; k <= n;) {
       if (P[k].h >= WATER + 1) { k++; continue; }
       let e = k; while (e <= n && P[e].h < WATER + 1) e++;

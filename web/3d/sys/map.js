@@ -3,7 +3,8 @@
 // terrain itself as the world is, in lit triangles coloured by what grows there. Drag to pan, pinch
 // or the wheel to zoom, tap a place for its note. Painted only while the menu shows the map: the
 // land goes to a cache a screen wider than the view on every side, so a drag only slides it.
-// Created by journey.js, which keeps the route and the landmarks; the fog saves with the journey.
+// Created by journey.js, which keeps the route and the landmarks; the fog saves with the journey,
+// a bit per 100 m cell over the whole Earth (earth.js), wrapping east to west like the world.
 import * as W from '../world.js';
 import { PIG, C, shade, poly, facets } from '../facet.js';
 import { clamp } from '../util.js';
@@ -11,20 +12,26 @@ import { esc } from '../journal.js';
 import { createDial } from '../dial.js';
 import { icon } from '../icons.js';
 import { SEASON_DAYS, SEASONS } from '../sky.js';
+import { EARTH, wrapX } from '../earth.js';
 
 const CELL = 100;                        // fog cells, metres
 const SEE = [160, 2.2, 520];             // clearing radius: base, per metre of height, most
-const ZOOM = [1.2, 24], ZOOM0 = 5;       // metres per CSS pixel: closest, farthest, at first
+const ZOOM = [1.2, 160], ZOOM0 = 5;      // metres per CSS pixel: closest, farthest (most of the world), at first
 const FOG = 'rgba(0, 0, 0, .6)';
-const key = (i, j) => i + ',' + j;
+// the fog: one bit per cell, columns wrapping round the world
+const FI = Math.round(EARTH.W / CELL), FJ = Math.ceil(EARTH.H / CELL), FJ0 = Math.floor(EARTH.Z0 / CELL);
+const bit = (i, j) => { const jj = j - FJ0; return jj < 0 || jj >= FJ ? -1 : jj * FI + (((i + FI / 2) % FI) + FI) % FI; };
 // your own pins: a long press drops one in the colour you pick (they mean what you like); they
 // show on the compass. Pins dropped before had a kind, and keep that kind's colour
 export const PINS = ['#e8a33a', '#c0533f', '#d977a8', '#8a6fc0', '#3f8fd0', '#5f9a4a', '#f4f1e8'];
 const OLD = { thermal: '#e8a33a', water: '#3f8fd0', perch: '#5f9a4a', food: '#c0533f', mark: '#8a6fc0' };
 export const pinCol = p => p.col || OLD[p.kind] || PINS[3];
 
-export function mapView(G, J, { HOME_Z, MARSH_Z }) {
-  const b = G.b, seen = new Set();
+export function mapView(G, J) {
+  const b = G.b, seen = new Uint8Array(Math.ceil(FI * FJ / 8));
+  let count = 0;
+  const see = k => { if (k < 0 || seen[k >> 3] & (1 << (k & 7))) return; seen[k >> 3] |= 1 << (k & 7); count++; };
+  const has = (i, j) => { const k = bit(i, j); return k >= 0 && !!(seen[k >> 3] & (1 << (k & 7))); };
   // clear the fog round the hawk
   function reveal(x = b.p[0], z = b.p[2]) {
     const alt = b.state === 'fly' ? b.p[1] - Math.max(W.height(x, z), W.WATER) : 0;
@@ -32,17 +39,12 @@ export function mapView(G, J, { HOME_Z, MARSH_Z }) {
     const ci = Math.floor(x / CELL), cj = Math.floor(z / CELL);
     for (let j = -n; j <= n; j++) for (let i = -n; i <= n; i++) {
       const dx = (ci + i + .5) * CELL - x, dz = (cj + j + .5) * CELL - z;
-      if (dx * dx + dz * dz <= r * r) seen.add(key(ci + i, cj + j));
+      if (dx * dx + dz * dz <= r * r) see(bit(ci + i, cj + j));
     }
   }
-  const isSeen = (x, z) => seen.has(key(Math.floor(x / CELL), Math.floor(z / CELL)));
-  // how much of the way south has been seen: the cells of a band 3 km wide from home to the marsh
-  function explored() {
-    const i0 = -15, i1 = 15, j0 = Math.floor((HOME_Z - 500) / CELL), j1 = Math.floor((MARSH_Z + 500) / CELL);
-    let n = 0;
-    for (const k of seen) { const [i, j] = k.split(',').map(Number); if (i >= i0 && i < i1 && j >= j0 && j < j1) n++; }
-    return n / ((i1 - i0) * (j1 - j0));
-  }
+  const isSeen = (x, z) => has(Math.floor(x / CELL), Math.floor(z / CELL));
+  // how much of the world has been seen, 0..1
+  const explored = () => count / (FI * FJ);
 
   // ---- the tab ----------------------------------------------------------------------------
   const pane = G.menu.tab('map', 'Map');
@@ -69,16 +71,16 @@ export function mapView(G, J, { HOME_Z, MARSH_Z }) {
     centre(); note.classList.add('hidden');
     const pct = Math.round(explored() * 100);
     dial.update(G.tod, G.day, false, null, G.forecast || null);
-    const cap = t => t[0].toUpperCase() + t.slice(1), into = ((G.day - 1) % SEASON_DAYS) + 1, left = SEASON_DAYS - into;
+    const cap = t => t[0].toUpperCase() + t.slice(1), into = (G.season.d ?? 0) + 1, left = SEASON_DAYS - into;
     const next = SEASONS[(SEASONS.indexOf(G.season.name) + 1) % SEASONS.length];
     const pips = Array.from({ length: SEASON_DAYS }, (_, i) => `<i class="${i < into - 1 ? 'on' : i === into - 1 ? 'on now' : ''}"></i>`).join('');
     seasonEl.className = `mapseason3 ${G.season.name}`;
-    seasonEl.innerHTML = `<b>${cap(G.season.name)}, day ${into} of ${SEASON_DAYS}</b><span class="pips3s">${pips}</span>
-      <small>${left ? `${left} day${left > 1 ? 's' : ''} to ${next}` : `${cap(next)} comes tomorrow`}</small>`;
+    seasonEl.innerHTML = `<b>${G.date?.text ? `${G.date.text}, ` : ''}${G.season.tropic ? 'tropical summer' : G.season.name}</b><span class="pips3s">${pips}</span>
+      <small>${G.season.tropic ? 'near the equator: summer all year' : left ? `${left} day${left > 1 ? 's' : ''} to ${next} here` : `${cap(next)} comes tomorrow`}</small>`;
     // top left: where the hawk is, and how far the journey has come
-    const where = G.placeNote().replace(/^Day \d+, \w+, /, ''), L = G.collection?.(), found = Object.keys(J.found || {}).length;
+    const where = G.placeWhere(), L = G.collection?.(), found = Object.keys(J.found || {}).length;
     sum.innerHTML = `<p class="here3">${esc(cap(where))}</p>
-      <div class="far3"><span><i style="width:${Math.max(2, pct)}%"></i></span><small>${pct}% of the way south known</small></div>
+      <div class="far3"><span><i style="width:${Math.max(2, pct)}%"></i></span><small>${pct < 1 ? (explored() * 100).toFixed(2) : pct}% of the world known</small></div>
       <ul class="tally3"><li><b>${J.year || 1}</b>${J.year > 1 ? 'years' : 'year'}</li><li><b>${found}</b>${found === 1 ? 'landmark' : 'landmarks'}</li>${L ? `<li><b>${L.lands}<span>/${L.of}</span></b>lands</li><li><b>${L.feathers}</b>${L.feathers === 1 ? 'feather' : 'feathers'}</li>` : ''}${J.pins?.length ? `<li><b>${J.pins.length}</b>${J.pins.length === 1 ? 'pin' : 'pins'}</li>` : ''}</ul>`;
     requestAnimationFrame(() => { fit(); cache = null; draw(); });
   });
@@ -116,8 +118,8 @@ export function mapView(G, J, { HOME_Z, MARSH_Z }) {
     fx.fillStyle = FOG; fx.fillRect(0, 0, W3, H3);
     fx.globalCompositeOperation = 'destination-out';
     const rr = CELL * 1.05 / sc, i0 = Math.floor(ox / CELL) - 1, i1 = Math.ceil(X(W3) / CELL) + 1, j0 = Math.floor(oz / CELL) - 1, j1 = Math.ceil(Z(H3) / CELL) + 1;
-    for (const k of seen) {
-      const [i, j] = k.split(',').map(Number); if (i < i0 || i > i1 || j < j0 || j > j1) continue;
+    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+      if (!has(i, j)) continue;
       const px = ((i + .5) * CELL - ox) / sc, py = ((j + .5) * CELL - oz) / sc;
       const g = fx.createRadialGradient(px, py, rr * .35, px, py, rr);
       g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(1, 'rgba(0,0,0,0)');
@@ -129,7 +131,7 @@ export function mapView(G, J, { HOME_Z, MARSH_Z }) {
 
   // what can be tapped: home, the nest, the landmarks found
   function places() {
-    const out = [{ x: 0, z: HOME_Z, name: 'Home, the forest edge', note: 'Where the journey starts and ends.', col: PIG.wood }];
+    const out = G.home ? [{ x: G.home[0], z: G.home[1], name: 'Where you began', note: 'Your first flight started here.', col: PIG.wood }] : [];
     if (G.nest) out.push({ x: G.nest.x, z: G.nest.z, name: 'Your nest', note: G.nest.egg || G.nest.chick ? 'Someone is waiting for you here.' : 'A nest of twigs, in a tree.', col: PIG.bark });
     for (const l of Object.values(J.found)) out.push({ x: l.x, z: l.z, name: l.name, note: l.note, col: PIG.ring });
     // food left on a branch (flight thread's G.caches), till it spoils
@@ -153,17 +155,22 @@ export function mapView(G, J, { HOME_Z, MARSH_Z }) {
       x.fillStyle = 'rgba(255,255,255,.82)'; x.beginPath(); x.roundRect(lx - 6, ly - 13, w + 12, 18, 9); x.fill();
       x.fillStyle = '#1d2b36'; x.fillText(text, lx, ly);
     };
-    const mz = sz(MARSH_Z);
-    if (mz > 0 && mz < V.h) { x.fillStyle = C(PIG.ink, .45); for (let i = 0; i < V.w; i += 10) x.fillRect(i, mz, 6, 1.5); label(10, mz + 18, 'The wintering marsh'); }
-    else if (mz >= V.h) { const km = ((MARSH_Z - V.z) / 1000).toFixed(1), t = `The wintering marsh, ${km} km south`; label(V.w / 2 - x.measureText(t).width / 2, V.h - 22, t); poly(x, [[V.w / 2 - 6, V.h - 13], [V.w / 2 + 6, V.h - 13], [V.w / 2, V.h - 4]], C(PIG.ink, .7)); }
+    // the ends of the Earth: the ice beyond the poles
+    for (const [ez, t] of [[EARTH.Z0, 'The edge of the northern ice'], [EARTH.Z0 + EARTH.H, 'The edge of the southern ice']]) {
+      const ez2 = sz(ez); if (ez2 < -10 || ez2 > V.h + 10) continue;
+      x.fillStyle = 'rgba(240,246,250,.75)'; if (ez < 0) x.fillRect(0, 0, V.w, Math.max(0, ez2)); else x.fillRect(0, ez2, V.w, V.h - ez2);
+      label(V.w / 2 - x.measureText(t).width / 2, ez < 0 ? ez2 + 20 : ez2 - 8, t);
+    }
+    // places on the far side of the wrap show on this side when that is nearer
+    const near = wx0 => V.x + wrapX(wx0 - V.x);
     for (const p of places()) {
-      const px = sx(p.x), py = sz(p.z); if (px < -20 || py < -20 || px > V.w + 20 || py > V.h + 20) continue;
+      const px = sx(near(p.x)), py = sz(p.z); if (px < -20 || py < -20 || px > V.w + 20 || py > V.h + 20) continue;
       if (p.pin) { pin(x, px, py, pinCol(p.pin)); continue; }
       if (p.cache) { pin(x, px, py, '#7a4a2a'); continue; }
       mark(x, px, py, p.col); label(px + 9, py - 6, p.name);
     }
     // you: a little hawk, pointing the way you face
-    x.save(); x.translate(sx(b.p[0]), sz(b.p[2])); x.rotate(b.yaw);
+    x.save(); x.translate(sx(near(b.p[0])), sz(b.p[2])); x.rotate(b.yaw);
     poly(x, [[0, -8], [12, 1], [3, 0], [2, 7], [-2, 7], [-3, 0], [-12, 1]], C(PIG.ink, .92));
     x.restore();
     // north
@@ -183,6 +190,7 @@ export function mapView(G, J, { HOME_Z, MARSH_Z }) {
   // main.js G.travelTo: shut the menu, fade to black, set down on the nearest perch (or the
   // ground or water) there, fade back in
   function teleport(x, z) {
+    x = wrapX(x); z = Math.max(EARTH.Z0 + 200, Math.min(EARTH.Z0 + EARTH.H - 200, z));
     G.travelTo(x, z, () => { reveal(); cache = null; G.hud.toast(`Flown to ${G.placeName?.(x, z) || 'there'}.`, 3); });
   }
   const zoomAt = (k, px = V.w / 2, py = V.h / 2) => {
@@ -225,7 +233,7 @@ export function mapView(G, J, { HOME_Z, MARSH_Z }) {
     if (lastTap && now - lastTap.t < 350 && Math.hypot(p[0] - lastTap.p[0], p[1] - lastTap.p[1]) < 24) { lastTap = null; teleport(wx(p[0]), wz(p[1])); return; }
     lastTap = { t: now, p };
     let best = null, bd = 22;
-    for (const pl of places()) { const d = Math.hypot(sx(pl.x) - p[0], sz(pl.z) - p[1]); if (d < bd) { bd = d; best = pl; } }
+    for (const pl of places()) { const d = Math.hypot(sx(V.x + wrapX(pl.x - V.x)) - p[0], sz(pl.z) - p[1]); if (d < bd) { bd = d; best = pl; } }
     note.classList.toggle('hidden', !best); note.onclick = null;
     if (best?.pin) {
       note.innerHTML = `<b>${esc(best.name)}</b><small>Your pin. It shows on the compass when you are near.</small><span class="pins3"><button data-un="1">Remove pin</button></span>`;
@@ -242,13 +250,17 @@ export function mapView(G, J, { HOME_Z, MARSH_Z }) {
   let t = 0;
   return {
     update(dt) { if ((t -= dt) <= 0) { t = .5; reveal(); } },
-    save: () => [...seen].join(';'),
-    load(s) {
-      seen.clear();
-      if (s) for (const k of String(s).split(';')) if (k) seen.add(k);
-      // a journey saved before the fog: clear it along the route already flown
-      else for (const p of J.route) reveal(p[0], p[1]);
+    // runs of seen and unseen cells, alternating from unseen, in base 36
+    save() {
+      const out = []; let run = 0, cur = 0;
+      for (let k = 0; k < FI * FJ; k++) { const v = (seen[k >> 3] >> (k & 7)) & 1; if (v !== cur) { out.push(run.toString(36)); run = 0; cur = v; } run++; }
+      out.push(run.toString(36));
+      return 'r' + out.join('.');
     },
-    isSeen,
+    load(s) {
+      seen.fill(0); count = 0;
+      if (typeof s === 'string' && s[0] === 'r') { let k = 0, cur = 0; for (const t of s.slice(1).split('.')) { const n = parseInt(t, 36) || 0; if (cur) for (let q = k; q < k + n; q++) see(q); k += n; cur ^= 1; } }
+    },
+    isSeen, explored,
   };
 }

@@ -9,7 +9,6 @@ import { journal, esc } from '../journal.js';
 import { clamp } from '../util.js';
 import { inSentence } from './journey.js';
 import { hourName } from '../dial.js';
-import { SEASON_DAYS } from '../sky.js';
 import { icon } from '../icons.js';
 
 const ALBUM_MAX = 16;
@@ -102,7 +101,7 @@ export function photoSystem(G) {
   function caption() {
     const sky = G.storm > .5 ? 'stormy' : G.snowing > .3 ? 'snowy' : G.rain > .3 ? 'rainy' : G.fog > .4 ? 'misty' : G.overcast > .5 ? 'grey' : 'clear';
     const h = hourName(G.tod), place = G.placeName ? inSentence(G.placeName(G.b.p[0], G.b.p[2])) : 'the hills';
-    const first = `Over ${place}, a ${sky} ${h === 'midday' ? 'midday' : h}, day ${((G.day - 1) % SEASON_DAYS) + 1} of ${G.season.name}.`;
+    const first = `Over ${place}, a ${sky} ${h === 'midday' ? 'midday' : h}, ${G.date?.text || `day ${G.season.d + 1} of ${G.season.name}`}, ${G.season.name}.`;
     return heard?.day === G.day ? [first, heard.text] : [first];
   }
   // the picture to share: the photo in a white border with the caption written under it
@@ -163,7 +162,7 @@ export function photoSystem(G) {
         const l = card; card = null;
         afterDraw(c => {
           const at = project(S, [l.x, (l.y ?? height(l.x, l.z)) + 5, l.z], c.width, c.height) || { x: c.width / 2, y: c.height / 2 };
-          keep({ src: postcard(c, l.name, `Day ${G.day}, ${G.season.name}`, [at.x, at.y]), note: `Postcard: ${l.name}`, card: true });
+          keep({ src: postcard(c, l.name, `${G.date?.text || `Day ${G.day}`}, ${G.season.name}`, [at.x, at.y]), note: `Postcard: ${l.name}`, card: true });
         });
       }
     },
