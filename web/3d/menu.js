@@ -10,6 +10,7 @@
 import { letter } from './letter.js';
 import { store } from './util.js';
 import { icon } from './icons.js';
+import { createDev } from './dev.js';
 
 // where each section sits, whichever system adds it first; others follow in the order added
 const ORDER = { map: -1, journal: 1, game: 1.5, play: 2, how: 3 };
@@ -33,7 +34,7 @@ const GROUPS = {
 const SECTION_OF = {
   Sound: 'audio', Music: 'audio', 'Music style': 'audio',
   Graphics: 'graphics', 'Ground detail': 'graphics', 'Frame rate': 'graphics', 'Battery use': 'graphics',
-  'Show frame rate': 'dev', Update: 'dev', 'Music lab': 'dev', 'Bird song lab': 'dev',
+  'Show frame rate': 'dev', 'Feature list': 'dev', Update: 'dev', 'Music lab': 'dev', 'Bird song lab': 'dev',
 };
 const OLD = { sound: 'audio', app: 'dev', switch: 'gameplay' };
 // rows that keep a set order within their section, whichever system adds them first; the rest follow
@@ -189,5 +190,6 @@ export function createMenu(G, ui) {
     if (a === 'resume') M.set(false); else if (a === 'quit') M.quit?.(); else M.acts.get(a)?.(e.target.closest('[data-act]'));
   });
   addEventListener('keydown', e => { if ((e.code === 'Escape' || e.code === 'KeyP') && !G.photo) M.set(!M.open); });
+  G.dev = createDev(G, M);   // Settings > Dev tools > Feature list (dev.js)
   return M;
 }

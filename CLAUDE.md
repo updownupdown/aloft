@@ -44,6 +44,7 @@ web/3d/logo.js          Aloft's mark, a hawk over the hills (menu title, app ico
 web/3d/dial.js          the day dial, top right (bead marks now; hub cut-out holds Call)
 web/3d/tips.js          tips as a short line and an icon (SHORT, keyed by tip id; TIP_GROUPS), swipe to dismiss, i to pause and read more, gear to Hints
 web/3d/hints.js         How to play > Hints: every tip and message kind with on/off switches (G.hud.off), Show the tips again
+web/3d/dev.js           Settings > Dev tools > Feature list: every small feature, how to try it, a tick when tested; Frame cost from G.perf. Add yours: G.dev?.add({ id, title, how, area, round, pr, go })
 web/3d/journal.js       the Journal tab and its pages (Log, Songs, Landmarks, Field guide, Album): journal(G).section(order, title), .page(id); shot.js: project(), afterDraw(), portraits
 web/3d/pics.js          still pictures of the game's own meshes (songbirdPic(sp, px)), cached data URLs
 web/3d/app.js           Update, Graphics, Haptics, Quiet meters and Quit rows; wake lock; asks for full screen on each touch while not full screen
