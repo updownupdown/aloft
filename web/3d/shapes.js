@@ -128,8 +128,11 @@ export function tube(B, p, q, r, col) {
 const limbsOf = (B, look, leaf, leaf2, bark) => { for (const [o, y, l] of LOOKS[look].limbs) limb(B, o, y, l, LOOKS[look].limbR, leaf, leaf2, bark); };
 export function birch() {
   seed = 13; const B = builder(), dark = [.25, .24, .22];
-  prism(B, 0, 0, .03, .018, -.05, .8, 8, PAL.birch);
-  for (const y of [.08, .12, .2, .27, .34, .4, .5, .58]) prism(B, 0, 0, .031 - y * .014, .03 - y * .014, y, y + .012 + (y * 97 % 1) * .01, 8, dark);
+  // the trunk in short pieces: the sway bends it by height squared, so one long piece would
+  // stay straight while the dark rings on it bent away from it
+  const R = y => .03 - (y + .05) / .85 * .012, cuts = [-.05, .08, .12, .2, .27, .34, .4, .5, .58, .66, .73, .8];
+  for (let i = 0; i < cuts.length - 1; i++) prism(B, 0, 0, R(cuts[i]), R(cuts[i + 1]), cuts[i], cuts[i + 1], 8, PAL.birch);
+  for (const y of [.08, .12, .2, .27, .34, .4, .5, .58]) { const h = .012 + (y * 97 % 1) * .01; prism(B, 0, 0, R(y) + .001, R(y + h) + .001, y, y + h, 8, dark); }
   limbsOf(B, 2, PAL.birchLeaf, PAL.birchLeaf2, PAL.birch);
   blob(B, 0, .74, 0, .19, PAL.birchLeaf, PAL.birchLeaf2, [.9, 1.4, .9], 2);
   blob(B, .07, .56, .05, .14, PAL.birchLeaf2, PAL.birchLeaf, [1, 1.2, 1], 2);
