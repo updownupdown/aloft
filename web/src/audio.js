@@ -66,14 +66,17 @@ export function createAudio() {
     // the hush (fresh snow, an eclipse): the wind drops to a whisper, the insects stop, and calls
     // carry further down the valley (a longer echo on the far-bird bus)
     const hush = scene.hush || 0;
-    const wg = (.04 + windAmt * .22 + pines * .05 * sigh * low + surf * .09 * sigh + high * .06) * (1 - .6 * hush);
-    A.wind.g.gain.setTargetAtTime(wg, t, .3);
+    // with the menu open the wind, rain and water fade right out (about a second), and come back
+    // when it closes
+    const open = scene.menu ? 0 : 1, fade = scene.menu ? .35 : .6;
+    const wg = (.04 + windAmt * .22 + pines * .05 * sigh * low + surf * .09 * sigh + high * .06) * (1 - .6 * hush) * open;
+    A.wind.g.gain.setTargetAtTime(wg, t, scene.menu ? fade : .3);
     if (birdBus) { birdBus.fb.gain.setTargetAtTime(.24 + .22 * hush, t, .5); birdBus.wet.gain.setTargetAtTime(.32 + .3 * hush, t, .5); }
     A.wind.fl.frequency.setTargetAtTime(300 + windAmt * 900 - pines * 120 + surf * 200 * sigh, t, .3);
-    A.rain.g.gain.setTargetAtTime(rainAmt * .035, t, .5);
-    A.whistle.g.gain.setTargetAtTime((scene.stoop || 0) * .07, t, .15);
+    A.rain.g.gain.setTargetAtTime(rainAmt * .035 * open, t, fade);
+    A.whistle.g.gain.setTargetAtTime((scene.stoop || 0) * .07 * open, t, .15);
     A.whistle.fl.frequency.setTargetAtTime(2200 + (scene.stoop || 0) * 900, t, .15);
-    A.babble.g.gain.setTargetAtTime((scene.falls || 0) * .09 * (.8 + .2 * Math.sin(t * 6.3)) * (.4 + .6 * low), t, .25);
+    A.babble.g.gain.setTargetAtTime((scene.falls || 0) * .09 * (.8 + .2 * Math.sin(t * 6.3)) * (.4 + .6 * low) * open, t, .25);
     A.muffleLp.frequency.setTargetAtTime(20000 - (scene.fog || 0) * 18200, t, .4);
     const frogs = (scene.frogs || 0) * low * (1 - hush), sea = scene.sea || {};
     if (frogs > 0 && t > nextFrog) {
