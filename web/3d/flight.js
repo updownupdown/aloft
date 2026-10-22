@@ -142,7 +142,7 @@ export function step(b, c, dt, E) {
   b.stamina = Math.min(1, b.stamina + dt * (b.lift > .5 ? .06 : .035) * (b.recover ?? 1));
 
   trees(b, dt, E);
-  if (b.state === 'fly') solids(b, E);
+  if (b.state === 'fly') solids(b, E, dt);
   if (b.state === 'fly') ground(b, E);
 }
 
@@ -324,14 +324,14 @@ function trees(b, dt, E) {
   // under the canopy: three or more trees round you whose crowns are above you
   b.under = (b.under || 0) + ((below >= 3 ? 1 : 0) - (b.under || 0)) * Math.min(1, dt * 2);
 }
-// towers, standing stones and cairns: hard sides, a perch on top
+// towers, standing stones and cairns: hard sides, a perch on top; bushes (soft): brushed through, a perch on top
 // not right after taking off, nor while speeding up or tucked in a dive
 const canPerch = b => !(b.noPerch > 0) && !(b.acc > 1.2) && b.tuck < .4;
 // lined up on a perch (aim.js sets b.aimPerch, held a moment after the line loses it), the hawk
 // lands on that one only, never one it brushes past on the way
 let aimB = null;
 const aimed = p => !!aimB?.aimPerch && Math.abs(p.x - aimB.aimPerch.x) + Math.abs(p.y - aimB.aimPerch.y) + Math.abs(p.z - aimB.aimPerch.z) < .05;
-function solids(b, E) {
+function solids(b, E, dt) {
   const mayPerch = canPerch(b);
   for (const o of solidsNear(b.p[0], b.p[2], 10)) {
     const dx = b.p[0] - o.x, dz = b.p[2] - o.z, hd = Math.hypot(dx, dz);
@@ -340,6 +340,8 @@ function solids(b, E) {
     if (hd >= tr || b.p[1] < o.y0 || b.p[1] > o.top + .3) continue;
     // over the top edge: hop up onto it; otherwise the side is hard
     if (b.p[1] > o.top - .6) { b.p[1] = o.top + .3; b.vy = Math.max(b.vy, .5); continue; }
+    // a bush is soft: you brush through it, slowed, with a swish of leaves (never a bump)
+    if (o.soft) { b.s *= 1 - Math.min(.8, dt * (1.4 + b.s * .05)); if (b.canopy < .2) E.leaves(b.p, b.s); b.canopy = 1; continue; }
     b.p[0] = o.x + dx / (hd || 1) * tr; b.p[2] = o.z + dz / (hd || 1) * tr;
     if (b.t - b.lastHit > .5) { b.s *= .45; b.lastHit = b.t; b.stamina = Math.max(0, b.stamina - .08); E.bump(b.p, 'stone'); }
   }
