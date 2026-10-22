@@ -52,11 +52,12 @@ import { speciesSystem } from './sys/species.js';
 import { aimsSystem } from './sys/aims.js';
 import { movesSystem } from './sys/moves.js';
 import { lifeSystem } from './sys/life.js';
+import { neighboursSystem } from './sys/neighbours.js';
 import { seasonSystem } from './sys/season.js';
 import { ghostSystem } from './sys/ghost.js';
 
 const SYSTEMS = [speciesSystem, movesSystem, lifeSystem, clockSystem, weatherSystem, watersSystem, windsSystem, floraSystem, airSystem, ringsSystem, foodSystem, aimSystem, sleepSystem, feelSystem, batterySystem, songsSystem,
-  guideSystem, journeySystem, nestSystem, storySystem, ruinsSystem, photoSystem, howtoSystem, faunaSystem, landsSystem, seasonsSystem, glowSystem, landAirSystem, crittersSystem, huntersSystem, aimsSystem, seasonSystem, ghostSystem];
+  guideSystem, journeySystem, nestSystem, storySystem, ruinsSystem, photoSystem, howtoSystem, faunaSystem, neighboursSystem, landsSystem, seasonsSystem, glowSystem, landAirSystem, crittersSystem, huntersSystem, aimsSystem, seasonSystem, ghostSystem];
 
 export function start(canvas, ui) {
   const gl = createGL(canvas);
