@@ -56,16 +56,13 @@
 .notepad3 i.no { --said: #f0584a; animation: said3 .9s ease-out, shake3 .3s; }
 @keyframes said3 { 0%, 40% { border-color: var(--said); box-shadow: 0 0 0 3px var(--said), 0 0 18px var(--said); } 100% { } }
 @keyframes shake3 { 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
-/* the bird you learn from sang this note: the row lights, its logo pops up in the middle and a
-   white ring spreads out from it */
+/* the bird you learn from sang this note: the row lights and its logo pops up in the middle (just
+   the logo: no ground, no shadow) */
 .tlogo3 { position: absolute; left: 50%; top: 50%; width: 38px; height: 38px; margin: -19px 0 0 -19px; opacity: 0; pointer-events: none; z-index: 1; }
-.tlogo3::before { content: ''; position: absolute; inset: 2px; border-radius: 50%; border: 2.5px solid #fff; opacity: 0; }
 .notepad3 i.teach { animation: teach3 1s ease-out; }
 .notepad3 i.teach .tlogo3 { animation: tlogo3 1s ease-out; }
-.notepad3 i.teach .tlogo3::before { animation: ring3 .8s ease-out; }
-@keyframes teach3 { 0%, 30% { filter: brightness(1.8); box-shadow: 0 0 0 3px #fff, 0 0 26px var(--lit), var(--shadow); } 100% { } }
+@keyframes teach3 { 0%, 30% { filter: brightness(1.6); } 100% { } }
 @keyframes tlogo3 { 0% { opacity: 0; transform: scale(.5); } 15%, 65% { opacity: 1; transform: scale(1.1); } 100% { opacity: 0; transform: scale(1); } }
-@keyframes ring3 { 0% { opacity: .9; transform: scale(.6); } 100% { opacity: 0; transform: scale(2.2); } }
 
 /* bottom left: Sing (off) or the song card (on) */
 .sgleft3 { position: absolute; left: var(--side); bottom: var(--bot); display: flex; flex-direction: column; align-items: flex-start; gap: 8px; pointer-events: none; }
