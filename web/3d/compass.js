@@ -45,13 +45,16 @@ export function createCompass(G, ui) {
       return { el: e, x, z };
     });
   }
-  let last = '';
+  // its width, kept as it changes (reading clientWidth each frame, after the HUD's writes, forced
+  // a layout of the page every frame)
+  let last = '', w = el.clientWidth || 240;
+  if (window.ResizeObserver) new ResizeObserver(() => { w = el.clientWidth || w; last = ''; }).observe(el);
   return {
     update(dt, hide) {
       el.classList.toggle('hidden', !!hide);
       if (hide) return;
       if ((markT -= dt) <= 0) { markT = 1; setMarks(places()); }
-      const yaw = b.yaw, w = el.clientWidth || 240;
+      const yaw = b.yaw;
       const k = Math.round(yaw * 200) + ',' + Math.round(b.p[0] / 20) + ',' + Math.round(b.p[2] / 20) + ',' + key + ',' + w;
       if (k === last) return; last = k;
       const at = (e, a) => {
