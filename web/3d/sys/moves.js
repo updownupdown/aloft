@@ -2,16 +2,19 @@
 // the surface (fauna.js reads b.plunge), then lifts off heavy and dripping. The barn owl's glide
 // is silent, so mice don't hear it coming (food.js reads G.silent). The raven tumbles over when
 // you flick a bank twice the same way (birds.js SPIN). The red-tail kites: flared into the wind
-// over open ground, it hangs still, watching the grass. Runs after the flight step, before fauna.
+// over open ground, it hangs still, watching the grass. The albatross is the master of dynamic
+// soaring over the swells (swells.js; species.js scales SWELL for it). Runs after the flight step, before fauna.
 import { height, WATER, WIND } from '../world.js';
 import { fwd } from '../flight.js';
 import { BIRD } from '../hawk.js';
 import { SPIN } from '../birds.js';
+import { oceanAt } from '../earth.js';
 
 export const MOVES = {
   wetCost: .14, wetTime: 7,                       // osprey: the lift-off out of the water, and how long it drips
   flickGap: .7, tumbleTime: .95,                  // raven: the double flick, and one roll over
   kiteFlare: .45, kiteInto: .75, kiteWind: .12,   // red-tail: how hard to flare, how squarely into the wind, how much wind
+  soarLow: 25,                                    // albatross: weaving below this over the sea counts as dynamic soaring
 };
 const WL = Math.hypot(WIND[0], WIND[2]), WX = WIND[0] / WL, WZ = WIND[2] / WL;
 const ease = t => t * t * (3 - 2 * t);
@@ -102,6 +105,22 @@ export function movesSystem(G) {
     if (kite > .8) once('kite', 'Kiting: hanging still on the wind. When a mouse moves below, tuck and drop on it.', 5);
   }
 
+  // ---- albatross: the ocean wanderer ----------------------------------------------------------
+  // dynamic soaring itself is swells.js, for every bird; the albatross gets far more from it
+  // (species.js scales SWELL). Here: how far it has flown over the sea, and how long it has
+  // weaved low over the swells, for its life goal
+  let soarT = 0, seaM = 0, seaCheck = 0, atSea = false;
+  function albatross(dt) {
+    if ((seaCheck -= dt) <= 0) { seaCheck = .5; atSea = !!oceanAt(b.p[0], b.p[2]); }
+    if (b.state !== 'fly' || !atSea) return;
+    seaM += b.s * dt;
+    if (seaM > 1000) { seaM -= 1000; G.emit('seaKm'); }
+    if (above() < MOVES.soarLow && Math.abs(b.roll) > .3 && b.flapL > 2) {
+      soarT += dt;
+      if (soarT > 30) { soarT -= 30; G.emit('dynSoar'); }
+    }
+  }
+
   return {
     id: 'moves',
     update(dt, c) {
@@ -110,6 +129,7 @@ export function movesSystem(G) {
       else wet = 0;
       if (BIRD === 'raven' || tumble) raven(dt, c);
       if (BIRD === 'hawk') hawk(dt); else kite = 0;
+      if (BIRD === 'albatross') albatross(dt);
       G.kiting = kite > .5;
     },
   };

@@ -2,16 +2,18 @@
 // share the controls (birds.js builds them; this gives each its flight feel in FLY). ?bird=swift,
 // heron or mallard tries the others for a session. Each has its own move (moves.js) and life goal (life.js).
 import { FLY } from '../flight.js';
+import { height, WATER } from '../world.js';
 import { BIRD, setBird } from '../hawk.js';
 import { BIRDS } from '../birds.js';
 import { startLab } from '../birdlab.js';
 import { FOOD } from './food.js';
 import { FAUNA } from './fauna.js';
+import { SWELL } from './swells.js';
 import { GOALS } from './life.js';
 import { icon } from '../icons.js';
 
-export const CHOICES = ['hawk', 'osprey', 'owl', 'raven'];
-const HAWK_FLY = { ...FLY }, HAWK_FOOD = { catchR: FOOD.catchR }, HAWK_FAUNA = { catchR: FAUNA.catchR, catchDive: FAUNA.catchDive, catchH: FAUNA.catchH };
+export const CHOICES = ['hawk', 'osprey', 'owl', 'raven', 'albatross'];
+const HAWK_FLY = { ...FLY }, HAWK_FOOD = { catchR: FOOD.catchR }, HAWK_FAUNA = { catchR: FAUNA.catchR, catchDive: FAUNA.catchDive, catchH: FAUNA.catchH }, BASE_SWELL = { gain: SWELL.gain, lose: SWELL.lose, top: SWELL.top, elsewhere: SWELL.elsewhere };
 
 // what each bird is good at beyond its flight numbers, and what it gives up
 const ABILITY = {
@@ -19,6 +21,7 @@ const ABILITY = {
   osprey: { food: {}, fauna: { catchR: 2.6, catchDive: 2.4, catchH: 3.4 }, good: ['Fastest dive, longest glide', 'Snatches fish from higher up'], bad: ['Wide turns', 'Flapping tires it quickly'] },
   owl: { food: { catchR: 2.1 }, fauna: {}, night: .6, good: ['Sees in the dark', 'Hovers almost still, lands softly', 'Silent: reaches mice from further'], bad: ['Slow', 'Sinks faster in a glide'] },
   raven: { food: {}, fauna: {}, good: ['Tightest turns and rolls', 'Flapping costs little'], bad: ['Lower top speed', 'Hovers poorly'] },
+  albatross: { food: {}, fauna: { catchR: 2.4, catchH: 3 }, swell: { gain: 2.4, lose: .2, top: 40, elsewhere: .7 }, good: ['The longest glide of all: it barely needs to flap', 'Twice the speed from every weave over the swells'], bad: ['Turns wide and slow', 'Can’t hover; flapping is hard work'] },
 };
 // the card's stats, worked out from the flight numbers so they always tell the truth (1 to 5)
 const rate = (v, lo, hi) => Math.max(1, Math.min(5, Math.round(1 + 4 * (v - lo) / (hi - lo))));
@@ -38,7 +41,7 @@ export function speciesSystem(G) {
   const tried = BIRD !== 'hawk' && !CHOICES.includes(BIRD) ? BIRD : null;   // a ?bird= study bird
   const use = id => {
     setBird(id); Object.assign(FLY, HAWK_FLY, BIRDS[id]?.fly || {});
-    Object.assign(FOOD, HAWK_FOOD, ABILITY[id]?.food || {}); Object.assign(FAUNA, HAWK_FAUNA, ABILITY[id]?.fauna || {});
+    Object.assign(FOOD, HAWK_FOOD, ABILITY[id]?.food || {}); Object.assign(FAUNA, HAWK_FAUNA, ABILITY[id]?.fauna || {}); Object.assign(SWELL, BASE_SWELL, ABILITY[id]?.swell || {});
     G.emit('bird', id);
   };
   if (tried) {
@@ -55,8 +58,9 @@ export function speciesSystem(G) {
   // one colour per stat, so the same stat reads the same across birds
   const STAT_COL = { Speed: '#d0703a', Glide: '#3f88c5', Agility: '#8a5cc6', Hover: '#2e9c86', Stamina: '#c99a1e' };
   const STAT_ICON = { Speed: 'speed', Glide: 'glide', Agility: 'agility', Hover: 'hoverstat', Stamina: 'staminastat' };
-  const MOVE = { hawk: 'Kites: flare into the wind to hang still', osprey: 'Plunges: dive into water for deep fish', owl: 'Silent glide: mice don’t hear it', raven: 'Tumbles: flick a bank twice the same way' };
-  const BLURB = { hawk: 'Soars on thermals, stoops on mice', osprey: 'Long wings, plunges for fish', owl: 'Soft and slow, sees in the dark', raven: 'Agile, rolls and tumbles' };
+  const MOVE = { hawk: 'Kites: flare into the wind to hang still', osprey: 'Plunges: dive into water for deep fish', owl: 'Silent glide: mice don’t hear it', raven: 'Tumbles: flick a bank twice the same way', albatross: 'Dynamic soaring: weave over the swells, up into the wind, down with it' };
+  const HOME = { hawk: 'a forest edge by the Finger Lakes', osprey: 'a Scottish loch', owl: 'the Loire farmland', raven: 'a Norwegian fjord', albatross: 'Taiaroa Head, New Zealand' };
+  const BLURB = { hawk: 'Soars on thermals, stoops on mice', osprey: 'Long wings, plunges for fish', owl: 'Soft and slow, sees in the dark', raven: 'Agile, rolls and tumbles', albatross: 'Three metres of wing, at home on the open sea' };
   const traits = id => {
     const a = ABILITY[id];
     return `<span class="stats3">${stats(id).map(([k, v]) => `<span class="st3" style="--pc:${STAT_COL[k]}">${icon(STAT_ICON[k])}${k}</span><span class="pips3" style="--pc:${STAT_COL[k]}" aria-label="${v} of 5">${[1, 2, 3, 4, 5].map(n => `<i${n <= v ? ' class="on"' : ''}></i>`).join('')}</span>`).join('')}</span>`
@@ -65,21 +69,31 @@ export function speciesSystem(G) {
   };
   const box = G.menu.group('bird');
   box.insertAdjacentHTML('beforeend', `<div class="birdpick3"><button class="arr3" data-step="-1" aria-label="The bird before">‹</button>
-    <div class="birdcard3"><canvas aria-hidden="true"></canvas><span class="pic"></span><button class="hear3" aria-label="Hear its call"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12" fill="none"/></svg></button><b></b><small></small><span class="birdmore3"></span><span class="dots3">${CHOICES.map(() => '<i></i>').join('')}</span></div>
+    <div class="birdcard3"><canvas aria-hidden="true"></canvas><span class="pic"></span><button class="hear3" aria-label="Hear its call"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12" fill="none"/></svg></button><b></b><small></small><span class="birdmore3"></span><button class="home3"></button><span class="dots3">${CHOICES.map(() => '<i></i>').join('')}</span></div>
     <button class="arr3" data-step="1" aria-label="The next bird">›</button></div>${tried ? `<p><small>Flying as ${nameOf(tried).toLowerCase()} for now, a study bird from the link.</small></p>` : ''}`);
   const card = box.querySelector('.birdcard3'), pic = card.querySelector('.pic'), dots = [...card.querySelectorAll('.dots3 i')];
   const show = () => {
     const id = tried || BIRD, i = CHOICES.indexOf(BIRD);
     pic.dataset.bird = id; card.querySelector('b').textContent = nameOf(id); card.querySelector('small').textContent = tried ? 'A study bird' : BLURB[id] || '';
     card.querySelector('.birdmore3').innerHTML = traits(id);
+    card.querySelector('.home3').textContent = `Fly from its home: ${HOME[id] || 'its own country'}`;
+    card.querySelector('.home3').hidden = !!tried;
     dots.forEach((d, k) => d.classList.toggle('on', k === i));
   };
   show();
   box.addEventListener('click', e => {
+    if (e.target.closest('.home3')) {   // start over in this bird's own country (main.js STARTS)
+      const [x, z] = G.startOf(BIRD), b = G.b;
+      Object.assign(b, { state: 'ground', perch: null, s: 0, vy: 0, settle: .4 }); b.p = [x, Math.max(height(x, z), WATER) + .35, z]; G.home = [x, z];
+      G.menu.set(false); G.hud.toast(`You fly from ${HOME[BIRD]}.`, 4); return;
+    }
     if (e.target.closest('.hear3')) { G.audio.unlock?.(); G.audio.call?.(tried || BIRD); return; }
     const a = e.target.closest('[data-step]'); if (!a || tried) return;
     use(CHOICES[(CHOICES.indexOf(BIRD) + +a.dataset.step + CHOICES.length) % CHOICES.length]); G.store.set('bird', BIRD); show();
   });
+  G.dev?.add({ id: 'albatross', area: 'Birds', round: 'Earth', pr: 215, title: 'Royal albatross: a seabird to fly, from Taiaroa Head',
+    how: 'Game > Your bird: the albatross, then Fly from its home. Skim low over the sea in S-turns across the wind to soar without flapping.',
+    go: () => { use('albatross'); G.store.set('bird', BIRD); show(); card.querySelector('.home3').click(); } });
   let shown = false;
   G.on('menuTab', id => { shown = id === 'game'; });
   G.on('resume', () => { shown = false; });

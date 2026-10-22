@@ -73,9 +73,10 @@ const SYSTEMS = [speciesSystem, movesSystem, lifeSystem, clockSystem, weatherSys
 
 // Where each bird first flies, in its own country (earth.js toXZ: latitude, longitude): the
 // red-tail at a forest edge in the Finger Lakes, the osprey over a Scottish loch, the barn owl in
-// the Loire farmland, the raven over a Norwegian fjord. Then the nearest open ground to start over.
-const STARTS = { hawk: [42.6, -76.7], osprey: [57.2, -4.5], owl: [47.4, 0.7], raven: [61.2, 7] };
-function startOf(bird) {
+// the Loire farmland, the raven over a Norwegian fjord, the royal albatross on Taiaroa Head (its one
+// mainland colony, at the mouth of Otago Harbour). Then the nearest open ground to start over.
+const STARTS = { hawk: [42.6, -76.7], osprey: [57.2, -4.5], owl: [47.4, 0.7], raven: [61.2, 7], albatross: [-45.775, 170.73] };
+export function startOf(bird) {
   const [x0, z0] = toXZ(...(STARTS[bird] || STARTS.hawk)) || [0, 0];
   for (let i = 0; i < 400; i++) {
     const a = i * 2.39996, r = i * 12, x = x0 + Math.cos(a) * r, z = z0 + Math.sin(a) * r, h = height(x, z);
@@ -101,7 +102,7 @@ export function start(canvas, ui) {
   // ---- the game object and its bus --------------------------------------------------------
   const listeners = new Map();
   const G = {
-    b, R, home, audio, music, input, store, t: 0, clock: 0, paused: false, parts: [], flags: store.get('flags3d', {}),
+    b, R, home, startOf, audio, music, input, store, t: 0, clock: 0, paused: false, parts: [], flags: store.get('flags3d', {}),
     settings: { sound: audio.on, music: store.get('music', true), invert: store.get('invert3d', false), fps: store.get('fps3d', false), fpsCap: store.get('fpsCap3d', store.get('fullRate3d', false) ? 90 : 60) },
     res: 1, systems: {},
     on: (name, fn) => { if (!listeners.has(name)) listeners.set(name, []); listeners.get(name).push(fn); },
