@@ -150,13 +150,13 @@ export function createSingUI(ui, { audio, voice, onSyll, onPick, onCall }) {
   // marks; each note of this try ringed green, blue, orange or red for two seconds), an ear while
   // learning, who else sings, and a chevron to open the birds
   function setScore(sc) {
-    const sp = sc.sp, key = [sp?.id, sc.state, sc.seen, sc.res.join(''), sc.hear, sc.other?.id].join();
+    const sp = sc.sp, key = [sp?.id, sp?.dkey, sc.state, sc.seen, sc.res.join(''), sc.hear, sc.other?.id].join();
     if (key === S.score) return;
     S.score = key;
     // when each note of this try was marked, so a redraw carries on each mark's fade where it was
     const now = performance.now() / 1000;
     S.marks = sc.res.map((r, i) => S.marks?.[i] && S.res?.[i] === r ? S.marks[i] : now); S.res = sc.res.slice();
-    name.textContent = sp ? sp.name : 'Free song';
+    name.textContent = sp ? sc.label || sp.name : 'Free song';
     pic.innerHTML = sp ? `<img src="${songbirdPic(sp, 64)}" alt="">` : icon('sing');
     if (sp && !singPic.querySelector('img')) singPic.innerHTML = `<img src="${songbirdPic(sp, 64)}" alt="">`;
     const [title, body] = STATE[sc.state];

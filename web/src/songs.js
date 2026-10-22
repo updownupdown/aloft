@@ -36,7 +36,42 @@ export const SPECIES = [
   { name: 'Nightingale', notes: [2, 2, 2, 2, 4, 1, 3], kinds: 'uuuullc', gap: 0.22, words: 'piu, piu, piu, piu, swelling, then a rich trill and a chuckle', body: '#8a6a4c', cap: '#7a5c40', breast: '#d8c8b0', biomes: ['forest', 'lakeland', 'marsh'], times: ['night'], power: 'fireflies rise around you and light the dark', powerKey: 'fireflies', hint: 'Thickets by water, only at night', voice: 21, look: { size: .95, tail: 1.2 } },
   { name: 'Whip-poor-will', notes: [2, 0, 4], kinds: 'ucu', gap: 0.16, words: 'whip-poor-WILL: three notes, over and over, the last loudest', body: '#6a5a48', cap: '#5a4a3a', breast: '#a89070', biomes: ['forest', 'meadow'], times: ['night'], power: 'moths flutter up in the dark, and you eat a few', powerKey: 'moths', hint: 'Open woods, only at night', voice: 22, look: { size: 1.15, bill: .4, tail: 1.1 } },
   { name: 'Tawny owl', winter: true, notes: [4, 3, 0, 0, 1, 0], kinds: 'urrrrd', gap: 0.45, words: 'ke-wick ... hoo, hoo-hoo-hoooo: one calls, its mate answers', body: '#8a5a34', cap: '#7a4c2c', breast: '#c89a6a', biomes: ['forest'], times: ['night'], power: 'a hush falls: mice freeze where they stand', powerKey: 'hush', hint: 'Old woods, only at night (a pair, calling to each other)', voice: 23, look: { size: 1.45, owl: 1 } },
+  // round eight: the mimics (added last, so the ids of the others stay as saved). They sing no song of their own to learn, only pieces of the songs
+  // around them (yours included), each in its own bird's voice.
+  { name: 'Starling', mimic: true, winter: true, notes: [2, 4, 1, 3], kinds: 'ldcu', gap: 0.2, words: 'a rambling medley: snatches of other birds\' songs, clicks and whistles', body: '#2a2c34', cap: '#24262e', breast: '#3a3c46', biomes: ['meadow', 'lakeland'], times: ['dawn', 'day', 'dusk'], power: 'nothing of its own: listen for pieces of songs you do not know', powerKey: 'mimic', hint: 'Meadows and lakes by day; it borrows the songs around it', voice: 5, look: { size: 1, bill: 1.3, spots: 1, tail: .8 } },
+  { name: 'Mockingbird', mimic: true, winter: true, notes: [3, 1, 4, 2], kinds: 'rcdu', gap: 0.22, words: 'phrase after phrase of other birds\' songs, each sung two or three times', body: '#8a8a86', cap: '#7a7a76', breast: '#e8e8e2', biomes: [], lands: ['savanna', 'desert', 'swamp', 'coast', 'marsh'], times: ['dawn', 'day', 'dusk'], power: 'nothing of its own: listen for pieces of songs you do not know', powerKey: 'mimic', hint: 'Down south, in the savanna, desert, swamp and on the coast; it borrows the songs around it', voice: 1, look: { size: 1.05, tail: 1.5 } },
 ].map((s, i) => ({ ...s, id: i, voice: s.voice ?? i, cols: { body: hx(s.body), cap: hx(s.cap), breast: hx(s.breast) }, look: { size: 1, tail: 1, bill: 1, ...s.look } }));
+
+// Dialects (round eight): a species sings its own song in its home land (its first land), and in
+// every other land a version of it, fixed by the species and the land: an extra note at the end,
+// a trill for one of its whistles (or a whistle for a chip), or one note a step higher or lower.
+// Each version is a song of its own to learn; `dkey` names it ('species id:land').
+const ORD = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth'];
+const hs = str => { let h = 2166136261; for (const c of str) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return (h >>> 0) / 4294967296; };
+export const homeLand = sp => sp.lands?.[0] || sp.biomes[0];
+const versions = new Map();
+export function dialect(sp, land) {
+  const key = sp.id + ':' + land;
+  if (versions.has(key)) return versions.get(key);
+  const notes = [...sp.notes], kinds = [...sp.kinds], u = hs(sp.name + land), v = hs(land + sp.name), i = Math.floor(v * notes.length);
+  let how = null;
+  if (land !== homeLand(sp) && !sp.mimic) {
+    const w = kinds.indexOf('r'), c = kinds.indexOf('c');
+    if (u < .34 && notes.length < 9) {
+      const last = notes[notes.length - 1], n = last < 4 && (v < .5 || last === 0) ? last + 1 : last - 1;
+      notes.push(n); kinds.push(v < .5 ? 'c' : 'l'); how = `an extra ${v < .5 ? 'chip' : 'trill'} at the end`;
+    } else if (u < .67 && (w >= 0 || c >= 0)) {
+      if (w >= 0) { kinds[w] = 'l'; how = `a trill for its ${ORD[w]} note, where the others whistle`; }
+      else { kinds[c] = 'r'; how = `a whistle for its ${ORD[c]} note, where the others chip`; }
+    } else {
+      const up = notes[i] < 4 && (v * 7 % 1 < .5 || notes[i] === 0);
+      notes[i] += up ? 1 : -1; how = `its ${ORD[i]} note a step ${up ? 'higher' : 'lower'}`;
+    }
+  }
+  const song = Object.assign(Object.create(sp), { base: sp, land, dkey: key, how, notes, kinds: kinds.join('') });
+  versions.set(key, song);
+  return song;
+}
 
 export function timeOfDay(tod) { return tod < .2 || tod > .8 ? 'night' : tod < .33 ? 'dawn' : tod > .68 ? 'dusk' : 'day'; }
 

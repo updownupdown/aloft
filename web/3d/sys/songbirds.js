@@ -75,8 +75,9 @@ export const land = (x, z) => biomeAt(x, z).name;
 // time, where it has some), else one native to its old habitat.
 const cache = new Map();
 const keep = (k, s) => { cache.set(k, s); if (cache.size > 5000) cache.delete(cache.keys().next().value); return s; };
-// a pick by weight: birds that sing only at night take half a share, so the day woods stay full
-const weight = q => q.times.every(t => t === 'night') ? .5 : 1;
+// a pick by weight: birds that sing only at night take half a share, so the day woods stay full,
+// and so do the mimics, so they stay a find
+const weight = q => q.times.every(t => t === 'night') || q.mimic ? .5 : 1;
 function pickW(pool, u) {
   let w = u * pool.reduce((a, q) => a + weight(q), 0);
   for (const q of pool) if ((w -= weight(q)) < 0) return q;

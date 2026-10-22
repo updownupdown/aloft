@@ -250,6 +250,8 @@ export function createAudio() {
     CALLS[bird](callAt(far, echo, gain, NEAR[bird], DRY[bird]));
   };
   // the fledgling's thin answering peep
+  // a songbird's alarm at a hawk overhead: a thin, high 'seet', hard to place (round eight)
+  A.seet = (vol = 1, delay = 0) => { tone({ f: 7400 + Math.random() * 500, f2: 6800, dur: .28, vol: .028 * vol, vib: 30, vibF: 45, delay }); };
   A.peep = () => { tone({ f: 3100, f2: 2600, dur: .22, vol: .07, vib: 40, vibF: 30, delay: .8 }); tone({ f: 3300, f2: 2700, dur: .2, vol: .06, vib: 40, vibF: 30, delay: 1.1 }); };
   // crows: a harsh caw or two
   A.caw = (vol = 1) => { for (let k = 0; k < 1 + (Math.random() < .5 ? 1 : 0); k++) { tone({ f: 620, f2: 480, dur: .17, vol: .09 * vol, type: 'sawtooth', delay: k * .32, lp: 1600, vib: 30, vibF: 24 }); burst({ f: 1100, f2: 700, q: 1.5, dur: .2, vol: .12 * vol, delay: k * .32 }); } };
