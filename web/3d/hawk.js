@@ -39,6 +39,7 @@ export function buildHawk(pose, bird = BIRD) {
   if (bird !== 'hawk') return buildBird(bird, pose);
   if (!bodyMesh) { o = 0; body(); bodyMesh = buf.slice(0, o); }   // the body never changes: build it once
   buf.set(bodyMesh); o = bodyMesh.length;
+  if (pose.headYaw || pose.headPitch || pose.fluff) bend(pose);
   wing(pose, 1); wing(pose, -1);
   tail(pose);
   if (pose.legs > .02) {   // legs depend only on how far they hang: cache them in 20 steps
@@ -48,6 +49,26 @@ export function buildHawk(pose, bird = BIRD) {
     buf.set(m, o); o += m.length;
   }
   return buf.subarray(0, o);
+}
+
+// the head turns on the neck (headYaw: + to the hawk's left, headPitch: + down, radians), the neck
+// easing between body and head; fluff (0..1) puffs the whole body out, as in rain or a rouse
+function bend(p) {
+  const yaw = p.headYaw || 0, pitch = p.headPitch || 0, puff = 1 + (p.fluff || 0) * .14, PY = .03, PZ = .19;
+  for (let i = 0; i < bodyMesh.length; i += 12) {
+    let x = buf[i] * puff, y = buf[i + 1] * puff, z = buf[i + 2], nx = buf[i + 3], ny = buf[i + 4], nz = buf[i + 5];
+    const w = Math.min(1, Math.max(0, (z - .15) / .09)), k = w * w * (3 - 2 * w);
+    if (k > 0) {
+      const cp = Math.cos(pitch * k), sp = Math.sin(pitch * k), cy = Math.cos(yaw * k), sy = Math.sin(yaw * k);
+      let ry = y - PY, rz = z - PZ;
+      [ry, rz] = [ry * cp - rz * sp, ry * sp + rz * cp];
+      let n1 = ny * cp - nz * sp, n2 = ny * sp + nz * cp; ny = n1; nz = n2;
+      [x, rz] = [x * cy + rz * sy, -x * sy + rz * cy];
+      n1 = nx * cy + nz * sy; n2 = -nx * sy + nz * cy; nx = n1; nz = n2;
+      y = ry + PY; z = rz + PZ;
+    }
+    buf[i] = x; buf[i + 1] = y; buf[i + 2] = z; buf[i + 3] = nx; buf[i + 4] = ny; buf[i + 5] = nz;
+  }
 }
 
 const mix2 = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];

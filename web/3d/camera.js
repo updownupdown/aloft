@@ -97,13 +97,18 @@ export function createCamera(G) {
       const m = Math.min(1, b.eating), bob = Math.sin(G.t * 9) * .05;
       return { flapL: .25 + bob, flapR: .25 + bob, handL: -.2, handR: -.2, fold: .35 * m + (1 - m), flare: .6 * m, legs: 1, tail: .6 * m, tailPitch: .2, t: G.t, tailRed: G.tailRed ?? 1 };
     }
-    return {
+    const out = {
       flapL: settled ? .05 : fl, flapR: settled ? .05 : fr, handL: settled ? 0 : hl, handR: settled ? 0 : hr,
       fold: settled ? clamp(1 - b.settle * 1.6, 0, 1) : clamp(b.tuck * .75 + b.canopy * .25, 0, 1),
       flare: settled ? clamp(b.settle * 2, 0, 1) : b.flare,
       legs: settled ? 1 : clamp(Math.max(b.flare, b.reach || 0, b.carry ? 1 : 0, pm && Math.hypot(pm.x - p[0], pm.y - p[1], pm.z - p[2]) < 8 ? 1 : 0), 0, 1) * .9,
       tail: settled ? .05 : clamp(b.flare * .9 + Math.abs(b.roll) * .35 + (b.ride ? .3 : 0), 0, 1), tailPitch: b.flare * .3, t: G.t, tailRed: G.tailRed ?? 1,
+      headYaw: 0, headPitch: 0, fluff: 0,
     };
+    // sitting still (sys/still.js): preening, sunning, a rouse, hunched in the rain, the head turning
+    const A = b.acting;
+    if (A && settled && A.k > 0) for (const k in A.p) out[k] += (A.p[k] - out[k]) * A.k;
+    return out;
   }
   return C;
 }
