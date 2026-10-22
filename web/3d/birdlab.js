@@ -122,7 +122,7 @@ export function startLab(canvas, cells, getMode, { active = () => true, eye = [0
       const r0 = [Math.cos(yaw), 0, Math.sin(yaw)], u0 = [r0[1] * f[2] - r0[2] * f[1], r0[2] * f[0] - r0[0] * f[2], r0[0] * f[1] - r0[1] * f[0]];
       const c = Math.cos(roll), s = Math.sin(roll);
       const rr = [r0[0] * c - u0[0] * s, r0[1] * c - u0[1] * s, r0[2] * c - u0[2] * s], uu = [u0[0] * c + r0[0] * s, u0[1] * c + r0[1] * s, u0[2] * c + r0[2] * s];
-      const bob = still ? 0 : Math.sin(t * 1.3 + i) * .03, model = basis([0, bob, 0], [-rr[0], -rr[1], -rr[2]], uu, f, HAWK_SCALE);
+      const bob = still ? 0 : Math.sin(t * 1.3 + i) * .03, model = basis([0, bob, 0], [-rr[0], -rr[1], -rr[2]], uu, f, HAWK_SCALE * (BIRDS[id]?.fit || 1));   // fit: a big bird drawn smaller to fit the frame
       const view = lookAt(eye, [0, -.04, 0], [0, 1, 0]), vp = mul(perspective(.75, w / h, .05, 50), view);
       gl.useProgram(P.p); gl.uniformMatrix4fv(P.u.uVP, false, vp); gl.uniformMatrix4fv(P.u.uModel, false, model); gl.uniform3fv(P.u.uSun, sun);
       gl.bindVertexArray(vao); gl.bindBuffer(gl.ARRAY_BUFFER, vbuf); gl.bufferData(gl.ARRAY_BUFFER, tris, gl.DYNAMIC_DRAW);

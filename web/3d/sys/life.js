@@ -8,6 +8,7 @@ import { height, WATER, landmarksNear } from '../world.js';
 import { buildingsNear } from '../settle.js';
 import { BIRD } from '../hawk.js';
 import { NEST_TWIGS } from './nest.js';
+import { oceanAt } from '../earth.js';
 
 // [id, text, how many]; barns and sea stacks also count once the world has them (kinds 'barn', 'stack')
 export const GOALS = {
@@ -30,6 +31,13 @@ export const GOALS = {
     ['home', 'Claim a roost: perch on an old barn, a chapel tower, a ruined tower or a great oak'],
     ['mate', 'Find a mate'],
     ['fledge', 'Raise an owlet until it fledges'],
+  ] },
+  albatross: { title: 'Wanderer of the southern seas', steps: [
+    ['soar', 'Ride the sea wind: two minutes of dynamic soaring, weaving low over the swells', 4, 'quiet'],
+    ['fish', 'Snatch three fish from the open sea', 3],
+    ['sea', 'Fly 30 km over open sea', 30, 'quiet'],
+    ['mate', 'Find a mate'],
+    ['fledge', 'Raise a chick until it fledges'],
   ] },
   raven: { title: 'A hoard and the wind', steps: [
     ['hoard', 'Gather five shiny things for your hoard', 5],
@@ -63,7 +71,7 @@ export function lifeSystem(G) {
         G.hud.toast(G.life.done ? `Your life goal is complete: ${GOALS[id].title.toLowerCase()}.` : `Life goal: ${step[1].split(':')[0].toLowerCase()}. Done!`, 4.5);
       }
       G.emit('life', G.life);
-    } else if (!quiet && need > 1) G.hud.toast(`${step[1].split(':')[0]}: ${p[sid]} of ${need}.`, 2.5);
+    } else if (!quiet && need > 1 && !step[3]) G.hud.toast(`${step[1].split(':')[0]}: ${p[sid]} of ${need}.`, 2.5);
   }
   const nightNow = () => (G.light?.daylight ?? 1) < .3;
   const nearWater = (x, z) => {
@@ -79,6 +87,9 @@ export function lifeSystem(G) {
     if (BIRD === 'owl' && e.kind === 'mouse') { if (nightNow()) tick('moon'); if (G.silent) tick('silent'); }
   });
   G.on('trick', (kind, lift) => { if (kind !== 'tumble') return; tick('tumble'); if (lift) tick('wind'); });
+  G.on('dynSoar', () => tick('soar'));
+  G.on('seaKm', () => tick('sea'));
+  G.on('catch', e => { if (BIRD === 'albatross' && e.kind === 'fish' && oceanAt(b.p[0], b.p[2])) tick('fish'); });
   G.on('keepsake', () => { if (BIRD === 'raven') tick('hoard'); });
   G.on('learn', () => { if (BIRD === 'raven') tick('mimic'); });
   G.on('fledged', () => tick('fledge'));

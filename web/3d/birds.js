@@ -117,6 +117,28 @@ export const BIRDS = {
     legs: { len: .17, at: [.04, -.07, .04], col: hex('#cfd3c9'), foot: 'talon' },
   },
 
+  // the northern royal albatross of Taiaroa Head: about 3 m of narrow wing, black above, white
+  // below with a black trailing edge; a big pale-pink hooked bill; pink webbed feet
+  albatross: {
+    name: 'Royal albatross', scale: 1.38, fit: .6,
+    fly: { best: 15, maxS: 46, cd: .0034, cdTuck: .0018, stall: 9, stallFlare: 5, roll: .7, yaw: .9, flapS: 2.6, flapUp: 1.1, flapHover: 2.4, flapCost: .085, landS: 12 },
+    rings: [[-.3, .045, .035, .02], [-.18, .085, .075, 0], [-.02, .1, .095, -.01], [.13, .088, .088, 0], [.22, .062, .068, .03], [.29, .06, .064, .05], [.35, .045, .046, .05]],
+    paint(i, s) {
+      if (i >= 4) return s > .2 ? hex('#f6f5f0') : hex('#fbfaf6');                 // white head
+      return band(s, hex('#f1efe9'), hex('#f7f6f1'), hex('#fdfcf8'));
+    },
+    bill: { len: .21, w: .72, drop: .06, base: hex('#efc8b4'), tip: hex('#e4b79a') },
+    eye: [.058, .07, .31, .012], brow: hex('#5a5550'),
+    wing: {
+      root: [.1, .07], arm: .62, hand: .66, chord1: .2, chord2: .15, sweepE: .06, sweepH: -.22, dihedral: .02, droop: -.08,
+      prims: { n: 5, len: .3, w: .7, fan: [-.02, -.3], slot: 0 },
+      top: { lead: '#2a2725', covert: '#33302d', hand: '#262321', prim: '#1d1b1a', tip: '#171615', trail: '#2c2927' },
+      under: { bar: '#fbfaf5', covert: '#f6f4ee', hand: '#f1eee7', wrist: '#e9e6df', prim: '#2a2725', tip: '#1d1b1a', trail: '#2e2b29' },
+    },
+    tail: { n: 6, spread: [.12, .35], len: .16, shape: 'wedge', base: [0, .01, -.3], top: hex('#e9e7e1'), under: hex('#f6f5f0'), bar: hex('#3a3633') },
+    legs: { len: .13, at: [.05, -.08, -.02], col: hex('#e8b9b0'), foot: 'web' },
+  },
+
   raven: {
     name: 'Common raven', scale: 1.05,
     fly: { best: 12, maxS: 40, cd: .0064, roll: 1.5, yaw: 1.55, flapHover: 2.6, flapCost: .047 },
