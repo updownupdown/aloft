@@ -6,8 +6,9 @@
 // Bigger neighbours to watch: mountain goats on the steeps, bison on the savanna, egrets in the
 // mangroves, seals hauled out on the fjords' rocks. Placed by hash in cells near the hawk;
 // prey shows to the aim (G.prey) and is eaten through food.js (G.systems.food.take()).
-import { height, groundAt, groundNormal, blend, treesNear, perchesOf, ih, WATER } from '../world.js';
-import { jackrabbit, lizard, marmot, crab, goat, bison, egret, seal, squirrel, monarch, dragonfly } from './critshapes.js';
+import { height, groundAt, groundNormal, blend, treesNear, perchesOf, ih, WATER, fencesNear } from '../world.js';
+import { bridgesNear } from '../settle.js';
+import { jackrabbit, lizard, marmot, crab, goat, bison, egret, seal, squirrel, monarch, dragonfly, snake } from './critshapes.js';
 
 export const CRIT = { cell: 90, near: 240, catchR: 1.6, catchDive: 1.6, catchH: 2.2 };
 // what lives where: [kind, chance per cell, how many]
@@ -19,7 +20,7 @@ const LIVES = {
   forest: [['squirrel', .5, 2]], birch: [['squirrel', .45, 2]], lakeland: [['squirrel', .3, 1]], redwood: [['squirrel', .5, 2]],
 };
 // prey: how much it fills (food, water), its name; and how fast it runs
-const PREY = { jackrabbit: [.32, .06, 'a jackrabbit', 7.5], lizard: [.14, .04, 'a lizard', 4], marmot: [.3, .06, 'a marmot', 5], crab: [.12, .1, 'a crab', 2.2], squirrel: [.22, .05, 'a squirrel', 5.5] };
+const PREY = { jackrabbit: [.32, .06, 'a jackrabbit', 7.5], lizard: [.14, .04, 'a lizard', 4], marmot: [.3, .06, 'a marmot', 5], crab: [.12, .1, 'a crab', 2.2], squirrel: [.22, .05, 'a squirrel', 5.5], snake: [.2, .05, 'a grass snake', 0] };
 const SPOT = {   // where in its cell an animal will stand: ground height and slope
   crab: (h, n) => h > -.15 && h < .9, seal: (h, n) => h > .1 && h < 1.6, egret: h => h < -.05 && h > -.5,
   goat: (h, n) => h > 4 && n < .8 && n > .45, lizard: (h, n) => h > 1, bison: (h, n) => h > 2 && n > .9,
@@ -31,6 +32,7 @@ export function crittersSystem(G) {
   R.shape('marmot', marmot(true)); R.shape('marmotR', marmot(false)); R.shape('crab', crab()); R.shape('goat', goat());
   R.shape('bison', bison(true)); R.shape('bisonU', bison(false)); R.shape('egret', egret()); R.shape('seal', seal());
   R.shape('squirrel', squirrel(false)); R.shape('squirrelR', squirrel(true));
+  R.shape('snake', snake(false)); R.shape('snakeS', snake(true));
   R.shape('monarchU', monarch(true)); R.shape('monarchD', monarch(false)); R.shape('dragonfly', dragonfly());
   const PAGES = {
     jackrabbit: ['Black-tailed jackrabbit', 'Not a rabbit but a hare: born furred and running, it zigzags at forty miles an hour.'],
@@ -42,6 +44,7 @@ export function crittersSystem(G) {
     egret: ['Great egret', 'Wades the shallows on black legs and spears fish with a yellow bill.'],
     seal: ['Harbour seal', 'Hauls out on the rocks at low tide to rest and warm up, and slips in at the first alarm.'],
     monarch: ['Monarch butterfly', 'Each autumn millions fly thousands of miles south to the same few mountain forests.'],
+    snake: ['Grass snake', 'Basks on warm stone through the afternoon and pours itself into the nearest crack at a shadow. Red-tails take snakes as readily as mice.'],
     dragonfly: ['Common green darner', 'Hunts other insects on the wing, catching nearly every one it chases.'],
   };
   for (const [k, [n, t]] of Object.entries(PAGES)) G.guide?.page(k, n, t);
@@ -75,8 +78,41 @@ export function crittersSystem(G) {
   function refresh() {
     const a = Math.floor((b.p[0] - CRIT.near) / CRIT.cell), c = Math.floor((b.p[0] + CRIT.near) / CRIT.cell), d = Math.floor((b.p[2] - CRIT.near) / CRIT.cell), e = Math.floor((b.p[2] + CRIT.near) / CRIT.cell), seen = new Set();
     for (let gz = d; gz <= e; gz++) for (let gx = a; gx <= c; gx++) for (const o of cellOf(gx, gz)) { seen.add(o.id); if (!live.has(o.id)) live.set(o.id, o); }
+    for (const o of snakes()) { seen.add(o.id); if (!live.has(o.id)) live.set(o.id, o); }
     for (const id of live.keys()) if (!seen.has(id)) live.delete(id);
     G.prey = [...live.values()].filter(o => PREY[o.kind]);
+  }
+
+  // grass snakes (round eight A2): on warm, dry afternoons out of winter they bask on the tops of
+  // the stone walls and the bridges' parapets; at a shadow they pour into the cracks
+  const warm = () => G.tod > .38 && G.tod < .68 && (G.overcast || 0) < .5 && (G.rain || 0) < .05 && !G.season?.winter && !(G.season?.i === 3 && (G.season.d || 0) < 3);
+  G.dev?.add({ id: 'r8-snakes', title: 'Grass snakes on warm stone', area: 'Wildlife', round: 'R8 A2',
+    how: 'Warm dry afternoons (not winter): look along stone walls and bridge parapets; stoop fast, they slip into the cracks.',
+    go: () => {
+      G.tod = .5;
+      const f = fencesNear(b.p[0], b.p[2], 2500).filter(f => f.kind === 'wall').sort((a, q) => Math.hypot(a.posts[0][0] - b.p[0], a.posts[0][2] - b.p[2]) - Math.hypot(q.posts[0][0] - b.p[0], q.posts[0][2] - b.p[2]))[0];
+      if (f) { const p = f.posts[0]; b.state = 'fly'; b.p = [p[0], p[1] + 25, p[2] + 35]; b.yaw = 0; b.s = 11; b.gamma = 0; }
+    } });
+  function snakes() {
+    const out = []; if (!warm()) return out;
+    for (const f of fencesNear(b.p[0], b.p[2], CRIT.near)) {
+      if (f.kind !== 'wall') continue;
+      for (let i = 0; i < f.posts.length - 1; i++) {
+        const p = f.posts[i], q = f.posts[i + 1], id = 's' + f.id + '_' + i;
+        if (ih(i, f.id.length * 31 + Math.round(p[0]), 290) > .07 || p[3] < .35 || Math.abs(p[0] - b.p[0]) > CRIT.near || Math.abs(p[2] - b.p[2]) > CRIT.near) continue;
+        if (gone.has(id) && G.clock - gone.get(id) < 300) continue;
+        const x = (p[0] + q[0]) / 2, z = (p[2] + q[2]) / 2;
+        out.push({ id, kind: 'snake', hx: x, hz: z, x, z, y: (p[1] + p[3] + q[1] + q[3]) / 2 + .02, yaw: Math.atan2(q[2] - p[2], q[0] - p[0]), t: 0, go: 0, flee: 0, hidden: 0, zig: 0, up: 0 });
+      }
+    }
+    for (const g of bridgesNear(b.p[0], b.p[2], CRIT.near)) {
+      const id = 'sb' + Math.round(g.x0) + '_' + Math.round(g.z0);
+      if (ih(Math.round(g.x0), Math.round(g.z0), 291) > .5 || (gone.has(id) && G.clock - gone.get(id) < 300)) continue;
+      const yaw = Math.atan2(g.z1 - g.z0, g.x1 - g.x0), sd = ih(Math.round(g.x1), 1, 292) < .5 ? -1.7 : 1.7, k = .2 + ih(Math.round(g.z1), 2, 293) * .6;
+      const x = g.x0 + (g.x1 - g.x0) * k - Math.sin(yaw) * sd, z = g.z0 + (g.z1 - g.z0) * k + Math.cos(yaw) * sd;
+      out.push({ id, kind: 'snake', hx: x, hz: z, x, z, y: g.y + .77, yaw, t: 0, go: 0, flee: 0, hidden: 0, zig: 0, up: 0 });
+    }
+    return out;
   }
 
   // ---- behaviour ----
@@ -114,16 +150,17 @@ export function crittersSystem(G) {
     o.t += dt; o.flee = Math.max(0, o.flee - dt); o.hidden = Math.max(0, o.hidden - dt);
     if (o.hidden > 0) return;
     const hd = Math.hypot(o.x - b.p[0], o.z - b.p[2]), above = b.p[1] - o.y;
-    const stooped = G.aim?.target === o && (G.aim.focus || 0) > .35, nearLow = b.state === 'fly' && hd < 22 && above < 16;
+    const sn = o.kind === 'snake', stooped = G.aim?.target === o && (G.aim.focus || 0) > .35 && (!sn || hd < 20), nearLow = b.state === 'fly' && hd < (sn ? 10 : 22) && above < 16;
     if ((stooped || nearLow) && o.flee <= 0) {
       o.flee = 3;
       if (o.kind === 'marmot') { G.audio.tone?.({ f: 2900, f2: 2500, dur: .3, vol: .05 }); o.hide = 1.2; }
       if (o.kind === 'lizard') o.hide = 1;
+      if (o.kind === 'snake') { o.hide = .7; once('snake', 'A grass snake, basking on the warm stone: it pours into the cracks at your shadow. Come in fast and low.'); }
       if (o.kind === 'crab' || o.kind === 'seal') o.hide = 1.5;
       if (o.kind === 'egret') o.hide = .6;
       if (o.kind === 'squirrel' && !o.climb) { G.audio.tone?.({ f: 3400, f2: 2800, dur: .08, vol: .04 }); G.audio.tone?.({ f: 3400, f2: 2800, dur: .08, vol: .04, delay: .12 }); }
     }
-    if (o.hide !== undefined && o.flee > 0) { if ((o.hide -= dt) <= 0) { o.hidden = o.kind === 'seal' ? 30 : 8; o.hide = undefined; if (o.kind === 'egret') G.part([o.x, .8, o.z], [0, 3, 0], .8, [.95, .95, .93], .3); return; } }
+    if (o.hide !== undefined && o.flee > 0) { if ((o.hide -= dt) <= 0) { o.hidden = o.kind === 'seal' ? 30 : o.kind === 'snake' ? 45 : 8; o.hide = undefined; if (o.kind === 'egret') G.part([o.x, .8, o.z], [0, 3, 0], .8, [.95, .95, .93], .3); return; } }
     const away = Math.atan2(o.z - b.p[2], o.x - b.p[0]);
     switch (o.kind) {
       case 'squirrel': squirrelStep(o, dt); break;
@@ -131,6 +168,7 @@ export function crittersSystem(G) {
         if (o.flee > 0) { if ((o.zig -= dt) <= 0) { o.zig = .35 + Math.random() * .3; o.yaw = away + (Math.random() < .5 ? .9 : -.9); } step(o, PREY.jackrabbit[3], dt); }
         else if ((o.go -= dt) > 0) step(o, 2.5, dt); else if (Math.random() < dt * .5) { o.go = .4; o.yaw += (Math.random() - .5) * 2; }
         break;
+      case 'snake': if (o.flee > 0) o.yaw += Math.sin(o.t * 14) * dt * 3; break;   // writhing into a crack
       case 'lizard': case 'marmot': case 'crab':
         if (o.flee > 0) { o.yaw = o.kind === 'crab' ? away + Math.PI / 2 : away; step(o, PREY[o.kind][3], dt); }
         else if ((o.go -= dt) > 0) step(o, PREY[o.kind][3] * .3, dt); else if (Math.random() < dt * .3) { o.go = .5; o.yaw += (Math.random() - .5) * 2.5; }
@@ -196,9 +234,9 @@ export function crittersSystem(G) {
       for (const o of live.values()) {
         if (o.hidden > 0 || Math.abs(o.x - cam[0]) > 200 || Math.abs(o.z - cam[2]) > 200) continue;
         const run = o.flee > 0 || o.go > 0;
-        const shape = { jackrabbit: run ? 'jackR' : 'jack', marmot: run ? 'marmotR' : 'marmot', bison: o.flee > 0 ? 'bisonU' : 'bison', squirrel: run || o.climb ? 'squirrelR' : 'squirrel' }[o.kind] || o.kind;
+        const shape = { jackrabbit: run ? 'jackR' : 'jack', marmot: run ? 'marmotR' : 'marmot', bison: o.flee > 0 ? 'bisonU' : 'bison', squirrel: run || o.climb ? 'squirrelR' : 'squirrel', snake: o.flee > 0 ? 'snakeS' : 'snake' }[o.kind] || o.kind;
         const hop = o.kind === 'jackrabbit' && run ? Math.abs(Math.sin(G.t * 9 + o.t)) * .35 : 0;
-        (S.props[shape] ||= []).push(o.x, o.y + hop, o.z, 1, o.yaw, .5, 0, 0);
+        (S.props[shape] ||= []).push(o.x, o.y + hop, o.z, o.kind === 'snake' ? 1.7 : 1, o.yaw, .5, 0, 0);   // a snake a little large, to read from the air
         if (Math.abs(o.x - cam[0]) < 60 && Math.abs(o.z - cam[2]) < 60) G.sight?.(o.kind, o.x, o.y + .3, o.z, { bison: 1.5, goat: .8, seal: .7, egret: .6 }[o.kind] || .3);
       }
       insects(S);

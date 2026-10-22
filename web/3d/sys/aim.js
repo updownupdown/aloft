@@ -142,7 +142,7 @@ export function aimSystem(G) {
       if (mice) {
         let best = null, bd = 1e9; const f = fwd(b);
         for (const m of [...mice.values(), ...(G.prey || [])]) {   // mice, and the other lands' prey (critters.js)
-          if (m.hidden > 0) continue;   // gone down its burrow
+          if (m.hidden > 0 || m.cover) continue;   // gone down its burrow, or still in tall hay
           const dx = m.x - b.p[0], dy = m.y - b.p[1], dz = m.z - b.p[2], d = Math.hypot(dx, dy, dz);
           if (d > 90 || d < 1) continue;
           const nearImpact = A.impact ? Math.hypot(m.x - A.impact[0], m.z - A.impact[2]) : 1e9;

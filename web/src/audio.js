@@ -63,22 +63,26 @@ export function createAudio() {
     const pines = scene.bio === 'forest' ? 1 : 0, surf = scene.bio === 'cliffs' || scene.bio === 'mountains' ? 1 : 0;
     const high = Math.min(1, Math.max(0, ((scene.height ?? 0) - 50) / 250)), low = 1 - high;
     const sigh = .5 + .5 * Math.sin(t * (surf ? .45 : .25) + Math.sin(t * .11));   // a slow swell
-    const wg = .04 + windAmt * .22 + pines * .05 * sigh * low + surf * .09 * sigh + high * .06;
+    // the hush (fresh snow, an eclipse): the wind drops to a whisper, the insects stop, and calls
+    // carry further down the valley (a longer echo on the far-bird bus)
+    const hush = scene.hush || 0;
+    const wg = (.04 + windAmt * .22 + pines * .05 * sigh * low + surf * .09 * sigh + high * .06) * (1 - .6 * hush);
     A.wind.g.gain.setTargetAtTime(wg, t, .3);
+    if (birdBus) { birdBus.fb.gain.setTargetAtTime(.24 + .22 * hush, t, .5); birdBus.wet.gain.setTargetAtTime(.32 + .3 * hush, t, .5); }
     A.wind.fl.frequency.setTargetAtTime(300 + windAmt * 900 - pines * 120 + surf * 200 * sigh, t, .3);
     A.rain.g.gain.setTargetAtTime(rainAmt * .035, t, .5);
     A.whistle.g.gain.setTargetAtTime((scene.stoop || 0) * .07, t, .15);
     A.whistle.fl.frequency.setTargetAtTime(2200 + (scene.stoop || 0) * 900, t, .15);
     A.babble.g.gain.setTargetAtTime((scene.falls || 0) * .09 * (.8 + .2 * Math.sin(t * 6.3)) * (.4 + .6 * low), t, .25);
     A.muffleLp.frequency.setTargetAtTime(20000 - (scene.fog || 0) * 18200, t, .4);
-    const frogs = (scene.frogs || 0) * low, sea = scene.sea || {};
+    const frogs = (scene.frogs || 0) * low * (1 - hush), sea = scene.sea || {};
     if (frogs > 0 && t > nextFrog) {
       // one frog at a time from the reeds, each its own kind, with quiet between; in spring the high peepers too
       frog(FROGS[Math.random() * FROGS.length | 0], frogs * (.5 + Math.random() * .5));
       if ((sea.spring || 0) > .3 && Math.random() < .5) for (let i = 0; i < 2; i++) tone({ f: 2700 + Math.random() * 300, f2: 3100, dur: .09, vol: .02 * frogs * sea.spring, delay: .4 + i * (.5 + Math.random() * .6) });
       nextFrog = t + 2.5 + Math.random() * 5;
     }
-    const bugs = (scene.night || 0) * low * (1 - (sea.winter || 0)) * (1 - rainAmt), sum = sea.summer || 0, aut = sea.autumn || 0;
+    const bugs = (scene.night || 0) * low * (1 - (sea.winter || 0)) * (1 - rainAmt) * (1 - hush), sum = sea.summer || 0, aut = sea.autumn || 0;
     if (bugs > .05 && t > nextBug) {
       if (sum > .2) cricket(bugs * sum);
       if (aut > .2) katydid(bugs * aut, Math.random() * .5);
@@ -142,6 +146,7 @@ export function createAudio() {
     const ctx = A.ctx, g = ctx.createGain(), dl = ctx.createDelay(1), fb = ctx.createGain(), lp = ctx.createBiquadFilter(), wet = ctx.createGain();
     dl.delayTime.value = .19; fb.gain.value = .24; lp.type = 'lowpass'; lp.frequency.value = 3600; wet.gain.value = .32;
     g.connect(A.master); g.connect(dl); dl.connect(lp); lp.connect(fb); fb.connect(dl); lp.connect(wet); wet.connect(A.master);
+    g.fb = fb; g.wet = wet;
     return (birdBus = g);
   }
   // The red-tail's scream, "kee-eeeee-arr": a hoarse rising onset, a long rasping hold, then
