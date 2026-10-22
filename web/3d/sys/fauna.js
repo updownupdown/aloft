@@ -200,12 +200,12 @@ export function faunaSystem(G) {
       const fy = fishY(f), above = b.p[1] - fy, hd = Math.hypot(b.p[0] - f.x, b.p[2] - f.z);
       if (deep ? hd < FAUNA.plungeR : above < FAUNA.catchH + focus * 2.5 && above > -1 && hd < FAUNA.catchR + FAUNA.catchDive * focus) {
         fishes.delete(f.id); caught.set(f.id, G.clock);
-        b.state = 'swim'; b.p = [f.x, WATER + .35, f.z]; b.s = 0; b.eating = 2.4;
-        G.hunger = Math.min(1, (G.hunger ?? 1) + FAUNA.fish);
-        G.audio.splash(true); G.audio.eat?.(); setTimeout(() => G.audio.eat?.(), 700);
+        b.state = 'swim'; b.p = [f.x, WATER + .35, f.z]; b.s = 0;
+        G.systems.food?.hold?.(FAUNA.fish, .05, 'fish');   // in the feet: Eat, or carry it off (food.js)
+        G.audio.splash(true);
         for (let i = 0; i < 14; i++) G.part([f.x, WATER, f.z], [(Math.random() - .5) * 4, 2 + Math.random() * 3, (Math.random() - .5) * 4], 1, [.85, .92, .95], .07);
         G.emit('catch', { kind: 'fish', x: f.x, z: f.z });
-        once('firstFish', 'A fish! Snatched from the surface. It fills you a good way.', 4);
+        once('firstFish', 'A fish! Snatched from the surface. Tap Eat, or carry it to a branch or your nest.', 4);
         return;
       }
     }

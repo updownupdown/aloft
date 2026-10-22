@@ -67,8 +67,18 @@ export function nestSystem(G) {
     }
     if (kind === 'perch' && b.perch) atPerch(b.perch);
   });
-  // a mouse caught while the chick is hungry: part of it is kept for the chick
-  G.on('catch', () => { const n = G.nest; if (n?.chick && !G.carry) { G.carry = 'mouse'; say('You keep part of the mouse for your chick. Carry it home to the nest.', 4); } });
+  // a catch carried home in the feet drops into the nest (food.js asks on landing there): the
+  // chick eats it; with no chick it is kept in the nest (food.js)
+  G.nestDrop = () => {
+    const n = G.nest; if (!n?.chick) return false;
+    n.fed++; G.audio.eat?.();
+    for (let k = 0; k < 10; k++) G.part([n.x, n.y + .3, n.z], [(Math.random() - .5) * 1.5, 1 + Math.random(), (Math.random() - .5) * 1.5], .8, [1, .9, .6], .07);
+    if (n.fed >= CHICK_MEALS) {
+      n.chick = false; n.fledged = true; if (G.journey) G.journey.yearChicks++;
+      G.audio.learned?.(); say('Your chick has fledged! It flies with you now.', 5); G.emit('fledged');
+    } else say(`You drop your catch into the nest and the chick eats: ${n.fed} of ${CHICK_MEALS}.`, 3);
+    return true;
+  };
 
   function atPerch(p) {
     const n = G.nest;
@@ -90,14 +100,6 @@ export function nestSystem(G) {
       }
       return;
     }
-    if (G.carry === 'mouse' && atNest(p) && n.chick) {
-      n.fed++; G.carry = null; G.audio.eat?.();
-      for (let k = 0; k < 10; k++) G.part([n.x, n.y + .3, n.z], [(Math.random() - .5) * 1.5, 1 + Math.random(), (Math.random() - .5) * 1.5], .8, [1, .9, .6], .07);
-      if (n.fed >= CHICK_MEALS) {
-        n.chick = false; n.fledged = true; if (G.journey) G.journey.yearChicks++;
-        G.audio.learned?.(); say('Your chick has fledged! It flies with you now.', 5); G.emit('fledged');
-      } else say(`Fed your chick: ${n.fed} of ${CHICK_MEALS}.`, 2.5);
-    }
   }
 
   // the year turns: the nest becomes last year's, waiting to be built on
@@ -111,12 +113,12 @@ export function nestSystem(G) {
     if (n.fledged) return 'Your chick has fledged and flies with you.';
     if (n.twigs < NEST_TWIGS) return `Building a nest in ${n.place}: ${n.twigs} of ${NEST_TWIGS} twigs.`;
     if (!n.chick) return `An egg in your nest in ${n.place}. It hatches ${G.clock - n.eggAt > DAY * .6 ? 'very soon' : 'in about a day'}.`;
-    return `A chick in your nest in ${n.place}, hungry: ${n.fed} of ${CHICK_MEALS} meals brought. Catch a mouse and carry part of it home.`;
+    return `A chick in your nest in ${n.place}, hungry: ${n.fed} of ${CHICK_MEALS} meals brought. Catch something and carry it home in your feet: it drops into the nest.`;
   };
   const sec = journal(G).section(30);
   sec.body.innerHTML = '<p></p>';
   const age = () => G.nest?.years > 1 ? ` This nest has stood ${G.nest.years} years, deeper each spring, with ${trinkets()} ${trinkets() === 1 ? 'trinket' : 'trinkets'} woven in.` : '';
-  G.menu.onOpen(() => { sec.body.firstChild.textContent = status() + age() + (G.carry ? ` You are carrying ${G.carry === 'twig' ? 'a twig' : 'a meal for the chick'}.` : ''); });
+  G.menu.onOpen(() => { sec.body.firstChild.textContent = status() + age() + (G.carry === 'twig' ? ' You are carrying a twig.' : ''); });
 
   return {
     id: 'nest',
@@ -124,14 +126,13 @@ export function nestSystem(G) {
       const n = G.nest;
       if (n && n.eggAt !== undefined && !n.chick && !n.fledged && G.clock - n.eggAt > DAY) {
         n.chick = true; n.fed = 0;
-        say('Your egg has hatched! Bring the chick food: catch a mouse and carry part of it to the nest.', 6);
+        say('Your egg has hatched! Bring the chick food: catch something and fly it home in your feet.', 6);
       }
     },
     scene(S) {
       const tw = S.props.twig ||= [];
       for (const t of twigsNear(S.cam[0], S.cam[2], 70)) tw.push(t.x, t.y + .02, t.z, 1, t.yaw, .5, 0, 0);
       if (G.carry === 'twig' && S.hawk) tw.push(S.hawk.p[0], S.hawk.p[1] - .28, S.hawk.p[2], .8, b.yaw, .5, 0, 0);
-      if (G.carry === 'mouse' && S.hawk && G.R) (S.props.mouse ||= []).push(S.hawk.p[0], S.hawk.p[1] - .32, S.hawk.p[2], 1.4, b.yaw - Math.PI / 2, .5, 0, 0);
       const n = G.nest; if (!n) return;
       const k = Math.min(1, .45 + n.twigs * .11), yrs = Math.min(5, n.years || 1), ns = S.props.nest ||= [];
       ns.push(n.x, n.y - .08, n.z, k * (1 + (yrs - 1) * .06), 0, .5, 0, 0);
@@ -144,6 +145,6 @@ export function nestSystem(G) {
       if (n.chick) S.props.chick = (S.props.chick || []).concat([n.x, n.y - .02, n.z, 1 + Math.sin(G.t * 3) * .04, G.t * .4 % 6.283, .5, 0, 0]);
     },
     save: () => ({ nest: G.nest, old, carry: G.carry }),
-    load(o) { G.nest = o.nest || null; old = o.old || null; G.carry = o.carry || null; },
+    load(o) { G.nest = o.nest || null; old = o.old || null; G.carry = o.carry === 'twig' ? 'twig' : null; },
   };
 }
