@@ -97,15 +97,19 @@ export function createDev(G, M) {
       <ul>${shown.map(f => `<li class="${tested[f.id] ? 'done3' : ''}"><button data-t="${esc(f.id)}" role="checkbox" aria-checked="${!!tested[f.id]}" aria-label="Tested"><i></i></button>
         <span><b>${esc(f.title)}</b><span>${esc(f.how)}</span></span><em>${esc(f.area)}${f.round ? ' · ' + esc(f.round) : ''}${f.pr ? ' · #' + f.pr : ''}${f.go ? `<button class="go3" data-go="${esc(f.id)}">Try it</button>` : ''}</em></li>`).join('') || '<li class="none3">Nothing here.</li>'}</ul>`;
   };
-  // the frame cost: G.perf = { frame: ms, groups: { name: { item: ms } } }, measured by the frame loop
+  // the frame cost: G.perf = { frame, cpu, gpu, gpuHow, deep, note, groups: { name: { item: ms } } }, from perf.js
+  const ms = v => v == null ? '–' : `${v.toFixed(1)} ms`;
   const costHtml = () => {
     const P = G.perf;
     if (!P) return '<p class="none3">The frame loop does not measure its parts yet.</p>';
     const groups = Object.entries(P.groups || {}).map(([g, items]) => {
       const rows = Object.entries(items).sort((a, b) => b[1] - a[1]), max = Math.max(.01, ...rows.map(r => r[1]));
-      return `<h4>${esc(g)}</h4>${rows.map(([k, ms]) => `<div class="cost3"><span>${esc(k)}</span><i style="--w:${(ms / max * 100).toFixed(1)}%"></i><b>${ms.toFixed(2)} ms</b></div>`).join('')}`;
+      const empty = g === 'Render passes' ? 'This phone has no GPU timers; turn on Measure the GPU to time each pass.' : 'Nothing measured yet.';
+      return `<h4>${esc(g)}</h4>${rows.length ? rows.map(([k, v]) => `<div class="cost3"><span>${esc(k)}</span><i style="--w:${(v / max * 100).toFixed(1)}%"></i><b>${v.toFixed(2)} ms</b></div>`).join('') : `<p class="none3">${empty}</p>`}`;
     }).join('');
-    return `<p class="devframe3">Frame: <b>${(P.frame ?? 0).toFixed(2)} ms</b>${P.note ? ` <small>${esc(P.note)}</small>` : ''}</p>${groups}`;
+    return `<div class="devbar3"><span class="devframe3">Frame <b>${ms(P.frame)}</b> · main thread <b>${ms(P.cpu)}</b> · GPU <b>${ms(P.gpu)}</b></span>
+      <button data-deep class="${P.deep ? 'on' : ''}">Measure the GPU (slower)</button></div>
+      ${P.note ? `<p class="devnote3">${esc(P.note)}</p>` : ''}${groups}`;
   };
   const draw = () => {
     el.innerHTML = `<div class="devcard3"><header><div class="devtabs3"><button data-tab="list" class="${tab === 'list' ? 'on' : ''}">Features</button><button data-tab="cost" class="${tab === 'cost' ? 'on' : ''}">Frame cost</button></div>
@@ -124,6 +128,7 @@ export function createDev(G, M) {
     if (b.dataset.tab) tab = b.dataset.tab;
     else if (b.dataset.a !== undefined) area = b.dataset.a;
     else if (b.dataset.f === 'todo') todo = !todo;
+    else if (b.hasAttribute('data-deep') && G.perf) G.perf.deep = !G.perf.deep;
     else if (b.dataset.t) { const id = b.dataset.t; if (tested[id]) delete tested[id]; else tested[id] = 1; store.set('tested3d', tested); }
     const y = el.querySelector('.devbody3')?.scrollTop || 0;
     draw(); el.querySelector('.devbody3').scrollTop = y;
