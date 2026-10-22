@@ -118,9 +118,11 @@ export function floraSystem(G) {
       const autumn = S.autumn ?? (G.season?.autumn || 0);
       // a gust front (G.gust, flight's feel) rolls across the grass as a pale band of bent blades
       // showing their undersides; skimming low (G.skim) lays the grass over round the bird
-      const g = G.gust, sk = G.skim;
+      const g = G.gust, sk = G.skim, ws = G.windStreak?.k > .05 ? G.windStreak : null;
       const stir = (x, z) => {
         let k = 0;
+        // the wind's own bands (wingcraft.js), rolling across the grass the way it blows
+        if (ws) k += Math.max(0, Math.sin((x * ws.x + z * ws.z) / 6 - ws.t)) ** 6 * ws.k * .6;
         if (g) {
           const s = (x - g.x) * g.dx + (z - g.z) * g.dz, side = Math.abs((x - g.x) * -g.dz + (z - g.z) * g.dx);
           if (s < 2 && s > -14 && side < g.w * .6) k += Math.exp(-((s + 4) ** 2) / 18) * g.k * (1 - side / (g.w * .6));
@@ -134,7 +136,7 @@ export function floraSystem(G) {
         const far = dd > (N * .6) ** 2;
         for (const [kind, x, y, z, sc, yaw, tint, gold] of cell(cx, cz)) {
           if (far && kind !== 'bush' && kind !== 'stone') continue;   // small things only close up
-          const k = (g || sk) && (kind === 'tuft' || kind === 'flower') ? stir(x, z) : 0;
+          const k = (g || sk || ws) && (kind === 'tuft' || kind === 'flower') ? stir(x, z) : 0;
           (S.props[kind] ||= []).push(x, y, z, sc * (1 - k * .3), yaw + k * 1.2, tint + k * 3, gold ? .9 : kind === 'tuft' || kind === 'bush' ? autumn * .6 : 0, 0);
         }
       }

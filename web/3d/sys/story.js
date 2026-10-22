@@ -56,6 +56,7 @@ export function storySystem(G) {
     const ang = G.t * (12 / k.r) + k.phase;
     let goal = [b.p[0] + Math.cos(ang) * k.r, Math.max(b.p[1], above) + 6 + Math.sin(ang * .7) * 3, b.p[2] + Math.sin(ang) * k.r];
     if (k.leave > 0) { k.leave += dt; goal = [k.p[0] + Math.sin(k.yaw) * 50, k.p[1] + 8, k.p[2] - Math.cos(k.yaw) * 50]; }
+    else { const own = G.kinGoal?.(k, dt); if (own) goal = own; }   // a young one learning to soar (wingcraft.js)
     const dx = goal[0] - k.p[0], dz = goal[2] - k.p[2], d = Math.hypot(dx, dz);
     const want = Math.atan2(dx, -dz), turn = angleTo(k.yaw, want);
     k.yaw += clamp(turn, -1.2 * dt, 1.2 * dt);

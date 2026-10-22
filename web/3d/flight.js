@@ -19,7 +19,15 @@ export const FLY = {
   // flared, thumbs up and slow (under hoverS): the hawk hangs on beating wings (hoverBeat seconds
   // a beat), for hoverCost stamina a second; spent, it drops at hoverDrop m/s² more
   hoverS: 5.5, hoverBeat: .3, hoverCost: .075, hoverDrop: 5,
+  // the wind (b.wind, m/s, set from the weather each frame) carries the hawk with the air, less
+  // near the ground; landing counts speed over the ground, so into the wind you land slow and
+  // soft, and with it you come in fast and run on (runOn metres for each m/s over runS)
+  windNear: .45, runS: 5, runOn: .8,
+  // wet feathers (b.wet 0..1: rain, a plunge): more drag, a higher stall, weaker beats
+  wetDrag: .3, wetStall: 1.2, wetFlap: .3,
 };
+// speed over the ground: the airspeed's level part plus the wind
+export const groundSpeed = b => { const f = fwd(b), w = b.wind || [0, 0]; return Math.hypot(f[0] * b.s + w[0], f[2] * b.s + w[1]); };
 
 export function createHawk(x, z) {
   const y = height(x, z);
@@ -50,7 +58,7 @@ export function step(b, c, dt, E) {
 
   // flaps
   if (c.flap) {
-    const weak = b.stamina < .08 ? .3 : 1, q = c.flap.q * weak;
+    const weak = b.stamina < .08 ? .3 : 1, q = c.flap.q * weak * (1 - FLY.wetFlap * (b.wet || 0));
     // two wings together tire you less: a perfectly paired tap costs about half a ragged one
     b.stamina = Math.max(0, b.stamina - FLY.flapCost * (c.flap.side ? .6 : 1.2 - .6 * (c.flap.sync ?? 0)));
     const stall = stallness(b);
@@ -64,19 +72,20 @@ export function step(b, c, dt, E) {
     if (weak < 1) E.tired();
   }
 
-  const sStall = FLY.stall + (FLY.stallFlare - FLY.stall) * b.flare + 2 * b.tuck - FLY.floatStall * b.float;
+  const sStall = FLY.stall + (FLY.stallFlare - FLY.stall) * b.flare + 2 * b.tuck - FLY.floatStall * b.float + FLY.wetStall * (b.wet || 0);
   // ground effect: skimming low over water or a flat field, the air cushions the wings and you carry
   const gy = height(b.p[0], b.p[2]), wet = gy < WATER, agl = b.p[1] - Math.max(gy, WATER) - .35;
   const flat = wet ? 1 : Math.max(0, (normalAt(b.p[0], b.p[2])[1] - .94) / .05);
   b.skim = agl < FLY.skimH ? Math.min(1, flat) * (1 - Math.max(0, agl) / FLY.skimH) * (1 - b.tuck) * (1 - b.flare) : 0;
   b.skimWet = wet;
   const cd = (FLY.cd + (FLY.cdTuck - FLY.cd) * b.tuck + .004 * Math.sin(b.roll) ** 2) * (1 - FLY.skimDrag * b.skim) * (1 - .3 * (b.slip || 0)) + FLY.cdFlare * b.flare * (1 - FLY.floatDrag * b.float);
+  const cdW = cd * (1 + FLY.wetDrag * (b.wet || 0));
   const trim = Math.asin(Math.max(-1, -FLY.cd * FLY.best * FLY.best / g));
   let gT = trim + (b.s - FLY.best) * .022 + (c.pitch > 0 ? c.pitch * FLY.climb * (1 - .7 * b.float) : c.pitch * FLY.dive) - b.tuck * .55 + b.flare * .12;
   if (b.s < sStall) gT = Math.min(gT, -(sStall - b.s) * .13);
   gT = Math.max(-1.35, Math.min(.8, gT));
   b.gamma += (gT - b.gamma) * Math.min(1, dt * (1.1 + b.s * .1));
-  b.s += (-g * Math.sin(b.gamma) - cd * b.s * b.s) * dt;
+  b.s += (-g * Math.sin(b.gamma) - cdW * b.s * b.s) * dt;
   b.s = Math.max(0, Math.min(FLY.maxS, b.s));
 
   // bank and turn; inside a thermal a held thumb with no bank asked for circles the core
@@ -116,6 +125,7 @@ export function step(b, c, dt, E) {
   b.p[0] += f[0] * b.s * dt; b.p[2] += f[2] * b.s * dt;
   b.p[1] += (f[1] * b.s + b.vy + b.lift) * dt;
   b.p[1] = Math.min(b.p[1], 700);
+  if (b.wind) { const k = FLY.windNear + (1 - FLY.windNear) * Math.min(1, Math.max(0, agl) / 40); b.p[0] += b.wind[0] * k * dt; b.p[2] += b.wind[1] * k * dt; }
   b.stamina = Math.min(1, b.stamina + dt * (b.lift > .5 ? .06 : .035) * (b.recover ?? 1));
 
   trees(b, dt, E);
@@ -280,7 +290,7 @@ function trees(b, dt, E) {
       if (b.s < 6 && mayPerch && !over && limbs.length && (mine || !b.aimPerch)) { settleOn(b, mine || nearestPerch(limbs, b.p), t, E); return; }
     }
     // a perch close by while slow: land on it
-    if (mayPerch && b.s < FLY.landS + FLY.floatLand * (b.float || 0) && b.vy < 3) for (const p of perchesOf(t)) if (!p.top && (!b.aimPerch || aimed(p))) {
+    if (mayPerch && groundSpeed(b) < FLY.landS + FLY.floatLand * (b.float || 0) && b.vy < 3) for (const p of perchesOf(t)) if (!p.top && (!b.aimPerch || aimed(p))) {
       if (Math.hypot(p.x - b.p[0], p.y + PERCH_Y - b.p[1], p.z - b.p[2]) < FLY.perchR + b.flare * .8 + FLY.floatReach * (b.float || 0)) { settleOn(b, p, t, E); return; }
     }
   }
@@ -298,7 +308,7 @@ function solids(b, E) {
   const mayPerch = canPerch(b);
   for (const o of solidsNear(b.p[0], b.p[2], 10)) {
     const dx = b.p[0] - o.x, dz = b.p[2] - o.z, hd = Math.hypot(dx, dz);
-    if (mayPerch && (!b.aimPerch || aimed(o.perch)) && b.s < FLY.landS + FLY.floatLand * (b.float || 0) && b.vy < 3 && Math.hypot(o.perch.x - b.p[0], o.perch.y + PERCH_Y - b.p[1], o.perch.z - b.p[2]) < FLY.perchR + o.r * .5 + b.flare * .8) { settleOn(b, o.perch, null, E); return; }
+    if (mayPerch && (!b.aimPerch || aimed(o.perch)) && groundSpeed(b) < FLY.landS + FLY.floatLand * (b.float || 0) && b.vy < 3 && Math.hypot(o.perch.x - b.p[0], o.perch.y + PERCH_Y - b.p[1], o.perch.z - b.p[2]) < FLY.perchR + o.r * .5 + b.flare * .8) { settleOn(b, o.perch, null, E); return; }
     const tr = o.r + .35;
     if (hd >= tr || b.p[1] < o.y0 || b.p[1] > o.top + .3) continue;
     // over the top edge: hop up onto it; otherwise the side is hard
@@ -385,7 +395,17 @@ function ground(b, E) {
     return;
   }
   b.p[1] = floor;
-  if (b.s < FLY.landS && down < 6) { b.state = 'ground'; b.settle = .4; E.land('ground'); return; }
+  const gs = groundSpeed(b);
+  if (gs < FLY.landS && down < 6) {
+    // with the wind behind, the hawk comes in fast and runs on a few steps; into it, it just stops
+    const run = Math.max(0, gs - FLY.runS) * FLY.runOn, v = [f[0] * b.s + (b.wind?.[0] || 0), f[2] * b.s + (b.wind?.[1] || 0)], vl = Math.hypot(v[0], v[1]) || 1;
+    b.state = 'ground'; b.settle = b.settleT = .3 + run * .08; b.from = null; b.landRun = run;
+    if (run > .6) {
+      const to = [b.p[0] + v[0] / vl * run, b.p[2] + v[1] / vl * run], ty = height(to[0], to[1]);
+      if (ty > WATER && Math.abs(ty - gy) < 1.5) { b.from = [...b.p]; b.p = [to[0], ty + .35, to[1]]; b.hop = .08; b.fromYaw = b.yaw; b.view = b.yaw = Math.atan2(v[0], -v[1]); }
+    }
+    E.land('ground'); return;
+  }
   if (b.t - b.lastHit > .4) { b.lastHit = b.t; b.stamina = Math.max(0, b.stamina - .1); E.bump(b.p, 'ground'); }
   b.gamma = Math.max(b.gamma, .25); b.s *= .6; b.vy = Math.max(b.vy, 1.5);
 }

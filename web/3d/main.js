@@ -14,7 +14,7 @@ import { createRenderer } from './render.js';
 import { createPerf } from './perf.js';
 import { createInput } from './input.js';
 import { createHawk, step, perchAhead } from './flight.js';
-import { height, WATER, thermalsNear, forest, treesNear, perchesOf } from './world.js';
+import { height, WATER, WIND, thermalsNear, forest, treesNear, perchesOf } from './world.js';
 import { createAudio } from '../src/audio.js';
 import { createMusic } from '../src/music.js';
 import { store, clamp } from './util.js';
@@ -59,10 +59,12 @@ import { ghostSystem } from './sys/ghost.js';
 import { fieldsSystem } from './sys/fields.js';
 import { skyDaysSystem } from './sys/skydays.js';
 import { raptorsSystem } from './sys/raptors.js';
+import { wingcraftSystem } from './sys/wingcraft.js';
+import { stillSystem } from './sys/still.js';
 
 const SYSTEMS = [speciesSystem, movesSystem, lifeSystem, clockSystem, weatherSystem, watersSystem, windsSystem, floraSystem, airSystem, ringsSystem, foodSystem, aimSystem, sleepSystem, feelSystem, batterySystem, songsSystem,
   guideSystem, journeySystem, nestSystem, storySystem, ruinsSystem, photoSystem, howtoSystem, faunaSystem, neighboursSystem, landsSystem, seasonsSystem, glowSystem, landAirSystem, crittersSystem, huntersSystem, aimsSystem, seasonSystem, ghostSystem,
-  fieldsSystem, skyDaysSystem, raptorsSystem];
+  fieldsSystem, skyDaysSystem, raptorsSystem, wingcraftSystem, stillSystem];
 
 export function start(canvas, ui) {
   const gl = createGL(canvas);
@@ -117,7 +119,8 @@ if (qs.has('fps')) G.settings.fpsCap = +qs.get('fps') || 60;
   input.invert = G.settings.invert;
   music.setOn(G.settings.music);
   let touchedAt = 0;   // the last touch or key: resting (below) waits a few seconds after it
-  input.onAny = () => { audio.unlock(); G.emit('gesture'); touchedAt = performance.now(); };
+  input.onAny = () => { audio.unlock(); G.emit('gesture'); touchedAt = G.touchedAt = performance.now(); };
+  G.touchedAt = 0;   // still.js: how long the player has left the phone alone
   G.on('gesture', () => audio.unlock());
 
   // ---- flight events -------------------------------------------------------------------------
@@ -270,6 +273,8 @@ if (qs.has('fps')) G.settings.fpsCap = +qs.get('fps') || 60;
     pf.lap('Core', 'input');
     G.systems.clock.update(dt, c);
     pf.lap('Systems', 'clock');
+    // the wind (world.js WIND, its strength from the weather): flight drifts with it and lands by it
+    { const ws = (G.windK ?? .3) * 6 / Math.hypot(WIND[0], WIND[2]); b.wind = [WIND[0] * ws, WIND[2] * ws]; }
     step(b, c, dt, E);
     if (Math.abs(c.roll) > .5) H.did('bank');
     if (Math.abs(c.pitch) > .5) H.did('climb');
