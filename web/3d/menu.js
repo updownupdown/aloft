@@ -32,7 +32,7 @@ const GROUPS = {
 // where each Settings row goes: by its label, else by the group it names (older names: sound, app),
 // else gameplay
 const SECTION_OF = {
-  Sound: 'audio', Music: 'audio', 'Music style': 'audio',
+  Sound: 'audio', Music: 'audio', 'Music style': 'audio', 'Music volume': 'audio', 'Wind volume': 'audio', 'Birds and effects': 'audio',
   Graphics: 'graphics', 'Ground detail': 'graphics', 'Frame rate': 'graphics', 'Battery use': 'graphics',
   'Show frame rate': 'dev', 'Feature list': 'dev', Update: 'dev', 'Music lab': 'dev', 'Bird song lab': 'dev',
 };
@@ -150,6 +150,18 @@ export function createMenu(G, ui) {
       btns.forEach((b, i) => { const on = options[i][0] === v; b.classList.toggle('on', on); b.setAttribute('aria-checked', on); });
     };
     M.acts.set(act, b => { set(options[+b.dataset.i][0]); refresh(); });
+    M.opens.push(refresh); refresh();
+    return { el, refresh };
+  };
+  // a slider from 0 to 100%: get() and set(v) take 0..1
+  M.range = (tab, { label, sub = '', get, set, group }) => {
+    const act = 'a' + n++;
+    where(tab, group, label).insertAdjacentHTML('beforeend', `<label class="range3" data-range="${act}"><span>${label}${sub ? ` <small>${sub}</small>` : ''}</span><input type="range" min="0" max="100" step="5" aria-label="${label}"><b></b></label>`);
+    const el = card.querySelector(`[data-range=${act}]`), input = el.querySelector('input'), out = el.querySelector('b');
+    seat(el, label);
+    const show = () => { out.textContent = input.value + '%'; input.style.setProperty('--v', input.value + '%'); };
+    const refresh = () => { input.value = Math.round(get() * 100); show(); };
+    input.addEventListener('input', () => { set(input.value / 100); show(); });
     M.opens.push(refresh); refresh();
     return { el, refresh };
   };

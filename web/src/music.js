@@ -65,12 +65,12 @@ export function createMusic(audio) {
     const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1800; lp.Q.value = .3;
     const rv = ctx.createConvolver(); rv.buffer = roomIR(ctx);
     M.wet = ctx.createGain(); M.wet.gain.value = T.room;
-    M.out.connect(wow).connect(lp); lp.connect(audio.master);
+    M.out.connect(wow).connect(lp); lp.connect(audio.musicBus || audio.master);
     // the strings (M.out) fill the room; the piano sits closer, with less of it
-    lp.connect(M.wet); M.wet.connect(rv); rv.connect(audio.master);
+    lp.connect(M.wet); M.wet.connect(rv); rv.connect(audio.musicBus || audio.master);
     pianoBus = ctx.createGain(); M.pwet = ctx.createGain(); M.pwet.gain.value = T.pianoRoom;
     const plp = ctx.createBiquadFilter(); plp.type = 'lowpass'; plp.frequency.value = 2400; plp.Q.value = .2;
-    pianoBus.connect(plp); plp.connect(audio.master); plp.connect(M.pwet); M.pwet.connect(rv);
+    pianoBus.connect(plp); plp.connect(audio.musicBus || audio.master); plp.connect(M.pwet); M.pwet.connect(rv);
     M.pgain = pianoBus;
     pianoBus.gain.value = 0;
     M.out.gain.setTargetAtTime(M.on ? 1 : 0, ctx.currentTime, 1.5); pianoBus.gain.setTargetAtTime(M.on ? 1 : 0, ctx.currentTime, 1.5);

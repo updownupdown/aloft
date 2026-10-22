@@ -36,7 +36,7 @@ web/3d/birds.js         other birds: Settings > Bird picks red-tail, osprey, bar
 web/3d/sky.js           clock (G.tod, G.day, G.season) and light (G.light)
 web/3d/hud.js           G.hud: meter() (bars that flash when low), tip()/did(), say(msg, { kind, secs, icon }) / toast(msg, secs, kind): the message line top centre above the compass, kinds in SAY (event, song, tutorial, hint, warn); flight/status, hide(), thumb pads
 web/3d/compass.js       the linear compass, top middle (N/E/S/W, nest, the way south or home, landmarks found)
-web/3d/menu.js          G.menu: tab(), page() (sub-tabs), group() (Settings columns), toggle(), button({ group, main }), choice() (radio buttons), onOpen(), subtitle(), set(on, tab, page); ORDER/TITLES/ICONS/GROUPS
+web/3d/menu.js          G.menu: tab(), page() (sub-tabs), group() (Settings columns), toggle(), button({ group, main }), choice() (radio buttons), range() (a 0-100% slider), onOpen(), subtitle(), set(on, tab, page); ORDER/TITLES/ICONS/GROUPS
 web/3d/letter.js        the menu's frame (frosted glass, .glass3 in 3d.css); swap it to restyle
 web/3d/facet.js         low-poly helpers (map land, postcards) (PIG colours, poly, facets, gem, chamfer, hardShadow, lit)
 web/3d/icons.js         every UI icon (James's picks, 2026-10-21): ICONS and icon(key) -> a 24x24 SVG in currentColor
@@ -49,7 +49,7 @@ web/3d/journal.js       the Journal tab and its pages (Log, Songs, Landmarks, Fi
 web/3d/pics.js          still pictures of the game's own meshes (songbirdPic(sp, px)), cached data URLs
 web/3d/app.js           Update, Graphics, Haptics, Quiet meters and Quit rows; wake lock; asks for full screen on each touch while not full screen
 web/3d/action.js        the one action button, bottom right (left of the note pad) on the ground or perched (Take off, Sleep from G.actions; swipe for the other)
-web/src/                audio.js (Web Audio synth), music.js (Valley, the generative music), birdvoice.js, songs.js (songbird species)
+web/src/                audio.js (Web Audio synth; volumes A.vol/A.setVol: music, wind, fx buses), music.js (Valley, the generative music), birdvoice.js, songs.js (songbird species)
 web/birds.html          bird lab: every species side by side (3d/birdlab.js)
 web/lab.html            bird song lab; web/musiclab.html music lab (both share lab.css)
 web/icons/, web/fonts/  app icons (tools/icon.html + tools/make-icons.mjs), bundled fonts (SIL OFL)
