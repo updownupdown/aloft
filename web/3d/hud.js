@@ -52,7 +52,7 @@ export function createHud(G, ui, input) {
   let toastT = 0, tipNow = null, tipT = 0, altKey = '', lastSay = -1e9, upAt = -1e9;
   const queue = [], now = () => performance.now() / 1000;
   const quiet = createQuiet(G, ui, H);
-  H.name = (title, sub) => H.say(title, { kind: 'name', title: sub });
+  H.name = (title, ic) => H.say(title, { kind: 'name', icon: ic });
   H.glint = (title, text, ic) => H.say(text, { kind: 'glint', title, icon: ic });
   H.tally = (text, ic) => H.say(text, { kind: 'tally', icon: ic });
   H.reply = (msg, secs = 3) => H.say(msg, { kind: 'reply', secs });
@@ -60,7 +60,7 @@ export function createHud(G, ui, input) {
   H.quietly = (how, title, msg, ic) => {
     if (how === 'w') return H.say(msg, { kind: 'warn', secs: 4.5, icon: ic });
     if (how === 't') return H.tally(msg, ic);
-    if (how === 'n') H.name(title);
+    if (how === 'n') H.name(title, ic);
     H.glint(title, msg, ic);
   };
   G.on('takeoff', () => { upAt = now(); });
@@ -96,10 +96,10 @@ export function createHud(G, ui, input) {
   let toastKey = '';
   H.say = (msg, { kind = 'event', secs = 4, icon: ic, title } = {}) => {
     if (kind !== 'reply') {
-      const seen = H.said[kind] ||= [], m = kind === 'name' && title ? `${msg} (${title})` : msg;
+      const seen = H.said[kind] ||= [], m = msg;
       if (!seen.includes(m)) { seen.unshift(m); seen.length = Math.min(seen.length, 8); store.set('said3d', H.said); }
     }
-    if (kind === 'name') return quiet.name(msg, title);
+    if (kind === 'name') return quiet.name(msg, ic);
     if (kind === 'glint') return quiet.glint(title, msg, ic);
     if (kind === 'tally') return quiet.tally(msg, ic);
     if (kind !== 'reply' && H.off['say:' + kind]) return;

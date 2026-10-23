@@ -37,7 +37,7 @@ web/3d/hawk.js          the hawk mesh, rebuilt per frame from a pose
 web/3d/birds.js         other birds: Settings > Bird picks red-tail, osprey, barn owl or raven (sys/species.js, aloft.bird); ?bird=swift|heron|mallard tries the rest
 web/3d/sky.js           clock (G.tod, G.day, G.season) and light (G.light)
 web/3d/hud.js           G.hud: meter() (bars that flash when low), tip()/did(), say(msg, { kind, secs, icon }) / toast(msg, secs, kind): the message line top centre above the compass, kinds in SAY (event, song, tutorial, hint, warn, reply; quiet: name, glint, tally), paced by PACE (one line per 45 s); reply(), name(), glint(), tally(), quietly(); flight/status, hide(), thumb pads
-web/3d/quiet.js        the quiet levels of the message line: name() thin titles under the compass, glint() tap-to-read icons beside it (kept in Journal > Log > Notes), tally() counts; pick a level by the quiet messages study (Say only for what must be known now)
+web/3d/quiet.js        the quiet levels of the message line: name(title, icon) thin titles with an icon under the compass, glint() tap-to-read icons beside it (kept in Journal > Log > Notes), tally() counts (small words and an icon in the name's place, below it when both show); pick a level by the quiet messages study (Say only for what must be known now)
 web/3d/compass.js       the linear compass, top middle (N/E/S/W, nest, the way south or home, landmarks found)
 web/3d/menu.js          G.menu: tab(), page() (sub-tabs), group() (Settings columns), toggle(), button({ group, main }), choice() (radio buttons), range() (a 0-100% slider), onOpen(), subtitle(), set(on, tab, page); ORDER/TITLES/ICONS/GROUPS
 web/3d/letter.js        the menu's frame (frosted glass, .glass3 in 3d.css); swap it to restyle

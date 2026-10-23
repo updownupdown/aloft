@@ -1,10 +1,12 @@
 // The quiet levels of the message line (James's pick A with C from the quiet messages study,
 // 2026-10-23, https://claude.ai/artifact/XnzHqYQUUyYKVsAeNnDZdX). hud.js keeps the loud level, the
 // message line itself, for what must be said now; this file holds the rest:
-// - a name: a place or a moment, thin white words under the compass, no box; two close together share it
+// - a name: a place or a moment, thin white words and an icon under the compass, no box; two close
+//   together share it
 // - a glint: something new to learn, an icon beside the compass that waits to be tapped; tap it
 //   and a glass card says it all. Every glint is written into Journal > Log > Notes too
-// - a tally: a count or a confirmation, a few words beside the compass, gone in two seconds
+// - a count: a count or a confirmation, small words and an icon in the same place as a name
+//   (under it when both show), gone in two seconds
 import { store } from './util.js';
 import { icon } from './icons.js';
 import { journal, esc } from './journal.js';
@@ -25,21 +27,21 @@ export const titleOf = text => {
 };
 
 export function createQuiet(G, ui, H) {
-  ui.insertAdjacentHTML('beforeend', `<p class="name3" aria-live="polite"><span class="nt3"></span><small class="ns3"></small></p>
-    <div class="glints3"></div><p class="tally3"><span class="ic3"></span><span class="tx3"></span></p>
+  ui.insertAdjacentHTML('beforeend', `<p class="name3" aria-live="polite"><span class="ic3"></span><span class="nt3"></span></p>
+    <div class="glints3"></div><p class="qcount3"><span class="ic3"></span><span class="tx3"></span></p>
     <div class="glintcard3 hidden" role="dialog" aria-label="Something new"><h4><span class="ic3"></span><b></b></h4><p></p>
       <div><small>Kept in Journal &gt; Log</small><button class="main3" data-t="ok">Got it</button></div></div>`);
   const q = s => ui.querySelector(s);
-  const nameEl = q('.name3'), nameT0 = q('.name3 .nt3'), nameS = q('.name3 .ns3'), row = q('.glints3'), tallyEl = q('.tally3'), card = q('.glintcard3');
+  const nameEl = q('.name3'), nameT0 = q('.name3 .nt3'), nameIc = q('.name3 .ic3'), row = q('.glints3'), tallyEl = q('.qcount3'), card = q('.glintcard3');
   const notes = store.get('notes3d', []);
   let names = [], nameT = 0, tallyT = 0, glints = [], open = null, sec = null;
 
   const Q = {
     // a place or a moment: shown when the line is free; a second within a few seconds joins the first
-    name(title, sub = '') {
+    name(title, ic = 'landmarks') {
       if (H.off['say:name']) return;
       if (nameT > 0 && names.length < 2 && !names.includes(title)) { names.push(title); nameT = Math.max(nameT, QUIET.nameSecs * .8); draw(); return; }
-      Q.pending.push({ title, sub, at: performance.now() / 1000 });
+      Q.pending.push({ title, ic, at: performance.now() / 1000 });
     },
     pending: [],
     // something new: an icon waits beside the compass
@@ -72,7 +74,7 @@ export function createQuiet(G, ui, H) {
         const now = performance.now() / 1000;
         Q.pending = Q.pending.filter(n => now - n.at < 20);
         const n = Q.pending.shift();
-        if (n) { names = [n.title]; nameS.textContent = n.sub; nameT = QUIET.nameSecs; draw(); }
+        if (n) { names = [n.title]; nameIc.innerHTML = icon(n.ic); nameT = QUIET.nameSecs; draw(); }
       }
       if ((tallyT -= dt) <= 0) tallyEl.classList.remove('show');
       for (const g of glints) {

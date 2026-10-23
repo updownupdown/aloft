@@ -83,7 +83,7 @@ export function ruinsSystem(G) {
     if (a.treasure) {
       St.treasures[a.kind] = { day: G.day, place: a.place };
       G.audio.learned?.();
-      G.hud.name(cap(name.replace(/^(A|An|The) /, '')), 'a treasure'); G.hud.glint(cap(name.replace(/^(A|An|The) /, '')), M.TREASURES[a.kind][2], 'keepsake');
+      G.hud.name(cap(name.replace(/^(A|An|The) /, '')), 'keepsake'); G.hud.glint(cap(name.replace(/^(A|An|The) /, '')), M.TREASURES[a.kind][2], 'keepsake');
     } else {
       St.trinkets.push(a.kind); G.audio.feather?.();
       G.hud.glint(cap(name), `${cap(name)}, left by people long gone. ${G.nest ? 'Take it home: it will brighten your nest.' : 'Keep it for a nest one day.'}`, 'keepsake');
