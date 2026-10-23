@@ -4,7 +4,7 @@
 // night is over: the view comes back down while the clock runs on fast through first light, so the
 // day comes up as it would (only quicker), the wings full.
 // Only a roost: a perch at least ROOST m above the ground or water, never a bush (the ground, a bush
-// or a low rock is too exposed; there the Sleep button doesn't show). A touch wakes you early.
+// or a low rock is too exposed; there the Sleep button doesn't show). A touch hurries the waking (the night still passes).
 import { period, light, DAY } from '../sky.js';
 import { height, WATER, bushesNear } from '../world.js';
 
@@ -31,12 +31,13 @@ export function sleepSystem(G) {
   </style>`);
   const btn = ui.querySelector('.sleep3'), veil = ui.querySelector('.night3');
   let sleeping = false, slept = 0, bared = false, spin = 0, rate = 0, a0 = 0, woke = false, early = false, upT = 0, from = 0, span = 0, tDark = DAWN.dark, tWake = DAWN.wake;
-  const ahead = to => { const d = to - G.tod; return d < -.5 ? d + 1 : d; };   // how far the clock is from `to`, across midnight
+  const ahead = to => (to - G.tod + 1) % 1;   // how far the clock has to run on to reach `to` (always forward, across midnight)
   const starA = () => ((G.yearFrac || 0) - 79 / 365 + G.tod - .5) * Math.PI * 2;   // the sky's local sidereal angle: once a day and a little, about the pole (stars.js)
-  // the end: the view comes back down and the light returns (early, from a touch: no skip to dawn)
+  // the end: the view comes back down and the light returns (early: knocked off the perch, no skip to dawn)
   const wake = e => {
     if (!sleeping || woke) return;
-    woke = true; early = e; upT = 0; from = G.tod; span = e ? 0 : Math.max(0, Math.min(.3, ahead(tWake))); b.skyView = false; veil.classList.remove('on');
+    if (!e) { const left = ahead(tDark); if (left > 0 && left < .7) G.systems.clock.update(left * DAY); }   // what is left of the dark passes at once, still under the veil
+    woke = true; early = e; upT = 0; from = G.tod; span = e || ahead(tWake) > .5 ? 0 : ahead(tWake); b.skyView = false; veil.classList.remove('on');
     if (!early) b.stamina = b.maxStamina ?? 1;
   };
   const up = () => { sleeping = b.asleep = woke = false; spin = 0; if (bared) { H.hide(false); bared = false; } };
@@ -63,7 +64,7 @@ export function sleepSystem(G) {
   btn.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); G.audio.unlock?.(); sleep(); });
   // for menu.js's one action button
   (G.actions ||= {}).sleep = { run: sleep, when: () => !sleeping && period(G.tod) === 'night' && !(b.settle > 0) && roost() };   // only where it can roost
-  G.on('gesture', () => { if (sleeping && !woke && slept > 1) wake(true); });
+  G.on('gesture', () => { if (sleeping && !woke && slept > 1) wake(false); });   // a touch hurries the morning; the night still passes
   H.tip('sleep', () => b.state === 'perch' && period(G.tod) === 'night' && roost(), 'Night has come. Tap Sleep to roost till first light; your wings rest while you sleep.');
   return {
     id: 'sleep',
@@ -85,7 +86,7 @@ export function sleepSystem(G) {
         b.stamina = Math.min(b.maxStamina ?? 1, b.stamina + dt * .2);
         // the night passes under the veil: the clock runs on toward the last of the dark
         const left = ahead(tDark), t = SLEEP.down + SLEEP.hold - slept;
-        if (left > 0 && left < .5) G.systems.clock.update(Math.min(left, left * dt / Math.max(dt, t)) * DAY);
+        if (left > 0 && left < .7) G.systems.clock.update(Math.min(left, left * dt / Math.max(dt, t)) * DAY);
         if (slept > SLEEP.down + SLEEP.hold) wake(false);
       } else {
         // coming back: on through first light, easing out as the light comes up (in game time)
