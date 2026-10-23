@@ -163,7 +163,7 @@ export function createSingUI(ui, { audio, voice, onSyll, onPick, onCall, onNext,
   // a little sound-wave mark for a bird singing within earshot
   const NEAR = '<svg class="near3" viewBox="0 0 16 16" aria-label="singing nearby"><path d="M5 5 Q7.5 8 5 11 M8.5 3 Q12.5 8 8.5 13" fill="none" stroke-width="1.8" stroke-linecap="round"/><circle cx="2.6" cy="8" r="1.6"/></svg>';
   // a song's notes, small, each at its pitch
-  const mini = g => `<span class="mini3">${g.notes.map((n, i) => `<i style="--note:${NOTE_LIT[n]};--lane:${n}">${glyph(g.kinds[i])}</i>`).join('')}</span>`;
+  const mini = g => `<span class="mini3">${g.notes.map((n, i) => `<i style="--note:${NOTE_LIT[n]};--lane:${n}">${glyph(g.tap ? 'c' : g.kinds[i])}</i>`).join('')}</span>`;
   // a row a bird: its picture and name (tap: imitate the first song you know, or just its voice),
   // then each of its songs (tap a known one to imitate it; a question mark for one not learned)
   function setBirds(list, learned, picked, pickedK, nearby, knownK) {
@@ -217,7 +217,7 @@ export function createSingUI(ui, { audio, voice, onSyll, onPick, onCall, onNext,
     card.classList.toggle('free', !sp);
     score.innerHTML = !sp ? '' : sp.notes.map((n, i) => {
       const shown = i < sc.seen;
-      return `<span class="${shown ? '' : 'q'}${i === sc.at ? ' at' : ''}" style="--note:${shown ? NOTE_LIT[n] : '#d8dee3'};--lane:${shown ? n : 0}">${glyph(shown ? sp.kinds[i] : 'q')}</span>`;
+      return `<span class="${shown ? '' : 'q'}${i === sc.at ? ' at' : ''}" style="--note:${shown ? NOTE_LIT[n] : '#d8dee3'};--lane:${shown ? n : 0}">${glyph(shown ? (sp.tap ? 'c' : sp.kinds[i]) : 'q')}</span>`;
     }).join('');
     mine.innerHTML = sc.mine.map((m, i) => span(m.lane, m.kind, m.r ? 'r-' + m.r : '', m.r ? `;--md:${(S.marks[i] - now).toFixed(2)}s` : '')).join('');
   }

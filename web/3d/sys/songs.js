@@ -145,6 +145,7 @@ export function songsSystem(G) {
     { id: 'alarm-calls', title: 'Alarm calls run ahead of you', how: 'Fly 15-70 m over trees with songbirds: thin seet calls run on ahead and mice freeze. Skim low and they stay quiet.' },
     { id: 'mimic', title: 'Mimics: the starling (and the mockingbird down south)', how: 'Perch near a starling in meadows or by lakes: it sings snatches of other songs; an unknown song\'s opening fills in on its card.' },
     { id: 'more-songs', round: 9, pr: 191, title: 'Several songs per bird; Journal > Songs plays the ones you know', how: 'Perch by songbirds of one kind in different trees: each sings one of its kind\'s songs. The birds\' list (tap the song card) shows each bird\'s songs; tap one to imitate it. Journal > Songs: play buttons, question marks for songs to find.' },
+    { id: 'tap-songs', round: 10, pr: 0, title: 'Fast or long songs are copied with taps alone; slow, short ones keep their swipes', how: 'Learn a Wren, Chaffinch or Skylark (fast): the card shows dots, and any touch on the right row counts. A Cuckoo or Hoopoe still wants its swipes.' },
     { id: 'earth-songbirds', round: 10, pr: 216, title: 'Each continent its own songbirds: 86 real singers, at least two in every land, no dialects', how: 'Fly to Europe, Africa, Asia, South America or Oceania and perch in a wood: robins and blackbirds in Europe, bulbuls and robin-chats in Africa, kookaburras and tui in Oceania. Settings > Dev tools > Dev mode, then Journal > Songs: every bird, by continent.' },
     { id: 'sing-three', round: 9, pr: 211, title: 'At most three birds sing at once; no piano under your notes; your own bird on the rail sings as yourself', how: 'Perch in a busy wood and listen: never more than three songs overlap. Tap Sing, then your own bird at the top of the rail: Free song, even beside a bird that could teach you.' },
     { id: 'learn-near', round: 9, pr: 203, title: 'Learn from any bird near by; tap its logo to choose it; Dev mode unlocks every song in the Journal', how: 'Perch within about 45 m of a songbird whose song you do not know (amber dot on the rail), or tap its logo: Learning, notes light up, the card fills in from the first note. Settings > Dev tools > Dev mode, then Journal > Songs: play every song. The states are explained at the top of Journal > Songs.' },
@@ -181,7 +182,7 @@ export function songsSystem(G) {
   // question mark, until you have learned its song)
   function notePart(p, lane, kind, hawk = false, sp = null) {
     const at = hawk ? [p[0] + Math.sin(b.yaw) * .2, p[1] + .32, p[2] - Math.cos(b.yaw) * .2] : [p[0], p[1] + .15, p[2]];
-    ui.rise(lastS, at, lane, hawk || (sp && knows(sp)) ? kind : 'q', !hawk);
+    ui.rise(lastS, at, lane, hawk ? kind : sp && knows(sp) ? (sp.tap ? 'c' : kind) : 'q', !hawk);
   }
   function hear(sp) { if (!G.heard.has(sp.id)) { G.heard.add(sp.id); store.set('heard', [...G.heard]); } }
   // a songbird (or a visitor) sings
@@ -280,7 +281,8 @@ export function songsSystem(G) {
     S.teachI = -1;
     const mine = { lane, kind }; S.mine = i ? [...S.mine.slice(0, i), mine] : [mine];
     // how it went shows on the row itself: right, right row but not the touch, or wrong row
-    if (sp.notes[i] !== lane || sp.kinds[i] !== kind) {
+    // (a tap-only song takes any touch on the right row)
+    if (sp.notes[i] !== lane || (!sp.tap && sp.kinds[i] !== kind)) {
       S.res.push('wrong'); S.over = true; mine.r = 'wrong';
       ui.mark(lane, sp.notes[i] === lane ? 'half' : 'no');
       return;
@@ -551,7 +553,7 @@ export function songsSystem(G) {
   const CONTS = [['n-america', 'North America'], ['s-america', 'South America'], ['europe', 'Europe'], ['africa', 'Africa'], ['asia', 'Asia'], ['oceania', 'Oceania']];
   // what Sing is doing, and what starts each, at the top of Journal > Songs
   const MODES = `<dl class="sgmodes3">
-    <dt class="learn">Learning</dt><dd>Perch within about 45 m of a songbird singing a song you do not know (an amber dot on its logo in the rail), or tap its logo, and tap Sing. Each note it sings lights its row on the pad and its place on the card: copy it with the same swipe or tap. Every note you get right shows on the card, the first note first, then the next; sing the whole song right to learn it. It stops to listen while you sing and sings again when you stop.</dd>
+    <dt class="learn">Learning</dt><dd>Perch within about 45 m of a songbird singing a song you do not know (an amber dot on its logo in the rail), or tap its logo, and tap Sing. Each note it sings lights its row on the pad and its place on the card: copy it with the same swipe or tap. Fast or long songs are copied with taps alone. Every note you get right shows on the card, the first note first, then the next; sing the whole song right to learn it. It stops to listen while you sing and sings again when you stop.</dd>
     <dt class="imitate">Imitating</dt><dd>Tap the logo of a bird whose song you know (or pick a song from the list). Sing it and a bird of that kind near by answers with a gift. Tap the song's name for the next song you know of that bird.</dd>
     <dt>Voice only</dt><dd>A bird you have heard but whose song you do not know, with none of its kind singing near: you sing in its voice, with no song to copy yet.</dd>
     <dt>Free song</dt><dd>Your own bird, at the top of the rail: sing anything you like.</dd>
