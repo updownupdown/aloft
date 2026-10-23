@@ -66,6 +66,7 @@ import { raptorsSystem } from './sys/raptors.js';
 import { wingcraftSystem } from './sys/wingcraft.js';
 import { stillSystem } from './sys/still.js';
 import { swellsSystem } from './sys/swells.js';
+import { berriesSystem } from './sys/berries.js';
 import { sealifeSystem } from './sys/sealife.js';
 import { driftSystem } from './sys/drift.js';
 import { islesSystem } from './sys/isles.js';
@@ -74,7 +75,7 @@ import { nightSeaSystem } from './sys/nightsea.js';
 
 const SYSTEMS = [speciesSystem, movesSystem, lifeSystem, clockSystem, weatherSystem, watersSystem, windsSystem, floraSystem, bushesSystem, airSystem, ringsSystem, foodSystem, aimSystem, sleepSystem, feelSystem, batterySystem, songsSystem, momentsSystem,
   guideSystem, journeySystem, nestSystem, storySystem, ruinsSystem, photoSystem, howtoSystem, faunaSystem, neighboursSystem, landsSystem, seasonsSystem, glowSystem, landAirSystem, crittersSystem, huntersSystem, aimsSystem, seasonSystem, ghostSystem,
-  fieldsSystem, skyDaysSystem, raptorsSystem, wingcraftSystem, stillSystem, swellsSystem, polesSystem,
+  fieldsSystem, skyDaysSystem, raptorsSystem, wingcraftSystem, stillSystem, swellsSystem, berriesSystem, polesSystem,
   sealifeSystem, driftSystem, islesSystem, skyRiversSystem, nightSeaSystem];
 
 // Where each bird first flies, in its own country (earth.js toXZ: latitude, longitude): the
