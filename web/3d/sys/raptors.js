@@ -19,7 +19,7 @@ export function raptorsSystem(G) {
   const b = G.b, H = G.hud;
   G.R.shape('broadwing', broadwing());
   G.guide?.page('broadwing', 'Broad-winged hawk', 'Crosses a continent each autumn in flocks of thousands, circling up one thermal after another and gliding on south.');
-  const once = (id, msg, secs = 5) => { if (!G.flags[id]) { G.flags[id] = 1; H.toast(msg, secs); } };
+  const once = (id, title, msg, ic, how) => { if (!G.flags[id]) { G.flags[id] = 1; G.hud.quietly(how, title, msg, ic); } };
   let force = 0, lane = null;   // lane: { x, day } the line of the stream this day
 
   // the day: one in each autumn (the year's eight days), by hash; daytime only
@@ -66,8 +66,7 @@ export function raptorsSystem(G) {
       // the stream passes within sight of wherever you were when it began
       if (!lane || lane.day !== G.day) lane = { x: Math.round(b.p[0] / 50) * 50 + (ih(G.day, 1, 710) - .5) * 500, day: G.day };
       env.thermals = env.thermals.filter(t => !t.kettle).concat(kettlesNear());
-      if (Math.abs(b.p[0] - lane.x) < 600) once('raptors' + Math.floor((G.day - 1) / 32), 'A river of raptors: hundreds of hawks streaming south, kettle after kettle. Join a kettle and glide on with them.', 7);
-      if (b.inThermal && b.p[1] - height(b.p[0], b.p[2]) > 80 && Math.abs(b.p[0] - lane.x) < 200) once('raptorsJoin' + G.day, 'You circle up among them, wingtip to wingtip. From the top, follow their line south.', 5);
+      if (Math.abs(b.p[0] - lane.x) < 600) once('raptors' + Math.floor((G.day - 1) / 32), 'River of raptors', 'A river of raptors: hundreds of hawks streaming south, kettle after kettle. Join a kettle and glide on with them.', 'thermal', 'n');
     },
     scene(S) {
       if (!lane || !on()) return;

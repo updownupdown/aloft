@@ -28,7 +28,7 @@ export function sealifeSystem(G) {
   G.guide?.page('flyfish', 'Flying fish', 'Bursts from the water to glide on stiff winglike fins, sometimes for a hundred metres, to escape the tuna below.');
   G.guide?.page('turtle', 'Green sea turtle', 'Crosses whole oceans to lay its eggs on the beach where it hatched, rising every few minutes to breathe.');
   const whales = new Map(), boils = new Map(), turtles = new Map(), flyers = [];
-  const once = (id, msg, secs = 5) => { if (!G.flags[id]) { G.flags[id] = 1; H.toast(msg, secs, 'event'); } };
+  const once = (id, title, msg, ic, how) => { if (!G.flags[id]) { G.flags[id] = 1; G.hud.quietly(how, title, msg, ic); } };
   const sea = (x, z) => oceanAt(x, z);
   let refreshT = 0, flyT = 4;
 
@@ -56,7 +56,7 @@ export function sealifeSystem(G) {
     if (w.up) {
       // a last long breath, then the back arches and it sounds: anyone on it has to go
       if (w.t < 6) w.dive = Math.min(1, w.dive + dt / 6);
-      if (w.t < 4 && riding(w) && !(b.wantOff > 0)) { b.wantOff = .6; H.toast('The whale arches to dive: off you go.', 3, 'event'); }
+      if (w.t < 4 && riding(w) && !(b.wantOff > 0)) { b.wantOff = .6; H.say('The whale arches to dive: off you go.', { kind: 'warn', secs: 3, icon: 'takeoff' }); }
       if ((w.blowT -= dt) <= 0 && w.dive < .5) { w.blowT = 7 + Math.random() * 6; blow(w); }
       if (w.t <= 0) { w.up = false; w.t = SEA.whaleDown[0] + Math.random() * (SEA.whaleDown[1] - SEA.whaleDown[0]); }
     } else {
@@ -82,7 +82,7 @@ export function sealifeSystem(G) {
   }
   // stand on the whale's back: it is a pillar (world.js solidsNear via env.solids) whose perch moves
   env.solids.push((x, z, r, out) => { for (const w of whales.values()) if (w.up && w.y > -.5 && Math.abs(w.x - x) < r + 8 && Math.abs(w.z - z) < r + 8) out.push(...w.solids); });
-  G.on('land', kind => { if (kind === 'perch' && b.perch?.ride && whales.has(b.perch.ride.id)) once('whaleRide', 'You stand on a whale’s back, rising and falling with its breathing. Rest here a while: it will tell you when it dives.', 6); });
+  G.on('land', kind => { if (kind === 'perch' && b.perch?.ride && whales.has(b.perch.ride.id)) once('whaleRide', 'Whale back', 'You stand on a whale’s back, rising and falling with its breathing. Rest here a while: it will tell you when it dives.', 'pin'); });
   G.on('wrap', dx => { for (const m of [whales, boils, turtles]) for (const o of m.values()) { o.x += dx; o.hx += dx; } for (const f of flyers) f.x += dx; });
 
   // ---- fish boils: the sea seething, gulls dropping in -----------------------------------------
@@ -115,7 +115,7 @@ export function sealifeSystem(G) {
       G.systems.food?.hold?.(FAUNA.fish, .05, 'fish');
       G.audio.splash(true); splash(b.p[0], b.p[2], 1.4);
       G.emit('catch', { kind: 'fish', x: b.p[0], z: b.p[2] });
-      once('firstBoil', 'A fish from the boil! The gulls show where the shoals come up: follow their wheeling.', 5);
+      once('firstBoil', 'Fish boil', 'A fish from the boil! The gulls show where the shoals come up: follow their wheeling.', 'prey');
       if (++o.eaten > 2) o.life = 1e9;
     }
   }
@@ -148,7 +148,7 @@ export function sealifeSystem(G) {
         flyers.splice(i, 1);
         G.systems.food?.hold?.(FAUNA.fish * .7, .04, 'fish'); G.audio.splash(false);
         G.emit('catch', { kind: 'fish', x: f.x, z: f.z });
-        once('flyfish', 'A flying fish, caught on the wing!', 4);
+        once('flyfish', 'Flying fish', 'A flying fish, caught on the wing!', 'prey', 't');
       }
     }
     if (b.state !== 'fly' || G.light.daylight < .4 || b.p[1] - WATER > 14 || b.s < 6) return;
@@ -174,7 +174,7 @@ export function sealifeSystem(G) {
     go: () => {
       let w = [...whales.values()].find(o => o.up);
       if (!w) for (let k = 0; k < 400 && !w; k++) { const a = k * 2.4, r = 1500 + k * 120, o = whaleOf(Math.floor((b.p[0] + Math.cos(a) * r) / SEA.whaleCell), Math.floor((b.p[2] + Math.sin(a) * r) / SEA.whaleCell)); if (o) { w = whaleInit(o); w.up = true; w.t = 70; w.y = 0; whales.set(w.id, w); } }
-      if (!w) return H.toast('No whales near', 2);
+      if (!w) return H.reply('No whales near', 2);
       w.up = true; w.t = Math.max(w.t, 60); w.y = 0; w.dive = 0;
       b.state = 'fly'; b.p = [w.x - Math.cos(w.yaw) * 40, 14, w.z - Math.sin(w.yaw) * 40]; b.yaw = Math.atan2(Math.cos(w.yaw), -Math.sin(w.yaw)); b.s = 9; b.gamma = 0; b.vy = 0;
     } });

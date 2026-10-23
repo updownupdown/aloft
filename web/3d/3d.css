@@ -189,6 +189,41 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .tipmore3 div { display: flex; justify-content: flex-end; gap: 8px; }
 .tipmore3 button { min-height: 42px; padding: 0 18px; border-radius: 21px; border: 0; background: rgba(29, 43, 54, .08); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
 .tipmore3 button.main3 { background: var(--ink); color: #fff; }
+/* the quiet levels (quiet.js): a name under the compass, glints beside it, a tally on its other side */
+.name3 { position: absolute; z-index: 1; left: 50%; top: calc(52px + env(safe-area-inset-top)); transform: translateX(-50%); margin: 0; text-align: center; white-space: nowrap;
+  color: #fff; font-weight: 300; font-size: 30px; line-height: 1.05; letter-spacing: .02em; filter: var(--halo3); opacity: 0; transition: opacity .9s; pointer-events: none; }
+.name3 small { display: block; color: #fff; font-size: 11px; font-weight: 600; letter-spacing: .22em; text-transform: uppercase; margin-top: 6px; }
+.name3 small:empty { display: none; }
+.name3.show { opacity: 1; }
+.name3, .glints3, .tally3 { --halo3: drop-shadow(0 1px 1.5px rgba(10, 20, 28, .55)) drop-shadow(0 0 6px rgba(10, 20, 28, .25)); }
+.glints3 { position: absolute; z-index: 2; top: calc(10px + env(safe-area-inset-top)); left: calc(50% + min(160px, 19vw) + 10px); display: flex; gap: 8px; pointer-events: none; }
+.gl3 { pointer-events: auto; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  color: #fff; background: rgba(255, 255, 255, .26); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  box-shadow: 0 0 0 1.5px rgba(255, 255, 255, .6), 0 0 14px rgba(255, 240, 200, .55); transition: background .6s, box-shadow .6s; }
+.gl3 svg { width: 20px; height: 20px; stroke-width: 2.1; filter: drop-shadow(0 1px 1px rgba(10, 20, 28, .5)); }
+.gl3.dim { background: rgba(20, 32, 40, .25); box-shadow: 0 0 0 1.5px rgba(255, 255, 255, .35); }
+.gl3::before { content: ''; position: absolute; inset: -6px; }
+@media (prefers-reduced-motion: no-preference) { .gl3.live { animation: breathe3 3.2s ease-in-out infinite; } }
+@keyframes breathe3 { 50% { box-shadow: 0 0 0 1.5px rgba(255, 255, 255, .8), 0 0 24px rgba(255, 240, 200, .85); } }
+.tally3 { position: absolute; z-index: 1; top: calc(16px + env(safe-area-inset-top)); right: calc(50% + min(160px, 19vw) + 10px); margin: 0; display: flex; align-items: center; gap: 6px;
+  color: #fff; font-size: 13.5px; font-weight: 600; white-space: nowrap; filter: var(--halo3); opacity: 0; transition: opacity .5s; pointer-events: none; }
+.tally3 .ic3 svg { width: 16px; height: 16px; display: block; }
+.tally3.show { opacity: 1; }
+.glintcard3 { pointer-events: auto; position: absolute; z-index: 3; left: 50%; top: calc(56px + env(safe-area-inset-top)); transform: translateX(-50%); width: min(420px, 86vw);
+  padding: 14px 18px 12px; border-radius: 22px; background: rgba(255, 255, 255, .7); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); border: 1px solid var(--edge); box-shadow: var(--shadow); }
+.glintcard3 h4 { margin: 0 0 6px; display: flex; align-items: center; gap: 8px; font-size: 17px; font-weight: 600; }
+.glintcard3 h4 .ic3 svg { width: 20px; height: 20px; display: block; color: #3f7a4f; }
+.glintcard3 p { margin: 0 0 12px; font-size: 15px; line-height: 1.5; }
+.glintcard3 div { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.glintcard3 button { min-height: 42px; padding: 0 20px; border-radius: 21px; border: 0; background: var(--ink); color: #fff; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+#ui3:has(.glintcard3:not(.hidden)) .compass3 { opacity: 0; }
+.notes3 em { font-style: normal; opacity: .7; }
+@media (max-width: 620px) {
+  .name3 { top: calc(170px + env(safe-area-inset-top)); font-size: 26px; }
+  .glints3 { top: calc(130px + env(safe-area-inset-top)); left: calc(50% + min(130px, 30vw) + 8px); }
+  .tally3 { top: calc(136px + env(safe-area-inset-top)); right: calc(50% + min(130px, 30vw) + 8px); }
+  .glintcard3 { top: calc(174px + env(safe-area-inset-top)); }
+}
 /* the menu hides every other piece of the HUD */
 #ui3.menu-open > :not(.veil3) { display: none !important; }
 #ui3.bare3 > :not(.photo3):not(.toast3) { display: none !important; }

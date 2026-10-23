@@ -78,6 +78,7 @@ export function createSingUI(ui, { audio, voice, onSyll, onPick, onCall, onNext,
           <button class="sgsong3"></button>
           <div class="sgrow3"><span class="sglogo3"></span><span class="score3"></span></div>
           <div class="sgrow3 mine"><span class="sgme3">You</span><span class="score3 mine3"></span></div>
+          <p class="sgsay3"></p>
         </div>
       </div>
       <div class="birds3"><button class="sgless3" aria-label="Close">${svg24(ICONS.done)}</button><div class="cards3"></div>
@@ -262,6 +263,14 @@ export function createSingUI(ui, { audio, voice, onSyll, onPick, onCall, onNext,
     get ready() { return S.ready; },
     // the list of birds is open
     get listing() { return S.ready && S.on && root.classList.contains('big'); },
+    // a line about the song (who answers, an echo, a young bird listening) at the foot of the card,
+    // instead of on the message line; false when the card is not showing
+    say(msg, secs = 4) {
+      if (!(S.ready && S.on) || root.classList.contains('big')) return false;
+      const el = card.querySelector('.sgsay3'); el.textContent = msg; el.classList.add('show');
+      clearTimeout(el.t); el.t = setTimeout(() => el.classList.remove('show'), secs * 1000);
+      return true;
+    },
     sing(on) { setOn(on); },
     // the kind the keys 1 to 5 sing (keys 6 to 0 choose it)
     get kind() { return S.kind; },

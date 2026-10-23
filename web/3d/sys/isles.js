@@ -17,7 +17,7 @@ const SIGHT = { blowhole: 'the blowhole', steam: 'the lava coast', colony: 'the 
 export function islesSystem(G) {
   const b = G.b, R = G.R, H = G.hud;
   R.shape('pool', pool()); R.shape('sitter', sitter());
-  const once = (id, msg, secs = 5) => { if (!G.flags[id]) { G.flags[id] = 1; H.toast(msg, secs, 'event'); } };
+  const once = (id, title, msg, ic, how) => { if (!G.flags[id]) { G.flags[id] = 1; G.hud.quietly(how, title, msg, ic); } };
   const info = new Map();   // island key -> its pools, nesters, sight
   let near = [], from = null, puffT = 0;
   G.pools = [];             // rain pools near the bird, 8 floats each (food.js drinks from them)
@@ -78,7 +78,7 @@ export function islesSystem(G) {
     for (const o of near) {
       const s = o.sight; if (!s || J.found[s.id] || Math.hypot(s.x - b.p[0], s.z - b.p[2]) > 160) continue;
       J.found[s.id] = { name: s.name, x: Math.round(s.x), z: Math.round(s.z), note: `Found on ${G.date?.text || `day ${G.day}`}, in ${G.season.name}, in ${inSentence(G.placeName?.(s.x, s.z) || 'the sea')}.` };
-      H.toast(`You found ${inSentence(s.name)}.`, 4); G.audio.learned?.();
+      H.name(s.name, 'found'); G.audio.learned?.();
       G.emit('landmark', { id: s.id, name: s.name, x: s.x, z: s.z });
     }
   }
@@ -101,7 +101,7 @@ export function islesSystem(G) {
     go: () => {
       let o = near.filter(q => q.sight).sort((p, q) => Math.hypot(p.sight.x - b.p[0], p.sight.z - b.p[2]) - Math.hypot(q.sight.x - b.p[0], q.sight.z - b.p[2]))[0];
       if (!o) { const I = islesNear(b.p[0], b.p[2], 30000).filter(J => J.real !== undefined).sort((p, q) => Math.hypot(p.x - b.p[0], p.z - b.p[2]) - Math.hypot(q.x - b.p[0], q.z - b.p[2]))[0]; if (I) o = infoOf(I); }
-      const s = o?.sight || (o && { x: o.I.x, z: o.I.z, a: 0 }); if (!s) return H.toast('No islands near', 2);
+      const s = o?.sight || (o && { x: o.I.x, z: o.I.z, a: 0 }); if (!s) return H.reply('No islands near', 2);
       b.state = 'fly'; b.p = [s.x + Math.cos(s.a) * 120, 40, s.z + Math.sin(s.a) * 120]; b.yaw = Math.atan2(-Math.cos(s.a), Math.sin(s.a)); b.s = 9; b.gamma = 0; b.vy = 0;
     } });
 
@@ -112,7 +112,7 @@ export function islesSystem(G) {
       if (!near.length) return;
       find(); sights(dt);
       for (const o of near) for (const q of o.birds) q.a += q.v * dt;
-      if (b.state === 'ground' && G.pools.length) for (let i = 0; i < G.pools.length; i += 8) if (Math.hypot(G.pools[i] - b.p[0], G.pools[i + 2] - b.p[2]) < 6) { once('rainPool', 'A pool of rain water in the rock: fresh, not salt. Tap it to drink.', 5); break; }
+      if (b.state === 'ground' && G.pools.length) for (let i = 0; i < G.pools.length; i += 8) if (Math.hypot(G.pools[i] - b.p[0], G.pools[i + 2] - b.p[2]) < 6) { once('rainPool', 'Rain pool', 'A pool of rain water in the rock: fresh, not salt. Tap it to drink.', 'thirst'); break; }
     },
     scene(S) {
       if (!near.length) return;

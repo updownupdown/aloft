@@ -36,7 +36,7 @@ export function nightSeaSystem(G) {
       if ((G.light.night || 0) < .5 || b.state !== 'fly' || b.p[1] - WATER > 3.2 || height(b.p[0], b.p[2]) > -1) return;
       glowT += dt * (4 + b.s * 1.2);
       for (; glowT > 1; glowT--) { const s = (Math.random() - .5) * 1.4; if (glow.length < 240) glow.push([b.p[0] + Math.cos(b.yaw) * s, b.p[2] + Math.sin(b.yaw) * s, 0, 2.2 + Math.random() * 1.5]); }
-      if (!G.flags.plankton) { G.flags.plankton = 1; G.hud.toast('The sea glows where you skim it: plankton, lit by your passing.', 5, 'event'); }
+      if (!G.flags.plankton) { G.flags.plankton = 1; G.hud.glint('Plankton', 'The sea glows where you skim it: plankton, lit by your passing.', 'how'); }
     },
     scene(S) {
       const r = lat * Math.PI / 180;

@@ -9,7 +9,7 @@ export function appRows(G) {
   // so a new version shows in one go instead of after two reloads
   async function update() {
     G.persist();
-    G.hud.toast('Fetching the latest Aloft…', 6);
+    G.hud.reply('Fetching the latest Aloft…', 6);
     try {
       const reg = await navigator.serviceWorker?.getRegistration();
       if (reg) {
@@ -22,7 +22,7 @@ export function appRows(G) {
         await Promise.all((await c.keys()).map(async q => { const r = await fetch(q.url, { cache: 'reload' }); if (r.ok) await c.put(q, r); }));
       }
       location.reload();
-    } catch { G.hud.toast('Could not reach the internet to update. Try again with a connection.', 5); }
+    } catch { G.hud.reply('Could not reach the internet to update. Try again with a connection.', 5); }
   }
   // full screen hides the phone's status bar and buttons, so stray thumbs reach them less; a page
   // may only ask from inside a touch, so each touch asks while it is not full screen
@@ -85,7 +85,7 @@ export function appRows(G) {
   } });
   G.on('resume', () => {
     if (!peekFps || G.settings.fps) return;
-    peekFps = false; G.hud.showFps(true); G.hud.toast('The frame rate shows for a few seconds, top right.', 4);
+    peekFps = false; G.hud.showFps(true); G.hud.reply('The frame rate shows for a few seconds, top right.', 4);
     setTimeout(() => { if (!G.settings.fps) G.hud.showFps(false); }, 12000);
   });
   applyGfx();

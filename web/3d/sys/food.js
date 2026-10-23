@@ -106,8 +106,8 @@ export function foodSystem(G) {
     puddleAt,
     drink() {
       if (!waterBy() || b.settle > 0) return false;
-      if (G.thirst >= .99) { G.hud.toast('Not thirsty', 1.5); return true; }
-      if (salt()) { G.hud.toast('The sea is salt. Drink from a river or a lake, or the rain pools on the islands.', 3.5); return true; }
+      if (G.thirst >= .99) { G.hud.tally('Not thirsty', 'thirst'); return true; }
+      if (salt()) { G.hud.say('The sea is salt. Drink from a river or a lake, or the rain pools on the islands.', { kind: 'warn', secs: 3.5, icon: 'thirst' }); return true; }
       drinking = true; sipT = 0; return true;
     },
   };
@@ -177,7 +177,7 @@ export function foodSystem(G) {
       // home (or out of breath, then down any hole): it digs in
       if (Math.hypot(m.x - m.bx, m.z - m.bz) < .4 || m.flee <= 0) {
         m.bolt = false; m.flee = 0; m.dig = FOOD.dig; m.go = 0; G.emit('escaped', m);
-        if (!G.flags.burrow) { G.flags.burrow = 1; G.hud.toast('It dug into its burrow. Mice bolt when they see you stoop or land near: come in fast and low, or from behind.', 4); }
+        if (!G.flags.burrow) { G.flags.burrow = 1; G.hud.glint('Into its burrow', 'It dug into its burrow. Mice bolt when they see you stoop or land near: come in fast and low, or from behind.', 'prey'); }
         return;
       }
     }
@@ -204,7 +204,6 @@ export function foodSystem(G) {
     const k = b.state === 'perch' ? FOOD.perchMeal : 1;
     b.carry = null; b.meal = { food: c.food * k, wet: c.wet * k, kind: c.kind };
     b.eating = b.mealT = c.kind === 'worm' ? FOOD.wormMeal : FOOD.meal;
-    if (k > 1) G.hud.toast('A calm meal up on the branch.', 2);
     G.hud.did('carry'); G.hud.did('eat');
   }
   function finish() {
@@ -217,7 +216,7 @@ export function foodSystem(G) {
     const c = b.carry; if (!c || b.state !== 'perch') return;
     b.carry = null; noPick = b.perch;
     caches.push({ x: b.perch.x, y: b.perch.y, z: b.perch.z, kind: c.kind, food: c.food, wet: c.wet, day: G.day + G.tod, yaw: b.yaw });
-    G.hud.toast('You tuck it into the fork of the branch for later. It shows on the map.', 3);
+    G.hud.tally('Kept for later: on your map', 'pin');
     G.emit('cache', caches[caches.length - 1]);
   }
   // landing with a catch at the nest: it drops in (nest.js feeds the chick; else it keeps there);
@@ -233,12 +232,12 @@ export function foodSystem(G) {
       const c = b.carry; b.carry = null;
       if (G.nestDrop?.(c)) return;
       caches.push({ x: n.x, y: n.y + .05, z: n.z, kind: c.kind, food: c.food, wet: c.wet, day: G.day + G.tod, yaw: b.yaw, nest: true });
-      G.hud.toast('You drop your catch into the nest, for later.', 3); G.emit('cache', caches[caches.length - 1]);
+      G.hud.tally('In the nest, for later', 'nest'); G.emit('cache', caches[caches.length - 1]);
       noPick = b.perch; return;
     }
     if (!b.carry && b.perch !== noPick) {
       const i = caches.findIndex(c => Math.hypot(c.x - b.p[0], c.y - b.p[1], c.z - b.p[2]) < (c.nest ? 3 : 1.5));
-      if (i >= 0) { const c = caches.splice(i, 1)[0]; hold(c.food, c.wet, c.kind); G.hud.toast(c.nest ? 'You take a meal from the nest.' : 'Back to your cache: it is in your feet again.', 2.5); G.emit('cache', null); }
+      if (i >= 0) { const c = caches.splice(i, 1)[0]; hold(c.food, c.wet, c.kind); G.hud.tally(c.nest ? 'A meal from the nest' : 'Back in your feet', 'prey'); G.emit('cache', null); }
     }
     noPick = null;
   }
@@ -259,9 +258,9 @@ export function foodSystem(G) {
     setTimeout(() => A.feather(), 350);
     for (let i = 0; i < 18; i++) { const a = i / 18 * 6.283; G.part([m.x, m.y + .15, m.z], [Math.cos(a) * 2.6, 1.2 + Math.random() * 1.5, Math.sin(a) * 2.6], .8, i % 3 ? [.6, .7, .34] : [.55, .44, .3], .1); }
     for (let i = 0; i < 8; i++) G.part([m.x + (Math.random() - .5) * .6, m.y + .5, m.z + (Math.random() - .5) * .6], [0, 1.6 + Math.random(), 0], 1.4, [1, .86, .45], .14);
-    G.hud.toast('Caught a mouse', 2);
+    G.hud.tally('Caught a mouse', 'prey');
     G.hud.did('hunt'); G.emit('catch', { kind: 'mouse', x: m.x, z: m.z });
-    if (!G.flags.firstMouse) { G.flags.firstMouse = 1; G.hud.toast('Caught! Tap Eat to eat it here, or carry it in your feet to a branch or your nest.', 5); }
+    if (!G.flags.firstMouse) { G.flags.firstMouse = 1; G.hud.say('Caught! Tap Eat to eat it here, or carry it to a branch or your nest.', { kind: 'tutorial', secs: 5, icon: 'prey' }); }
   }
 
   // other prey (sys/critters.js: jackrabbits, lizards, marmots, crabs, squirrels): the same
@@ -276,7 +275,7 @@ export function foodSystem(G) {
     }
     for (let i = 0; i < 12; i++) { const a = i / 12 * 6.283; G.part([p.x, p.y + .15, p.z], [Math.cos(a) * 2.2, 1.2 + Math.random() * 1.5, Math.sin(a) * 2.2], .8, [.55, .46, .34], .1); }
     for (let i = 0; i < 6; i++) G.part([p.x + (Math.random() - .5) * .6, p.y + .5, p.z + (Math.random() - .5) * .6], [0, 1.6 + Math.random(), 0], 1.4, [1, .86, .45], .14);
-    G.hud.toast(`Caught ${p.name}`, 2);
+    G.hud.tally(`Caught ${p.name}`, 'prey');
     G.hud.did('hunt'); G.emit('catch', { kind: p.kind, x: p.x, z: p.z });
   }
 

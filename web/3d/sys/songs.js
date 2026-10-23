@@ -71,7 +71,7 @@ export function songsSystem(G) {
   const b = G.b, A = G.audio, H = G.hud, store = G.store;
   // song news and how-to go on the message line at the bottom middle, marked as song messages;
   // a place waking or a bird of other lands is an event
-  const say = (msg, secs = 3) => H.toast(msg, secs, 'song'), news = (msg, secs = 5) => H.toast(msg, secs, 'event');
+  const say = (msg, secs = 3) => H.toast(msg, secs, 'song'), news = (msg, secs = 5) => H.toast(msg, secs, 'event'), noteNew = (title, msg) => H.glint(title, msg, 'songs');
   registerSongbirds(G.R);
   G.learned = new Set(store.get('learned', []));
   // the songs learned ('species id', or 'id.k' for its song k). (Saves from before the Earth are
@@ -167,6 +167,7 @@ export function songsSystem(G) {
     onSyll: (lane, kind) => { notePart(b.p, lane, kind, true); singNote(lane, kind); },   // (no piano echo: James, 10-22)
     onPick: pick, onCall: call, onNext: nextSong,
   });
+  G.hud.songLine = (msg, secs) => ui.say(msg, secs);
 
   // ---- songbirds singing --------------------------------------------------------------------
   const storm = () => G.storm || 0, winter = () => G.season.winter;
@@ -220,7 +221,7 @@ export function songsSystem(G) {
     const picks = [known.length && Math.random() < .7 ? any(known) : any(pool), unknown.length ? any(unknown) : any(pool), S.target?.base || S.target || picked || any(pool)];
     let at = 0; o.singT = 0;
     hear(o.sp);
-    if (v > .04 && !G.flags.mimic) { G.flags.mimic = 1; say(`A ${o.sp.name.toLowerCase()}: it has no song of its own, only pieces of the songs around it, yours included.`, 5); }
+    if (v > .04 && !G.flags.mimic) { G.flags.mimic = 1; noteNew(`A ${o.sp.name.toLowerCase()}`, `A ${o.sp.name.toLowerCase()}: it has no song of its own, only pieces of the songs around it, yours included.`); }
     for (const [k, q] of picks.entries()) {
       const len = 2 + (Math.random() < .5 ? 1 : 0), from = G.learned.has(q.id) && k !== 1 ? Math.floor(Math.random() * Math.max(1, q.notes.length - len)) : 0;
       const notes = q.notes.slice(from, from + len), kinds = q.kinds.slice(from, from + len);
@@ -260,7 +261,7 @@ export function songsSystem(G) {
       if (s === first || !s.out || s.sp.look.owl || dd > SONG.alarmRun || dx * fx + dz * fz < dd * .3) continue;
       later(.25 + dd / 28 + Math.random() * .3, () => alarm(s, .8));
     }
-    if (!G.flags.alarm) { G.flags.alarm = 1; later(1.5, () => say('Thin seet calls run on ahead of you: the songbirds have seen you, and mice near them freeze. Come in low over the trees to stay unseen.', 6)); }
+    if (!G.flags.alarm) { G.flags.alarm = 1; later(1.5, () => noteNew('Alarm calls', 'Thin seet calls run on ahead of you: the songbirds have seen you, and mice near them freeze. Come in low over the trees to stay unseen.')); }
   }
 
   // ---- your singing: copying a songbird, or imitating one you know ------------------------
@@ -309,8 +310,8 @@ export function songsSystem(G) {
       G.learned.add(sp.id); store.set('learned', [...G.learned]);
       songLog[sp.id] = `Learned on day ${G.day} ${PHRASE[period(G.tod)]}, in ${PLACE[habitat(b.p[0], b.p[2])]}.`;
       store.set('songlog', songLog);
-      say(`Song learned: the ${sp.name}${t.k ? `'s ${t.title.toLowerCase()}` : ''}. Sing it from any perch and a ${sp.name.toLowerCase()} answers with a gift.`, 5);
-    } else if (newSong) say(`A new song: the ${sp.name}'s ${t.title.toLowerCase()}, ${t.words}. ${songCount()} of ${songTotal} songs known.`, 6);
+      news(`Song learned: the ${sp.name}${t.k ? `'s ${t.title.toLowerCase()}` : ''}. Sing it from any perch and a ${sp.name.toLowerCase()} answers with a gift.`, 5);
+    } else if (newSong) news(`A new song: the ${sp.name}'s ${t.title.toLowerCase()}, ${t.words}. ${songCount()} of ${songTotal} songs known.`, 6);
     H.did('song');
     for (let k = 0; k < 14; k++) G.part([b.p[0], b.p[1] + .4, b.p[2]], [(Math.random() - .5) * 3, 1 + Math.random() * 2, (Math.random() - .5) * 3], 1.4, [1, .85, .45], .1);
     if (first) G.emit('learn', sp); else G.emit('song', t);
@@ -530,9 +531,9 @@ export function songsSystem(G) {
     // just before first light, from a perch: the dawn chorus starts from your tree
     if (b.state === 'perch' && G.tod > .12 && G.tod < .2 && chorusDay !== G.day && winter() < .5 && storm() < .4) {
       chorusDay = G.day; chorus = { t: SONG.chorus + 60, o: [b.p[0], b.p[2]], at: G.t + 1.5 };
-      later(1.6, () => { news('A bird answers your call from the dark, then another: the dawn chorus starts from your tree and spreads out across the valley.', 6); G.music.moment?.('the dawn chorus', 1); });
+      later(1.6, () => { H.name('Dawn chorus'); noteNew('Dawn chorus', 'A bird answers your call from the dark, then another: the dawn chorus starts from your tree and spreads out across the valley.'); G.music.moment?.('the dawn chorus', 1); });
     }
-    if (!G.flags.call) { G.flags.call = 1; H.toast(`Your call carries over the valley. Mice freeze where they stand, and ${FAR[BIRD] || 'birds of your kind'} far off answer.`, 5); }
+    if (!G.flags.call) { G.flags.call = 1; noteNew('Your call', `Your call carries over the valley. Mice freeze where they stand, and ${FAR[BIRD] || 'birds of your kind'} far off answer.`); }
   }
 
   // ---- keys: 1 to 5 sing at each pitch, 6 to 0 choose up, down, left, right, tap; C calls -------
@@ -611,7 +612,7 @@ export function songsSystem(G) {
       if (chorus) { if ((chorus.t -= dt) <= 0) chorus = null; }
       else if (chorusDay !== G.day && G.tod > .27 && G.tod < .31 && winter() < .5 && storm() < .4) {
         chorusDay = G.day; chorus = { t: SONG.chorus };
-        news('The dawn chorus: for a few minutes every bird nearby sings. Join in, and all the songs you know answer at once.', 6);
+        H.name('Dawn chorus'); noteNew('Dawn chorus', 'The dawn chorus: for a few minutes every bird nearby sings. Join in, and all the songs you know answer at once.');
       }
 
       // songbirds near the hawk: each sings now and then in its hours

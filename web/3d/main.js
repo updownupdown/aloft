@@ -165,7 +165,7 @@ if (qs.has('fps')) G.settings.fpsCap = +qs.get('fps') || 60;
   const E = {
     get sun() { return G.light.daylight; },
     flap: (q, side, sync) => { audio.flap(); H.did('flap'); G.emit('flap', q, side); if (sync != null) wingGlow(sync); },
-    tired: () => H.toast('Your wings are spent. Glide or find rising air while they recover.'),
+    tired: () => H.glint('Wings spent', 'Your wings are spent. Glide or find rising air while they recover.', 'stamina'),
     takeoff: () => { audio.rustle(.4); G.emit('takeoff'); },
     land: kind => {
       if (kind === 'water') audio.splash(false); else if (kind === 'perch') { audio.rustle(.8); audio.thump(.2); } else audio.thump(.3);
@@ -173,12 +173,12 @@ if (qs.has('fps')) G.settings.fpsCap = +qs.get('fps') || 60;
     },
     bump: (p, what) => {
       audio.thump(.5); for (let i = 0; i < 5; i++) G.part(p, [(Math.random() - .5) * 3, Math.random() * 2, (Math.random() - .5) * 3], 1.5, [.45, .32, .2], .06);
-      if (what === 'trunk') H.toast('Bonk. Trunks are hard: aim for the gaps, or slow down and land on a limb.');
+      if (what === 'trunk') H.glint('Bonk', 'Bonk. Trunks are hard: aim for the gaps, or slow down and land on a limb.', 'how');
       G.emit('bump', what);
     },
     leaves: (p, s) => { audio.brush(.6 + Math.min(.6, s / 20)); for (let i = 0; i < 8; i++) G.part(p, [(Math.random() - .5) * 4, Math.random() * 2, (Math.random() - .5) * 4], 1.2, [.4, .55, .25], .07); G.emit('leaves'); },
     barrel: () => { audio.rustle(.7); H.did('barrel'); },
-    barrelDone: () => { G.emit('trick', 'barrel'); if (!G.flags.barrel) { G.flags.barrel = 1; H.toast('A barrel roll! Both wings round together, a full turn.', 4, 'event'); } },
+    barrelDone: () => { G.emit('trick', 'barrel'); if (!G.flags.barrel) { G.flags.barrel = 1; H.glint('Barrel roll', 'A barrel roll! Both wings round together, a full turn.', 'turn'); } },
     splash: (p, s) => { audio.splash(s > 15); for (let i = 0; i < 10; i++) G.part([p[0], WATER, p[2]], [(Math.random() - .5) * 3, 2 + Math.random() * 3, (Math.random() - .5) * 3], .9, [.85, .92, .95], .06); G.emit('splash'); },
   };
   G.E = E;

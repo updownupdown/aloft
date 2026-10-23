@@ -35,11 +35,10 @@ export function sleepSystem(G) {
     setTimeout(() => {
       sleeping = b.asleep = woke = false; spin = 0;
       if (bared) { H.hide(false); bared = false; }
-      if (!early) H.toast('You wake at first light.', 3);
     }, SLEEP.up * 1000);
   };
   const sleep = () => {
-    if (b.state === 'ground') { H.toast('Too open to sleep on the ground. Find a branch to roost on.', 3); return; }
+    if (b.state === 'ground') { H.say('Too open to sleep on the ground. Find a branch to roost on.', { kind: 'warn', secs: 3, icon: 'sleep' }); return; }
     if (b.state !== 'perch') return;
     sleeping = b.asleep = true; slept = 0; spin = 0; a0 = starA();
     // the stars turn by as much as the night has left, never faster than SLEEP.spin

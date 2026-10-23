@@ -63,7 +63,7 @@ export function weatherSystem(G) {
   let meteorDay = 0, meteors = [], meteorT = 0, cell = null;
   G.overcast = 0; G.rain = 0; G.storm = 0; G.snowing = 0; G.windK = .3; G.fog = 0; G.aurora = 0;
   G.skyNotes = G.skyNotes || [];
-  const once = (id, msg, secs = 5) => { if (!G.flags[id]) { G.flags[id] = 1; H.toast(msg, secs); } };
+  const once = (id, title, msg, ic, how) => { if (!G.flags[id]) { G.flags[id] = 1; G.hud.quietly(how, title, msg, ic); } };
   const note = text => { if (!G.skyNotes.includes(text)) { G.skyNotes.push(text); if (G.skyNotes.length > 20) G.skyNotes.shift(); G.emit('skyNote', text); } };
   const dayHash = (s) => ih(G.day, s, 91);
 
@@ -111,7 +111,6 @@ export function weatherSystem(G) {
   G.on('gift', ev => {
     if (ev.key !== 'calm') return;
     ev.handled = true; setSpell('clear', 150 * (ev.k || 1));
-    if (G.storm > .2 || G.rain > .2) H.toast('The storm eases, and the sky begins to clear.', 3);
   });
 
   // a learned song sung well at a landmark (songs.js 'placeSong'): the summit cairn calls the
@@ -157,7 +156,7 @@ export function weatherSystem(G) {
           const x = cell.x + Math.cos(a) * r, z = cell.z + Math.sin(a) * r, km = Math.max(.15, Math.hypot(x - b.p[0], z - b.p[2]) / 1000);
           flash = clamp(1.2 - km / 2, .25, 1); bolt = { x, z, y: Math.max(height(x, z), WATER), t: .25, yaw: Math.random() * 6 };
           G.audio.thunder(km / .343, km);
-          once('storm', 'A storm. Ride the gusts along its leading edge, or shelter in a tree until it passes.', 6);
+          once('storm', 'Storm', 'A storm. Ride the gusts along its leading edge, or shelter in a tree until it passes.', 'updraft', 'n');
         }
       }
       if (bolt && (bolt.t -= dt) <= 0) bolt = null;
@@ -165,12 +164,12 @@ export function weatherSystem(G) {
       const k2 = bands(b.p[0], b.p[2]), foggy = dayHash(1) < .55 && G.storm < .3;
       const morning = smooth(.19, .25, G.tod) * (1 - smooth(.32, .42, G.tod));
       G.fog = lerp(G.fog, foggy ? morning * (.7 + .3 * Math.max(k2.lakes, k2.marsh)) : 0, Math.min(1, dt * .3));
-      if (G.fog > .4) once('fog', 'Morning fog fills the hollows. Climb and the treetops stand out of it; low down the world goes quiet.', 6);
+      if (G.fog > .4) once('fog', 'Fog', 'Morning fog fills the hollows. Climb and the treetops stand out of it; low down the world goes quiet.', 'how');
       // a rainbow when an afternoon shower clears
       if (G.rain > .35) rainSeen = true;
       if (rainSeen && G.rain < .08) {
         rainSeen = false;
-        if (G.tod > .3 && G.tod < .72 && G.overcast < .75 && !G.snowing) { rainbowT = 80; H.toast('The shower passes, and a rainbow stands over the land.', 4); note(`Day ${G.day}: a rainbow.`); }
+        if (G.tod > .3 && G.tod < .72 && G.overcast < .75 && !G.snowing) { rainbowT = 80; H.name('Rainbow'); note(`Day ${G.day}: a rainbow.`); }
       }
       rainbowT = Math.max(0, rainbowT - dt);
       // the night's sky: the moon's phase over sixteen days, rare meteor showers, northern lights
@@ -178,7 +177,7 @@ export function weatherSystem(G) {
       if (G.tod > .78 && meteorDay !== G.day) {
         meteorDay = G.day;
         G.meteors = dayHash(2) < .14 && G.overcast < .3;
-        if (G.meteors) { H.toast('A meteor shower tonight. Watch the sky.', 4); note(`Day ${G.day}: a meteor shower.`); }
+        if (G.meteors) { H.name('Meteor shower', 'watch the sky'); note(`Day ${G.day}: a meteor shower.`); }
       }
       if (G.tod > .25 && G.tod < .7) G.meteors = false;
       if (G.meteors && L.night > .5 && (meteorT -= dt) <= 0) {
@@ -194,7 +193,7 @@ export function weatherSystem(G) {
       const lights = Math.max(dayHash(3) < .45 ? L.night * (1 - G.overcast) * north * cold : 0, songLights > 0 ? Math.max(.25, L.night) * Math.min(1, songLights / 20) : 0);
       G.aurora = lerp(G.aurora, lights, Math.min(1, dt * .3));
       if (G.aurora > .5) note(`${G.date?.text || `Day ${G.day}`}: ${(G.season?.lat ?? 1) < 0 ? 'southern' : 'northern'} lights.`);
-      if (G.snowing > .3) once('snow', 'Snow. Mice are harder to spot under it: look for the faint stir in the white.', 5);
+      if (G.snowing > .3) once('snow', 'Snow', 'Snow. Mice are harder to spot under it: look for the faint stir in the white.', 'how');
       // the snowline follows the date and the latitude (earth.js): env.snow is the bird's own, for the
       // systems near it; the ground paints each place's own from env.yearFrac, repainted once a day
       const yf = yearFrac(G.day, .5), lat = G.season.lat ?? 45;
@@ -291,7 +290,7 @@ export function weatherSystem(G) {
           const h = height(x, z); if (Math.hypot(x - cam[0], z - cam[2]) > R || h > top - 8 || h < 3) continue;
           P.push(x + Math.sin(G.t * .05 + gx) * 4, top - 6 + ih(gx, gz, 98) * 6 - (1 - sea) * 30, z, 30 + ih(gx, gz, 99) * 14, ih(gx, gz, 100) * 6.28, .5, 0, 0);
         }
-        if (cam[1] > top + 10) once('seacloud', 'A sea of cloud fills the valleys below, and the peaks stand out of it like islands.', 6);
+        if (cam[1] > top + 10) once('seacloud', 'Sea of cloud', 'A sea of cloud fills the valleys below, and the peaks stand out of it like islands.', 'how');
       }
     },
     save: () => ({ spell, spellT, queue, cell, rainbowT, notes: G.skyNotes.slice(-20) }),

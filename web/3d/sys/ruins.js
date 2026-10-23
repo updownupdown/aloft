@@ -83,10 +83,10 @@ export function ruinsSystem(G) {
     if (a.treasure) {
       St.treasures[a.kind] = { day: G.day, place: a.place };
       G.audio.learned?.();
-      say(`A treasure: ${name.replace(/^A |^The /, m => m.toLowerCase())}. ${M.TREASURES[a.kind][2]}`, 7);
+      G.hud.name(cap(name.replace(/^(A|An|The) /, '')), 'a treasure'); G.hud.glint(cap(name.replace(/^(A|An|The) /, '')), M.TREASURES[a.kind][2], 'keepsake');
     } else {
       St.trinkets.push(a.kind); G.audio.feather?.();
-      say(`${cap(name)}, left by people long gone. ${G.nest ? 'Take it home: it will brighten your nest.' : 'Keep it for a nest one day.'}`);
+      G.hud.glint(cap(name), `${cap(name)}, left by people long gone. ${G.nest ? 'Take it home: it will brighten your nest.' : 'Keep it for a nest one day.'}`, 'keepsake');
     }
     St.kept.push(a.kind);
     G.hud.did('relic');
@@ -102,7 +102,7 @@ export function ruinsSystem(G) {
     if (kind === 'perch' && n && St.kept.length && Math.hypot(b.p[0] - n.x, b.p[1] - n.y, b.p[2] - n.z) < NEST_R) {
       const k = St.kept.splice(0), names = k.map(x => M.TREASURES[x] ? M.TREASURES[x][0].toLowerCase() : M.TRINKETS[x]);
       St.nest.push(...k);
-      say(`You set ${names.length > 1 ? names.slice(0, -1).join(', ') + ' and ' + names.at(-1) : names[0]} into your nest.`, 4);
+      G.hud.tally(`Into your nest: ${names.length > 1 ? names.slice(0, -1).join(', ') + ' and ' + names.at(-1) : names[0]}`, 'nest');
     }
     if (kind === 'ground') for (const a of near) if (Math.hypot(a.x - b.p[0], a.z - b.p[2]) < 3.5 && Math.abs(a.y - b.p[1]) < 2) { take(a); break; }
   });

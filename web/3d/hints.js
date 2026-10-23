@@ -6,11 +6,14 @@ import { SAY } from './hud.js';
 import { SHORT, ICON, TIP_GROUPS, tipGroup } from './tips.js';
 
 const KINDS = [
-  ['event', 'Things that happen', 'A new land, an aim done, a gift'],
-  ['song', 'Singing', 'The next note, how a song went'],
+  ['event', 'Things that happen', 'A mate, an egg, a song learned: one line at most a minute'],
+  ['warn', 'Warnings', 'Danger, or something you tried that didn’t work'],
   ['tutorial', 'Lessons', 'The first season, one lesson a day'],
   ['hint', 'Nudges', 'What you could do here'],
-  ['warn', 'Warnings', 'A need running low, danger'],
+  ['song', 'Singing', 'Who answers your song, under the song card'],
+  ['name', 'Names', 'A country, a landmark, a rainbow: a title under the compass'],
+  ['glint', 'Things to learn', 'Something new waits by the compass: tap it to read'],
+  ['tally', 'Counts', 'Twigs, keepsakes, a catch: a few words beside the compass'],
 ];
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const sw = (key, on, title, sub, ic, col = '') =>

@@ -68,10 +68,10 @@ export function lifeSystem(G) {
     if (p[sid] >= need) {
       if (!quiet) {
         G.audio.learned?.();
-        G.hud.toast(G.life.done ? `Your life goal is complete: ${GOALS[id].title.toLowerCase()}.` : `Life goal: ${step[1].split(':')[0].toLowerCase()}. Done!`, 4.5);
+        if (G.life.done) G.hud.toast(`Your life goal is complete: ${GOALS[id].title.toLowerCase()}.`, 4.5); else G.hud.tally(`Life goal: ${step[1].split(':')[0].toLowerCase()}. Done!`, 'done');
       }
       G.emit('life', G.life);
-    } else if (!quiet && need > 1 && !step[3]) G.hud.toast(`${step[1].split(':')[0]}: ${p[sid]} of ${need}.`, 2.5);
+    } else if (!quiet && need > 1 && !step[3]) G.hud.tally(`${step[1].split(':')[0]}: ${p[sid]} of ${need}`, 'done');
   }
   const nightNow = () => (G.light?.daylight ?? 1) < .3;
   const nearWater = (x, z) => {

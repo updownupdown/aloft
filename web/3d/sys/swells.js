@@ -57,7 +57,7 @@ export function swellsSystem(G) {
       const ds = grad * vy * into * dt * (1 - clamp((agl - SWELL.top * .6) / (SWELL.top * .4), 0, 1));
       b.s = clamp(b.s + (ds > 0 ? ds * SWELL.gain : ds * SWELL.lose), 0, 46);
       gainT = ds > .002 ? gainT + dt : Math.max(0, gainT - dt * .5);
-      if (gainT > 1.5 && !said && !G.flags.dynSoar) { said = true; G.flags.dynSoar = 1; H.toast('The wind gives you speed as you climb into it: dynamic soaring, the albatross way.', 5, 'event'); H.did('swells'); }
+      if (gainT > 1.5 && !said && !G.flags.dynSoar) { said = true; G.flags.dynSoar = 1; H.glint('Dynamic soaring', 'The wind gives you speed as you climb into it: dynamic soaring, the albatross way.', 'glide'); H.did('swells'); }
     },
     scene(S) {
       if (sea < .05) return;

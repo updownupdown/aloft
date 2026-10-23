@@ -64,7 +64,7 @@ export function watersSystem(G) {
       }
       rush += (near - rush) * Math.min(1, dt * 2);
       G.babble = rush * clamp(1 - (b.p[1] - WATER) / 120, 0, 1);
-      if (pts.length > 30 && b.p[1] - WATER < 60 && G.flags && !G.flags.river) { G.flags.river = 1; H.toast('A river, running down to the sea. Fish hold in its deep runs.', 4); }
+      if (pts.length > 30 && b.p[1] - WATER < 60 && G.flags && !G.flags.river) { G.flags.river = 1; H.glint('River', 'A river, running down to the sea. Fish hold in its deep runs.', 'prey'); }
     },
     scene(S) {
       S.water = WATER;

@@ -22,7 +22,7 @@ const ease = t => t * t * (3 - 2 * t);
 export function movesSystem(G) {
   const b = G.b, H = G.hud;
   const above = () => b.p[1] - Math.max(height(b.p[0], b.p[2]), WATER);
-  const once = (flag, text, t = 5) => { if (!G.flags[flag]) { G.flags[flag] = 1; H.toast(text, t); } };
+  const once = (id, title, msg, ic, how) => { if (!G.flags[id]) { G.flags[id] = 1; G.hud.quietly(how, title, msg, ic); } };
 
   // ---- osprey: the plunge ------------------------------------------------------------------
   let wet = 0;
@@ -36,7 +36,7 @@ export function movesSystem(G) {
     if (BIRD !== 'osprey' || wet <= 0) return;
     // soaked and maybe holding a fish: a heavy, labouring lift-off
     b.vy *= .55; b.s *= .8; b.stamina = Math.max(0, b.stamina - MOVES.wetCost);
-    once('wetOff', 'Heavy with water: beat hard to climb away. You shake yourself dry as you go.', 4.5);
+    once('wetOff', 'Heavy with water', 'Heavy with water: beat hard to climb away. You shake yourself dry as you go.', 'flap');
   });
   G.on('flap', () => { if (BIRD === 'osprey' && wet > 0 && b.state === 'fly') b.stamina = Math.max(0, b.stamina - .02); });
   H.tip('plunge', () => BIRD === 'osprey' && b.state === 'fly' && height(b.p[0], b.p[2]) < WATER - 1 && above() > 20,
@@ -47,8 +47,8 @@ export function movesSystem(G) {
       b.plunge = 0;
       if (b.state === 'fly') {   // no fish within reach: you come up empty, sitting on the water
         b.state = 'swim'; b.p[1] = WATER + .12; b.s = 0; b.vy = 0; b.settle = .5; G.E.land('water');
-        once('plungeMiss', 'Nothing this time. Watch for a fish rising, then plunge right on top of it.', 4);
-      } else once('plungeFish', 'A plunge and a fish! Ospreys catch them deeper than any hawk.', 4);
+        once('plungeMiss', 'Plunge', 'Nothing this time. Watch for a fish rising, then plunge right on top of it.', 'stoop');
+      } else once('plungeFish', 'Plunge', 'A plunge and a fish! Ospreys catch them deeper than any hawk.', 'stoop');
     }
     if (wet > 0) {
       wet -= dt;
@@ -80,7 +80,7 @@ export function movesSystem(G) {
     SPIN.a = -tumble.side * Math.PI * 2 * ease(k);
     if (k >= 1 || b.state !== 'fly') {
       SPIN.a = 0;
-      if (k >= 1) { G.emit('trick', 'tumble', tumble.lift); once('tumble', 'A tumble! Ravens roll over for the joy of it. Try one in rising air.', 4); }
+      if (k >= 1) { G.emit('trick', 'tumble', tumble.lift); once('tumble', 'Tumble', 'A tumble! Ravens roll over for the joy of it. Try one in rising air.', 'turn'); }
       tumble = null;
     }
   }
@@ -102,7 +102,7 @@ export function movesSystem(G) {
     if (p[1] < q[1]) p[1] = q[1] + (p[1] - q[1]) * (1 - kite * w);
     p[1] += Math.sin(G.t * 2.3) * .04 * kite;
     b.vy *= 1 - kite * .5; b.s += (7 - b.s) * Math.min(1, dt * 2) * kite; b.gamma *= 1 - kite * .5;
-    if (kite > .8) once('kite', 'Kiting: hanging still on the wind. When a mouse moves below, tuck and drop on it.', 5);
+    if (kite > .8) once('kite', 'Kiting', 'Kiting: hanging still on the wind. When a mouse moves below, tuck and drop on it.', 'flare');
   }
 
   // ---- albatross: the ocean wanderer ----------------------------------------------------------

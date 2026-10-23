@@ -233,3 +233,6 @@
 .sgmodes3 dd { margin: 0; color: var(--ink2, #4c5d69); }
 /* Journal > Songs: a heading for each continent's birds */
 .sgcont3 { margin: 18px 0 8px; font-size: 15px; font-weight: 700; color: var(--ink, #1d2b36); }
+/* a line about the song, under the scores (H.songLine), in place of the message line */
+.sgsay3 { margin: 0; max-height: 0; overflow: hidden; font-size: 13px; font-weight: 500; line-height: 1.4; color: rgba(255, 255, 255, .88); transition: max-height .4s, margin .4s; }
+.sgsay3.show { max-height: 80px; margin: 4px 4px 0 0; }

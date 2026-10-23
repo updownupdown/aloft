@@ -96,7 +96,7 @@ export function storySystem(G) {
       if (Math.hypot(k.x - b.p[0], k.z - b.p[2]) > 3.5) continue;
       St.kept.add(k.id); St.keepsakes.push(k.kind); G.audio.feather?.(); G.hud.did('keepsake');
       const n = St.keepsakes.length;
-      G.hud.toast(G.nest ? `A ${KEEPSAKES[k.kind]}, tucked into your nest. Keepsakes: ${n}.` : `A ${KEEPSAKES[k.kind]}, kept for a nest one day. Keepsakes: ${n}.`, 3.5);
+      G.hud.tally(`A ${KEEPSAKES[k.kind]}: keepsake ${n}`, 'keepsake');
       G.emit('keepsake', k);
     }
   }
@@ -106,7 +106,7 @@ export function storySystem(G) {
   G.on('trick', kind => {
     St.tricks++;
     if (inMarsh()) St.bonus += .06;   // showing off where the other hawks can see
-    if (St.suitor) G.hud.toast({ stoop: 'A stoop! The hawk watches.', tumble: 'A tumble! Your suitor calls and follows.' }[kind] || 'A wingover! The hawk circles closer.', 2);
+    if (St.suitor) G.hud.tally({ stoop: 'A stoop! The hawk watches', tumble: 'A tumble! Your suitor follows' }[kind] || 'A wingover! The hawk comes closer', 'bird_hawk');
   });
   // a song sung well where the other hawks can hear helps too (songs.js emits 'song')
   G.on('song', (sp, q) => { if (inMarsh()) St.bonus += .04 * (typeof q === 'number' ? q : 1); });
@@ -120,7 +120,7 @@ export function storySystem(G) {
     if (St.mate) {
       // a mate helps raise the chick, bringing a meal now and then (the last is left to you)
       const n = G.nest;
-      if (n?.chick && n.fed < 4) { St.feedT += dt; if (St.feedT > 120) { St.feedT = 0; n.fed++; G.hud.toast(`Your mate brought the chick a meal: ${n.fed} of 5.`, 3); } }
+      if (n?.chick && n.fed < 4) { St.feedT += dt; if (St.feedT > 120) { St.feedT = 0; n.fed++; G.hud.tally(`Your mate fed the chick: ${n.fed} of 5`, 'nest'); } }
       return;
     }
     const S = St.suitor;
@@ -143,7 +143,7 @@ export function storySystem(G) {
   }
   G.on('wrap', dx => { for (const k of kin) k.p[0] += dx; });
   G.on('fledged', () => addKin('young', 16 + kin.filter(k => k.kind === 'young').length * 5));
-  G.on('newYear', () => { for (const k of kin) if (k.kind === 'young') k.leave = .01; G.hud.toast('Last year’s young are grown, and fly off to find their own country.', 5); });
+  G.on('newYear', () => { for (const k of kin) if (k.kind === 'young') k.leave = .01; G.hud.glint('The young leave', 'Last year’s young are grown, and fly off to find their own country.', 'bird_hawk'); });
 
   // ---- the journal ---------------------------------------------------------------------------
   const sec = journal(G).section(40);

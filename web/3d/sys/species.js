@@ -85,7 +85,7 @@ export function speciesSystem(G) {
     if (e.target.closest('.home3')) {   // start over in this bird's own country (main.js STARTS)
       const [x, z] = G.startOf(BIRD), b = G.b;
       Object.assign(b, { state: 'ground', perch: null, s: 0, vy: 0, settle: .4 }); b.p = [x, Math.max(height(x, z), WATER) + .35, z]; G.home = [x, z];
-      G.menu.set(false); G.hud.toast(`You fly from ${HOME[BIRD]}.`, 4); return;
+      G.menu.set(false); G.hud.reply(`You fly from ${HOME[BIRD]}.`, 4); return;
     }
     if (e.target.closest('.hear3')) { G.audio.unlock?.(); G.audio.call?.(tried || BIRD); return; }
     const a = e.target.closest('[data-step]'); if (!a || tried) return;
