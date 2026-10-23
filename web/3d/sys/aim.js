@@ -2,7 +2,7 @@
 // small ring where that path meets the ground. The line takes the colour of what it is lined up
 // with: red for a mouse you are diving at, green for a perch you would land on, faint ink for
 // anything else. Tucking the wings to dive focuses it: the line reaches further and darkens.
-// The three nearest limbs ahead get small pale rings, green on the one you are lined up with;
+// With the wings spread (looking for a place to land), the three nearest limbs ahead get small pale rings, green on the one you are lined up with;
 // mice are marked red only while you dive at one. Perched or standing, the perches a hop away
 // get green rings: tap one to hop across. Aiming is forgiving: a dive leans toward its mouse, and a slow
 // approach lined up with a perch is drawn onto it.
@@ -116,6 +116,8 @@ export function aimSystem(G) {
       A.focus += ((b.state === 'fly' ? b.stoop || 0 : 0) - A.focus) * Math.min(1, dt * 5);
       A.path = []; A.impact = null; A.target = null; A.perch = null; A.ring = null; A.mode = 'ink';
       A.hops = b.state !== 'fly' && b.settle <= 0 && !(b.eating > 0) && !b.asleep && !G.menu?.open ? hopPerches(b) : [];
+      // perch rings show in flight only with the wings spread, looking for somewhere to land
+      A.look = (A.look || 0) + ((b.state === 'fly' && b.flare > .25 ? 1 : 0) - (A.look || 0)) * Math.min(1, dt * 5);
       if (b.state !== 'fly' || b.s < 3) { A.perches = []; return; }
       // fly the path ahead with today's bank and pitch held
       const yawRate = clamp(g * Math.tan(b.roll) / Math.max(b.s * (1 - .65 * b.tuck), 5), -1.9, 1.9);
@@ -198,14 +200,16 @@ export function aimSystem(G) {
       // rings on the nearest perches ahead, green on the one you are lined up with; perched, green
       // rings on the perches a hop away
       const ring = (q, on, col, k = 1) => flatRing(S, q.x, q.y + .1, q.z, (on ? .55 : .4) * k * (1 + Math.sin(G.t * 4) * (on ? .06 : 0)), (on ? .14 : .1) * k, col, on ? .95 : .55, .7);
-      for (const q of A.perches || []) ring(q, q === A.perch && A.mode === 'perch', q === A.perch && A.mode === 'perch' ? COL.perch : COL.near);
+      const look = A.look || 0, mode = A.mode === 'perch' && look < .5 ? 'soft' : A.mode;   // wings not spread: no perch marks, a plain line
+      const pring = (q, on, col) => flatRing(S, q.x, q.y + .1, q.z, (on ? .55 : .4) * (1 + Math.sin(G.t * 4) * (on ? .06 : 0)), on ? .14 : .1, col, (on ? .95 : .55) * look, .7);
+      if (look > .02) for (const q of A.perches || []) pring(q, q === A.perch && A.mode === 'perch', q === A.perch && A.mode === 'perch' ? COL.perch : COL.near);
       for (const h of A.hops || []) { ring(h.p, true, COL.perch, 1.6); notch(S, [h.p.x, h.p.y + 1.05, h.p.z], .2, COL.perch, .9); }   // bigger: they are to be tapped
-      if (A.perch && A.mode === 'perch') notch(S, [A.perch.x, A.perch.y + .85, A.perch.z], .16, COL.perch, .95);
+      if (A.perch && A.mode === 'perch' && look > .02) notch(S, [A.perch.x, A.perch.y + .85, A.perch.z], .16, COL.perch, .95 * look);
       if (A.ring && A.mode === 'ring') { const r = A.ring; chevron(S, [r.x, r.y + r.r * .15, r.z], Math.max(.4, r.r * .16), COL.ring, .5); }
       if (A.path.length < 2) return;
       // the line: a thin ribbon facing the camera, fading in near the hawk and out at the far end
-      const col = COL[A.mode], P = A.path, R = S.ribbon ||= [];
-      const strong = A.mode === 'prey' || A.mode === 'perch' ? 1 : A.mode === 'ring' ? .6 : .55 + f * .3;
+      const col = COL[mode], P = A.path, R = S.ribbon ||= [];
+      const strong = mode === 'prey' || mode === 'perch' ? 1 : mode === 'ring' ? .6 : .55 + f * .3;
       let prev = null;
       for (let i = 0; i < P.length; i++) {
         const p = P[i], q = P[Math.min(P.length - 1, i + 1)], o = P[Math.max(0, i - 1)];
