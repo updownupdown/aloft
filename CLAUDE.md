@@ -69,7 +69,7 @@ web/3d/sys/*.js         systems: air (thermal clouds/motes), rings, food (hunger
                         photo (photo mode: take a picture, share or save it), howto (How to play and the controls map)
                         songs (songbirds, learning and imitating songs, dialects, mimics, alarm calls, gifts, Call), moments (music that notices),
                         aims (a daily aim and feathers, the lands collection, racing the companion),
-                        lessons (the tutorial: the first flight with the HUD hidden and coach.js's ghost thumbs, then a chain of lessons under Today; HUD pieces appear as they matter; How to play > Lessons), ghost (ghost flights by link), poles (the ice edges: pale air, aurora, the pole wall; fly through it to cross to the opposite longitude),
+                        lessons (the tutorial: the first flight with the HUD hidden and coach.js's ghost thumbs, then the lessons card once and a chain of quiet lessons under Today; How to play > Lessons), ghost (ghost flights by link), poles (the ice edges: pale air, aurora, the pole wall; fly through it to cross to the opposite longitude),
                         sealife (whales to ride, fish boils, flying fish, turtles), drift (icebergs, sea ice, driftwood, bottles; perches via world.js env.solids),
                         isles (rain pools, seabirds, a sight per archipelago; the sea is salt, food.js), skyrivers (G.skyWind), nightsea (pole star / Southern Cross, plankton)
 ```

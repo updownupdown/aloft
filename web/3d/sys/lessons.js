@@ -4,9 +4,11 @@
 // waiting until it is done; hunger, thirst, tiredness and the clock hold still meanwhile, and Skip
 // leaves it. Then the lessons: a chain of small tasks in chapters (food, water and rest, rising air,
 // finding your way, songs, a home, flying well, the wide world), each opening as soon as the last
-// is done, listed under Today. The companion hawk flies to the thing (sys/fauna.js), a task with a
-// new move shows its thumbs once, and each piece of the HUD appears the first time it matters
-// (#ui3 no-* classes, 3d.css). Until eating, drinking and sleeping are learned, hunger and thirst
+// is done, listed under Today. The whole HUD is back after the first flight, and one card, once,
+// says what the lessons are, which comes first and where to see them all (James, 2026-10-23: loud
+// once, quiet after); each lesson then opens with a small line and a glint to read it by, the
+// companion hawk flies to the thing (sys/fauna.js), and a task with a new move shows its thumbs a
+// few seconds. Until eating, drinking and sleeping are learned, hunger and thirst
 // run at half speed and health holds (G.ease, read by food.js and story.js). A tip stays quiet
 // until its lesson is done (hud.js asks G.lessons.quiet). How to play > Lessons lists it all: fly
 // the first flight again, practise any task, start over, skip. Old saves (no lessons in them) are
@@ -35,46 +37,46 @@ const STEPS = [
 ];
 
 // ---- the lessons --------------------------------------------------------------------------
-// a chapter: title, icon, the HUD pieces it brings in, its tasks. A task: id, text, say (when it
+// a chapter: title, icon, its tasks. A task: id, text, say (when it
 // opens), on: an event that does it (ok: a test of the event's argument), or poll(dt, c); move: the
 // thumbs it teaches [left, right, name, line] (the coach shows them until done once); go: where the companion
 // flies (a function of the bird, below), dusk: only toward night
 const CHAPTERS = [
-  { title: 'Food', icon: 'prey', reveal: ['food', 'wings'], tasks: [
+  { title: 'Food', icon: 'prey', tasks: [
     { id: 'mouse', text: 'Catch a mouse', say: 'Your companion skims low over the grass, hunting. Watch for a mouse, then fold your wings and dive at it: thumbs in and down.', on: 'catch', move: ['in down', 'in down', 'Stoop', 'Thumbs in and down: wings folded, a steep fast dive.'], go: low },
     { id: 'eat', text: 'Eat your catch', say: 'Land with it in your feet and tap Eat. On a branch it is a calmer meal.', on: 'ate' },
   ] },
-  { title: 'Water and rest', icon: 'thirst', reveal: ['water', 'dial'], tasks: [
+  { title: 'Water and rest', icon: 'thirst', tasks: [
     { id: 'drink', text: 'Drink', say: 'Your companion heads for water. Land at its edge, or on it, and tap the water to drink.', on: 'drink', go: water },
     { id: 'perch', text: 'Land on a branch', say: 'Your companion drops to a tree. Slow down and brake onto a branch where a green ring shows: thumbs out and down.', on: 'land', ok: k => k === 'perch', move: ['out down', 'out down', 'Brake and land', 'Thumbs out and down: wings spread, you sink gently onto it.'], go: tree },
     { id: 'hop', text: 'Hop to another branch', say: 'Perched, tap another green ring to hop across to it.', poll: hopped },
     { id: 'sleep', text: 'Sleep through a night', say: 'When night comes, perch on a branch and tap Sleep. You wake at first light with your wings rested.', on: 'sleep', go: tree, dusk: true },
   ] },
-  { title: 'Rising air', icon: 'thermal', reveal: [], tasks: [
+  { title: 'Rising air', icon: 'thermal', tasks: [
     { id: 'ride', text: 'Ride rising air 60 m up', say: 'Your companion circles where the air rises: leaves spiral there. Fly in, spread your wings wide and circle with it.', poll: rode, move: ['out', 'out', 'Soar', 'Thumbs out: wings wide. Tip one a little lower to circle.'], go: thermal },
     { id: 'rings', text: 'Fly through three rings', say: 'Your companion flies through a ring of mist. Follow it: each ring gives you a burst of speed.', on: 'ring', n: 3, go: rings },
   ] },
-  { title: 'Finding your way', icon: 'south', reveal: ['compass'], tasks: [
+  { title: 'Finding your way', icon: 'south', tasks: [
     { id: 'map', text: 'Open the Map', say: 'Open the menu, top left, and look at the Map: it shows where you have been.', on: 'menuTab', ok: id => id === 'map' },
     { id: 'pin', text: 'Pin a place on the Map', say: 'On the Map, tap a place you liked and pin it. Pins show on your compass.', on: 'pin' },
     { id: 'far', text: 'Fly two kilometres to new country', say: 'Your companion sets off to see new country. Follow it a while: two kilometres from where you were at dawn.', on: 'far', go: far },
   ] },
-  { title: 'Songs', icon: 'songs', reveal: ['call'], tasks: [
+  { title: 'Songs', icon: 'songs', tasks: [
     { id: 'learn', text: 'Learn a songbird’s song', say: 'Songbirds sing from the trees. Perch near one and tap the notes button, bottom left: copy each note it sings.', on: 'learn', go: tree },
     { id: 'sing', text: 'Sing a song back to its bird', say: 'Perched near a songbird you have learned, sing its song: it answers, and some bring gifts.', on: 'song' },
     { id: 'call', text: 'Call out', say: 'Hold Call, top right, to call out: the longer you hold, the louder.', on: 'call' },
   ] },
-  { title: 'A home', icon: 'nest', reveal: [], tasks: [
+  { title: 'A home', icon: 'nest', tasks: [
     { id: 'twig', text: 'Pick up a twig', say: 'Twigs lie under some broadleaf trees. Land beside one to pick it up.', poll: () => G0.carry === 'twig' || !!G0.nest },
     { id: 'nest', text: 'Start a nest', say: 'With a twig in your beak, perch on a branch: your nest begins there.', poll: () => !!G0.nest },
     { id: 'keepsake', text: 'Find a keepsake', say: 'Now and then something glints in the grass. Land beside it to keep it for your nest.', on: 'keepsake' },
   ] },
-  { title: 'Flying well', icon: 'agility', reveal: [], tasks: [
+  { title: 'Flying well', icon: 'agility', tasks: [
     { id: 'zoom', text: 'Zoom up out of a dive', say: 'Dive to pick up speed, then thumbs in and up: a swept climb that keeps its speed.', poll: zoomed, move: ['in up', 'in up', 'Zoom', 'Fast, then thumbs in and up: a climb that keeps its speed.'] },
     { id: 'hover', text: 'Hover', say: 'Slow right down, then thumbs out and up: you hang on beating wings. It tires them fast.', poll: hovered, move: ['out up', 'out up', 'Hover', 'Slow, then thumbs out and up: hang on beating wings.'] },
     { id: 'barrel', text: 'A barrel roll', say: 'Left thumb down and right up, then turn both a full circle anticlockwise together: a roll.', on: 'trick', ok: k => k === 'barrel', move: ['ccw', 'ccw', 'Barrel roll', 'Left down, right up, then both round a full circle anticlockwise.'] },
   ] },
-  { title: 'The wide world', icon: 'south', reveal: [], tasks: [
+  { title: 'The wide world', icon: 'south', tasks: [
     { id: 'guide', text: 'Add a page to the field guide', say: 'Fly close by an animal you have not seen before: it gets a page in the Guide.', on: 'sighted' },
     { id: 'land', text: 'Fly over a new land', say: 'The Earth has many lands: forest, steppe, tundra, desert. Fly until you cross into a new one.', on: 'newLand' },
     { id: 'photo', text: 'Take a picture', say: 'Open the menu: Today has Photo mode. Frame a picture and take it.', on: 'photo' },
@@ -82,15 +84,6 @@ const CHAPTERS = [
 ];
 const TASKS = CHAPTERS.flatMap((ch, i) => ch.tasks.map(t => ({ ...t, ch: i })));
 const SURVIVE = ['mouse', 'eat', 'drink', 'sleep'];   // till these are done: G.ease
-// each HUD piece, and the line that brings it in
-const PIECES = {
-  food: 'Top left, the orange bar is your food. It empties slowly; catch something to fill it.',
-  wings: 'The yellow bar is your wings: flapping tires them, gliding rests them.',
-  water: 'The blue bar is water. It empties slowly too: drink to fill it.',
-  dial: 'Top right, the day dial: the sun goes round it, then the night.',
-  compass: 'Along the top, the compass: north, your nest, and the places you have found.',
-  call: 'Top right, Call: hold it to call out.',
-};
 // tips that wait for a lesson ('flight': the first flight)
 const TIP_LESSON = { flap: 'flight', bank: 'flight', climb: 'flight', flare: 'flight', tuck: 'mouse', aim: 'mouse', hunt: 'mouse', carry: 'eat',
   drink: 'drink', hop: 'hop', sleep: 'sleep', ride: 'ride', ring: 'rings', wander: 'far', song: 'learn', imitate: 'sing', call: 'call',
@@ -159,19 +152,13 @@ export function lessonsSystem(G) {
   const b = G.b, H = G.hud, ui = document.getElementById('ui3'), coach = createCoach(ui);
   // stage: 'flight' (the first flight), 'learn' (the lessons), 'done'; after: the stage to go
   // back to when a first flight flown again ends
-  const S = { stage: G.fresh ? 'flight' : 'done', step: 0, done: {}, shown: {}, practice: null, after: 'learn' };
-  let hold = null, prog = 0, flaps = 0, okT = 0, stepT = 0, cur = null, openT = 0, goT = 0, sent = false, coachT = 0, sayT = 0, count = 0;
+  const S = { stage: G.fresh ? 'flight' : 'done', step: 0, done: {}, practice: null, after: 'learn', intro: 0 };
+  let hold = null, prog = 0, flaps = 0, okT = 0, stepT = 0, cur = null, openT = 0, goT = 0, sent = false, coachT = 0, count = 0, introT = 0;
 
-  // ---- the HUD: hidden in the first flight, piece by piece in the lessons --------------------
+  // ---- the HUD: hidden in the first flight, all of it after ----------------------------------
   function classes() {
     ui.classList.toggle('learn3', S.stage === 'flight');
-    for (const p in PIECES) ui.classList.toggle('no-' + p, S.stage !== 'done' && !S.shown[p]);
     coach.skipBar(S.stage === 'flight');
-  }
-  function reveal(list) {
-    let i = 0;
-    for (const p of list) if (!S.shown[p]) { S.shown[p] = 1; const line = PIECES[p]; setTimeout(() => H.say(line, { kind: 'tutorial', secs: 6, icon: 'how' }), 600 + i++ * 6500); }
-    classes();
   }
 
   // ---- the first flight ---------------------------------------------------------------------
@@ -184,12 +171,12 @@ export function lessonsSystem(G) {
   }
   function endFlight(skipped) {
     S.stage = S.after; hold = null; coach.hide(); S.done.flight = 1;
-    if (S.stage === 'learn') { reveal([]); cur = null; openT = skipped ? 1 : 5; }
+    if (S.stage === 'learn') { cur = null; openT = 1e9; if (!S.intro) introT = skipped ? .5 : 3.5; else openT = 2; }
     classes();
     if (!skipped) H.say('You can fly. The rest you learn by living.', { kind: 'tutorial', secs: 5, icon: 'done' });
   }
   coach.onSkip = which => {
-    if (which === 'flight') { endFlight(true); H.say('Your lessons wait under Today, in the menu.', { kind: 'tutorial', secs: 5 }); }
+    if (which === 'flight') endFlight(true);
     else skipAll();
   };
   coach.onSkipOne = () => { if (S.stage === 'flight') next(); else if (cur) complete(cur, true); };
@@ -229,15 +216,36 @@ export function lessonsSystem(G) {
     coach.ghosts(true, G.input);
   }
 
+  // ---- the lessons card: once, after the first flight -----------------------------------------
+  ui.insertAdjacentHTML('beforeend', `<div class="lveil3 hidden"><div class="lintro3" role="dialog" aria-label="Lessons"></div></div>`);
+  const veil = ui.querySelector('.lveil3'), card = veil.firstChild;
+  function intro() {
+    const t = first(); if (!t) return;
+    S.intro = 1; G.paused = true;
+    card.innerHTML = `<h2>${icon('how')}Lessons</h2>
+      <p>You can fly. Now a few small lessons teach the rest, one at a time: eating, drinking and rest first, then rising air, finding your way, songs, a nest and more.</p>
+      <div class="lfirst3">${icon(CHAPTERS[t.ch].icon)}<span><small>First</small><b>${esc(t.text)}</b><span>${esc(t.say)}</span></span></div>
+      <p>Each new lesson shows as a short line at the top of the screen. All of them, ticked as you go, are in the menu: under <b>Today</b>, and in <b>How to play &gt; Lessons</b>. Nothing is required: fly as you like.</p>
+      <div class="lbtns3"><button data-i="go" class="main3">Start</button><button data-i="all">See all lessons</button><button data-i="skip">No lessons, thanks</button></div>`;
+    veil.classList.remove('hidden');
+  }
+  veil.addEventListener('click', e => {
+    const i = e.target.closest('[data-i]')?.dataset.i; if (!i) return;
+    veil.classList.add('hidden'); G.paused = false; openT = .5;
+    if (i === 'all') G.menu.set(true, 'how', 'lessons');
+    if (i === 'skip') skipAll();
+  });
+  for (const ev of ['touchstart', 'pointerdown']) veil.addEventListener(ev, e => e.stopPropagation());
+
   // ---- the lessons ----------------------------------------------------------------------------
   const first = () => TASKS.find(t => !S.done[t.id]) || null;
   function open(t) {
-    cur = t; count = 0; sent = false; goT = 6; sayT = 0; for (const k in P) delete P[k];
-    reveal(CHAPTERS[t.ch].reveal);
-    const ch = CHAPTERS[t.ch], firstOf = ch.tasks[0].id === t.id && !S.practice;
-    setTimeout(() => { if (cur === t) H.say(t.say, { kind: 'tutorial', secs: 8, icon: ch.icon }); }, firstOf ? 400 : 0);
-    if (firstOf) H.name(`Lessons: ${ch.title}`, ch.icon);
-    coachT = t.move ? 14 : 0;
+    cur = t; count = 0; sent = false; goT = 6; for (const k in P) delete P[k];
+    // quietly: a few words, and a glint to tap for the whole of it
+    const ch = CHAPTERS[t.ch];
+    H.tally(`Lesson: ${t.text}`, ch.icon);
+    H.glint(`Lesson: ${t.text}`, t.say, ch.icon);
+    coachT = t.move ? 8 : 0;
   }
   function complete(t, quiet) {
     S.done[t.id] = 1;
@@ -290,8 +298,6 @@ export function lessonsSystem(G) {
         if (pts) { sent = true; G.companion?.fly(pts, 13, () => {}); }
       }
     }
-    // the line again now and then, while it waits
-    if ((sayT += dt) > 240 && b.state === 'fly') { sayT = 0; H.say(t.say, { kind: 'tutorial', secs: 7, icon: CHAPTERS[t.ch].icon }); }
   }
 
   // ---- G.lessons: for the HUD, aims, food and story -------------------------------------------
@@ -345,12 +351,14 @@ export function lessonsSystem(G) {
     id: 'lessons',
     update(dt, c) {
       G.ease = ease();
+      if (introT > 0 && (introT -= dt) <= 0 && !G.menu.open) intro();
       if (S.stage === 'flight') flight(dt, c);
       else if (S.stage === 'learn' || S.practice) learn(dt, c);
     },
-    save: () => ({ stage: S.stage === 'flight' ? S.after === 'done' ? 'done' : 'flight' : S.stage, step: 0, done: S.done, shown: S.shown, after: S.after }),
+    save: () => ({ stage: S.stage === 'flight' ? S.after === 'done' ? 'done' : 'flight' : S.stage, step: 0, done: S.done, after: S.after, intro: S.intro }),
     load(o) {
       Object.assign(S, o, { practice: null });
+      if (S.stage === 'learn' && !S.intro) { introT = 2; openT = 1e9; }   // left before the lessons card: it shows first
       if (S.stage === 'flight') { S.step = b.state === 'fly' ? 1 : 0; hold = { h: G.hunger, t: G.thirst, tod: G.tod }; }
       classes();
     },
