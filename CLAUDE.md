@@ -98,6 +98,10 @@ from its latitude (`G.season` is the bird's own; `G.date` the calendar). Debug:
   try/catch `store` helper in `web/3d/util.js`.
 - Keep it light on tests (project is early and experimental). Check changes in a
   browser; `window.__aloft3d` exposes G, b, R and `dbg` helpers.
+- Smoke test: `node tools/smoke.mjs` (or `node tools/smoke.mjs menu tour`) plays the game headless
+  through boot, every menu page, a world tour and the date line, travel, a hunt, perching, singing
+  and sleep, and boots each bird; it prints any page error and exits 1. Run it before merging a big
+  change. Needs Playwright; headless WebGL is software, so it says nothing about frame rate.
 
 ## Art direction
 

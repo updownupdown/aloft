@@ -54,13 +54,18 @@ vec4 waterAt(vec3 P, float depth) {
   vec3 v = normalize(uCam - P), lit = uSkyAmb + uSunCol * .6;
   float dist = length(uCam - P), near = 1. - smoothstep(90., 480., dist);
   // the facet under P: a lattice of 6 m triangles laid along the wind, its corners lifted by the waves
-  vec2 ax = uSwell.xy * 6., bx = (uSwell.xy * .5 + vec2(-uSwell.y, uSwell.x) * .866) * 6.;
-  vec2 g = inverse(mat2(ax, bx)) * P.xz, i = floor(g), f = g - i, c1 = f.x > f.y ? vec2(1, 0) : vec2(0, 1);
-  mat2 L = mat2(ax, bx);
-  vec2 a2 = L * i, b2 = L * (i + c1), e2 = L * (i + 1.);
-  vec3 A = vec3(a2.x, waveH(a2), a2.y), B = vec3(b2.x, waveH(b2), b2.y), C = vec3(e2.x, waveH(e2), e2.y);
-  vec3 n = normalize(cross(C - A, B - A)); if (n.y < 0.) n = -n;
-  n = normalize(mix(vec3(0, 1, 0), vec3(n.x * 2.2, n.y, n.z * 2.2), near));   // tilts a little steeper to read, and settle with distance
+  // (past 480 m the facets have settled flat, so the far sea skips the 3 wave samples)
+  vec3 n = vec3(0, 1, 0); vec2 i = vec2(0), c1 = vec2(0); float crest = 0.;
+  if (near > 0.) {
+    vec2 ax = uSwell.xy * 6., bx = (uSwell.xy * .5 + vec2(-uSwell.y, uSwell.x) * .866) * 6.;
+    mat2 L = mat2(ax, bx);
+    vec2 g = inverse(L) * P.xz, f; i = floor(g); f = g - i; c1 = f.x > f.y ? vec2(1, 0) : vec2(0, 1);
+    vec2 a2 = L * i, b2 = L * (i + c1), e2 = L * (i + 1.);
+    vec3 A = vec3(a2.x, waveH(a2), a2.y), B = vec3(b2.x, waveH(b2), b2.y), C = vec3(e2.x, waveH(e2), e2.y);
+    n = normalize(cross(C - A, B - A)); if (n.y < 0.) n = -n;
+    n = normalize(mix(vec3(0, 1, 0), vec3(n.x * 2.2, n.y, n.z * 2.2), near));   // tilts a little steeper to read, and settles with distance
+    crest = (A.y + B.y + C.y) / 3.;
+  }
   float sun = sunlit(P);
   vec3 r = reflect(-v, n);
   float fr = .2 + .7 * pow(1. - max(dot(v, n), 0.), 3.);
@@ -74,7 +79,7 @@ vec4 waterAt(vec3 P, float depth) {
   // the sun's glitter: whole facets flash where they mirror the sun (kept soft)
   c += uSunCol * pow(max(dot(r, uSun), 0.), 90.) * .55 * sun * near;
   // whitecaps on the crests in a wind, a few facets at a time
-  float crest = (A.y + B.y + C.y) / 3., wind = clamp(uSwell.z + uSwell.w - .35, 0., 1.);
+  float wind = clamp(uSwell.z + uSwell.w - .35, 0., 1.);
   float cap = step(h21(i * 1.7 + c1 * 9. + floor(uTime * .5)), wind * .1) * smoothstep(.8, 1.8, crest) * near;
   float foam = max(1. - smoothstep(.04, .2, depth), cap * .8);
   return vec4(mix(c, vec3(.95) * lit, foam * .8), mix(.55, 1., smoothstep(0., .6, depth)));
