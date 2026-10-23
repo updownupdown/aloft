@@ -1,9 +1,12 @@
-// The neighbours: a resident red-tail pair holds one valley a little way from home. They circle
+// The neighbours: a resident pair of your own kind (a red-tail pair for the hawk) holds one valley a little way from home. They circle
 // over it by day; come in low and they rise, call and see you off, harrying you (a little
 // stamina) until you leave or climb high over. Their valley shows on the Map. One spring in a
 // while it comes free: the pair is gone and the valley is yours if you want it.
 import { height, WATER, ih } from '../world.js';
 import { PIG } from '../facet.js';
+import { BIRD } from '../hawk.js';
+import { birdKey } from '../icons.js';
+import { kind } from './story.js';
 
 export const NEIGHBOURS = {
   r: 380,           // the valley's radius, metres
@@ -38,7 +41,7 @@ export function neighboursSystem(G) {
 
   G.mapPlaces = ((prev) => () => [...(prev?.() || []), st.free
     ? { x: V.x, z: V.z, name: 'The empty valley', note: 'The neighbours have gone. Their valley is free.', col: PIG.meadow }
-    : { x: V.x, z: V.z, name: 'The neighbours’ valley', note: 'A red-tail pair holds it. Pass high over, or they see you off.', col: PIG.berry }])(G.mapPlaces);
+    : { x: V.x, z: V.z, name: 'The neighbours’ valley', note: `A${'aeiou'.includes(kind()[2][0]) ? 'n' : ''} ${kind()[2]} pair holds it. Pass high over, or they see you off.`, col: PIG.berry }])(G.mapPlaces);
 
   G.dev?.add({ id: 'neighbours', area: 'Wildlife', round: 'R8 F3', pr: 182, title: 'The neighbours: a red-tail pair holds one valley',
     how: 'Map: the neighbours’ valley. Fly in under 120 m and they rise, call and harry you; pass high over and they let you be. One spring it may come free. Try it puts you there.',
@@ -66,8 +69,8 @@ export function neighboursSystem(G) {
     }
     if (chase > .6) {
       b.stamina = Math.max(0, b.stamina - N.harry * dt);
-      if ((callT -= dt) <= 0) { callT = 2.5 + Math.random() * 2; G.audio.scream?.(false, null, .8); }
-      if (!told) { told = true; if (st.met) H.tally('The neighbours rise to see you off', 'bird_hawk'); else H.say('A red-tail pair rises, calling: this valley is theirs. Climb high over it, or go round.', { kind: 'warn', secs: 5, icon: 'climb' }); st.met = true; G.emit('neighbours'); }
+      if ((callT -= dt) <= 0) { callT = 2.5 + Math.random() * 2; G.audio.call?.(BIRD, false, null, .8); }
+      if (!told) { told = true; if (st.met) H.tally('The neighbours rise to see you off', birdKey(BIRD)); else H.say(`A${'aeiou'.includes(kind()[2][0]) ? 'n' : ''} ${kind()[2]} pair rises, calling: this valley is theirs. Climb high over it, or go round.`, { kind: 'warn', secs: 5, icon: 'climb' }); st.met = true; G.emit('neighbours'); }
     } else if (chase < .1 && told) { told = false; }
   }
 
@@ -76,11 +79,12 @@ export function neighboursSystem(G) {
     update(dt) { if (!st.free) fly(dt); else chase = 0; },
     scene(S) {
       if (st.free) return;
-      const so = S.props.soar ||= [];
+      // drawn with your mate's shapes (story.js), so they are always your own kind
       for (const h of pair) {
         if (Math.hypot(h.p[0] - S.cam[0], h.p[2] - S.cam[2]) > 1500) continue;
-        so.push(h.p[0], h.p[1], h.p[2], 1, h.yaw, .5, 0, 0);
-        G.sight?.('kettlehawk', h.p[0], h.p[1], h.p[2], 1.2);
+        const beat = Math.sin(G.t * 1.3 + h.phase) > .85, ph = (G.t * 7 + h.phase) % 2;
+        (S.props[!beat ? 'hawkGlide' : ph < 1 ? 'hawkUp' : 'hawkDown'] ||= []).push(h.p[0], h.p[1], h.p[2], .62, h.yaw, .55, 0, 0);
+        G.sight?.(kind()[1], h.p[0], h.p[1], h.p[2], .9);
       }
     },
     save: () => ({ ...st }),

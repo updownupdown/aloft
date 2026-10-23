@@ -7,7 +7,8 @@ import { height, treesNear, ih } from '../world.js';
 import { builder, blob, reseed } from '../shapes.js';
 import { DAY } from '../sky.js';
 import { journal } from '../journal.js';
-import { icon } from '../icons.js';
+import { icon, birdKey } from '../icons.js';
+import { BIRD } from '../hawk.js';
 
 export const NEST_TWIGS = 5, CHICK_MEALS = 5;
 const NEAR = 3.2;   // metres from the nest that count as at it
@@ -127,7 +128,7 @@ export function nestSystem(G) {
     const steps = [
       ['twig', 'Twigs', n ? pips(Math.min(n.twigs, NEST_TWIGS), NEST_TWIGS) : `<small>${NEST_TWIGS} to build</small>`],
       ['nest', 'Egg', `<small>${at > 2 ? 'hatched' : at === 2 ? 'in the nest' : 'when it’s built'}</small>`],
-      ['bird_hawk', 'Chick', at === 3 ? pips(n.fed, CHICK_MEALS) : `<small>${at > 3 ? 'grown' : `${CHICK_MEALS} meals`}</small>`],
+      [birdKey(BIRD), 'Chick', at === 3 ? pips(n.fed, CHICK_MEALS) : `<small>${at > 3 ? 'grown' : `${CHICK_MEALS} meals`}</small>`],
       ['takeoff', 'Fledged', '<small>flies with you</small>'],
     ];
     sec.body.firstChild.innerHTML = steps.map(([ic, t, sub], i) => `<li class="${i + 1 < at || at === 4 ? 'done' : i + 1 === at ? 'now' : ''}"><span class="si3">${icon(ic)}</span><b>${t}</b>${sub}</li>`).join('');

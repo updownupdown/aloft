@@ -20,6 +20,9 @@ const NOTES = {
   starling: ['European starling', 'At dusk thousands wheel together in one cloud, a murmuration, before they roost.'],
   kettlehawk: ['Broad-winged hawk', 'Migrates in great kettles of hundreds, riding one thermal after another all the way to South America.'],
   redtail: ['Red-tailed hawk', 'Your own kind: the brick-red tail comes with the first full year.'],
+  osprey: ['Osprey', 'Your own kind: pairs return to the same nest each spring and add to it, year on year.'],
+  barnowl: ['Barn owl', 'Your own kind: a pair keeps one roost for life, hunting the same fields by night.'],
+  albatross: ['Royal albatross', 'Your own kind: a pair meets again at the colony every other year, with a long dance of bows and calls.'],
 };
 const SONG = { Chickadee: 'Says its own name, chick-a-dee-dee-dee, and stays all winter.', Robin: 'One of the first to sing at dawn, a cheery up-and-down carol.',
   Warbler: 'A bright scrap of yellow that sings a rising run of notes.', Wren: 'Tiny, loud, and always with its tail cocked high.',
