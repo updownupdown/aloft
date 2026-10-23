@@ -46,7 +46,7 @@ const SCENES = {
     A.G.menu.set(true, 'today'); await wait(.4); const shown = today && !today.classList.contains('hidden'); A.G.menu.set(false);
     return 'from ' + start + ': ' + seen.join(', ') + '; then ' + (L.learning ? 'lessons' : 'done') + (shown ? ', Today lists ' + today.querySelector('.lch3 b')?.textContent : ' (Today has no lessons: lost)');`,
   menu: `const out = [];
-    for (const tab of ['today', 'map', 'journal', 'guide', 'how', 'play']) {
+    for (const tab of ['today', 'map', 'journal', 'how', 'play']) {
       A.G.menu.set(true, tab); await wait(.5);
       const pages = [...document.querySelectorAll('[data-for="' + tab + '"] [data-page]')].filter(e => e.tagName === 'BUTTON');
       for (const p of pages) { p.click(); await wait(.25); }

@@ -100,11 +100,11 @@ export function aimsSystem(G) {
   G.menu.onOpen(() => {
     const a = AIMS[A.aim];
     today.el.classList.toggle('hidden', !!G.lessons?.learning);
-    today.body.innerHTML = a ? `<p class="aim3 ${A.done ? 'done' : ''}"><i></i>${esc(a.text)}${a.n && !A.done ? ` <small>${A.count} of ${a.n}</small>` : ''}</p>
+    today.body.innerHTML = a ? `<p class="aim3 ${A.done ? 'done' : ''}"><i></i><span>${esc(a.text)}</span>${a.n && !A.done ? ` <small>${A.count} of ${a.n}</small>` : ''}</p>
       <p class="feathers3">${A.feathers ? `Feathers for aims kept: ${A.feathers}` : 'Each day brings one aim. It is only an offer.'}</p>` : '';
     const L = G.life;
     life.el.classList.toggle('hidden', !L);
-    if (L) life.body.innerHTML = `<p class="life3t">${esc(L.title)}${L.done ? ' <small>Done.</small>' : ''}</p><ul class="life3">${L.steps.map(s => `<li class="${s.done ? 'done' : ''}"><i></i>${esc(s.text)}${s.need > 1 ? ` <small>${Math.min(s.n, s.need)} of ${s.need}</small>` : ''}</li>`).join('')}</ul>`;
+    if (L) life.body.innerHTML = `<p class="life3t">${esc(L.title)}${L.done ? ' <small>Done.</small>' : ''}</p><ul class="life3">${L.steps.map(s => `<li class="${s.done ? 'done' : ''}"><i></i><span>${esc(s.text)}</span>${s.need > 1 ? ` <small>${Math.min(s.n, s.need)} of ${s.need}</small>` : ''}</li>`).join('')}</ul>`;
     const n = KEYS.filter(k => A.seen[k]).length;
     lands.body.innerHTML = `<p class="lands3sum">${n} of ${KEYS.length} lands flown over${(W.LANDS || []).length ? `, ${Object.keys(A.sights).length} sights found` : ''}.</p>
       <div class="lands3">${KEYS.map(k => `<figure class="${A.seen[k] ? 'seen' : ''}"><img alt="" src="${pic(k)}"><figcaption>${A.seen[k] ? esc(cap(BIOMES[k].label)) : '?'}${A.sights[k] ? ' <b title="sight found">★</b>' : ''}</figcaption></figure>`).join('')}</div>`;
