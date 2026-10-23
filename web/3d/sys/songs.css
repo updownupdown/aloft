@@ -11,7 +11,8 @@
 .sing3:not(.on) :is(.notepad3, .songcard3, .birds3, .sgrail3), .sing3:not(.big) .birds3, .sing3.big .sgrail3, .sing3.on .sgplate3, .sing3.big .songcard3 { display: none; }
 .sing3 svg { flex: none; }
 /* a bird's little flat logo (birdlogos.js), no round behind it */
-.sing3 .logo3 { display: block; width: 100%; height: 100%; }
+/* (blogo3, not logo3: that is the menu's app logo, with a box and a shadow) */
+.sing3 .blogo3 { display: block; width: 100%; height: 100%; }
 
 /* Sing, off: the notes, and the logo of a bird beside you that could teach you */
 .sgplate3 { pointer-events: auto; box-sizing: border-box; min-height: 52px; display: flex; align-items: center; gap: 8px; padding: 5px 16px 5px 14px;
@@ -149,7 +150,7 @@
 .brow3.on { border-color: rgba(255, 255, 255, .35); background: rgba(255, 255, 255, .13); }
 .bwho3 { position: relative; flex: none; width: 128px; display: flex; align-items: center; gap: 8px; padding: 0 4px 0 0; border: 0; background: none; font-size: 13px; font-weight: 700; text-align: left; line-height: 1.15; cursor: pointer; }
 .brow3.heard .bwho3 { opacity: .55; }
-.bwho3 .logo3 { flex: none; width: 40px; height: 40px; }
+.bwho3 .blogo3 { flex: none; width: 40px; height: 40px; }
 .bsongs3 { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; gap: 5px; }
 .bsong3 { box-sizing: border-box; min-height: 40px; display: flex; flex-direction: column; justify-content: center; gap: 3px; padding: 4px 10px; border: 1px solid transparent; border-radius: 12px;
   background: rgba(255, 255, 255, .1); font-size: 11.5px; font-weight: 600; text-align: left; cursor: pointer; }

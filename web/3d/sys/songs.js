@@ -24,7 +24,7 @@
 // (the music and courtship read it). Gifts that other systems can make real (calm weather,
 // berries, fish, a companion) are announced on the bus as G.emit('gift', ev): set ev.handled
 // and this system skips its own stand-in. G.gifts holds each running gift's seconds left.
-import { SPECIES, active, timeOfDay, songOf as songN, songKey } from '../../src/songs.js';
+import { SPECIES, active, timeOfDay, songOf as songN, songKey, TAP_GAP } from '../../src/songs.js';
 import { continentAt } from '../earth.js';
 import { period, DAY } from '../sky.js';
 import { height, WATER, treesNear, perchesOf, thermalsNear, landmarksNear } from '../world.js';
@@ -145,6 +145,7 @@ export function songsSystem(G) {
     { id: 'alarm-calls', title: 'Alarm calls run ahead of you', how: 'Fly 15-70 m over trees with songbirds: thin seet calls run on ahead and mice freeze. Skim low and they stay quiet.' },
     { id: 'mimic', title: 'Mimics: the starling (and the mockingbird down south)', how: 'Perch near a starling in meadows or by lakes: it sings snatches of other songs; an unknown song\'s opening fills in on its card.' },
     { id: 'more-songs', round: 9, pr: 191, title: 'Several songs per bird; Journal > Songs plays the ones you know', how: 'Perch by songbirds of one kind in different trees: each sings one of its kind\'s songs. The birds\' list (tap the song card) shows each bird\'s songs; tap one to imitate it. Journal > Songs: play buttons, question marks for songs to find.' },
+    { id: 'slow-teacher', round: 10, pr: 0, title: 'Miss a fast song and the bird you learn from sings it slower each time, down to half speed after 5 misses', how: 'Learn a wren or a chaffinch and get a note wrong a few times: it sings slower each time.' },
     { id: 'song-says', round: 10, pr: 226, title: 'A song\'s result shows over the card, so the card does not move; Journal > Songs shows each song\'s notes; Dev mode refreshes the songbook at once', how: 'Sing a song to a bird: the answer shows above the card. Turn on Dev mode in Settings, then open Journal > Songs: every song plays and shows its notes.' },
     { id: 'tap-songs', round: 10, pr: 219, title: 'Fast or long songs are copied with taps alone; slow, short ones keep their swipes', how: 'Learn a Wren, Chaffinch or Skylark (fast): the card shows dots, and any touch on the right row counts. A Cuckoo or Hoopoe still wants its swipes.' },
     { id: 'earth-songbirds', round: 10, pr: 216, title: 'Each continent its own songbirds: 86 real singers, at least two in every land, no dialects', how: 'Fly to Europe, Africa, Asia, South America or Oceania and perch in a wood: robins and blackbirds in Europe, bulbuls and robin-chats in Africa, kookaburras and tui in Oceania. Settings > Dev tools > Dev mode, then Journal > Songs: every bird, by continent.' },
@@ -188,6 +189,10 @@ export function songsSystem(G) {
   }
   function hear(sp) { if (!G.heard.has(sp.id)) { G.heard.add(sp.id); store.set('heard', [...G.heard]); } }
   // a songbird (or a visitor) sings
+  // a fast song you keep missing: the bird you learn from sings it slower after each miss, down to
+  // half speed after SLOW_MISSES (James, 10-23). Kept per song until you learn it.
+  const SLOW_MISSES = 5, misses = {};
+  const slowOf = t => t.gap < TAP_GAP && !knows(t) ? 1 + Math.min(misses[fkey(t)] || 0, SLOW_MISSES) / SLOW_MISSES : 1;
   function sing(o) {
     if (o.sp.mimic) return medley(o);
     // (the bird you learn from is always clear, however far across the clearing it sits)
@@ -199,10 +204,11 @@ export function songsSystem(G) {
       mixHeard[o.id] = 1;
       later(tune.notes.length * song.gap, () => say(`Listen: the ${sp.name.toLowerCase()} you taught sings its own song, then ends it with the ${mix.name}'s phrase.`, 5));
     }
-    o.singT = tune.notes.length * song.gap + .2;
+    const step = song.gap * (S.bird === o ? slowOf(song) : 1);
+    o.singT = tune.notes.length * step + .2;
     // the card shows who is singing within earshot: the bird you copy, or another one
     if (S.bird === o) S.hearT = o.singT;
-    tune.notes.forEach((n, i) => later(i * song.gap, () => {
+    tune.notes.forEach((n, i) => later(i * step, () => {
       if (v > .012) A.note(n, sp.voice, v * (o.young && !winter() ? .8 : 1), tune.kinds[i]);   // (fainter than that is lost under the wind, and each note costs the audio thread)
       if (v > .04) hear(sp);
       if (v > .02) notePart([o.x, o.y, o.z], n, tune.kinds[i], false, song);
@@ -274,7 +280,7 @@ export function songsSystem(G) {
     const sp = S.target;
     // a free song: the last few notes you sang show on the card
     if (!sp) { if (G.t - S.lastTry > 4) S.mine = []; S.lastTry = G.t; S.mine = [...S.mine, { lane, kind }].slice(-10); return; }
-    const gap = Math.max(sp.gap * 2, .45);
+    const gap = Math.max(sp.gap * slowOf(sp) * 2, .45);
     if (S.over || G.t - S.lastTry > Math.max(3, gap * 3)) { S.res = []; S.over = false; }
     const i = S.res.length, late = i ? clamp((Math.abs(G.t - S.lastTry - gap) - .15) / gap, 0, 1) : 0;
     S.lastTry = G.t;
@@ -286,6 +292,7 @@ export function songsSystem(G) {
     // (a tap-only song takes any touch on the right row)
     if (sp.notes[i] !== lane || (!sp.tap && sp.kinds[i] !== kind)) {
       S.res.push('wrong'); S.over = true; mine.r = 'wrong';
+      if (!knows(sp)) misses[fkey(sp)] = (misses[fkey(sp)] || 0) + 1;
       ui.mark(lane, sp.notes[i] === lane ? 'half' : 'no');
       return;
     }
@@ -605,7 +612,7 @@ export function songsSystem(G) {
 
   // ---- each frame --------------------------------------------------------------------------------
   return {
-    id: 'songs', ui, near: () => near, chorus: () => chorus, sing: o => sing(o), pick: (id, k) => pick(id, k),   // (for test scripts)
+    id: 'songs', ui, near: () => near, chorus: () => chorus, sing: o => sing(o), pick: (id, k) => pick(id, k), singNote: (l, k) => singNote(l, k),   // (for test scripts)
     update(dt) {
       for (let i = queue.length - 1; i >= 0; i--) if (queue[i].t <= G.t) { const q = queue[i]; queue.splice(i, 1); q.fn(); }
       for (const k in G.gifts) { G.gifts[k] -= dt; if (G.gifts[k] <= 0) delete G.gifts[k]; }
