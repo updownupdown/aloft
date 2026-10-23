@@ -365,6 +365,11 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .card3 .range3 input::-webkit-slider-thumb { -webkit-appearance: none; width: 24px; height: 24px; margin-top: -9px; border-radius: 50%; background: var(--btn); border: 2px solid var(--clay); box-sizing: border-box; box-shadow: 0 1px 4px rgba(40, 30, 20, .3); }
 .card3 .range3 input::-moz-range-thumb { width: 24px; height: 24px; border: 2px solid var(--clay); box-sizing: border-box; border-radius: 50%; background: var(--btn); box-shadow: 0 1px 4px rgba(40, 30, 20, .3); }
 .card3 .range3 b { flex: none; width: 42px; text-align: right; font-size: 13.5px; font-weight: 600; color: var(--ink2); font-variant-numeric: tabular-nums; }
+/* a slider under its switch (Settings > Sound): no plate, set in under the switch, greyed while it is off */
+.card3 .range3.under3 { margin: 0; padding: 4px 4px 8px 22px; background: none; box-shadow: none; border-radius: 0; border-bottom: 1px solid var(--rule); }
+.card3 .range3.under3 > span { font-weight: 500; font-size: 14px; }
+.card3 .range3.off3 { opacity: .4; }
+.card3 .range3.off3 input { cursor: default; }
 .card3 .btn em { text-align: right; }
 .stack3 .sw + .btn { margin-top: 12px; }
 .stack3 .group3 .main3 { min-height: 50px; margin: 6px 0 2px; gap: 10px; font-size: 16px; }
@@ -580,13 +585,54 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .list3 { list-style: none; padding: 0; margin: 2px 0 10px; }
 .list3 li { padding: 8px 4px; border-bottom: 1px solid var(--rule); font-size: 14px; font-weight: 600; }
 .list3 li small { font-weight: 500; }
-.list3 .none, .guide3 { list-style: none; padding: 0; margin: 4px 0 12px; display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px 14px; }
-.guide3 li { display: flex; gap: 12px; align-items: center; padding: 8px; border-radius: 14px; background: rgba(255, 252, 245, .45); }
-.guide3 .pic { flex: none; width: 60px; height: 60px; border-radius: 12px; background: rgba(42, 36, 32, .08); overflow: hidden; }
+.list3 .none { list-style: none; padding: 0; margin: 4px 0 12px; }
+/* Guide > Field guide: kind chips, the seen as cards, the still to find small */
+.gbar3 { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 12px; }
+.gbar3 button { display: flex; align-items: center; gap: 6px; height: 34px; padding: 0 13px; border: 1px solid var(--rule); border-radius: 17px; background: var(--btn); cursor: pointer;
+  font-family: var(--text); font-size: 13.5px; font-weight: 500; color: var(--ink); }
+.gbar3 button small { font-size: 12px; color: var(--ink2); font-variant-numeric: tabular-nums; }
+.gbar3 button.on { background: var(--moss); border-color: var(--moss); color: #fff; }
+.gbar3 button.on small { color: rgba(255, 255, 255, .8); }
+.gbar3 .here3g { margin-left: auto; }
+.gbar3 .here3g svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.9; }
+.guide3 { list-style: none; padding: 0; margin: 0 0 14px; display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; }
+.guide3 li { display: flex; gap: 12px; align-items: center; padding: 10px; border-radius: 16px; background: var(--plate); border: 1px solid var(--rule); }
+.guide3 li.none3g { grid-column: 1 / -1; display: block; background: none; border: 1px dashed var(--rule); color: var(--ink2); font-size: 14px; }
+.guide3 .pic { flex: none; width: 72px; height: 72px; border-radius: 50%; background: rgba(42, 36, 32, .08); overflow: hidden; }
 .guide3 img { width: 100%; height: 100%; display: block; object-fit: cover; }
-.guide3 b { display: block; font-size: 14px; line-height: 1.2; }
-.guide3 li:not(.seen) b { color: var(--ink2); opacity: .7; }
-.guide3 small { font-size: 12px; line-height: 1.4; margin-top: 2px; }
+.guide3 b { display: block; font-size: 15px; line-height: 1.2; }
+.guide3 small { display: block; font-size: 12.5px; line-height: 1.4; margin-top: 3px; }
+.guide3 .when3g { font-size: 11.5px; opacity: .8; }
+.gtodo3 { margin: 6px 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--ink2); }
+.gtodo3:empty { display: none; }
+.gnot3 { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 6px 10px; }
+.gnot3 li { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 12px; }
+.gnot3 span { flex: none; display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%; border: 1.5px dashed rgba(42, 36, 32, .25); color: var(--ink2); font-weight: 600; font-size: 13px; }
+.gnot3 small { font-size: 12.5px; line-height: 1.35; }
+.gnot3 .more3g { grid-column: 1 / -1; } .gnot3 .more3g button { height: 34px; padding: 0 16px; border: 1px solid var(--rule); border-radius: 17px; background: var(--btn); cursor: pointer; font-family: var(--text); font-size: 13.5px; color: var(--ink); }
+/* Journal > Nest and family: a plate each for the nest and the mate */
+.fam3 { margin: 0 0 12px; padding: 4px 16px 14px; border-radius: 20px; background: var(--plate); border: 1px solid var(--rule); }
+.fam3 > h3 { margin: 12px 0 10px; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--ink2); font-family: var(--text); font-weight: 600; }
+.fam3 .si3 { flex: none; display: flex; color: var(--moss); } .fam3 .si3 svg { width: 20px; height: 20px; }
+.steps3 { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.steps3 li { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 6px; border-radius: 14px; background: rgba(42, 36, 32, .04); text-align: center; color: var(--ink2); }
+.steps3 li b { font-size: 14px; font-weight: 600; }
+.steps3 li small { font-size: 12px; }
+.steps3 li .si3 { color: var(--ink2); opacity: .6; }
+.steps3 li.done { background: var(--mosstint); color: var(--ink); } .steps3 li.done .si3 { color: var(--moss); opacity: 1; }
+.steps3 li.now { background: var(--btn); color: var(--ink); box-shadow: inset 0 0 0 2px var(--moss); } .steps3 li.now .si3 { color: var(--moss); opacity: 1; }
+.pips3f { display: flex; gap: 3px; } .pips3f i { width: 8px; height: 8px; border-radius: 50%; background: rgba(42, 36, 32, .15); } .pips3f i.on { background: var(--moss); }
+.fam3 .fnote3 { margin: 10px 0 0; font-size: 14px; line-height: 1.45; }
+.court3 { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; }
+.court3 li { display: grid; grid-template-columns: 20px 92px minmax(0, 1fr) 96px; align-items: center; gap: 8px; font-size: 13.5px; }
+.court3 b { font-weight: 500; }
+.cb3 { height: 6px; border-radius: 3px; background: rgba(42, 36, 32, .1); overflow: hidden; } .cb3 i { display: block; height: 100%; border-radius: 3px; background: var(--moss); }
+.court3 em { font-style: normal; font-size: 12.5px; color: var(--ink2); text-align: right; }
+.fam3 .ftip3 { margin: 10px 0 0; padding: 8px 12px; border-radius: 12px; background: var(--mosstint); font-size: 13.5px; }
+.fam3 .ftip3:empty { display: none; }
+.keeps3 h4 { margin: 14px 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--ink2); }
+.keeps3 div { display: flex; flex-wrap: wrap; gap: 6px; } .keeps3 span { padding: 4px 10px; border-radius: 12px; background: var(--btn); border: 1px solid var(--rule); font-size: 13px; }
+@media (max-width: 620px) { .court3 li { grid-template-columns: 20px 80px minmax(0, 1fr) 70px; } .steps3 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .count3 { font-size: 12.5px; font-weight: 500; color: var(--ink2); margin-left: 8px; }
 
 /* photo mode: one bar at the bottom */

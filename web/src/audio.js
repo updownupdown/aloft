@@ -20,7 +20,7 @@ export function createAudio() {
     // 'balanced' asks for a bigger buffer than 'interactive' on phones, so a busy frame does not
     // starve the audio (the crackle when many birds sang at once)
     const ctx = A.ctx = new AC({ latencyHint: 'balanced' });
-    A.out = ctx.createGain(); A.out.gain.value = A.on ? .8 : 0;
+    A.out = ctx.createGain(); A.out.gain.value = .8;
     // fog (and anything else that should dull the world) closes this filter
     A.muffleLp = ctx.createBiquadFilter(); A.muffleLp.type = 'lowpass'; A.muffleLp.frequency.value = 20000;
     // a limiter last, so a chorus, an echo and a call together never clip (clipping crackles)
@@ -29,7 +29,7 @@ export function createAudio() {
     A.out.connect(A.muffleLp).connect(lim).connect(ctx.destination);
     // three volumes (Settings > Audio): birds and effects (A.master, where most sounds go), the
     // wind (wind and the stoop whistle) and the music (music.js plays into A.musicBus)
-    const bus = k => { const g = ctx.createGain(); g.gain.value = A.vol[k]; g.connect(A.out); return g; };
+    const bus = k => { const g = ctx.createGain(); g.gain.value = A.level(k); g.connect(A.out); return g; };
     A.master = bus('fx'); A.windBus = bus('wind'); A.musicBus = bus('music');
     noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
     const d = noiseBuf.getChannelData(0); let last = 0;
@@ -42,10 +42,14 @@ export function createAudio() {
   };
   // volumes 0..1 (the wind's 1 is its old level: the default sits 30% under it)
   A.vol = { music: 1, wind: .7, fx: 1 };
+  // a bus's gain: its volume, or nothing for the wind and effects while Sound effects is off (the
+  // music has its own switch, music.js)
+  A.level = k => k === 'music' || A.on ? A.vol[k] : 0;
+  const busOf = k => ({ music: A.musicBus, wind: A.windBus, fx: A.master }[k]);
   A.setVol = (k, v) => {
     A.vol[k] = v;
-    const g = { music: A.musicBus, wind: A.windBus, fx: A.master }[k];
-    if (g) g.gain.setTargetAtTime(v, A.ctx.currentTime, .05);
+    const g = busOf(k);
+    if (g) g.gain.setTargetAtTime(A.level(k), A.ctx.currentTime, .05);
   };
   function loop(type, f, q, out = A.master) {
     const ctx = A.ctx, src = ctx.createBufferSource(); src.buffer = noiseBuf; src.loop = true;
@@ -66,7 +70,8 @@ export function createAudio() {
   // context) until it is shown again
   A.suspend = () => { if (A.ctx && A.ctx.state === 'running') A.ctx.suspend(); };
   A.resume = () => { if (A.ctx && A.ctx.state !== 'running' && !document.hidden) A.ctx.resume(); };
-  A.setOn = on => { A.on = on; if (A.out) A.out.gain.setTargetAtTime(on ? .8 : 0, A.ctx.currentTime, .05); };
+  // Sound effects on or off: the wind and the effects (birds, calls, wings); not the music
+  A.setOn = on => { A.on = on; for (const k of ['wind', 'fx']) busOf(k)?.gain.setTargetAtTime(A.level(k), A.ctx.currentTime, .05); };
   // continuous beds, called every frame. `scene` says where the hawk is: the biome, whether a
   // waterfall or a night pond is near, so the wind sighs in pines, surges over the cliffs,
   // water babbles and frogs call. Height mixes it: low down the streams, frogs and insects
