@@ -4,7 +4,7 @@
 // song controls in place of the round portraits. birdLogo(sp) -> an SVG string.
 import { SPECIES } from '../src/songs.js';
 
-const INK = '#1d2b36';
+const INK = '#2a2420';
 // the parts, by species name: body, head (cap), breast colours; the bill; the tail (up, long,
 // short); and the marks
 const L = {

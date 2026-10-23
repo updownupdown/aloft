@@ -91,9 +91,12 @@ from its latitude (`G.season` is the bird's own; `G.date` the calendar). Debug:
 - The world is a pure function of (x, z) and `ih()`; never store generated content
   except in small caches. Mutable per-object state (caught mice, collected rings)
   lives in a system keyed by the object's id.
-- UI is frosted glass (James's pick, 2026-10-20): translucent white panels with a backdrop blur,
-  pill shapes, slate ink #1d2b36, a dark slate pill for the main action, in Outfit (James, 2026-10-20; bundled in
-  `web/fonts/` for the offline PWA, so no web-font links). The HUD has no panes: white ink with a dark halo. Mockups: https://claude.ai/artifact/NHHnDTDSyAQwrsAbpTRVVk (B).
+- UI is frosted glass in Linen (James's pick G, 2026-10-23): warm cream panels (at least 86% opaque, so
+  text reads over any world) with a backdrop blur, pill shapes, warm charcoal ink #2a2420 / #5c5248, moss #3f5a35
+  for what you press (Resume, main buttons, switches, the chosen page), clay #a8492e for every slider, in Figtree
+  (bundled in `web/fonts/` for the offline PWA, so no web-font links). Use the tokens in `3d.css :root`
+  (--ink, --moss, --clay, --sheet, --plate, --btn), never raw colours. Buttons over the world are cream pills,
+  Take off with a moss ring. The HUD has no panes: white ink with a dark halo. Study: https://claude.ai/artifact/LwsU6LW5UJvyKHPAUHJaSw.
 - Persisted settings use `localStorage` keys prefixed `aloft.`, always via the
   try/catch `store` helper in `web/3d/util.js`.
 - Keep it light on tests (project is early and experimental). Check changes in a
