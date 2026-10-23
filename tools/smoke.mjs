@@ -24,6 +24,27 @@ const { chromium } = load();
 // each runs in the page: A = window.__aloft3d, E = earth.js, wait(s)
 const SCENES = {
   boot: `return 'bird ' + A.b.state + ' at ' + A.b.p.map(v => v | 0);`,
+  // the first flight (sys/lessons.js), flown on the keyboard step by step, then the first lesson
+  lessons: `const L = A.G.lessons; if (!L.flying) return 'no first flight on a new journey (lost)';
+    const start = A.b.state, title = () => document.querySelector('.coach3 .ct3')?.textContent || '';
+    const until = async (f, s) => { for (let i = 0; i < s * 10; i++) { if (f()) return true; await wait(.1); } return false; };
+    const down = c => dispatchEvent(new KeyboardEvent('keydown', { code: c })), up = c => dispatchEvent(new KeyboardEvent('keyup', { code: c }));
+    const KEYS = { Climb: ['KeyW'], Dive: ['KeyS'], 'Turn left': ['KeyA'], 'Turn right': ['KeyD'], Soar: ['KeyE'], 'Fast glide': ['KeyQ'], Land: ['KeyE', 'KeyS'] };
+    const seen = [];
+    for (let n = 0; n < 40 && L.flying; n++) {
+      const t = title(); seen.push(t);
+      if (t === 'Take off' || t === 'Take off again') { for (let i = 0; i < 60 && title() === t; i++) { if (A.b.state !== 'fly') A.G.actions.takeoff.run(); await wait(2); } }
+      if (t === 'Flap') for (let i = 0; i < 4; i++) { down('Space'); await wait(.05); up('Space'); await wait(.6); }
+      for (const k of KEYS[t] || []) down(k);
+      await until(() => title() !== t || !L.flying, t === 'Land' ? 400 : 150);
+      for (const k of KEYS[t] || []) up(k);
+      if (title() === t && L.flying) return 'stuck at ' + t + ' after ' + seen.join(', ') + ' (lost)';
+    }
+    if (L.flying) return 'first flight did not end: ' + seen.join(', ') + ' (lost)';
+    await wait(7);
+    const today = document.querySelector('.aims3 [data-order="3"]');
+    A.G.menu.set(true, 'today'); await wait(.4); const shown = today && !today.classList.contains('hidden'); A.G.menu.set(false);
+    return 'from ' + start + ': ' + seen.join(', ') + '; then ' + (L.learning ? 'lessons' : 'done') + (shown ? ', Today lists ' + today.querySelector('.lch3 b')?.textContent : ' (Today has no lessons: lost)');`,
   menu: `const out = [];
     for (const tab of ['today', 'map', 'journal', 'guide', 'how', 'play']) {
       A.G.menu.set(true, tab); await wait(.5);

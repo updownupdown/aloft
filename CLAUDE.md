@@ -55,6 +55,7 @@ web/3d/dev.js           Settings > Dev tools > Feature list: every small feature
 web/3d/journal.js       journal(G).section(order, title) routes by order: <10 Today, 15 How to play > Things learned, other 10-29 hidden (no Log), 30-41 Journal > Nest and family, 42 Things found, 43-59 Journal > Landmarks (45 Lands), 60+ Guide > Field guide; .page('songs') is Guide > Songs. shot.js: project(), afterDraw(), portraits
 web/3d/pics.js          still pictures of the game's own meshes (songbirdPic(sp, px)), cached data URLs
 web/3d/app.js           Update, Graphics, Haptics, Quiet meters and Quit rows; wake lock; asks for full screen on each touch while not full screen
+web/3d/coach.js        the lessons' coach: a card with the thumbs doing the move, ghost thumbs on screen, the Skip pill
 web/3d/action.js        the one action button, bottom right (left of the note pad) on the ground or perched (Take off, Sleep from G.actions; swipe for the other)
 web/src/                audio.js (Web Audio synth; volumes A.vol/A.setVol: music, wind, fx buses), music.js (Valley, the generative music), birdvoice.js, songs.js (songbird species)
 web/birds.html          bird lab: every species side by side (3d/birdlab.js)
@@ -68,7 +69,7 @@ web/3d/sys/*.js         systems: air (thermal clouds/motes), rings, food (hunger
                         photo (photo mode: take a picture, share or save it), howto (How to play and the controls map)
                         songs (songbirds, learning and imitating songs, dialects, mimics, alarm calls, gifts, Call), moments (music that notices),
                         aims (a daily aim and feathers, the lands collection, racing the companion),
-                        season (the first season guided by the companion, one lesson a day), ghost (ghost flights by link), poles (the ice edges: pale air, aurora, the pole wall; fly through it to cross to the opposite longitude),
+                        lessons (the tutorial: the first flight with the HUD hidden and coach.js's ghost thumbs, then a chain of lessons under Today; HUD pieces appear as they matter; How to play > Lessons), ghost (ghost flights by link), poles (the ice edges: pale air, aurora, the pole wall; fly through it to cross to the opposite longitude),
                         sealife (whales to ride, fish boils, flying fish, turtles), drift (icebergs, sea ice, driftwood, bottles; perches via world.js env.solids),
                         isles (rain pools, seabirds, a sight per archipelago; the sea is salt, food.js), skyrivers (G.skyWind), nightsea (pole star / Southern Cross, plankton)
 ```

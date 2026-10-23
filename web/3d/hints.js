@@ -8,7 +8,7 @@ import { SHORT, ICON, TIP_GROUPS, tipGroup } from './tips.js';
 const KINDS = [
   ['event', 'Things that happen', 'A mate, an egg, a song learned: one line at most a minute'],
   ['warn', 'Warnings', 'Danger, or something you tried that didn’t work'],
-  ['tutorial', 'Lessons', 'The first season, one lesson a day'],
+  ['tutorial', 'Lessons', 'Each lesson as it opens, and new parts of the screen'],
   ['hint', 'Nudges', 'What you could do here'],
   ['song', 'Singing', 'Who answers your song, under the song card'],
   ['name', 'Names', 'A country, a landmark, a rainbow: a title under the compass'],

@@ -64,6 +64,7 @@ export function photoSystem(G) {
     R.draw(S, null, c.width, c.height);
   }
   function snap() {
+    G.emit('photo');
     bar.classList.add('hidden');
     afterDraw(async c => {
       // copy the frame now: WebGL clears it once shown

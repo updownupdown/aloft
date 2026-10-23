@@ -58,7 +58,7 @@ import { aimsSystem } from './sys/aims.js';
 import { movesSystem } from './sys/moves.js';
 import { lifeSystem } from './sys/life.js';
 import { neighboursSystem } from './sys/neighbours.js';
-import { seasonSystem } from './sys/season.js';
+import { lessonsSystem } from './sys/lessons.js';
 import { ghostSystem } from './sys/ghost.js';
 import { fieldsSystem } from './sys/fields.js';
 import { skyDaysSystem } from './sys/skydays.js';
@@ -75,9 +75,9 @@ import { nightSeaSystem } from './sys/nightsea.js';
 import { createLooks } from './look.js';
 
 const SYSTEMS = [speciesSystem, movesSystem, lifeSystem, clockSystem, weatherSystem, watersSystem, windsSystem, floraSystem, bushesSystem, airSystem, ringsSystem, foodSystem, aimSystem, sleepSystem, feelSystem, batterySystem, songsSystem, momentsSystem,
-  guideSystem, journeySystem, nestSystem, storySystem, ruinsSystem, photoSystem, howtoSystem, faunaSystem, neighboursSystem, landsSystem, seasonsSystem, glowSystem, landAirSystem, crittersSystem, huntersSystem, aimsSystem, seasonSystem, ghostSystem,
+  guideSystem, journeySystem, nestSystem, storySystem, ruinsSystem, photoSystem, howtoSystem, faunaSystem, neighboursSystem, landsSystem, seasonsSystem, glowSystem, landAirSystem, crittersSystem, huntersSystem, aimsSystem, ghostSystem,
   fieldsSystem, skyDaysSystem, raptorsSystem, wingcraftSystem, stillSystem, swellsSystem, berriesSystem, polesSystem,
-  sealifeSystem, driftSystem, islesSystem, skyRiversSystem, nightSeaSystem];
+  sealifeSystem, driftSystem, islesSystem, skyRiversSystem, nightSeaSystem, lessonsSystem];
 
 // Where each bird first flies, in its own country (earth.js toXZ: latitude, longitude): the
 // red-tail at a forest edge in the Finger Lakes, the osprey over a Scottish loch, the barn owl in
@@ -112,7 +112,7 @@ export function start(canvas, ui) {
   const G = {
     b, R, home, startOf, audio, music, input, store, t: 0, clock: 0, paused: false, parts: [], flags: store.get('flags3d', {}),
     settings: { sound: audio.on, music: store.get('music', true), invert: store.get('invert3d', false), fps: store.get('fps3d', false), fpsCap: store.get('fpsCap3d', store.get('fullRate3d', false) ? 90 : 60) },
-    res: 1, systems: {},
+    res: 1, systems: {}, fresh: !S0,   // fresh: a new journey (sys/lessons.js starts the first flight)
     on: (name, fn) => { if (!listeners.has(name)) listeners.set(name, []); listeners.get(name).push(fn); },
     emit: (name, ...a) => { for (const fn of listeners.get(name) || []) fn(...a); },
     part: (p, v, life, col, size) => { if (G.parts.length < 400) G.parts.push({ p: [...p], v, life, max: life, col, size }); },
@@ -126,7 +126,14 @@ export function start(canvas, ui) {
   for (const s of systems) G.systems[s.id] = s;
 
   // ---- save and resume -----------------------------------------------------------------
-  if (!S0) { b.state = 'fly'; b.p[1] += 35; b.s = 12; }
+  // a new journey begins on a branch near home, for the first flight (sys/lessons.js); with no tree
+  // near, on the ground
+  if (!S0) {
+    const t = treesNear(b.p[0], b.p[2], 250).sort((a, q) => Math.hypot(a.x - b.p[0], a.z - b.p[2]) - Math.hypot(q.x - b.p[0], q.z - b.p[2]))[0];
+    const p = t && perchesOf(t).find(q => !q.top);
+    if (p) Object.assign(b, { state: 'perch', perch: p, tree: t, p: [p.x, p.y + .14, p.z], s: 0 });
+    else { b.state = 'ground'; b.p[1] = Math.max(height(b.p[0], b.p[2]), WATER) + .35; }
+  }
   else {
     Object.assign(b, { p: S0.p, yaw: S0.yaw, state: 'ground', stamina: S0.stamina ?? 1 });
     b.p[1] = Math.max(height(b.p[0], b.p[2]), WATER) + .35;

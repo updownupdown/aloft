@@ -316,8 +316,9 @@ export function foodSystem(G) {
     id: 'food',
     mice, take, hold,
     update(dt) {
-      G.hunger = Math.max(0, G.hunger - dt / FOOD.hungerTime);
-      G.thirst = Math.max(0, G.thirst - dt / FOOD.thirstTime);
+      const k = G.ease ?? 1;   // half speed while the lessons teach eating and drinking (sys/lessons.js)
+      G.hunger = Math.max(0, G.hunger - dt * k / FOOD.hungerTime);
+      G.thirst = Math.max(0, G.thirst - dt * k / FOOD.thirstTime);
       if ((refreshT -= dt) <= 0) { refreshT = .5; refresh(); }
       // took off mid-meal: what is left comes too
       if (b.state === 'fly' && b.meal) { const k = Math.max(.2, b.eating / (b.mealT || FOOD.meal)); b.carry = { ...b.meal, food: b.meal.food * k, wet: b.meal.wet * k }; b.meal = null; b.eating = 0; }

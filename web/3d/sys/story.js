@@ -73,7 +73,7 @@ export function storySystem(G) {
   function health(dt) {
     const fed = G.thirst > .5 && G.hunger > .5, low = G.thirst < .2 || G.hunger < .2;
     if (fed) St.health = Math.min(1, St.health + dt / 900 * (.55 + .45 * St.flapQ) * (G.warmT > 0 ? 2 : 1));
-    else if (low) St.health = Math.max(.15, St.health - dt / 2400);
+    else if (low && !((G.ease ?? 1) < 1)) St.health = Math.max(.15, St.health - dt / 2400);
     // a young hawk's tail is barred brown; it moults red after the first migration, deeper with health
     G.tailRed = adult() ? .55 + .45 * St.health : St.health * .35;
   }
