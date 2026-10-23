@@ -19,6 +19,8 @@ Live: https://updownupdown.github.io/aloft/ (every push to `main` touching `web/
 - All sound is synthesised with Web Audio (`web/src/audio.js`); no audio files.
 - PWA: `web/manifest.webmanifest` + `web/sw.js` (stale-while-revalidate cache). When you
   add a file, add it to `FILES` in `sw.js` and bump `CACHE`.
+  The `CACHE` number is the build number (`aloft-v221` is build 221), shown on Settings > Advanced >
+  Update; say "live in build N" when a change ships.
 
 ## Layout
 
