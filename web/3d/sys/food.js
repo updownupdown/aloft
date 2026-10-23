@@ -11,7 +11,7 @@
 // tap Eat (the action button): the hawk bends and tears at it until it is gone. Or carry it off:
 // to a branch (a calmer meal, worth more; Leave it there to cache it), or home, where it drops into
 // the nest by itself (for the chick, or kept there for later).
-import { height, normalAt, forest, WATER, ih, fbm } from '../world.js';
+import { height, normalAt, forest, WATER, ih, fbm, coastDist } from '../world.js';
 import { mouseRich } from '../settle.js';
 import { builder, blob, reseed } from '../shapes.js';
 import { clamp, smooth } from '../util.js';
@@ -95,7 +95,10 @@ export function foodSystem(G) {
   G.hud.tip('drink', () => G.thirst < .6 && b.state !== 'fly', 'Thirsty? Tap the water near you to drink: at its edge, afloat, or a puddle after rain.');
   let drinking = false, sipT = 0, rustleT = 0;
   // water to drink: afloat, at the water's edge, or by a puddle (seasons.js G.puddles: 8 floats each)
-  const puddleAt = (x, z, pad) => { const P = G.puddles || []; for (let i = 0; i < P.length; i += 8) if (Math.hypot(P[i] - x, P[i + 2] - z) < P[i + 3] + pad) return [P[i], P[i + 1], P[i + 2]]; return null; };
+  // (and the rain pools in island rock, sys/isles.js G.pools)
+  const puddleAt = (x, z, pad) => { for (const P of [G.puddles || [], G.pools || []]) for (let i = 0; i < P.length; i += 8) if (Math.hypot(P[i] - x, P[i + 2] - z) < P[i + 3] + pad) return [P[i], P[i + 1], P[i + 2]]; return null; };
+  // the sea is salt: only rivers, lakes, puddles and rain pools quench a thirst
+  const salt = () => coastDist(b.p[0], b.p[2]) < 30 && !puddleAt(b.p[0], b.p[2], 1.2);
   const shore = () => [[2, 0], [-2, 0], [0, 2], [0, -2], [1.4, 1.4], [-1.4, 1.4], [1.4, -1.4], [-1.4, -1.4]].some(([x, z]) => height(b.p[0] + x, b.p[2] + z) < WATER);
   const waterBy = () => b.state === 'swim' || (b.state === 'ground' && (shore() || !!puddleAt(b.p[0], b.p[2], 1.2)));
   // aim.js calls drink() for a tap on the water; a tap on water out of reach hops over first (b.wantDrink)
@@ -104,6 +107,7 @@ export function foodSystem(G) {
     drink() {
       if (!waterBy() || b.settle > 0) return false;
       if (G.thirst >= .99) { G.hud.toast('Not thirsty', 1.5); return true; }
+      if (salt()) { G.hud.toast('The sea is salt. Drink from a river or a lake, or the rain pools on the islands.', 3.5); return true; }
       drinking = true; sipT = 0; return true;
     },
   };

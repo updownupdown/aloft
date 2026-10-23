@@ -21,7 +21,7 @@ export function bushesSystem(G) {
       const autumn = S.autumn ?? (G.season?.autumn || 0), bare = G.season?.winter ? .7 : 0;
       for (const o of list) {
         const dx = o.x - cam[0], dz = o.z - cam[2]; if (dx * dx + dz * dz > N * N) continue;
-        (S.props[o.kind] ||= []).push(o.x, o.y, o.z, o.s, o.yaw, o.tint, o.kind === 'bush' ? Math.max(bare, autumn * (.5 + o.tint) * .8) : 0, 0);
+        (S.props[o.kind] ||= []).push(o.x, o.y, o.z, o.s, o.yaw, o.tint, o.kind === 'bush' ? Math.max(bare, autumn * (.5 + o.tint) * .8) : o.kind === 'heath' ? autumn * .9 : 0, 0);
       }
     },
   };
