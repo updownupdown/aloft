@@ -62,7 +62,7 @@ const GIFT_TEXT = {
   fish: 'a fish rises and you snatch it',
   calm: 'the air goes calm and gentle for a while',
 };
-const FAR = { hawk: 'hawks', osprey: 'ospreys', owl: 'owls', raven: 'ravens' };
+const FAR = { hawk: 'hawks', osprey: 'ospreys', owl: 'owls', raven: 'ravens', albatross: 'albatrosses' };
 const PHRASE = { dawn: 'at dawn', day: 'in the daytime', dusk: 'at dusk', night: 'at night' };
 const PLACE = { forest: 'the woods', ridge: 'the great ridge', coast: 'the coast', meadow: 'a meadow', marsh: 'the marsh', lakeland: 'the lakeland', cliffs: 'the high ground', mountains: 'the mountains' };
 const compass = (dx, dz) => ['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west'][Math.round((Math.atan2(dx, -dz) / (Math.PI / 4) + 8)) % 8];

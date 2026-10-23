@@ -128,7 +128,9 @@ Object.assign(ICONS, {
   // barn owl: perched, a heart-shaped face, two dark eyes
   bird_owl: F('M12 3.5c3.4 0 5.8 2.3 5.8 5.6v4.6c0 3.9-2.6 6.8-5.8 6.8s-5.8-2.9-5.8-6.8V9.1c0-3.3 2.4-5.6 5.8-5.6z') + '<circle fill="#1d2b36" stroke="none" cx="9.9" cy="9.6" r="1.1"/><circle fill="#1d2b36" stroke="none" cx="14.1" cy="9.6" r="1.1"/><path stroke="#1d2b36" stroke-width="1.1" d="M8 7.4c1.6-.6 2.9-.2 4 1 1.1-1.2 2.4-1.6 4-1M12 11v1.4"/>',
   // raven: fingered wings, a wedge-shaped tail
+  bird_albatross: F('M12 8.6c.7 0 1.2.5 1.3 1.2l.1.9 9.1-1c-.3.7-.9 1.1-1.6 1.2l-7.4 1.4-.2 1.1 1.4 2.9-2.7-.8-2.7.8 1.4-2.9-.2-1.1-7.4-1.4c-.7-.1-1.3-.5-1.6-1.2l9.1 1 .1-.9c.1-.7.6-1.2 1.3-1.2z'),
   bird_raven: F('M12 6.5c.8 0 1.3.6 1.4 1.4l.1 1.2c3-.8 6-.5 8.5.9l-1 .4.6.6-1.2.2.3.7-1.6-.1-1.4.6-3.6.4-.3 1.5 2 3.5L12 19l-3.8-1.2 2-3.5-.3-1.5-3.6-.4-1.4-.6-1.6.1.3-.7-1.2-.2.6-.6-1-.4c2.5-1.4 5.5-1.7 8.5-.9l.1-1.2c.1-.8.6-1.4 1.4-1.4z'),
 });
-export const birdIcon = (id, cls = '') => icon(ICONS['bird_' + id] ? 'bird_' + id : 'bird_hawk', cls);
+export const birdKey = id => ICONS['bird_' + id] ? 'bird_' + id : 'bird_hawk';
+export const birdIcon = (id, cls = '') => icon(birdKey(id), cls);
 export const icon = (key, cls = '') => `<svg${cls ? ` class="${cls}"` : ''} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[key] || ''}</svg>`;

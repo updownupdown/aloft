@@ -5,16 +5,22 @@
 // Other hawks of your own (a suitor, your mate, your fledglings) fly here too, as shapes built
 // from the hawk's own mesh.
 import { height, WATER, ih } from '../world.js';
-import { buildHawk } from '../hawk.js';
+import { buildHawk, BIRD } from '../hawk.js';
 import { builder, blob, reseed } from '../shapes.js';
 import { journal, esc } from '../journal.js';
-import { icon } from '../icons.js';
+import { icon, birdKey } from '../icons.js';
 import { clamp, lerp, angleTo } from '../util.js';
 
 export const HEALTH_START = .35;
 const KEEPSAKES = ['blue jay feather', 'snail shell', 'smooth white pebble', 'curl of birch bark', 'robin’s eggshell', 'tuft of thistledown', 'acorn cap', 'heron feather'];
 const KC = 420;   // one keepsake maybe in each cell this many metres across
 const COURT = { need: .62, time: 75, keep: 5, songs: 5, tricks: 8 };
+// your mate and young are always your own kind, whichever bird you fly now (Settings > Bird):
+// what the words call it, its field guide page (guide.js) and its full name
+const KIND = { hawk: ['hawk', 'redtail', 'red-tail'], osprey: ['osprey', 'osprey', 'osprey'], owl: ['owl', 'barnowl', 'barn owl'], raven: ['raven', 'raven', 'raven'], albatross: ['albatross', 'albatross', 'albatross'] };
+export const kind = () => KIND[BIRD] || KIND.hawk;
+// health shows in the red-tail's tail; in the others, in the gloss of their feathers
+const show = () => BIRD === 'hawk' ? 'a red tail' : 'glossy feathers';
 
 // a hawk turned to face +x (as instanced shapes do), coloured by which way each face looks:
 // instanced shapes have one colour per face, so the underside takes the pale underwing colours
@@ -44,6 +50,9 @@ export function storySystem(G) {
   const ownKind = () => ['hawkGlide', 'hawkUp', 'hawkDown'].forEach((k, i) => G.R.shape(k, hawkShape([{}, { flapL: 1, flapR: 1, handL: -.3, handR: -.3 }, { flapL: -.7, flapR: -.7, handL: .4, handR: .4 }][i])));
   ownKind(); G.on('bird', ownKind);
   G.R.shape('keepsake', keepsakeShape());
+  G.dev?.add({ id: 'own-kind', area: 'Story', title: 'Your mate, suitor, young and the neighbours are your own kind, even after you switch birds',
+    how: 'Pick the osprey, owl, raven or albatross and fly in spring: the suitor, the texts and the field guide page are that bird. Switch birds with a mate: it changes with you. Try it gives you a mate and a fledgling.',
+    go: () => { St.mate ||= { day: G.day, note: `day ${G.day}` }; addKin('young', 16); } });
   // courting time: your own spring (sky.js G.season, by latitude), or any day in the tropics
   const inMarsh = () => G.season.name === 'spring' || G.season.tropic;
   const adult = () => (G.journey?.year || 1) > 1 || G.day > 16;
@@ -78,7 +87,7 @@ export function storySystem(G) {
     // a young hawk's tail is barred brown; it moults red after the first migration, deeper with health
     G.tailRed = adult() ? .55 + .45 * St.health : St.health * .35;
   }
-  const healthWord = h => h < .3 ? 'thin and dull' : h < .55 ? 'fair' : h < .8 ? 'good, the tail reddening' : 'glossy, the tail bright red';
+  const healthWord = h => h < .3 ? 'thin and dull' : h < .55 ? 'fair' : BIRD !== 'hawk' ? (h < .8 ? 'good, the feathers sleek' : 'glossy, in full feather') : h < .8 ? 'good, the tail reddening' : 'glossy, the tail bright red';
 
   // ---- keepsakes: rare things in the grass, glinting -----------------------------------------
   function keepsakesNear(x, z, r) {
@@ -104,10 +113,10 @@ export function storySystem(G) {
   G.on('land', kind => { if (kind === 'ground') pickUp(); });
 
   // ---- acrobatics and courtship ---------------------------------------------------------------
-  G.on('trick', kind => {
+  G.on('trick', k => {
     St.tricks++;
     if (inMarsh()) St.bonus += .06;   // showing off where the other hawks can see
-    if (St.suitor) G.hud.tally({ stoop: 'A stoop! The hawk watches', tumble: 'A tumble! Your suitor follows' }[kind] || 'A wingover! The hawk comes closer', 'bird_hawk');
+    if (St.suitor) G.hud.tally({ stoop: `A stoop! The ${kind()[0]} watches`, tumble: 'A tumble! Your suitor follows' }[k] || `A wingover! The ${kind()[0]} comes closer`, birdKey(BIRD));
   });
   // a song sung well where the other hawks can hear helps too (songs.js emits 'song')
   G.on('song', (sp, q) => { if (inMarsh()) St.bonus += .04 * (typeof q === 'number' ? q : 1); });
@@ -115,7 +124,7 @@ export function storySystem(G) {
   const score = () => { const p = parts(); return .35 * p.health + .2 * p.keepsakes + .25 * p.songs + .2 * p.acrobatics + St.bonus; };
   function tip() {
     const low = Object.entries(parts()).sort((a, c) => a[1] - c[1])[0][0];
-    return { health: 'A redder tail would catch its eye: keep well fed and watered, and flap cleanly.', keepsakes: 'Keepsakes for a nest would help: rare things glint in the grass along the way.', songs: 'More songs would help: learn them from the songbirds.', acrobatics: 'Some acrobatics would help: a full-speed stoop, or a wingover (bank hard one way, then the other).' }[low];
+    return { health: `${BIRD === 'hawk' ? 'A redder tail' : 'Glossier feathers'} would catch its eye: keep well fed and watered, and flap cleanly.`, keepsakes: 'Keepsakes for a nest would help: rare things glint in the grass along the way.', songs: 'More songs would help: learn them from the songbirds.', acrobatics: 'Some acrobatics would help: a full-speed stoop, or a wingover (bank hard one way, then the other).' }[low];
   }
   function courtship(dt) {
     if (St.mate) {
@@ -128,23 +137,23 @@ export function storySystem(G) {
     if (!S) {
       if (!inMarsh() || St.courtDay === G.day || b.state !== 'fly') return;
       St.courtDay = G.day; St.bonus = 0;
-      St.suitor = { t: 0, k: addKin('suitor', 24) }; G.audio.scream?.(true);
-      G.hud.toast('A hawk comes circling up on the spring air to look at you. Show it what you can do: stoops, wingovers, songs, a red tail, keepsakes.', 7);
+      St.suitor = { t: 0, k: addKin('suitor', 24) }; G.audio.call?.(BIRD, true);
+      G.hud.toast(`A${'aeiou'.includes(kind()[0][0]) ? 'n' : ''} ${kind()[0]} comes circling up on the spring air to look at you. Show it what you can do: stoops, wingovers, songs, ${show()}, keepsakes.`, 7);
       return;
     }
     S.t += dt;
     if (score() >= COURT.need) {
       S.k.kind = 'mate'; S.k.r = 30; St.mate = { day: G.day, note: G.placeNote?.() || `day ${G.day}` }; St.suitor = null;
-      G.audio.scream?.(true); G.audio.learned?.();
-      G.hud.toast('The hawk answers your display and stays at your side. You have found a mate.', 6);
+      G.audio.call?.(BIRD, true); G.audio.learned?.();
+      G.hud.toast(`The ${kind()[0]} answers your display and stays at your side. You have found a mate.`, 6);
     } else if (S.t > COURT.time) {
       S.k.leave = .01; St.suitor = null;
-      G.hud.toast(`The hawk circles a while, then drifts off. ${tip()} Another may come another day.`, 8);
+      G.hud.toast(`The ${kind()[0]} circles a while, then drifts off. ${tip()} Another may come another day.`, 8);
     }
   }
   G.on('wrap', dx => { for (const k of kin) k.p[0] += dx; });
   G.on('fledged', () => addKin('young', 16 + kin.filter(k => k.kind === 'young').length * 5));
-  G.on('newYear', () => { for (const k of kin) if (k.kind === 'young') k.leave = .01; G.hud.glint('The young leave', 'Last year’s young are grown, and fly off to find their own country.', 'bird_hawk'); });
+  G.on('newYear', () => { for (const k of kin) if (k.kind === 'young') k.leave = .01; G.hud.glint('The young leave', 'Last year’s young are grown, and fly off to find their own country.', birdKey(BIRD)); });
 
   // ---- the journal ---------------------------------------------------------------------------
   // Journal > Nest and family: your mate, or what wins one (four bars and what would help most),
@@ -157,7 +166,7 @@ export function storySystem(G) {
     const q = c => sec.body.querySelector(c), p = parts(), songs = G.learned?.size || 0;
     sec.head.textContent = St.mate ? 'Your mate' : 'Finding a mate';
     q('.fnote3').textContent = St.mate ? `Met ${St.mate.note.replace(/\.$/, '').replace(/^Day/, 'on day')}, your mate flies with you and brings the chick a meal now and then.`
-      : `In spring a hawk may come circling up to look you over. Win it with a red tail, keepsakes, songs and acrobatics.`;
+      : `In spring a${'aeiou'.includes(kind()[0][0]) ? 'n' : ''} ${kind()[0]} may come circling up to look you over. Win it with ${show()}, keepsakes, songs and acrobatics.`;
     q('.court3').innerHTML = St.mate ? '' : [
       bar('health', 'Health', p.health, healthWord(St.health).split(',')[0]),
       bar('keepsake', 'Keepsakes', p.keepsakes, `${Math.min(St.keepsakes.length, COURT.keep)} of ${COURT.keep}`),
@@ -186,7 +195,7 @@ export function storySystem(G) {
         const beat = Math.sin(G.t * 1.3 + k.phase) > .85, ph = (G.t * 7 + k.phase) % 2;
         const shape = !beat ? 'hawkGlide' : ph < 1 ? 'hawkUp' : 'hawkDown', sc = (k.kind === 'young' ? .5 : .62);
         (S.props[shape] ||= []).push(k.p[0], k.p[1], k.p[2], sc, k.yaw - Math.PI / 2, k.kind === 'mate' ? .4 : .55, 0, 0);
-        G.sight?.('redtail', k.p[0], k.p[1], k.p[2], .9);
+        G.sight?.(kind()[1], k.p[0], k.p[1], k.p[2], .9);
       }
       const d = S.props.keepsake ||= [];
       for (const k of keepsakesNear(S.cam[0], S.cam[2], 140)) d.push(k.x, k.y, k.z, 1.4, ih(k.x | 0, 1, 5) * 6, .5, 0, 0);
