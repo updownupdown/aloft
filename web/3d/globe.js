@@ -19,14 +19,16 @@ const HEX = {
 const RGB = Object.fromEntries(Object.entries(HEX).map(([k, h]) => [k, [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16))]));
 const SHALLOW = [104, 158, 176], DEEP = [38, 84, 112], ICE = RGB.ice;
 
-// the biome colours on the 500 m cell grid, once, so a texel only blends four of them
+// how rugged each land is: the shader raises ridges where it is (the texture's alpha)
+const ROUGH = { mountains: 255, volcano: 255, alpine: 230, fjord: 200, canyon: 190, badlands: 170, cliffs: 160, karst: 130, moor: 70, taiga: 60, tundra: 50 };
+// the biome colours (and roughness) on the 500 m cell grid, once, so a texel only blends four of them
 let grid = null;
 function biomeGrid() {
   if (grid) return grid;
-  const nx = CELL.nx, nz = CELL.nz, g = new Float32Array(nx * nz * 3);
+  const nx = CELL.nx, nz = CELL.nz, g = new Float32Array(nx * nz * 4);
   for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {
-    const c = RGB[earthBiome(EARTH.X0 + (i + .5) * CELL.step, EARTH.Z0 + (j + .5) * CELL.step)] || RGB.meadow, k = (j * nx + i) * 3;
-    g[k] = c[0]; g[k + 1] = c[1]; g[k + 2] = c[2];
+    const b = earthBiome(EARTH.X0 + (i + .5) * CELL.step, EARTH.Z0 + (j + .5) * CELL.step), c = RGB[b] || RGB.meadow, k = (j * nx + i) * 4;
+    g[k] = c[0]; g[k + 1] = c[1]; g[k + 2] = c[2]; g[k + 3] = ROUGH[b] ?? 25;
   }
   return (grid = g);
 }
@@ -38,20 +40,22 @@ let landPx = null;
 export const prebake = () => { landPx ||= bakeLand(); };
 function bakeLand() {
   const px = new Uint8Array(TW * TH * 4), g = biomeGrid(), nx = CELL.nx, nz = CELL.nz, st = CELL.step;
-  new Uint32Array(px.buffer).fill(new Uint32Array(new Uint8Array([...ICE, 255]).buffer)[0]);   // past the strip: the polar ice
+  new Uint32Array(px.buffer).fill(new Uint32Array(new Uint8Array([...ICE, 30]).buffer)[0]);   // past the strip: the polar ice
   const put = (u, v, x, z) => {
     const d = coastDist(x, z), k = (v * TW + ((u % TW) + TW) % TW) * 4;
-    let r, gg, bb;
+    let r, gg, bb, ro = 0;
     if (d < 0) { const t = Math.min(1, -d / 2600); r = SHALLOW[0] + (DEEP[0] - SHALLOW[0]) * t; gg = SHALLOW[1] + (DEEP[1] - SHALLOW[1]) * t; bb = SHALLOW[2] + (DEEP[2] - SHALLOW[2]) * t; }
     else {
       const cu = (x - EARTH.X0) / st - .5, cv = Math.min(nz - 1.001, Math.max(0, (z - EARTH.Z0) / st - .5));
       const i = Math.floor(cu), j = Math.floor(cv), fx = cu - i, fz = cv - j;
-      const i0 = ((i % nx) + nx) % nx, i1 = (i0 + 1) % nx, a = (j * nx + i0) * 3, b = (j * nx + i1) * 3, c = ((j + 1) * nx + i0) * 3, e = ((j + 1) * nx + i1) * 3;
+      const i0 = ((i % nx) + nx) % nx, i1 = (i0 + 1) % nx, a = (j * nx + i0) * 4, b = (j * nx + i1) * 4, c = ((j + 1) * nx + i0) * 4, e = ((j + 1) * nx + i1) * 4;
       const w0 = (1 - fx) * (1 - fz), w1 = fx * (1 - fz), w2 = (1 - fx) * fz, w3 = fx * fz;
       r = g[a] * w0 + g[b] * w1 + g[c] * w2 + g[e] * w3; gg = g[a + 1] * w0 + g[b + 1] * w1 + g[c + 1] * w2 + g[e + 1] * w3; bb = g[a + 2] * w0 + g[b + 2] * w1 + g[c + 2] * w2 + g[e + 2] * w3;
+      ro = g[a + 3] * w0 + g[b + 3] * w1 + g[c + 3] * w2 + g[e + 3] * w3;
+      if (d < 120) { const t = .86 + .14 * Math.min(1, Math.max(0, (d - 60) / 60)); r *= t; gg *= t; bb *= t; }   // a darker coastline
       if (d < 70) { const t = .5 + d / 140; r = SHALLOW[0] + (r - SHALLOW[0]) * t; gg = SHALLOW[1] + (gg - SHALLOW[1]) * t; bb = SHALLOW[2] + (bb - SHALLOW[2]) * t; }   // a soft shore
     }
-    px[k] = r; px[k + 1] = gg; px[k + 2] = bb;
+    px[k] = r; px[k + 1] = gg; px[k + 2] = bb; px[k + 3] = ro;
   };
   const corner = (i, j, ref) => {
     const n = j * LL.nx + ((i % LL.nx) + LL.nx) % LL.nx;
@@ -82,9 +86,17 @@ const VS = `#version 300 es
 in vec2 p; void main() { gl_Position = vec4(p, 0., 1.); }`;
 const FS = `#version 300 es
 precision highp float;
-uniform sampler2D land, fog; uniform vec2 C; uniform float R, veil; uniform mat3 M;
+uniform sampler2D land, fog; uniform vec2 C; uniform float R, veil; uniform mat3 M; uniform vec3 S;
 out vec4 o;
 const float PI = 3.14159265;
+// value noise on the ball, for the ridges of rugged land
+float h3(vec3 p) { p = fract(p * .3183099 + .1); p *= 17.; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
+float vn(vec3 x) {
+  vec3 i = floor(x), f = fract(x); f = f * f * (3. - 2. * f);
+  return mix(mix(mix(h3(i), h3(i + vec3(1, 0, 0)), f.x), mix(h3(i + vec3(0, 1, 0)), h3(i + vec3(1, 1, 0)), f.x), f.y),
+             mix(mix(h3(i + vec3(0, 0, 1)), h3(i + vec3(1, 0, 1)), f.x), mix(h3(i + vec3(0, 1, 1)), h3(i + vec3(1, 1, 1)), f.x), f.y), f.z);
+}
+float ridge(vec3 x) { return (1. - abs(2. * vn(x) - 1.)) * .65 + (1. - abs(2. * vn(x * 2.7) - 1.)) * .35; }
 void main() {
   vec2 p = (gl_FragCoord.xy - C) / R; float r = length(p), aa = 1.5 / R;
   vec3 bg = mix(vec3(.10, .14, .18), vec3(.16, .22, .28), clamp(1. - gl_FragCoord.y / (C.y * 2.), 0., 1.) * .5);
@@ -94,12 +106,21 @@ void main() {
   float lat = asin(clamp(w.y, -1., 1.)), lon = atan(w.x, w.z);
   vec2 uv = vec2(lon / (2. * PI) + .5, .5 - lat / PI);
   vec2 dx = dFdx(uv), dy = dFdy(uv); dx.x -= round(dx.x); dy.x -= round(dy.x);   // no seam where lon wraps
-  vec3 c = textureGrad(land, uv, dx, dy).rgb;
+  vec4 tx = textureGrad(land, uv, dx, dy); vec3 c = tx.rgb;
+  // rugged land: ridges lit from the upper left, faded out when too small to see
+  float px = 1. / R, fade = smoothstep(.0035, .0012, px);
+  if (tx.a > .05 && fade > 0.) {
+    vec3 q = w * 140.; float e = .35, r0 = ridge(q), r1 = ridge(q + M * vec3(-e, e, 0.));
+    c *= 1. + clamp((r1 - r0) * 1.6, -.5, .5) * tx.a * fade + (r0 - .5) * .12 * tx.a * fade;
+  }
   float seen = textureGrad(fog, uv, dx, dy).r;
   c *= mix(1. - veil, 1., smoothstep(.0, .6, seen));
   // light from the upper left, a little darker at the rim, and a faint line every 30 degrees
   float l = .62 + .42 * max(0., dot(v, normalize(vec3(-.45, .55, .7))));
   c *= l * (.8 + .2 * v.z);
+  // where it is day on Earth now: the night side in blue shade, a warm band at the dusk line
+  float sun = dot(w, S), day = smoothstep(-.14, .12, sun);
+  c = mix(c * vec3(.36, .42, .6), c, day) + vec3(.5, .28, .12) * (1. - abs(sun) / .14) * step(abs(sun), .14) * .12;
   vec2 g = abs(fract(vec2(lat, lon) / (PI / 6.) + .5) - .5) / fwidth(vec2(lat, lon) / (PI / 6.));
   c = mix(c, vec3(1.), (1. - smoothstep(0., 1., min(g.x, g.y))) * .08);
   c += vec3(.45, .65, .85) * pow(1. - v.z, 3.) * .35;   // the air at the edge
@@ -149,7 +170,8 @@ export function createGlobe(canvas) {
       gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, FW, FH, gl.RED, gl.UNSIGNED_BYTE, fogPx);
       gl.generateMipmap(gl.TEXTURE_2D);
     },
-    draw(V, w, h, dpr, veil = .42) {
+    // sun: [lat, lon] of the point the sun stands over
+    draw(V, w, h, dpr, veil = .42, sun = [0, 0]) {
       if (!land) { prebake(); land = tex(TW, TH, gl.RGBA, gl.RGBA8, landPx); }
       gl.viewport(0, 0, canvas.width, canvas.height);
       gl.useProgram(P.p); gl.bindVertexArray(vao);
@@ -157,6 +179,8 @@ export function createGlobe(canvas) {
       gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, fogTex); gl.uniform1i(P.u.fog, 1);
       gl.uniform2f(P.u.C, w / 2 * dpr, h / 2 * dpr); gl.uniform1f(P.u.R, V.R * dpr); gl.uniform1f(P.u.veil, veil);
       gl.uniformMatrix3fv(P.u.M, false, G.turn(V));
+      const sa = sun[0] * D, so = sun[1] * D;
+      gl.uniform3f(P.u.S, Math.cos(sa) * Math.sin(so), Math.sin(sa), Math.cos(sa) * Math.cos(so));
       gl.drawArrays(gl.TRIANGLES, 0, 3);
     },
     // [sx, sy, front] in CSS pixels; front is false on the far side of the ball

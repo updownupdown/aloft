@@ -11,7 +11,7 @@ import { esc } from '../journal.js';
 import { createDial } from '../dial.js';
 import { icon } from '../icons.js';
 import { SEASON_DAYS, SEASONS } from '../sky.js';
-import { EARTH, wrapX, latLon, toXZ } from '../earth.js';
+import { EARTH, wrapX, latLon, toXZ, declination } from '../earth.js';
 import { createGlobe, prebake } from '../globe.js';
 
 const CELL = 100;                        // fog cells, metres
@@ -45,12 +45,12 @@ export function mapView(G, J) {
   // how much of the world has been seen, 0..1
   const explored = () => count / (FI * FJ);
 
-  // ---- the globe page-------------------------------------------------------------------------
-  G.menu.tab('map', 'Map');
-  const pane = G.menu.page('map', 'globe', 'Globe', 10);   // Landmarks and Lands follow (journal.js)
+  // ---- the tab: the globe fills it (no pages; Landmarks and Lands are in the Journal, a tap away) ----
+  const pane = G.menu.tab('map', 'Map');
   pane.classList.add('mappane3', 'flush3');
   pane.innerHTML = `<div class="mapbox3"><canvas></canvas><div class="mapsum3"></div><div class="mapday3"><div class="mapseason3"></div></div>
       <div class="mapbtn3"><button data-z="in" aria-label="Zoom in">${icon('zoomin')}</button><button data-z="out" aria-label="Zoom out">${icon('zoomout')}</button><button data-z="me" aria-label="Centre on the hawk">${icon('me')}</button></div>
+      <div class="mapgo3"><button data-go="landmarks">${icon('landmarks')}<span>Landmarks</span><b></b></button><button data-go="lands">${icon('lands')}<span>Lands</span><b></b></button></div>
       <p class="maptip3">Hold the map to drop a pin.</p><div class="mapnote3 hidden"></div></div>`;
   const sum = pane.querySelector('.mapsum3'), box = pane.querySelector('.mapbox3'), cv = box.querySelector('canvas'), note = box.querySelector('.mapnote3');
   // top right, the same day dial as in flight, and the season in more detail beneath it
@@ -80,9 +80,11 @@ export function mapView(G, J) {
       }
     }
   });
-  G.on('menuTab', id => { if (id !== 'map') open = false; });
-  G.on('menuPage', (tab, id) => {
-    open = tab === 'map' && id === 'globe';
+  // bottom left: the landmarks and lands found, each a way to its Journal page
+  const go = box.querySelector('.mapgo3');
+  go.addEventListener('click', e => { const b = e.target.closest('[data-go]'); if (b) G.menu.set(true, 'journal', b.dataset.go); });
+  G.on('menuTab', id => {
+    open = id === 'map';
     if (!open) return;
     note.classList.add('hidden');
     const pct = Math.round(explored() * 100);
@@ -97,7 +99,10 @@ export function mapView(G, J) {
     const where = G.placeWhere(), L = G.collection?.(), found = Object.keys(J.found || {}).length;
     sum.innerHTML = `<p class="here3">${esc(cap(where))}</p>
       <div class="far3"><span><i style="width:${Math.max(2, pct)}%"></i></span><small>${pct < 1 ? (explored() * 100).toFixed(2) : pct}% of the world known</small></div>
-      <ul class="tally3"><li><b>${J.year || 1}</b>${J.year > 1 ? 'years' : 'year'}</li><li><b>${found}</b>${found === 1 ? 'landmark' : 'landmarks'}</li>${L ? `<li><b>${L.lands}<span>/${L.of}</span></b>lands</li><li><b>${L.feathers}</b>${L.feathers === 1 ? 'feather' : 'feathers'}</li>` : ''}${J.pins?.length ? `<li><b>${J.pins.length}</b>${J.pins.length === 1 ? 'pin' : 'pins'}</li>` : ''}</ul>`;
+      <ul class="tally3"><li><b>${J.year || 1}</b>${J.year > 1 ? 'years' : 'year'}</li>${L ? `<li><b>${L.feathers}</b>${L.feathers === 1 ? 'feather' : 'feathers'}</li>` : ''}${J.pins?.length ? `<li><b>${J.pins.length}</b>${J.pins.length === 1 ? 'pin' : 'pins'}</li>` : ''}</ul>`;
+    go.querySelector('[data-go=landmarks] b').textContent = found;
+    go.querySelector('[data-go=lands] b').textContent = L ? `${L.lands}/${L.of}` : '';
+    go.querySelector('[data-go=lands]').hidden = !L;
     requestAnimationFrame(() => {
       fit(); fogNow();
       // open on the hawk, close enough to see the country round it; then spin out to the whole Earth
@@ -138,7 +143,9 @@ export function mapView(G, J) {
 
   function draw() {
     if (!open || !V.w || !globe) return;
-    globe.draw(V, V.w, V.h, V.dpr);
+    // the sun stands over the longitude where it is noon: the hawk's own, shifted by its hour
+    const [, hl] = hawkLL(), sunLon = ((hl - (G.tod - .5) * 360) % 360 + 540) % 360 - 180;
+    globe.draw(V, V.w, V.h, V.dpr, .42, [declination(G.yearFrac ?? .5) / Math.PI * 180, sunLon]);
     const x = over.getContext('2d'); x.setTransform(V.dpr, 0, 0, V.dpr, 0, 0); x.clearRect(0, 0, V.w, V.h);
     x.font = '600 12px Figtree, system-ui, sans-serif';
     // labels keep clear of the panels over the map
