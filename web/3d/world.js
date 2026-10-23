@@ -39,7 +39,7 @@ export function setWater(y) { WATER = y; }
 // what systems change at run time: the snowline (0 summer .. 1 deep winter, chunks must be
 // rebuilt when it moves), the thermals' strength, and extra lift (storm cells, waves, kettles)
 // yearFrac: the calendar (earth.js yearFrac), which with the latitude sets each place's season and snow
-export const env = { snow: 0, snowLine: 185, season: 'summer', seasonDay: 0, yearFrac: .47, thermal: 1, lifts: [], thermals: [], shade: null };   // shade(x, z): cloud shadow 0..1 (sys/air.js)
+export const env = { snow: 0, snowLine: 185, season: 'summer', seasonDay: 0, yearFrac: .47, thermal: 1, lifts: [], thermals: [], solids: [], shade: null };   // shade(x, z): cloud shadow 0..1 (sys/air.js); solids: fns (x, z, r, out) adding things that move or float (sys/sealife.js, sys/drift.js)
 
 // how much of each kind of country a point is, 0..1 each (older callers read these)
 export function bands(x, z, bl = blend(x, z)) {
@@ -300,7 +300,7 @@ export const TREE = {
   limbR: [.018, .015],                           // limb thickness at the trunk (it tapers to half)
 };
 // the looks: 0 broadleaf, 1 pine, then the trees of the other lands, each with its own limbs
-export const LOOK = { broadleaf: 0, pine: 1, birch: 2, redwood: 3, acacia: 4, saguaro: 5, joshua: 6, mangrove: 7, oak: 8, poplar: 9, spruce: 10, juniper: 11, willow: 12, sequoia: 13 };
+export const LOOK = { broadleaf: 0, pine: 1, birch: 2, redwood: 3, acacia: 4, saguaro: 5, joshua: 6, mangrove: 7, oak: 8, poplar: 9, spruce: 10, juniper: 11, willow: 12, sequoia: 13, larch: 14, palm: 15, kapok: 16, stonePine: 17, olive: 18, cypress: 19 };
 export const LOOKS = [
   { kind: 0, limbs: TREE.limbs[0], limbR: TREE.limbR[0] },
   { kind: 1, limbs: TREE.limbs[1], limbR: TREE.limbR[1] },
@@ -316,13 +316,19 @@ export const LOOKS = [
   { kind: 0, limbs: [[.6, .38, .3], [3, .44, .27]], limbR: .022 },                                      // juniper
   { kind: 0, limbs: [[0, .4, .28], [2.1, .46, .3], [4.2, .38, .27]], limbR: .022 },                     // willow
   { kind: 1, limbs: [[0, .5, .17], [2.3, .58, .15], [4.4, .46, .16]], limbR: .016 },                    // giant sequoia
+  { kind: 1, limbs: [[0, .24, .17], [2.1, .34, .15], [4.2, .44, .12]], limbR: .011 },                   // larch
+  { kind: 0, limbs: [[.4, .87, .13], [2.5, .88, .12], [4.6, .87, .13]], limbR: .012 },                  // palm: the frond stems
+  { kind: 0, limbs: [[0, .76, .28], [2.1, .78, .3], [4.2, .74, .28]], limbR: .022 },                    // kapok
+  { kind: 1, limbs: [[0, .64, .22], [2.1, .67, .2], [4.2, .65, .23]], limbR: .018 },                    // stone pine
+  { kind: 0, limbs: [[.5, .4, .28], [2.6, .44, .26], [4.5, .38, .28]], limbR: .022 },                   // olive
+  { kind: 1, limbs: [], limbR: .01 },                                                                   // cypress: only its tip
 ];
 // what grows where: each land's trees as [look, weight] (a weight may depend on the spot), mixed
 // by a roll; each kind also comes and goes in its own slow patches, so a wood has stands of one
 // kind running into another rather than an even salt-and-pepper. Willows and poplars keep to
 // low wet ground, spruce to the heights, giant sequoias stand in groves in the high country and
 // among the redwoods, the dry lands have junipers and cacti (no pines).
-const SIZE_OF = [[11, 8], [13, 8], [12, 7], [34, 18], [8, 4], [6, 5], [6, 4], [9, 5], [10, 7], [16, 7], [15, 9], [5, 4], [10, 5], [38, 18]];   // by look: [smallest grown height, extra]
+const SIZE_OF = [[11, 8], [13, 8], [12, 7], [34, 18], [8, 4], [6, 5], [6, 4], [9, 5], [10, 7], [16, 7], [15, 9], [5, 4], [10, 5], [38, 18], [15, 8], [9, 6], [30, 12], [12, 6], [5, 3], [11, 6]];   // by look: [smallest grown height, extra]
 const MIX = {
   meadow: (y, wet) => [[0, 5], [8, 3], [2, 1], [1, 1], [9, wet * 4], [12, wet * 3]],
   forest: (y, wet, hi) => [[0, 6], [8, 3], [2, 1.5], [1, 2 + hi * 4], [10, hi * 3], [9, wet * 2], [12, wet * 2]],
@@ -334,26 +340,26 @@ const MIX = {
   alpine: (y, wet, hi) => [[10, 5], [1, 3], [11, 1 - hi * .8]],
   cliffs: () => [[1, 3], [11, 2], [10, 1]],
   fjord: () => [[10, 4], [1, 3], [2, 1.5]],
-  coast: () => [[1, 4], [11, 1.5], [8, 1]],
-  karst: (y, wet) => [[0, 3], [11, 2], [1, 1.5], [8, 1], [9, wet * 2]],
+  coast: (y, wet, hi, tr) => [[1, 4 * (1 - tr)], [11, 1.5 * (1 - tr)], [8, 1 - tr * .6], [15, 7 * tr]],
+  karst: (y, wet, hi, tr) => [[0, 3], [11, 2 * (1 - tr)], [1, 1.5 * (1 - tr)], [8, 1], [9, wet * 2 * (1 - tr)], [15, (1 + wet * 2) * tr]],
   volcano: () => [[11, 3], [1, 1.5], [2, .5]],
-  desert: (y, wet) => [[5, 5], [6, 3], [11, 1], [9, wet * 4]],
+  desert: (y, wet) => [[5, 5], [6, 3], [11, 1], [9, wet * 2], [15, wet * 4]],
   canyon: (y, wet) => [[11, 6], [5, 1], [9, wet * 5]],
   badlands: (y, wet) => [[11, 6], [6, .4], [9, wet * 5]],
-  savanna: (y, wet) => [[4, 7], [11, .6], [9, wet * 2]],
-  swamp: () => [[7, 6], [12, 2], [0, 1]],
+  savanna: (y, wet, hi, tr) => [[4, 7], [11, .6], [9, wet * 2 * (1 - tr)], [15, wet * 3 * tr]],
+  swamp: (y, wet, hi, tr) => [[7, 6], [12, 2 * (1 - tr)], [0, 1], [15, 1.5 * tr]],
   marsh: (y, wet) => [[12, 3 + wet * 2], [0, 2], [9, 1.5]],
-  taiga: (y, wet) => [[10, 7], [1, 2.5], [2, 1.5], [12, wet * 1.5]],
-  tundra: () => [[2, 3], [10, 2], [11, 2]],
-  rainforest: (y, wet) => [[0, 6], [4, 1.2], [8, 2], [12, wet * 2], [7, wet * 2]],
-  maquis: (y, wet) => [[8, 4], [11, 3], [1, 2], [9, wet * 2]],
-  steppe: (y, wet) => [[9, wet * 4 + .3], [8, .5], [11, .5]],
+  taiga: (y, wet) => [[10, 6], [14, 4], [1, 2.5], [2, 1.5], [12, wet * 1.5]],
+  tundra: () => [[2, 3], [14, 2], [12, 1], [11, 1]],
+  rainforest: (y, wet) => [[0, 6], [16, 1.1], [8, 2], [15, .4 + wet * 3], [7, wet * 2]],
+  maquis: (y, wet) => [[18, 4], [17, 2.5], [19, 1.5], [8, 2], [11, 2], [9, wet * 2]],
+  steppe: (y, wet) => [[9, wet * 4 + .3], [12, wet * 2], [2, .4], [8, .5], [11, .5]],
 };
 // how big the trees of a land grow (stunted on the moor and the heights, tall in sheltered woods)
 const SIZE_K = { moor: .7, alpine: .8, cliffs: .75, coast: .8, fjord: .9, volcano: .75, canyon: .85, badlands: .8, forest: 1.08, redwood: 1.1, tundra: .45, taiga: .95, rainforest: 1.6, maquis: .7, steppe: .8 };
 function lookFor(b, x, z, y, r, f) {
-  const wet = smooth(5, 1.5, y), hi = smooth(45, 110, y);
-  const list = (MIX[b] || MIX.meadow)(y, wet, hi);
+  const wet = smooth(5, 1.5, y), hi = smooth(45, 110, y), tr = smooth(30, 22, Math.abs(latAt(x, z)));   // tr: the tropics, where palms grow
+  const list = (MIX[b] || MIX.meadow)(y, wet, hi, tr);
   let sum = 0; const w = list.map(([look, wt], i) => { const v = Math.max(0, wt) * Math.max(.05, 1 + 1.4 * fbm(x / 190, z / 190, 40 + look, 2)); sum += v; return v; });
   let pick = list[0][0], acc = 0;
   for (let i = 0; i < list.length; i++) if (r * sum < (acc += w[i])) { pick = list[i][0]; break; }
@@ -438,7 +444,7 @@ const BUSH_LANDS = {
   moor: ['gorse', .09, 1.2, .8], coast: ['gorse', .06, 1.1, .7], cliffs: ['gorse', .04, 1, .6],
   desert: ['sage', .035, 1, .6], canyon: ['sage', .06, 1.1, .6], badlands: ['sage', .045, 1, .6], volcano: ['sage', .015, .9, .5],
   savanna: ['thorn', .06, 1.6, 1.1], saltflat: null, alpine: ['gorse', .02, .8, .5], ice: null,
-  tundra: ['gorse', .03, .7, .6], steppe: ['sage', .05, .9, .7], maquis: ['gorse', .12, 1.3, .9],
+  tundra: ['heath', .07, .8, .7], steppe: ['sage', .05, .9, .7], maquis: ['gorse', .12, 1.3, .9],
 };
 const bushCache = new Map();
 export function bushesIn(cx, cz) {
@@ -480,7 +486,7 @@ export function bushesNear(x, z, r) {
   return out;
 }
 // how high the top of a bush's mesh is (unit height; the round shrub and gorse dome a little under 1)
-export const BUSH_TOP = { bush: 1.01, gorse: .97, sage: .98, thorn: .95 };
+export const BUSH_TOP = { bush: 1.01, gorse: .97, sage: .98, thorn: .95, heath: .8 };
 
 // where a hawk can sit on a tree: the crown top, and out along each of its look's limbs
 export function perchesOf(t) {
@@ -689,6 +695,7 @@ export const ROCK_CELL = 64;
 const ROCKS = {
   moor: [['tor', .35]], savanna: [['tor', .06]], canyon: [['hoodoo', .3], ['arch', .02]], badlands: [['hoodoo', .14]], desert: [['hoodoo', .03]],
   mountains: [['boulder', .2]], alpine: [['boulder', .22]], cliffs: [['boulder', .14]], volcano: [['lava', .16]], fjord: [['stack', .35]], coast: [['stack', .3], ['boulder', .05]],
+  tundra: [['boulder', .22]], taiga: [['boulder', .08]], maquis: [['boulder', .1]], steppe: [['tor', .03]],
 };
 const ROCK_S = { tor: 5, hoodoo: 14, boulder: 2.4, lava: 2.2, arch: 12, stack: 0 };
 const rockCache = new Map();
@@ -703,7 +710,7 @@ function rockAt(gx, gz) {
   if (list && crop > 0) for (const [k, w] of list) if (p < (acc += w * .6 * crop)) { kind = k; break; }
   if (kind) {
     const y = groundAt(x, z), s = ROCK_S[kind] * (.7 + ih(gx, gz, 154) * .7), yaw = ih(gx, gz, 155) * 6.283, id = gx * 9973 + gz;
-    if (kind === 'stack') { if (y < -4) o = { x, y, z, kind, s: -y + 8 + ih(gx, gz, 157) * 24, yaw, id }; }
+    if (kind === 'stack') { if (y < -4 && y > -26 && coastDist(x, z) > -500) o = { x, y, z, kind, s: -y + 8 + ih(gx, gz, 157) * 24, yaw, id }; }   // off the shore, never out at sea
     else if (y > 1 && groundNormal(x, z)[1] > (kind === 'arch' ? .92 : .82)) o = { x, y, z, kind, s, yaw, id };
   }
   rockCache.set(key, o); if (rockCache.size > 4000) rockCache.delete(rockCache.keys().next().value);
@@ -757,6 +764,9 @@ export function solidsNear(x, z, r) {
   for (const o of bushesNear(x, z, r + 4)) { pillar(o.x, o.z, o.s * o.w * .3, o.y - .5, o.y + o.s * BUSH_TOP[o.kind]); Object.assign(out[out.length - 1], { soft: true, bush: o }); }
   // fence posts (perch on top) and the walls' coping stones
   for (const f of fencesNear(x, z, r + 4)) for (const p of f.posts) if (Math.abs(p[0] - x) < r + 4 && Math.abs(p[2] - z) < r + 4) pillar(p[0], p[2], f.kind === 'wall' ? .5 : .09, p[1] - 1, p[1] + p[3]);
+  // whales, icebergs, floes and driftwood: a system's own pillars, each with a lasting perch
+  // object (a moving one carries the bird with it: perch.ride)
+  for (const f of env.solids) f(x, z, r, out);
   return out;
 }
 

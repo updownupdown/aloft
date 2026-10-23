@@ -283,6 +283,83 @@ export function sequoia() {
   blob(B, 0, .95, 0, .07, c2, c1, [1, 1.1, 1], 1);
   return B.out();
 }
+// a larch of the taiga: a conifer whose soft needles turn gold in autumn and fall for the winter
+export function larch() {
+  seed = 103; const B = builder(), c1 = [.44, .6, .3], c2 = [.52, .67, .34];
+  prism(B, 0, 0, .03, .02, -.05, .05, 7, PAL.bark, .75);
+  prism(B, 0, 0, .02, .006, .05, .95, 6, PAL.bark);
+  limbsOf(B, 14, null, null);
+  const T = 6;
+  for (let i = 0; i < T; i++) { const u = i / T, y0 = .16 + u * .7; cone(B, y0, y0 + .19, .17 * (1 - u * .78) + .025, 8, i & 1 ? c2 : c1, i * .7, .45); }
+  return B.out();
+}
+// a palm of the warm coasts and oases: a leaning ringed trunk and a burst of drooping fronds
+export function palm() {
+  seed = 107; const B = builder(), t1 = [.56, .47, .36], t2 = [.48, .4, .31], f1 = [.36, .55, .25], f2 = [.45, .62, .28];
+  const P = [[0, -.05, 0], [.03, .2, 0], [.07, .45, .01], [.11, .7, .01], [.13, .9, 0]];
+  for (let i = 0; i < P.length - 1; i++) tube(B, P[i], P[i + 1], .034 - i * .003, i & 1 ? t2 : t1);
+  limbsOf(B, 15, null, null, t2);
+  const top = P[P.length - 1];
+  for (let i = 0; i < 11; i++) {   // fronds: a spine arching out and down, leaflets either side
+    const a = i / 11 * 6.283 + rnd() * .3, ca = Math.cos(a), sa = Math.sin(a), L = .3 + rnd() * .1, rise = .06 + rnd() * .06;
+    let p = top, col = i & 1 ? f1 : f2;
+    for (let k = 1; k <= 4; k++) {
+      const u = k / 4, q = [top[0] + ca * L * u, top[1] + rise * Math.sin(u * 2.2) - .22 * u * u, top[2] + sa * L * u], w = .07 * (1 - u * .6);
+      const sx = -sa * w, sz = ca * w;
+      B.tri(p, q, [(p[0] + q[0]) / 2 + sx, (p[1] + q[1]) / 2 - .02, (p[2] + q[2]) / 2 + sz], col);
+      B.tri(q, p, [(p[0] + q[0]) / 2 - sx, (p[1] + q[1]) / 2 - .02, (p[2] + q[2]) / 2 - sz], col);
+      p = q;
+    }
+  }
+  blob(B, top[0], top[1] - .03, top[2], .045, [.42, .32, .2], [.5, .38, .22], [1, .8, 1]);   // the nuts
+  return B.out();
+}
+// a kapok, the rainforest's emergent giant: a pale trunk on great buttresses, standing clear of the
+// canopy, its branches spread under a broad flat crown
+export function kapok() {
+  seed = 109; const B = builder(), bk = [.63, .61, .55], bk2 = [.56, .55, .5], c1 = [.3, .5, .26], c2 = [.37, .56, .3];
+  for (let i = 0; i < 5; i++) {   // buttresses: thin fins down to the ground
+    const a = i / 5 * 6.283 + .3, c = Math.cos(a), s = Math.sin(a);
+    B.tri([c * .02, .18, s * .02], [c * .16, -.05, s * .16], [c * .02, -.05, s * .02], bk2);
+    B.tri([c * .02, .18, s * .02], [c * .02, -.05, s * .02], [c * .16, -.05, s * .16], bk2);
+  }
+  prism(B, 0, 0, .045, .035, -.05, .4, 8, bk, .9);
+  prism(B, 0, 0, .035, .025, .4, .78, 8, bk, .9);
+  limbsOf(B, 16, null, null, bk);
+  for (const [o, y, l] of LOOKS[16].limbs) tube(B, [Math.cos(o) * l * .9, y + .04, Math.sin(o) * l * .9], [Math.cos(o) * l * 1.2, .86, Math.sin(o) * l * 1.2], .014, bk);
+  blob(B, 0, .88, 0, .3, c1, c2, [1.45, .28, 1.45], 2);
+  for (let i = 0; i < 5; i++) { const a = i / 5 * 6.283 + .6; blob(B, Math.cos(a) * .34, .86 + (i % 2) * .03, Math.sin(a) * .34, .16, i & 1 ? c2 : c1, c1, [1.3, .4, 1.3], 1); }
+  return B.out();
+}
+// a stone pine of the Mediterranean: a tall bare trunk, a little bent, under a dark flat umbrella
+export function stonePine() {
+  seed = 113; const B = builder(), bk = [.5, .36, .27], c1 = [.24, .4, .26], c2 = [.3, .46, .29];
+  tube(B, [0, -.05, 0], [.03, .35, .01], .04, bk); tube(B, [.03, .35, .01], [.06, .66, 0], .03, bk);
+  limbsOf(B, 17, null, null, bk);
+  for (const [o, y, l] of LOOKS[17].limbs) tube(B, [Math.cos(o) * l * .8, y + .03, Math.sin(o) * l * .8], [Math.cos(o) * l * 1.3, .76, Math.sin(o) * l * 1.3], .013, bk);
+  blob(B, .05, .82, 0, .3, c1, c2, [1.35, .34, 1.35], 2);
+  blob(B, -.2, .78, .12, .16, c2, c1, [1.3, .4, 1.3], 1);
+  blob(B, .28, .79, -.1, .15, c2, c1, [1.3, .4, 1.3], 1);
+  return B.out();
+}
+// an olive: a short gnarled grey trunk and loose silver-green clumps
+export function olive() {
+  seed = 127; const B = builder(), bk = [.48, .43, .36], c1 = [.55, .62, .48], c2 = [.63, .68, .53];
+  tube(B, [-.03, -.05, 0], [.05, .2, .03], .07, bk); tube(B, [.05, .2, .03], [-.02, .38, -.02], .05, bk); tube(B, [.05, .2, .03], [.2, .4, .08], .035, bk);
+  limbsOf(B, 18, null, null, bk);
+  blob(B, 0, .6, 0, .3, c1, c2, [1.3, .7, 1.2], 2);
+  for (let i = 0; i < 5; i++) { const a = i / 5 * 6.283 + .2; blob(B, Math.cos(a) * .3, .5 + (i % 3) * .07, Math.sin(a) * .3, .16, i & 1 ? c2 : c1, c1, [1.2, .8, 1.2], 1); }
+  return B.out();
+}
+// an Italian cypress: a dark narrow flame
+export function cypress() {
+  seed = 131; const B = builder(), c1 = [.2, .33, .24], c2 = [.25, .38, .27];
+  prism(B, 0, 0, .025, .02, -.05, .1, 6, PAL.bark);
+  limbsOf(B, 19, null, null);
+  blob(B, 0, .45, 0, .13, c1, c2, [1, 3.1, 1], 2);
+  blob(B, .02, .76, -.01, .07, c2, c1, [1, 3, 1], 1);
+  return B.out();
+}
 // far versions: a trunk and one lump
 function far(trunk, top, r, crown, y, cr, sc, col, col2) {
   return () => { seed = 41; const B = builder(); prism(B, 0, 0, r, r * .7, -.05, top, 4, trunk); if (crown) blob(B, 0, y, 0, cr, col, col2, sc); return B.out(); };
@@ -304,6 +381,12 @@ export const TREE_LOOKS = [
   { near: juniper, far: far([.47, .39, .3], .5, .04, 1, .64, .28, [1.2, .8, 1.1], [.3, .43, .36], [.38, .5, .4]), autumn: 0 },
   { near: willow, far: far(PAL.bark, .45, .05, 1, .55, .4, [1.15, 1, 1.15], [.53, .64, .33], [.62, .7, .38]), autumn: .8 },
   { near: sequoia, far: far([.62, .34, .22], .6, .08, 1, .72, .19, [1, 1.35, 1], [.27, .42, .3], [.33, .48, .33]), autumn: 0 },
+  { near: larch, far: () => { seed = 137; const B = builder(); prism(B, 0, 0, .03, .01, -.05, .3, 4, PAL.bark); cone(B, .14, 1, .18, 5, [.47, .62, .32]); return B.out(); }, autumn: 1.5 },
+  { near: palm, far: palm, autumn: 0 },
+  { near: kapok, far: far([.63, .61, .55], .82, .045, 1, .87, .5, [1.4, .26, 1.4], [.3, .5, .26], [.37, .56, .3]), autumn: 0 },
+  { near: stonePine, far: far([.5, .36, .27], .72, .035, 1, .81, .42, [1.3, .36, 1.3], [.24, .4, .26], [.3, .46, .29]), autumn: 0 },
+  { near: olive, far: far([.48, .43, .36], .4, .06, 1, .58, .4, [1.2, .7, 1.2], [.55, .62, .48], [.63, .68, .53]), autumn: 0 },
+  { near: cypress, far: far(PAL.bark, .1, .025, 1, .48, .15, [1, 3.1, 1], [.2, .33, .24], [.25, .38, .27]), autumn: 0 },
 ];
 
 // ---- bushes (world.js bushesNear; drawn by sys/bushes.js): unit height, perched on top --------
@@ -345,4 +428,12 @@ export function thorn() {
   blob(B, .3, .8, .2, .3, PAL.acacia2, PAL.acacia, [1.3, .35, 1.3], 1);
   return B.out();
 }
-export const BUSH_SHAPES = { bush: shrub, gorse, sage, thorn };
+// heath of the tundra: a low wide mat of dwarf birch, willow and bilberry, red in autumn
+export function heath() {
+  seed = 139; const B = builder(), c1 = [.44, .52, .3], c2 = [.52, .5, .3], c3 = [.6, .42, .28];
+  blob(B, 0, .45, 0, .5, c1, c2, [1.5, .75, 1.4], 1);
+  blob(B, .5, .3, .2, .32, c3, c1, [1.2, .7, 1.2], 1);
+  blob(B, -.48, .28, -.18, .3, c2, c3, [1.2, .7, 1.2], 1);
+  return B.out();
+}
+export const BUSH_SHAPES = { bush: shrub, gorse, sage, thorn, heath };

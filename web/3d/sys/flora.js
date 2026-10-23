@@ -70,6 +70,7 @@ const GROUND = {
   ice: r => r < .03 ? 'stone' : null,
   tundra: r => r < .3 ? 'tuft' : r < .38 ? 'stone' : r < .42 ? 'flowerW' : null,
   steppe: r => r < .6 ? 'gold' : r < .64 ? 'scrub' : null,
+  taiga: r => r < .22 ? 'tuft' : r < .3 ? 'stone' : null,
   maquis: r => r < .25 ? 'scrub' : r < .35 ? 'gold' : r < .4 ? 'stone' : r < .44 ? 'flowerP' : null,
 };
 export function floraSystem(G) {

@@ -62,7 +62,9 @@ web/3d/sys/*.js         systems: air (thermal clouds/motes), rings, food (hunger
                         photo (photo mode, postcards, album), howto (How to play and the controls map)
                         songs (songbirds, learning and imitating songs, dialects, mimics, alarm calls, gifts, Call), moments (music that notices),
                         aims (a daily aim and feathers, the lands collection, racing the companion),
-                        season (the first season guided by the companion, one lesson a day), ghost (ghost flights by link), poles (the ice edges: white air, a wind back, aurora)
+                        season (the first season guided by the companion, one lesson a day), ghost (ghost flights by link), poles (the ice edges: white air, a wind back, aurora),
+                        sealife (whales to ride, fish boils, flying fish, turtles), drift (icebergs, sea ice, driftwood, bottles; perches via world.js env.solids),
+                        isles (rain pools, seabirds, a sight per archipelago; the sea is salt, food.js), skyrivers (G.skyWind), nightsea (pole star / Southern Cross, plankton)
 ```
 
 A system is `(G) => ({ id, update?(dt, c), scene?(S), save?(), load?(o) })`, added to `SYSTEMS` in

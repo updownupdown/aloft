@@ -66,10 +66,16 @@ import { raptorsSystem } from './sys/raptors.js';
 import { wingcraftSystem } from './sys/wingcraft.js';
 import { stillSystem } from './sys/still.js';
 import { swellsSystem } from './sys/swells.js';
+import { sealifeSystem } from './sys/sealife.js';
+import { driftSystem } from './sys/drift.js';
+import { islesSystem } from './sys/isles.js';
+import { skyRiversSystem } from './sys/skyrivers.js';
+import { nightSeaSystem } from './sys/nightsea.js';
 
 const SYSTEMS = [speciesSystem, movesSystem, lifeSystem, clockSystem, weatherSystem, watersSystem, windsSystem, floraSystem, bushesSystem, airSystem, ringsSystem, foodSystem, aimSystem, sleepSystem, feelSystem, batterySystem, songsSystem, momentsSystem,
   guideSystem, journeySystem, nestSystem, storySystem, ruinsSystem, photoSystem, howtoSystem, faunaSystem, neighboursSystem, landsSystem, seasonsSystem, glowSystem, landAirSystem, crittersSystem, huntersSystem, aimsSystem, seasonSystem, ghostSystem,
-  fieldsSystem, skyDaysSystem, raptorsSystem, wingcraftSystem, stillSystem, swellsSystem, polesSystem];
+  fieldsSystem, skyDaysSystem, raptorsSystem, wingcraftSystem, stillSystem, swellsSystem, polesSystem,
+  sealifeSystem, driftSystem, islesSystem, skyRiversSystem, nightSeaSystem];
 
 // Where each bird first flies, in its own country (earth.js toXZ: latitude, longitude): the
 // red-tail at a forest edge in the Finger Lakes, the osprey over a Scottish loch, the barn owl in
@@ -337,7 +343,7 @@ if (qs.has('fps')) G.settings.fpsCap = +qs.get('fps') || 60;
     G.systems.clock.update(dt, c);
     pf.lap('Systems', 'clock');
     // the wind (world.js WIND, its strength from the weather): flight drifts with it and lands by it
-    { const ws = (G.windK ?? .3) * 6 / Math.hypot(WIND[0], WIND[2]), pw = G.poleWind || [0, 0]; b.wind = [WIND[0] * ws + pw[0], WIND[2] * ws + pw[1]]; }
+    { const ws = (G.windK ?? .3) * 6 / Math.hypot(WIND[0], WIND[2]), pw = G.poleWind || [0, 0], sw = G.skyWind || [0, 0]; b.wind = [WIND[0] * ws + pw[0] + sw[0], WIND[2] * ws + pw[1] + sw[1]]; }   // sw: a sky river (sys/skyrivers.js)
     step(b, c, dt, E);
     // the world wraps east to west (earth.js): over the open Pacific the bird is moved round
     if (Math.abs(b.p[0]) > EARTH.W / 2) {

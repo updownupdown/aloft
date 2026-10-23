@@ -35,6 +35,8 @@ const SHORT = {
   kite: ['flare', 'Into the wind: flare to kite'],
   plunge: ['tuck', 'Over water: dive in feet first'],
   silent: ['glide', 'Glide silent: mice can’t hear you'],
+  island: ['drop', 'An island: rest, drink rain water, sleep'],
+  stars: ['compass', 'At sea by night: steer by the stars'],
 };
 // the Hints page (hints.js) lists tips in these groups, and each group can be turned off:
 // [id, title, icon, tip ids]; a tip not listed falls in 'other'
@@ -44,7 +46,7 @@ export const TIP_GROUPS = [
   ['ground', 'Perched and on the ground', 'takeoff', ['hop', 'ground', 'sleep']],
   ['food', 'Food and water', 'prey', ['hunt', 'drink', 'worms', 'carry']],
   ['songs', 'Songs and calls', 'songs', ['song', 'imitate', 'call']],
-  ['journey', 'Journey and nest', 'south', ['wander', 'twig', 'nestbranch', 'keepsake', 'relic']],
+  ['journey', 'Journey and nest', 'south', ['wander', 'twig', 'nestbranch', 'keepsake', 'relic', 'island', 'stars']],
   ['other', 'Other', 'how', []],
 ];
 export const tipGroup = id => (TIP_GROUPS.find(g => g[3].includes(id)) || TIP_GROUPS.at(-1))[0];
