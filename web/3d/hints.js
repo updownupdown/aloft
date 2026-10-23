@@ -1,4 +1,4 @@
-// How to play > Hints: every tip, grouped, with its short line and its whole text, and every kind
+// Settings > Messages (asked for as How to play > Hints, menu.js MOVED): every tip, grouped, with its short line and its whole text, and every kind
 // of message on the message line with the last few it said. Each group and kind has a switch;
 // the gear on a tip or a message opens this page. Show the tips again lives here too.
 import { icon } from './icons.js';
@@ -45,7 +45,7 @@ export function hintsPage(G) {
     if (s) { const key = s.dataset.key; H.setOff(key, !H.off[key]); draw(); return; }
     if (e.target.closest('.hreset3')) { H.resetTips(); draw(); }
   });
-  G.on('menuPage', (tab, id) => { if (tab === 'how' && id === 'hints') draw(); });
+  G.on('menuPage', (tab, id) => { if (tab === 'play' && id === 'messages') draw(); });
   G.menu.onOpen(draw);
   draw();
 }

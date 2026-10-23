@@ -20,6 +20,10 @@ export const ICONS = {
   settings: '<path d="M4 8h5M13 8h7M4 16h10M18 16h2"/><circle cx="11" cy="8" r="2"/><circle cx="16" cy="16" r="2"/>',
   // How to play: Question
   how: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.6 2.6 0 1 1 3.6 2.4c-.7.3-1.1.9-1.1 1.6v.6"/><circle fill="currentColor" stroke="none" cx="12" cy="16.8" r="1"/>',
+  // Today: the sun over the horizon (2026-10-23)
+  today: '<path d="M3 17.5h18M6.5 17.5a5.5 5.5 0 0 1 11 0M12 5v2.5M5.3 8.8l1.7 1.7M18.7 8.8L17 10.5M8.5 20.5h7"/>',
+  // Health: a heart
+  health: '<path d="M12 19.5s-7.5-4.4-7.5-9.6A4 4 0 0 1 12 7.6a4 4 0 0 1 7.5 2.3c0 5.2-7.5 9.6-7.5 9.6z"/>',
   // Audio: Speaker
   audio: '<path d="M4 9.5v5h3.5l5 4v-13l-5 4z"/><path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11"/>',
   // Graphics: Low-poly hills
