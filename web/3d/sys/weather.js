@@ -281,13 +281,14 @@ export function weatherSystem(G) {
       }
       // a sea of cloud in the high country on still mornings: the valleys fill, the peaks stand out
       const k = bands(cam[0], cam[2]), hi = Math.max(k.high, k.ridge);
-      const sea = hi * (dayHash(4) < .4 ? 1 : 0) * smooth(.2, .25, G.tod) * (1 - smooth(.36, .45, G.tod)) * (1 - st);
+      // (only over the hills: never out over the sea, where it read as grey lumps on the water)
+      const sea = hi * smooth(20, 45, height(cam[0], cam[2])) * (dayHash(4) < .4 ? 1 : 0) * smooth(.2, .25, G.tod) * (1 - smooth(.36, .45, G.tod)) * (1 - st);
       if (sea > .05) {
         const top = 72, P = S.props.puff ||= [], step = 34, R = 420;
         const gx0 = Math.floor((cam[0] - R) / step), gz0 = Math.floor((cam[2] - R) / step);
         for (let gz = gz0; gz <= gz0 + 2 * R / step; gz++) for (let gx = gx0; gx <= gx0 + 2 * R / step; gx++) {
           const x = (gx + ih(gx, gz, 96)) * step, z = (gz + ih(gx, gz, 97)) * step;
-          if (Math.hypot(x - cam[0], z - cam[2]) > R || height(x, z) > top - 8) continue;
+          const h = height(x, z); if (Math.hypot(x - cam[0], z - cam[2]) > R || h > top - 8 || h < 3) continue;
           P.push(x + Math.sin(G.t * .05 + gx) * 4, top - 6 + ih(gx, gz, 98) * 6 - (1 - sea) * 30, z, 30 + ih(gx, gz, 99) * 14, ih(gx, gz, 100) * 6.28, .5, 0, 0);
         }
         if (cam[1] > top + 10) once('seacloud', 'A sea of cloud fills the valleys below, and the peaks stand out of it like islands.', 6);

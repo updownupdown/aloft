@@ -2,7 +2,7 @@
 // see), steam venting from the fire mountain's flanks (its lift is world.js's volcano column),
 // sea fog rolling up the fjords and coasts on the morning, and a heat shimmer over the salt
 // flats at midday. Near the hawk only.
-import { height, thermalsNear, thermalCentre, landmarksNear, blend, ih } from '../world.js';
+import { height, thermalsNear, thermalCentre, landmarksNear, blend, ih, coastDist } from '../world.js';
 import { mix3, smooth } from '../util.js';
 import { builder, reseed } from '../shapes.js';
 
@@ -52,7 +52,8 @@ export function landAirSystem(G) {
         }
       }
       // sea fog rolling in over the water of the fjords and coasts, mornings on some days
-      const fog = (FOG_LANDS[land] || 0) * (dayHash(G, 1) < .55 ? 1 : 0) * smooth(.2, .26, G.tod) * (1 - smooth(.38, .48, G.tod));
+      // (along the shore only: out on the open sea it read as grey lumps on the water)
+      const fog = (FOG_LANDS[land] || 0) * smooth(-1600, -500, coastDist(cam[0], cam[2])) * (dayHash(G, 1) < .55 ? 1 : 0) * smooth(.2, .26, G.tod) * (1 - smooth(.38, .48, G.tod));
       if (fog > .05) {
         const P = S.props.puff ||= [], step = 30;
         for (let gz = -9; gz <= 9; gz++) for (let gx = -9; gx <= 9; gx++) {
