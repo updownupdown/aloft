@@ -30,7 +30,7 @@ import { period, DAY } from '../sky.js';
 import { height, WATER, treesNear, perchesOf, thermalsNear, landmarksNear } from '../world.js';
 import { clamp, dist3 } from '../util.js';
 import { registerSongbirds, pushBird, songTreesNear, habitat, land, clearSpots } from './songbirds.js';
-import { createSingUI, NOTE_COLS, KINDS } from './singui.js';
+import { createSingUI, NOTE_COLS, KINDS, glyph } from './singui.js';
 import { journal } from '../journal.js';
 import { BIRD } from '../hawk.js';
 import { songbirdPic } from '../pics.js';
@@ -145,6 +145,7 @@ export function songsSystem(G) {
     { id: 'alarm-calls', title: 'Alarm calls run ahead of you', how: 'Fly 15-70 m over trees with songbirds: thin seet calls run on ahead and mice freeze. Skim low and they stay quiet.' },
     { id: 'mimic', title: 'Mimics: the starling (and the mockingbird down south)', how: 'Perch near a starling in meadows or by lakes: it sings snatches of other songs; an unknown song\'s opening fills in on its card.' },
     { id: 'more-songs', round: 9, pr: 191, title: 'Several songs per bird; Journal > Songs plays the ones you know', how: 'Perch by songbirds of one kind in different trees: each sings one of its kind\'s songs. The birds\' list (tap the song card) shows each bird\'s songs; tap one to imitate it. Journal > Songs: play buttons, question marks for songs to find.' },
+    { id: 'song-says', round: 10, pr: 0, title: 'A song\'s result shows over the card, so the card does not move; Journal > Songs shows each song\'s notes; Dev mode refreshes the songbook at once', how: 'Sing a song to a bird: the answer shows above the card. Turn on Dev mode in Settings, then open Journal > Songs: every song plays and shows its notes.' },
     { id: 'tap-songs', round: 10, pr: 219, title: 'Fast or long songs are copied with taps alone; slow, short ones keep their swipes', how: 'Learn a Wren, Chaffinch or Skylark (fast): the card shows dots, and any touch on the right row counts. A Cuckoo or Hoopoe still wants its swipes.' },
     { id: 'earth-songbirds', round: 10, pr: 216, title: 'Each continent its own songbirds: 86 real singers, at least two in every land, no dialects', how: 'Fly to Europe, Africa, Asia, South America or Oceania and perch in a wood: robins and blackbirds in Europe, bulbuls and robin-chats in Africa, kookaburras and tui in Oceania. Settings > Dev tools > Dev mode, then Journal > Songs: every bird, by continent.' },
     { id: 'sing-three', round: 9, pr: 211, title: 'At most three birds sing at once; no piano under your notes; your own bird on the rail sings as yourself', how: 'Perch in a busy wood and listen: never more than three songs overlap. Tap Sing, then your own bird at the top of the rail: Free song, even beside a bird that could teach you.' },
@@ -565,7 +566,10 @@ export function songsSystem(G) {
     const pane = journal(G).page('songs');
     pane.insertAdjacentHTML('beforeend', '<div class="songbook3"></div>');
     const book = pane.querySelector('.songbook3');
-    G.menu.onOpen(() => {
+    // a song's notes, each at its pitch, as on the card (taps alone for a tap-only song)
+    const notesOf = g => `<span class="mini3 sgnotes3">${g.notes.map((n, i) => `<i style="--note:${NOTE_COLS[n]};--lane:${n}">${glyph(g.tap ? 'c' : g.kinds[i])}</i>`).join('')}</span>`;
+    G.menu.onOpen(fill);
+    function fill() {
       // a card for each songbird: its picture, its name, what its songs give, and each of its songs:
       // those you know with a play button and their words; the rest as question marks. By continent.
       const dev = store.get('devMode', false);
@@ -578,12 +582,12 @@ export function songsSystem(G) {
         const gift = GIFT_TEXT[sp.powerKey] || sp.power, what = k === 'learned' ? `${gift[0].toUpperCase()}${gift.slice(1)}. ${songLog[sp.id] || (G.learned.has(sp.id) ? 'Learned.' : 'Dev mode: not learned yet.')}` : `Heard, not yet learned. ${sp.hint}.`;
         const rows = sp.songs.map(g => {
           if (!ks.includes(g.k)) return `<li class="q"><span class="sgq3">?</span><span><b>Unknown song</b></span></li>`;
-          return `<li><button class="sgplay3" data-play="${sp.id}.${g.k}" aria-label="Play the ${g.title}">${PLAY}</button><span><b>${g.title}</b><small>${g.words}</small></span></li>`;
+          return `<li><button class="sgplay3" data-play="${sp.id}.${g.k}" aria-label="Play the ${g.title}">${PLAY}</button><span><b>${g.title}</b>${notesOf(g)}<small>${g.words}</small></span></li>`;
         }).join('');
         return `<li class="${k} seen"><div class="pic">${pic}</div><div><b>${sp.name}</b><small>${what}</small></div><ol class="sglist3">${rows}</ol></li>`;
       };
       book.innerHTML = `<p class="sub">${songCount()} of ${songTotal} songs known, from ${G.learned.size} of ${learnable.length} birds. Each continent has its own birds, and each bird sings one of its kind's songs.${dev ? ' Dev mode is on: every song can be played here.' : ''}</p>${MODES}${CONTS.map(([c, title]) => `<h3 class="sgcont3">${title}</h3><ul class="guide3 songs3">${SPECIES.filter(sp => sp.cont[0] === c).map(card).join('')}</ul>`).join('')}`;
-    });
+    }
     // a known song played from the book, in its bird's voice (the version you know best)
     let playing = 0;
     book.addEventListener('click', e => {
@@ -595,7 +599,7 @@ export function songsSystem(G) {
       t.notes.forEach((n, i) => setTimeout(() => A.note(n, t.voice, .16, t.kinds[i]), 100 + i * t.gap * 1000));
       playing = setTimeout(() => btn.classList.remove('on'), 300 + t.notes.length * t.gap * 1000);
     });
-    G.menu.toggle('play', { label: 'Dev mode', sub: 'every song unlocked in Journal > Songs, to listen to them all', group: 'dev', get: () => store.get('devMode', false), set: v => store.set('devMode', v) });
+    G.menu.toggle('play', { label: 'Dev mode', sub: 'every song unlocked in Journal > Songs, to listen to them all', group: 'dev', get: () => store.get('devMode', false), set: v => { store.set('devMode', v); fill(); } });
     G.menu.toggle('play', { label: 'Left-handed', sub: 'note pad and Take off on the left, Sing on the right', get: lefty, set: v => store.set('lefty', v) });
   }
 
