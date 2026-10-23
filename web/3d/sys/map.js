@@ -45,8 +45,9 @@ export function mapView(G, J) {
   // how much of the world has been seen, 0..1
   const explored = () => count / (FI * FJ);
 
-  // ---- the tab ----------------------------------------------------------------------------
-  const pane = G.menu.tab('map', 'Map');
+  // ---- the globe page-------------------------------------------------------------------------
+  G.menu.tab('map', 'Map');
+  const pane = G.menu.page('map', 'globe', 'Globe', 10);   // Landmarks and Lands follow (journal.js)
   pane.classList.add('mappane3', 'flush3');
   pane.innerHTML = `<div class="mapbox3"><canvas></canvas><div class="mapsum3"></div><div class="mapday3"><div class="mapseason3"></div></div>
       <div class="mapbtn3"><button data-z="in" aria-label="Zoom in">${icon('zoomin')}</button><button data-z="out" aria-label="Zoom out">${icon('zoomout')}</button><button data-z="me" aria-label="Centre on the hawk">${icon('me')}</button></div>
@@ -79,9 +80,9 @@ export function mapView(G, J) {
       }
     }
   });
-  G.on('menuTab', id => {
-    open = id === 'map';
-    pane.closest('.card3')?.classList.toggle('wide3', open);
+  G.on('menuTab', id => { if (id !== 'map') open = false; });
+  G.on('menuPage', (tab, id) => {
+    open = tab === 'map' && id === 'globe';
     if (!open) return;
     note.classList.add('hidden');
     const pct = Math.round(explored() * 100);

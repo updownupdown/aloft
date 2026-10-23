@@ -39,7 +39,8 @@ web/3d/sky.js           clock (G.tod, G.day, G.season) and light (G.light)
 web/3d/hud.js           G.hud: meter() (slim bars that breathe when low), tip()/did(), say(msg, { kind, secs, icon }) / toast(msg, secs, kind): the message line top centre above the compass, kinds in SAY (event, song, tutorial, hint, warn, reply; quiet: name, glint, tally), paced by PACE (one line per 45 s); reply(), name(), glint(), tally(), quietly(); flight/status, hide(), thumb pads
 web/3d/quiet.js        the quiet levels of the message line: name(title, icon) thin titles with an icon under the compass, glint() tap-to-read icons beside it (kept in Journal > Log > Notes), tally() counts (small words and an icon in the name's place, below it when both show); pick a level by the quiet messages study (Say only for what must be known now)
 web/3d/compass.js       the linear compass, top middle (N/E/S/W, nest, the way south or home, landmarks found)
-web/3d/menu.js          G.menu: tab(), page() (sub-tabs), group() (Settings columns), toggle(), button({ group, main }), choice() (radio buttons), range() (a 0-100% slider), onOpen(), subtitle(), set(on, tab, page); ORDER/TITLES/ICONS/GROUPS
+web/3d/menu.js          G.menu (style A, 2026-10-23): sections Today, Map, Journal, Guide down the rail, How to play ('how') and Settings ('play') as icons; tab(), page() (pills by the title), group() (Settings pages: Sound, Picture, Controls, Messages, Journey, Advanced; 'today' = Today's actions), toggle(), button({ group, main }), choice(), range(), info(), onOpen(), subtitle(), set(on, tab, page); ORDER/TOOLS/PAGES/GROUPS/SECTION_OF
+web/3d/today.js         the Today section: your bird, food/water/wings/health bars, where; the day's aims (journal sections before 10)
 web/3d/letter.js        the menu's frame (frosted glass, .glass3 in 3d.css); swap it to restyle
 web/3d/facet.js         low-poly helpers (map land) (PIG colours, poly, facets, gem, chamfer, hardShadow, lit)
 web/3d/icons.js         every UI icon (James's picks, 2026-10-21): ICONS and icon(key) -> a 24x24 SVG in currentColor
@@ -49,7 +50,7 @@ web/3d/dial.js          the day dial, top right (bead marks now; hub cut-out hol
 web/3d/tips.js          tips as a short line and an icon (SHORT, keyed by tip id; TIP_GROUPS), swipe to dismiss, i to pause and read more, gear to Hints
 web/3d/hints.js         How to play > Hints: every tip and message kind with on/off switches (G.hud.off), Show the tips again
 web/3d/dev.js           Settings > Dev tools > Feature list: every small feature, how to try it, a tick when tested; Frame cost from G.perf. Add yours: G.dev?.add({ id, title, how, area, round, pr, go })
-web/3d/journal.js       the Journal tab and its pages (Log, Songs, Lands, Landmarks, Field guide): journal(G).section(order, title), .page(id); shot.js: project(), afterDraw(), portraits
+web/3d/journal.js       journal(G).section(order, title) routes by order: <10 Today, 10-29 Journal > Log, 30-41 Nest and family, 42 Things found, 43-59 Map > Landmarks (45 Lands), 60+ Guide > Field guide; .page('songs') is Guide > Songs. shot.js: project(), afterDraw(), portraits
 web/3d/pics.js          still pictures of the game's own meshes (songbirdPic(sp, px)), cached data URLs
 web/3d/app.js           Update, Graphics, Haptics, Quiet meters and Quit rows; wake lock; asks for full screen on each touch while not full screen
 web/3d/action.js        the one action button, bottom right (left of the note pad) on the ground or perched (Take off, Sleep from G.actions; swipe for the other)

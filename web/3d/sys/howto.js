@@ -121,7 +121,7 @@ export function howtoSystem(G) {
     ${card('south', 'The whole Earth', 'The world is a small Earth: every continent, the oceans narrowed so they can be crossed, the ice at either end. Fly east or west long enough and you come round to where you began. The day turns on the dial, top right, with the date; the season is the place’s own, so the north has summer while the south has winter. The Map shows where you have been; the Journal keeps the countries and landmarks you find.')}
     ${card('nest', 'A nest', 'Twigs lie under some broadleaf trees. Land beside one to pick it up, then perch on a branch to start a nest. Five twigs and there is an egg; when it hatches, bring it food: land at the nest with a catch in your feet and it drops in. Five meals and your chick fledges.')}
     ${card('mate', 'A mate', 'Keep well fed and watered and your hawk grows healthy: after its first year its tail turns deep red. In spring a hawk may come to look you over. A red tail, keepsakes, songs and acrobatics (a full stoop, a wingover) win it as your mate.')}
-    ${card('keepsake', 'Keepsakes and pictures', 'Rare keepsakes glint in the grass: land beside one to keep it. Animals seen up close get a page in the field guide. Photo mode (Game, in this menu) holds the world still for a picture to share or save.')}
+    ${card('keepsake', 'Keepsakes and pictures', 'Rare keepsakes glint in the grass: land beside one to keep it. Animals seen up close get a page in the field guide. Photo mode (Today, in this menu) holds the world still for a picture to share or save.')}
   </div>`;
   hintsPage(G);
   // the hawks of the controls page fly only while it shows

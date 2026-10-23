@@ -92,10 +92,10 @@ export function speciesSystem(G) {
     use(CHOICES[(CHOICES.indexOf(BIRD) + +a.dataset.step + CHOICES.length) % CHOICES.length]); G.store.set('bird', BIRD); show();
   });
   G.dev?.add({ id: 'albatross', area: 'Birds', round: 'Earth', pr: 215, title: 'Royal albatross: a seabird to fly, from Taiaroa Head',
-    how: 'Game > Your bird: the albatross, then Fly from its home. Skim low over the sea in S-turns across the wind to soar without flapping.',
+    how: 'Settings > Journey > Your bird: the albatross, then Fly from its home. Skim low over the sea in S-turns across the wind to soar without flapping.',
     go: () => { use('albatross'); G.store.set('bird', BIRD); show(); card.querySelector('.home3').click(); } });
   let shown = false;
-  G.on('menuTab', id => { shown = id === 'game'; });
+  G.on('menuTab', () => { shown = false; }); G.on('menuPage', (tab, id) => { shown = tab === 'play' && id === 'journey'; });
   G.on('resume', () => { shown = false; });
   queueMicrotask(() => startLab(card.querySelector('canvas'), [pic], () => 'hover', { active: () => shown && G.menu.open }));
   return {

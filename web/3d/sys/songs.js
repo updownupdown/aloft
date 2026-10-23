@@ -606,7 +606,7 @@ export function songsSystem(G) {
       t.notes.forEach((n, i) => setTimeout(() => A.note(n, t.voice, .16, t.kinds[i]), 100 + i * t.gap * 1000));
       playing = setTimeout(() => btn.classList.remove('on'), 300 + t.notes.length * t.gap * 1000);
     });
-    G.menu.toggle('play', { label: 'Dev mode', sub: 'every song unlocked in Journal > Songs, to listen to them all', group: 'dev', get: () => store.get('devMode', false), set: v => { store.set('devMode', v); fill(); } });
+    G.menu.toggle('play', { label: 'Dev mode', sub: 'every song unlocked in Guide > Songs, to listen to them all', group: 'dev', get: () => store.get('devMode', false), set: v => { store.set('devMode', v); fill(); } });
     G.menu.toggle('play', { label: 'Left-handed', sub: 'note pad and Take off on the left, Sing on the right', get: lefty, set: v => store.set('lefty', v) });
   }
 
