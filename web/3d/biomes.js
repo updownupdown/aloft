@@ -27,7 +27,7 @@ export const PAL = {
   lava: hex('#3e3a39'), lava2: hex('#55504b'), ash: hex('#77695f'), rust: hex('#8a5a44'),
   swamp: hex('#5f7647'), swamp2: hex('#6f7a46'),
   // the lands of the Earth
-  ice: hex('#eef2f2'), ice2: hex('#c9dde4'), tundra: hex('#9c9a70'), tundra2: hex('#a88a62'), lichen: hex('#c2bf9a'), taiga: hex('#4f6b44'), taiga2: hex('#62794c'),
+  ice: hex('#e4ecf0'), ice2: hex('#a8c3d3'), nunatak: hex('#55524f'), tundra: hex('#9c9a70'), tundra2: hex('#a88a62'), lichen: hex('#c2bf9a'), taiga: hex('#4f6b44'), taiga2: hex('#62794c'),
   steppe: hex('#bcae74'), steppe2: hex('#a2a47c'), maquis: hex('#a8a061'), maquis2: hex('#6c7843'), rain: hex('#3f7a3e'), rain2: hex('#2d6236'),
   // the trees of the new lands
   birch: hex('#e9e4d8'), birchLeaf: hex('#9bb84f'), birchLeaf2: hex('#b4c35a'), redBark: hex('#8a4a32'), redLeaf: hex('#3f5f3c'),
@@ -189,9 +189,11 @@ export const BIOMES = {
   },
   // ---- the lands the Earth needed ----
   ice: {
-    label: 'the ice', forest: -2.5, ownRock: 1, flat: 1,
-    h: (x, z, B) => 18 + B.big * 26 + B.mid * 7 + softRidged(x / 420, z / 420, 51, 2) ** 2 * 36,
-    c: (x, y, z, st) => mixc(mixc(PAL.ice, PAL.snow, smooth(-.3, .3, fbm(x / 60, z / 60, 52, 2))), PAL.ice2, smooth(.12, .3, st) * .8),
+    label: 'the ice', forest: -2.5, ownRock: 1, flat: 1, cliff: .7,
+    h: (x, z, B, e) => e?.cont === 'antarctica' ? antarctic(x, z, B) : 18 + B.big * 26 + B.mid * 7 + softRidged(x / 420, z / 420, 51, 2) ** 2 * 36,
+    // blue ice on the steep faces; high up, dark rock where the mountains break through
+    c: (x, y, z, st) => mixc(mixc(mixc(PAL.ice, PAL.snow, smooth(-.3, .3, fbm(x / 60, z / 60, 52, 2))), PAL.ice2, smooth(.12, .3, st) * .8),
+      PAL.nunatak, smooth(.38, .6, st) * smooth(70, 120, y)),
   },
   tundra: {
     label: 'the tundra', forest: -1.4, lakes: .6,
@@ -269,8 +271,9 @@ function dryRound(x, z) {
   return dry * 2 >= land && dry > 0;
 }
 // what a shore cell (its middle out at sea) is on its land side: dunes by the deserts, grass by
-// the savanna, mangroves and rainforest on the wet tropical coasts, the coast elsewhere
-const DRY_SHORE = { desert: 'desert', saltflat: 'desert', canyon: 'desert', badlands: 'desert', savanna: 'savanna', steppe: 'steppe' };
+// the savanna, ice by the ice (no beach in Antarctica), mangroves and rainforest on the wet tropical
+// coasts, the coast elsewhere
+const DRY_SHORE = { desert: 'desert', saltflat: 'desert', canyon: 'desert', badlands: 'desert', savanna: 'savanna', steppe: 'steppe', ice: 'ice' };
 function cellAt(gx, gz) {
   const key = gx * 100003 + gz; let c = cells.get(key); if (c) return c;
   const wcx = (gx + .15 + ih(gx, gz, 321) * .7) * BIOME_CELL, wcz = (gz + .15 + ih(gx, gz, 322) * .7) * BIOME_CELL;
@@ -283,7 +286,7 @@ function cellAt(gx, gz) {
   if (e === 'sea') {
     const l = landNear(cx, cz);
     if (l) w.cont = cont = l.cont;
-    pal = l && DRY_SHORE[l.e] ? [[DRY_SHORE[l.e], 1]] : Math.abs(lat) < 24 ? PALETTE.seaTropic : PALETTE.sea;
+    pal = l && DRY_SHORE[l.e] ? [[DRY_SHORE[l.e], 1]] : lat < -60 ? [['ice', 1]] : Math.abs(lat) < 24 ? PALETTE.seaTropic : PALETTE.sea;
   }
   pal = pal.filter((p, i) => i === 0 || !FITS[p[0]] || FITS[p[0]](w));
   let tot = 0; for (const p of pal) tot += p[1];
@@ -301,6 +304,20 @@ export function cellsNear(x, z, r) {
 }
 // the biomes at a point with their weights (summing to 1), strongest first:
 // [{ name, b, w, cx, cz, gx, gz, cont, lat, lon }] (cont: the cell's continent, earth.js)
+// Antarctica (only its coast is on the strip): at the shore, pressure ridges where the ice is
+// pushed up in broken walls of packed snow, in rows along the coast; inland the ice climbs, and
+// mountains break through it, higher toward the pole (James, 2026-10-23)
+function antarctic(x, z, B) {
+  const inl = coastDist(x, z), w = fbm(x / 300, z / 300, 57, 2);
+  const along = (x * .5 + z * .87) / 21 + w * 7 + fbm(x / 90, z / 90, 58, 2) * 2.5;
+  const rows = (1 - Math.abs(Math.sin(along))) ** 3 * (.4 + .6 * smooth(-.25, .25, fbm(x / 120, z / 120, 59, 2)));
+  const blocks = ridged(x / 34, z / 34, 60, 2) ** 3;
+  const coast = smooth(20, 120, inl) * (1 - smooth(600, 1200, inl)) * (rows * 20 + blocks * 9) * (.6 + .4 * blocks);
+  const up = smooth(300, 2600, inl), range = smooth(-.15, .35, fbm(x / 900, z / 900, 61, 2)) * .7 + .3;
+  const peaks = softRidged(x / 230, z / 230, 62, 3, .05) ** 2.2 * 260 * range * smooth(500, 1800, inl);
+  return 12 + B.big * 6 + B.mid * 3 + up * 70 + coast + peaks + Math.abs(fbm(x / 26, z / 26, 63, 1)) * 2 * (1 - up);
+}
+
 export function blend(x, z) {
   const wx = x + warpX(x, z), wz = z + warpZ(x, z);
   const gx0 = Math.floor(wx / BIOME_CELL), gz0 = Math.floor(wz / BIOME_CELL);

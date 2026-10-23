@@ -481,8 +481,8 @@ export function bushesIn(cx, cz) {
     const x = (gx + .15 + ih(gx, gz, 162) * .7) * G, z = (gz + .15 + ih(gx, gz, 163) * .7) * G;
     const bl = blend(x, z), b = rollBiome(bl, ih(gx, gz, 164)).name, f = forestOf(x, z, bl);
     const clump = smooth(-.1, .5, fbm(x / 70, z / 70, 165, 2));   // they grow in thickets
-    let L = b in BUSH_LANDS ? BUSH_LANDS[b] : null;
-    if (!L && b !== 'saltflat') {   // the green lands: wood edges thick with them, a few thickets out in the open, few under the trees
+    let L = BUSH_LANDS[b];   // (null: none there, the salt pan and the ice)
+    if (L === undefined) {   // the green lands: wood edges thick with them, a few thickets out in the open, few under the trees
       const d = f > .32 ? .02 : f > -.1 ? .13 : .025 + .07 * clump;
       L = ['bush', d, 1.6, 1];
     }
