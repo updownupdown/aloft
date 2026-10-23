@@ -4,9 +4,9 @@ import { chunkMesh, env } from './world.js';
 import { setSeed, WORLD } from './noise.js';
 
 onmessage = e => {
-  const { k, cx, cz, cells, gen, seed, yearFrac, size, drop, far } = e.data;
+  const { k, cx, cz, cells, gen, seed, yearFrac, size, drop, far, look } = e.data;
   if (seed !== WORLD.seed) setSeed(seed);
-  env.yearFrac = yearFrac;
+  env.yearFrac = yearFrac; env.look = look || '';   // (look.js: the ground bakes switched on)
   const data = chunkMesh(cx, cz, cells, size, drop).slice();
   postMessage({ k, cx, cz, cells, gen, data, far }, [data.buffer]);
 };

@@ -61,6 +61,9 @@ export function weatherSystem(G) {
   let mistFloor = null;
   G.R.shape('drop', dropShape()); G.R.shape('bolt', boltShape()); G.R.shape('storm', stormShape()); G.R.shape('puff', puffShape());
   let spell = 'clear', spellT = 90, flash = 0, boltT = 8, bolt = null, rainbowT = 0, rainSeen = false;
+  // look.js H: how wet the ground is (it wets in rain and dries over a few minutes), lightning
+  // flickering inside the storm cloud between strokes
+  let wet = 0, cflash = 0, cflashT = 2, cflashAt = null;
   let meteorDay = 0, meteors = [], meteorT = 0, cell = null;
   G.overcast = 0; G.rain = 0; G.storm = 0; G.snowing = 0; G.windK = .3; G.fog = 0; G.aurora = 0;
   G.skyNotes = G.skyNotes || [];
@@ -161,6 +164,13 @@ export function weatherSystem(G) {
         }
       }
       if (bolt && (bolt.t -= dt) <= 0) bolt = null;
+      wet = clamp(wet + (G.rain - G.snowing > .1 ? dt * .04 * G.rain : -dt * .004), 0, 1);
+      cflash = Math.max(0, cflash - dt * 5);
+      if (G.R.look?.weather && G.storm > .5 && cell && (cflashT -= dt) <= 0) {
+        cflashT = .6 + Math.random() * 3.5; cflash = .5 + Math.random() * .5;
+        const a = Math.random() * 6.283, r = Math.random() * WEATHER.cell.r * .8;
+        cflashAt = [cell.x + Math.cos(a) * r, Math.max(80, b.p[1] + 60) + 40 + Math.random() * 120, cell.z + Math.sin(a) * r];
+      }
       // dawn fog on most still mornings, thickest over the lakes and the marsh, gone by mid-morning
       const k2 = bands(b.p[0], b.p[2]), foggy = dayHash(1) < .55 && G.storm < .3;
       const morning = smooth(.19, .25, G.tod) * (1 - smooth(.32, .42, G.tod));
@@ -249,6 +259,25 @@ export function weatherSystem(G) {
       // the storm cell, and the bolt
       if (cell && st > .05) (S.props.storm ||= []).push(cell.x, Math.max(80, cam[1] + 60), cell.z, WEATHER.cell.r * 1.1 * Math.min(1, st * 1.5), 0, .5, 0, 0);
       if (bolt) (S.props.bolt ||= []).push(bolt.x, bolt.y, bolt.z, Math.max(150, cam[1] + 140 - bolt.y), bolt.yaw, .5, 0, 0);
+      // look.js H: rain shafts under the storm and the rain clouds, lightning lighting the clouds
+      // from inside, the ground wet after rain
+      S.wet = 0; S.flash = null; S.rainK = 0;
+      if (G.R.look?.weather) {
+        S.wet = wet * (1 - env.snow);
+        if (bolt) S.flash = [bolt.x, Math.max(80, cam[1] + 60) + 60, bolt.z, flash];
+        else if (cflash > 0 && cflashAt) S.flash = [...cflashAt, cflash];
+        if (G.R.cloudStyle !== 'poly' && G.rain - G.snowing > .15) {
+          const sh = S.props.shaft ||= [], k = G.rain - G.snowing;
+          if (cell && st > .05) {
+            const top = Math.max(80, cam[1] + 60);
+            for (let i = 0; i < 5; i++) {
+              const a = i * 2.4 + 1, r = WEATHER.cell.r * (.15 + .35 * ((i * .37) % 1)), x = cell.x + Math.cos(a) * r, z = cell.z + Math.sin(a) * r, g = Math.max(height(x, z), WATER);
+              sh.push(x, g, z, top - g + 20, a, .3 + .5 * k * st, 0, 0);
+            }
+          }
+          S.rainK = k;   // (render.js hangs a shaft under every other rain cloud, the clouds being laid later)
+        }
+      }
       // the rainbow: a faint, wide arc far off, opposite the sun, its colours running into each
       // other (many small overlapping points read as a smooth band), fading toward its feet
       if (rainbowT > 0) {
