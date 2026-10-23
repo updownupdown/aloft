@@ -39,8 +39,8 @@ const SECTION_OF = {
 };
 const OLD = { sound: 'audio', app: 'dev', switch: 'gameplay', play: 'journey' };
 // rows that keep a set order within their page, whichever system adds them first; the rest follow
-const ROW_ORDER = { Graphics: 1, 'Frame rate': 2, 'Ground detail': 3, 'Battery use': 4,
-  'Sound effects': 1, 'Wind volume': 2, 'Birds and effects': 3, Music: 4, 'Music style': 5, 'Music volume': 6, Clouds: 5, 'Photo mode': 1, 'Share a ghost flight': 2 };
+const ROW_ORDER = { Graphics: 1, 'Frame rate': 2, 'Rest at 30 fps': 3, 'Ground detail': 4, 'Battery use': 90,
+  'Sound effects': 1, 'Wind volume': 2, 'Birds and effects': 3, Music: 4, 'Music style': 5, 'Music volume': 6, Clouds: 6, 'Photo mode': 1, 'Share a ghost flight': 2 };
 // rows that sit under a switch, and are greyed out while it is off (by label)
 const UNDER = { 'Wind volume': 'Sound effects', 'Birds and effects': 'Sound effects', 'Music volume': 'Music', 'Music style': 'Music' };
 // pages that moved: How to play > Hints is Settings > Messages
@@ -63,6 +63,8 @@ export function createMenu(G, ui) {
   const veil = ui.querySelector('.veil3'), card = veil.querySelector('.card3'), nav = card.querySelector('.tabs3');
   const subs = card.querySelector('.subs3'), panes = card.querySelector('.panes3'), h2 = subs.querySelector('h2');
   const button = ui.querySelector('.menu3');
+  // Resume stands as tall as the section buttons above it (they grow with the room the rail has)
+  new ResizeObserver(() => { const h = nav.firstElementChild?.offsetHeight; if (h) card.style.setProperty('--tabh', `${h}px`); }).observe(nav);
   const repaint = letter(card);
   const M = { open: false, opens: [], acts: new Map(), sub: null, quit: null };
   let current = null, n = 0, added = 0;
@@ -235,6 +237,6 @@ export function createMenu(G, ui) {
   createToday(G, M);         // the Today section: your bird, how it is, where, and the day's aims (today.js)
   G.dev = createDev(G, M);   // Settings > Advanced > Feature list (dev.js)
   G.dev.add({ id: 'menu-a', area: 'Menu and map', round: 10, title: 'The menu, tidied: Today, Map, Journal, Guide, How to play and Settings down the rail; each section’s pages in a column beside it',
-    how: 'Open the menu: Today shows your bird, food, water, wings and health, and the day’s aims; Map has Globe, Landmarks and Lands; Settings has Sound, Picture, Controls, Messages, Journey and Advanced.' });
+    how: 'Open the menu: Today shows your bird, food, water, wings and health, and the day’s aims; Map shows the globe; Journal has Songs, Nest and family, Landmarks, Biomes, Things found and the Field guide; Settings has Sound, Graphics, Controls, Messages, Journey and Advanced.' });
   return M;
 }
