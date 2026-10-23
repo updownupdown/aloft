@@ -6,11 +6,11 @@
 //   30-41       Journal > Nest and family (nest 30, story 40)
 //   42          Journal > Things found (things people left, bottles)
 //   43-59       Journal > Landmarks (wonders 43, landmarks 50), but 45 is Journal > Lands (the collection)
-//   60 on       Guide > Field guide
-// Songs have their own page, Guide > Songs (page('songs')). The Map has no pages: the globe fills it.
+//   60 on       Journal > Field guide (the Guide folded into the Journal, James 2026-10-23)
+// Songs have their own page, Journal > Songs (page('songs')). The Map has no pages: the globe fills it.
 const PAGES = {
   landmarks: ['journal', 'Landmarks', 10], lands: ['journal', 'Lands', 20], family: ['journal', 'Nest and family', 30], finds: ['journal', 'Things found', 40],
-  notes: ['how', 'Things learned', 45], songs: ['guide', 'Songs', 10], guide: ['guide', 'Field guide', 20],
+  notes: ['how', 'Things learned', 45], songs: ['journal', 'Songs', 50], guide: ['journal', 'Field guide', 60],
 };
 const pageOf = o => o < 10 ? 'today' : o === 15 ? 'notes' : o < 30 ? null : o < 42 ? 'family' : o < 43 ? 'finds' : o === 45 ? 'lands' : o < 60 ? 'landmarks' : 'guide';
 // a section's heading where the page already says it

@@ -58,7 +58,7 @@ export function guideSystem(G) {
     for (const k of got) { G.hud.tally(`Field guide: ${G.guide.name(k)}`, 'guide'); G.emit('sighted', k); }
   }
 
-  // Guide > Field guide: chips to show one kind at a time (songbirds near here by default), the ones
+  // Journal > Field guide: chips to show one kind at a time (songbirds near here by default), the ones
   // seen as cards with their portraits, then the ones still to find, small, each with a hint
   const KINDS = [['all', 'All'], ['song', 'Songbirds'], ['bird', 'Other birds'], ['land', 'Animals'], ['water', 'Water life']];
   const BIRDY = /eagle|hawk|owl|gull|kestrel|heron|egret|crow|raven|starling|buzzard|falcon|kite|vulture|tern|puffin|albatross|gannet|pelican|booby|frigate|swan|duck|goose|stork|crane|ibis|flamingo|penguin|parrot|cormorant/i;

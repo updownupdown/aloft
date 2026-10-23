@@ -17,11 +17,11 @@ import { createDev } from './dev.js';
 import { createToday } from './today.js';
 
 // where each section sits, whichever system adds it first; others follow in the order added
-const ORDER = { today: 0, map: 1, journal: 2, guide: 3, how: 4, play: 5 };
-const TITLES = { today: 'Today', map: 'Map', journal: 'Journal', guide: 'Guide', play: 'Settings', how: 'How to play' };
-const ICON_OF = { today: 'today', map: 'map', journal: 'journal', guide: 'guide', play: 'settings', how: 'how' };
-// older names: the Game section is Today now
-const ALIAS = { game: 'today' };
+const ORDER = { today: 0, map: 1, journal: 2, how: 4, play: 5 };
+const TITLES = { today: 'Today', map: 'Map', journal: 'Journal', play: 'Settings', how: 'How to play' };
+const ICON_OF = { today: 'today', map: 'map', journal: 'journal', play: 'settings', how: 'how' };
+// older names: the Game section is Today now, the Guide's pages are in the Journal
+const ALIAS = { game: 'today', guide: 'journal' };
 // Settings, a page each (title, order)
 const PAGES = { audio: ['Sound', 10], graphics: ['Graphics', 20], gameplay: ['Controls', 30], messages: ['Messages', 40], journey: ['Journey', 50], dev: ['Advanced', 60] };
 // groups of rows: the page each sits on, its heading (none: the pill names it) and its place on the page;
