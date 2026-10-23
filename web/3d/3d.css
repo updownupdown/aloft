@@ -10,6 +10,7 @@
   --moss: #3f5a35; --mossink: #2f4a27; --mosstint: rgba(63, 90, 53, .15); --clay: #a8492e;
   --blur: blur(14px) saturate(1.1); --shadow: 0 4px 16px rgba(40, 30, 20, .16);
   --indigo: #4f6f9e; --water: #3f78a8; --berry: #c0533f; --ochre: #b0791f; --leaf: #7f9a4e; --wood: #6f8f4e; --stone: #8f8577;
+  --dusk: rgba(28, 31, 34, .74); --dusk2: rgba(28, 31, 34, .86); --pale: #f4efe6; --pale2: rgba(244, 239, 230, .78);
   --title: 'Figtree', system-ui, sans-serif; --text: 'Figtree', system-ui, sans-serif;
 }
 * { box-sizing: border-box; }
@@ -278,7 +279,7 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .glass3 .top3 { flex: none; display: flex; align-items: center; gap: 6px; padding: 0 0 6px 6px; }
 .glass3 h1 { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; font-family: var(--text); font-size: 19px; font-weight: 600; }
 .logo3 { width: 28px; height: 28px; flex: none; border-radius: 7px; box-shadow: 0 1px 4px rgba(40, 30, 20, .2); }
-.glass3 .tabs3 { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 3px; overflow-y: auto; scrollbar-width: none; }
+.glass3 .tabs3 { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 3px; padding-bottom: 12px; overflow-y: auto; scrollbar-width: none; }
 .glass3 .tabs3::-webkit-scrollbar, .glass3 .subs3::-webkit-scrollbar { display: none; }
 .glass3 .tabs3 button { flex: 1 1 0; display: flex; align-items: center; gap: 10px; width: 100%; min-height: 42px; max-height: 62px; height: auto; padding: 0 14px; border: 0; border-radius: 99px; background: none; cursor: pointer;
   font-family: var(--text); font-size: 15px; font-weight: 500; color: var(--ink); text-align: left; transition: background .2s; }
@@ -287,7 +288,7 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .glass3 .tabs3 button.on { font-weight: 650; background: var(--btn); box-shadow: 0 1px 4px rgba(40, 30, 20, .12); }
 .glass3 .icb3 { flex: none; display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; padding: 0; border: 0; border-radius: 50%; cursor: pointer;
   background: rgba(42, 36, 32, .07); color: var(--ink); }
-.glass3 .resume3 { flex: none; display: flex; align-items: center; justify-content: center; gap: 8px; height: 48px; margin-top: 6px; padding: 0 18px; border: 0; border-radius: 99px; cursor: pointer;
+.glass3 .resume3 { flex: none; display: flex; align-items: center; justify-content: center; gap: 8px; height: var(--tabh, 48px); margin-top: 0; padding: 0 18px; border: 0; border-radius: 99px; cursor: pointer;
   background: var(--moss); color: #fff; font-family: var(--text); font-size: 16px; font-weight: 650; box-shadow: 0 3px 10px rgba(40, 30, 20, .22); }
 .glass3 .resume3 svg { flex: none; width: 15px; height: 15px; fill: #fff; stroke: #fff; stroke-width: 1.6; }
 .glass3 .resume3:active, .glass3 .icb3:active { transform: scale(.96); }
@@ -315,7 +316,7 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
   .glass3 .tabs3 { gap: 2px; }
   .glass3 .tabs3 button { min-height: 38px; }
   .glass3 .icb3 { width: 36px; height: 36px; }
-  .glass3 .resume3 { height: 44px; margin-top: 4px; }
+  .glass3 .tabs3 { padding-bottom: 8px; }
   .glass3 .subs3 h2 { font-size: 19px; margin: 6px 8px 10px; }
   .pagetabs3 button { min-height: 38px; font-size: 14px; }
   .glass3 .panes3 { padding: 12px 14px; }
@@ -541,11 +542,11 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 /* the Map's corners: top left where you are and how far the journey has come; top right the same
    day dial as in flight with the season in more detail; bottom left how to drop a pin */
 .mapsum3 { position: absolute; left: 12px; top: 12px; width: 200px; max-width: calc(100% - 200px); display: flex; flex-direction: column; gap: 9px; padding: 12px 14px 13px; border-radius: 18px;
-  background: var(--glass2); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); border: 1px solid var(--edge); box-shadow: var(--shadow); pointer-events: none; }
-.mapsum3 .here3 { margin: 0; font-size: 14px; font-weight: 600; line-height: 1.35; color: var(--ink); }
+  background: var(--dusk); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); box-shadow: var(--shadow); color: var(--pale2); pointer-events: none; }
+.mapsum3 .here3 { margin: 0; font-size: 14px; font-weight: 600; line-height: 1.35; color: var(--pale); }
 .mapsum3 .far3 { display: grid; gap: 4px; }
-.mapsum3 .far3 span { height: 5px; border-radius: 3px; background: rgba(42, 36, 32, .13); overflow: hidden; }
-.mapsum3 .far3 i { display: block; height: 100%; border-radius: 3px; background: var(--water); }
+.mapsum3 .far3 span { height: 5px; border-radius: 3px; background: rgba(244, 239, 230, .18); overflow: hidden; }
+.mapsum3 .far3 i { display: block; height: 100%; border-radius: 3px; background: var(--pale2); }
 .mapsum3 .far3 small { font-size: 11.5px; }
 .tally3 { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 8px; margin: 0; padding: 0; list-style: none; }
 .tally3 li { display: flex; align-items: baseline; gap: 5px; font-size: 12px; color: var(--ink2); line-height: 1.3; }
@@ -790,3 +791,23 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .lfirst3 b { font-size: 16px; color: var(--ink); }
 .lintro3 .lbtns3 { margin: 12px 0 0; }
 .lintro3 .lbtns3 .main3 { border: 0; background: var(--moss); color: #fff; }
+
+/* the Map's overlays are dark with pale text (James, 2026-10-23), so they sit quietly on the globe */
+.mapsum3 .far3 small, .mapsum3 .tally3 li { color: var(--pale2); } .mapsum3 .tally3 b { color: var(--pale); }
+.mapgo3 button, .mapbtn3 button, .mapnote3 { background: var(--dusk2); color: var(--pale); box-shadow: 0 1px 6px rgba(0, 0, 0, .25); }
+.mapgo3 svg, .mapbtn3 svg { stroke: var(--pale); } .mapbtn3 svg .dot { fill: var(--pale); }
+.mapbtn3 button:active { background: var(--dusk); }
+.mapnote3 small, .mapnote3 p { color: var(--pale2); }
+/* Settings > Graphics > Battery use: a small table of readings */
+.batt3 { margin: 8px 0 0; padding: 10px 14px 12px 16px; border-radius: 15px; background: var(--btn); box-shadow: 0 1px 4px rgba(40, 30, 20, .08); }
+.batt3 .bhead3 { display: flex; align-items: center; justify-content: space-between; min-height: 30px; font-size: 15px; }
+.batt3 .bclr3 { min-height: 30px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--btnedge); background: var(--btn); font: 500 12.5px var(--text); color: var(--ink); cursor: pointer; }
+.batt3 ul { list-style: none; margin: 6px 0 0; padding: 0; display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 7px 12px; }
+.batt3 li { display: contents; font-size: 14px; }
+.batt3 li > span { white-space: nowrap; }
+.batt3 li.now > span { font-weight: 650; }
+.batt3 li i { height: 6px; border-radius: 3px; background: var(--rule); overflow: hidden; }
+.batt3 li s { display: block; height: 100%; border-radius: 3px; background: var(--clay); }
+.batt3 li b { font-weight: 650; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.batt3 li small, .batt3 li b small { display: inline; font-size: 12px; font-weight: 500; color: var(--ink2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.batt3 p { margin: 8px 0 0; font-size: 12.5px; color: var(--ink2); }

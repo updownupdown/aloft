@@ -87,7 +87,7 @@ export function aimsSystem(G) {
   G.on('landmark', l => {
     const land = landOf(l.x, l.z), want = (W.LANDS || []).find(e => e.key === land)?.sight;
     if (land && want && (l.kind === want || (want === 'summit' && l.summit)) && !A.sights[land]) {
-      A.sights[land] = 1; G.hud.tally(`${BIOMES[land]?.label || 'This land'}: in your lands`, 'lands');
+      A.sights[land] = 1; G.hud.tally(`${BIOMES[land]?.label || 'This land'}: in your biomes`, 'lands');
     }
   });
 
@@ -106,7 +106,7 @@ export function aimsSystem(G) {
     life.el.classList.toggle('hidden', !L);
     if (L) life.body.innerHTML = `<p class="life3t">${esc(L.title)}${L.done ? ' <small>Done.</small>' : ''}</p><ul class="life3">${L.steps.map(s => `<li class="${s.done ? 'done' : ''}"><i></i><span>${esc(s.text)}</span>${s.need > 1 ? ` <small>${Math.min(s.n, s.need)} of ${s.need}</small>` : ''}</li>`).join('')}</ul>`;
     const n = KEYS.filter(k => A.seen[k]).length;
-    lands.body.innerHTML = `<p class="lands3sum">${n} of ${KEYS.length} lands flown over${(W.LANDS || []).length ? `, ${Object.keys(A.sights).length} sights found` : ''}.</p>
+    lands.body.innerHTML = `<p class="lands3sum">${n} of ${KEYS.length} biomes flown over${(W.LANDS || []).length ? `, ${Object.keys(A.sights).length} sights found` : ''}.</p>
       <div class="lands3">${KEYS.map(k => `<figure class="${A.seen[k] ? 'seen' : ''}"><img alt="" src="${pic(k)}"><figcaption>${A.seen[k] ? esc(cap(BIOMES[k].label)) : '?'}${A.sights[k] ? ' <b title="sight found">★</b>' : ''}</figcaption></figure>`).join('')}</div>`;
   });
   const cap = t => t.replace(/^the /, '').replace(/^./, c => c.toUpperCase());
@@ -131,7 +131,7 @@ export function aimsSystem(G) {
       if ((landT -= dt) <= 0) {
         landT = 2;
         const k = landOf(b.p[0], b.p[2]);
-        if (k && !A.seen[k]) { A.seen[k] = 1; if (Object.keys(A.seen).length > 1) { G.hud.tally(`New land: ${BIOMES[k]?.label || k}`, 'lands'); G.emit('newLand', k); } }
+        if (k && !A.seen[k]) { A.seen[k] = 1; if (Object.keys(A.seen).length > 1) { G.hud.tally(`New biome: ${BIOMES[k]?.label || k}`, 'lands'); G.emit('newLand', k); } }
       }
       if (G.thirst < drank || b.eating > 0) drank = G.thirst; else if (G.thirst - drank > .05 && b.state !== 'fly') { G.emit('drink'); drank = G.thirst; }
       if (b.asleep && !asleep) G.emit('sleep'); asleep = !!b.asleep;

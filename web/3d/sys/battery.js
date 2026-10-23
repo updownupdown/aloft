@@ -13,18 +13,27 @@ export function batterySystem(G) {
   const restart = () => { t = 0; mixed = false; primed = false; level = bat?.level ?? null; setting = now(); };
 
   const rate = k => { const e = log[k]; return e && e.n ? e.n / e.s * 3600 : null; };
-  const sub = () => {
-    if (!navigator.getBattery) return 'this browser does not report the battery';
+  // the last row of Settings > Graphics: a small table, one line per setting measured (lightest first),
+  // a bar for its share of the hungriest, then %/hour and how long it was timed
+  const box = document.createElement('div'); box.className = 'batt3';
+  G.menu.button('play', { label: 'Battery use', group: 'app' }).replaceWith(box);
+  box.dataset.row = 90;
+  let sure = false;
+  const draw = () => {
     const rows = Object.keys(log).filter(k => log[k].n).sort((a, q) => rate(a) - rate(q));
-    if (!rows.length) return 'play on battery for 10-20 minutes per setting to measure';
-    return rows.map(k => `${k}: ${rate(k).toFixed(0)}%/h (${Math.round(log[k].s / 60)} min)`).join(' · ');
+    const top = Math.max(...rows.map(rate), 1);
+    const note = !navigator.getBattery ? 'This browser does not report the battery.'
+      : bat?.charging ? 'Charging: unplug and play to measure.'
+      : `Measuring now: ${now()}. Play on battery 10 to 20 minutes per setting.`;
+    box.innerHTML = `<div class="bhead3"><b>Battery use</b>${rows.length ? `<button class="bclr3">${sure ? 'Tap again to clear' : 'Clear'}</button>` : ''}</div>
+      ${rows.length ? `<ul>${rows.map(k => `<li${k === now() ? ' class="now"' : ''}><span>${k}</span><i><s style="width:${rate(k) / top * 100}%"></s></i><b>${rate(k).toFixed(0)}% <small>/ hour</small></b><small>${Math.round(log[k].s / 60)} min</small></li>`).join('')}</ul>` : ''}
+      <p>${note}</p>`;
+    box.querySelector('.bclr3')?.addEventListener('click', () => {
+      if (sure) { for (const k in log) delete log[k]; G.store.set(KEY, log); }
+      sure = !sure; draw();
+    });
   };
-  const row = G.menu.button('play', { label: 'Battery use', sub: sub(), group: 'app', onClick: el => {
-    if (el.dataset.sure) { for (const k in log) delete log[k]; G.store.set(KEY, log); delete el.dataset.sure; }
-    else el.dataset.sure = 1;
-    el.querySelector('em').textContent = el.dataset.sure ? 'tap again to clear the readings' : sub();
-  } });
-  G.menu.onOpen(() => { delete row.dataset.sure; row.querySelector('em').textContent = sub(); });
+  G.menu.onOpen(() => { sure = false; draw(); });
 
   return {
     id: 'battery',
