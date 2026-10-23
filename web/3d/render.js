@@ -2,7 +2,7 @@
 // water, thermal motes. One lit shader with two-sided faces, hemisphere light, haze toward the
 // horizon colour and a paper grain, so it stays in Aloft's palette at very little cost.
 import { program, mesh, perspective, lookAt, mul, basis, IDENT } from './gl.js';
-import { CHUNK, chunkMesh, cellsFor, treesNear, ringsNear, height, normalAt, thermalsNear, thermalCentre, TREE, perchesOf, env, WORLD } from './world.js';
+import { CHUNK, chunkMesh, cellsFor, treesNear, ringsNear, height, normalAt, thermalsNear, thermalCentre, TREE, perchesOf, env, WORLD, WIND } from './world.js';
 import { ring, cloud, TREE_LOOKS } from './shapes.js';
 import { buildHawk, HAWK_SCALE } from './hawk.js';
 
@@ -11,34 +11,23 @@ const POLE = [0, .64, -.768], NOMARKS = new Float32Array(12), NOMARKK = new Floa
 // instanced shapes that are cloud: see-through when the camera is close or inside
 const CLOUDY = new Set(['cloud', 'storm', 'puff', 'lens', 'devil']);
 // shape -> [its far twin, metres]: the soaring hawks of a kettle (fauna.js) are a few pixels past 70 m
+// the wind's way over the water (the swells run along it)
+const SEA_D = (() => { const l = Math.hypot(WIND[0], WIND[2]); return [WIND[0] / l, WIND[2] / l]; })(), clamp01 = v => Math.min(1, Math.max(0, v));
+// the small plants that sway in the breeze as the trees do (INST_VS), much more for their size
+const GRASSY = new Set(['tuft', 'tuft1', 'tuft2', 'tuft3', 'flowerY', 'flowerW', 'flowerP', 'reeds', 'hay']);
 const LOD = { soar: ['soarFar', 70] };
 // instanced shapes that hoar frost whitens (the plants and stones; not the animals)
-const FROSTY = new Set(['tuft', 'scrub', 'bush', 'gorse', 'sage', 'thorn', 'heath', 'reeds', 'stone', 'flowerY', 'flowerW', 'flowerP', 'hay', 'hayLaid', 'bale', 'barrel']);
+const FROSTY = new Set(['tuft', 'tuft1', 'tuft2', 'tuft3', 'scrub', 'bush', 'gorse', 'sage', 'thorn', 'heath', 'reeds', 'stone', 'flowerY', 'flowerW', 'flowerP', 'hay', 'hayLaid', 'bale', 'barrel']);
 const COMMON_FS = `
 uniform vec3 uCam, uSun, uSunCol, uSkyAmb, uGndAmb, uFogCol, uFocus;
 uniform vec3 uZenith;
 uniform float uFogDen, uDither, uSeek, uCut, uFade, uWater, uLift, uTime;
-uniform vec4 uShadeC[8], uFrost; uniform vec2 uFrostDir;
+uniform vec4 uShadeC[8], uFrost, uSwell; uniform vec2 uFrostDir;
 in vec3 vPos, vNrm, vCol, vColB; in float vLeaf, vFade, vGone;
 out vec4 frag;
 float h21(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
 float vn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f);
   return mix(mix(h21(i), h21(i + vec2(1, 0)), f.x), mix(h21(i + vec2(0, 1)), h21(i + vec2(1, 1)), f.x), f.y); }
-// The water is drawn here, on whatever lies under it (the ground, a fish, the hawk's feet), not
-// as a plane of its own: where the view ray crosses the surface (P) it takes the surface's look,
-// seen through as much as the water is shallow (depth). No second surface, so nothing can fight
-// at the shoreline, and no extra pass over the screen. The look is painted: flat bands of colour
-// from the shallows out to the deep, a white line where it meets the shore, the sky faintly in it
-// at a low angle. No wave noise, so it costs only a few sums per water pixel.
-vec4 waterAt(vec3 P, float depth) {
-  vec3 v = normalize(uCam - P), lit = uSkyAmb + uSunCol * .6;
-  float fr = .25 + .75 * pow(1. - max(v.y, 0.), 3.);
-  vec3 sky = mix(uFogCol, uZenith, pow(max(v.y, 0.), .55));
-  float foam = 1. - smoothstep(.04, .2, depth), band = floor(smoothstep(0., 3.5, depth) * 4.) / 3.;
-  vec3 c = mix(vec3(.42, .66, .62), vec3(.16, .32, .42), band) * lit;
-  c = mix(c, sky, .12 + fr * .2);
-  return vec4(mix(c, vec3(.95) * lit, foam * .8), mix(.55, 1., smoothstep(0., .6, depth)));
-}
 // the drifting clouds' shadows (sys/air.js S.shadeC: x, z, radius, depth): soft discs that take
 // some of the sun off whatever is under them
 float sunlit(vec3 p) {
@@ -46,6 +35,49 @@ float sunlit(vec3 p) {
   float s = 0.;
   for (int i = 0; i < 8; i++) { vec4 c = uShadeC[i]; if (c.z <= 0.) break; s = max(s, c.w * smoothstep(c.z, c.z * .55, length(p.xz - c.xy))); }   // nearest first; none left, stop
   return 1. - s;
+}
+// The water is drawn here, on whatever lies under it (the ground, a fish, the hawk's feet), not
+// as a plane of its own: where the view ray crosses the surface (P) it takes the surface's look,
+// seen through as much as the water is shallow (depth). No second surface, so nothing can fight
+// at the shoreline, and no extra pass over the screen. The surface stays flat, but it is shaded as
+// low-poly waves: a triangle grid whose corners ride the swell (sys/swells.js, the same phase) and
+// a wind chop, so each facet tilts and catches the sky, the sun's glitter and the clouds' shadows
+// on its own; whitecaps break on the crests in a wind, and slow slicks and gusts darken the sea.
+// uSwell: the wind's way (x, z), the swell's strength here (0 lakes .. 1 the soaring ocean), the wind.
+float waveH(vec2 p) {
+  vec2 d = uSwell.xy, e = vec2(-d.y, d.x), d1 = normalize(d + e * .55), d2 = normalize(d - e * .6);
+  float t = uTime, chop = .14 + .3 * uSwell.w;
+  return 1.8 * uSwell.z * sin((dot(p, d) - 12. * t) * .0661)               // the swell: 95 m long, 12 m/s downwind (swells.js)
+    + chop * (sin(dot(p, d1) * .45 - t * 2.1) + .7 * sin(dot(p, d2) * .7 - t * 2.6) + .45 * sin(dot(p, e) * 1.3 + t * 3.4));
+}
+vec4 waterAt(vec3 P, float depth) {
+  vec3 v = normalize(uCam - P), lit = uSkyAmb + uSunCol * .6;
+  float dist = length(uCam - P), near = 1. - smoothstep(90., 480., dist);
+  // the facet under P: a lattice of 6 m triangles laid along the wind, its corners lifted by the waves
+  vec2 ax = uSwell.xy * 6., bx = (uSwell.xy * .5 + vec2(-uSwell.y, uSwell.x) * .866) * 6.;
+  vec2 g = inverse(mat2(ax, bx)) * P.xz, i = floor(g), f = g - i, c1 = f.x > f.y ? vec2(1, 0) : vec2(0, 1);
+  mat2 L = mat2(ax, bx);
+  vec2 a2 = L * i, b2 = L * (i + c1), e2 = L * (i + 1.);
+  vec3 A = vec3(a2.x, waveH(a2), a2.y), B = vec3(b2.x, waveH(b2), b2.y), C = vec3(e2.x, waveH(e2), e2.y);
+  vec3 n = normalize(cross(C - A, B - A)); if (n.y < 0.) n = -n;
+  n = normalize(mix(vec3(0, 1, 0), vec3(n.x * 2.2, n.y, n.z * 2.2), near));   // tilts a little steeper to read, and settle with distance
+  float sun = sunlit(P);
+  vec3 r = reflect(-v, n);
+  float fr = .2 + .7 * pow(1. - max(dot(v, n), 0.), 3.);
+  vec3 sky = mix(uFogCol, uZenith, pow(max(r.y, 0.), .55));
+  float band = floor(smoothstep(0., 3.5, depth) * 4.) / 3.;
+  // slow patches: wind slicks and darker gusts drifting downwind, so a wide water isn't one colour
+  float slick = vn(P.xz / 240. - uSwell.xy * uTime * .02) * .6 + vn(P.xz / 70. + uTime * .03) * .4;
+  vec3 c = mix(vec3(.42, .66, .62), mix(vec3(.16, .32, .42), vec3(.13, .27, .4), slick), band) * lit;
+  c *= (.86 + .3 * max(dot(n, uSun), 0.)) * (.78 + .22 * sun);
+  c = mix(c, sky, (.1 + fr * .28) * (.85 + .3 * slick));
+  // the sun's glitter: whole facets flash where they mirror the sun (kept soft)
+  c += uSunCol * pow(max(dot(r, uSun), 0.), 90.) * .55 * sun * near;
+  // whitecaps on the crests in a wind, a few facets at a time
+  float crest = (A.y + B.y + C.y) / 3., wind = clamp(uSwell.z + uSwell.w - .35, 0., 1.);
+  float cap = step(h21(i * 1.7 + c1 * 9. + floor(uTime * .5)), wind * .1) * smoothstep(.8, 1.8, crest) * near;
+  float foam = max(1. - smoothstep(.04, .2, depth), cap * .8);
+  return vec4(mix(c, vec3(.95) * lit, foam * .8), mix(.55, 1., smoothstep(0., .6, depth)));
 }
 // hoar frost (sys/skydays.js S.frost: amount, the melt line, where it is measured from): white
 // where the line hasn't passed; it goes first from ground facing the sun and nearer the sun's side
@@ -145,7 +177,7 @@ void main() {
 const INST_VS = `#version 300 es
 layout(location=0) in vec3 aPos; layout(location=1) in vec3 aNrm; layout(location=2) in vec3 aCol; layout(location=3) in vec3 aColB;
 layout(location=4) in vec4 iA; layout(location=5) in vec4 iB;
-uniform mat4 uVP; uniform float uTime, uSway, uSnowLine; uniform vec3 uAutumn;
+uniform mat4 uVP; uniform float uTime, uSway, uSnowLine; uniform vec3 uAutumn; uniform vec2 uWindD;
 
 out vec3 vPos, vNrm, vCol, vColB; out float vLeaf, vFade, vGone;
 void main() {
@@ -158,8 +190,12 @@ void main() {
   p.xz = vec2(c * p.x - s * p.z, s * p.x + c * p.z);
   // a turn past 1.5 means bare (winter broadleaves): the leaves fold to nothing on the trunk's axis
   p.xz *= 1. - step(1.5, iB.z) * leafy;
-  float sway = sin(uTime * 1.1 + iB.w) * aPos.y * aPos.y * uSway * iA.w;
-  p.x += sway; p.z += sway * .6;
+  // sway: each plant's own small rhythm, under waves of breeze rolling across the land downwind
+  // (about 50 m apart at 9 m/s), so a meadow or a wood moves together in passing swells, leaning
+  // with the wind and easing back
+  float wave = sin(dot(iA.xz, uWindD) * .12 - uTime * 1.1 + sin(dot(iA.xz, vec2(-uWindD.y, uWindD.x)) * .05) * 1.5);
+  float sway = (.35 * sin(uTime * 1.3 + iB.w + iA.x * .7) + .45 * wave + .35) * aPos.y * aPos.y * uSway * iA.w;
+  p.xz += uWindD * sway;
   vPos = p + iA.xyz;
   vec3 n = aNrm; n.xz = vec2(c * n.x - s * n.z, s * n.x + c * n.z); vNrm = n;
   // leaves (greenish vertices) take a per-tree tint and the season's turn
@@ -457,7 +493,7 @@ export function createRenderer(gl) {
   function setLight(P, S) {
     gl.uniform3fv(P.u.uCam, S.cam); gl.uniform3fv(P.u.uSun, S.sun); gl.uniform3fv(P.u.uSunCol, S.sunCol);
     gl.uniform3fv(P.u.uSkyAmb, S.skyAmb); gl.uniform3fv(P.u.uGndAmb, S.gndAmb); gl.uniform3fv(P.u.uFogCol, S.horizon);
-    gl.uniform1f(P.u.uFogDen, S.fogDen); gl.uniform3fv(P.u.uFocus, S.focus); gl.uniform1f(P.u.uDither, 0); gl.uniform1f(P.u.uCut, 0); gl.uniform1f(P.u.uFade, 0); gl.uniform1f(P.u.uWater, S.water ?? 0); gl.uniform1f(P.u.uLift, 0); gl.uniform3fv(P.u.uZenith, S.zenith); gl.uniform1f(P.u.uTime, S.time); if (P.u.uSeek) gl.uniform1f(P.u.uSeek, S.seek || 0);
+    gl.uniform1f(P.u.uFogDen, S.fogDen); gl.uniform3fv(P.u.uFocus, S.focus); gl.uniform1f(P.u.uDither, 0); gl.uniform1f(P.u.uCut, 0); gl.uniform1f(P.u.uFade, 0); gl.uniform1f(P.u.uWater, S.water ?? 0); gl.uniform1f(P.u.uLift, 0); gl.uniform3fv(P.u.uZenith, S.zenith); gl.uniform1f(P.u.uTime, S.time); if (P.u.uSeek) gl.uniform1f(P.u.uSeek, S.seek || 0); if (P.u.uSwell) gl.uniform4fv(P.u.uSwell, [SEA_D[0], SEA_D[1], S.swell ?? 0, clamp01(S.wind ?? .3)]);
     gl.uniform4fv(P.u.uShadeC, shadeC(S)); gl.uniform4fv(P.u.uFrost, S.frost || NOFROST); gl.uniform2fv(P.u.uFrostDir, S.frostDir || [1, 0]);
   }
   // the cloud shadows as 8 vec4s (unused ones radius 0)
@@ -496,9 +532,11 @@ export function createRenderer(gl) {
     // props: anything instanced that a system adds (rings, mice, flora, marks...)
     gl.useProgram(solidInst.p); setLight(solidInst, S);
     gl.uniformMatrix4fv(solidInst.u.uVP, false, vp); gl.uniform1f(solidInst.u.uTime, S.time); gl.uniform3fv(solidInst.u.uAutumn, S.autumnCol); gl.uniform1f(solidInst.u.uSnowLine, S.snowLine ?? 999);
-    gl.uniform1f(solidInst.u.uSway, 0);
+    gl.uniform1f(solidInst.u.uSway, 0); gl.uniform2fv(solidInst.u.uWindD, SEA_D);
+    const grassSway = .3 + S.wind * .45; let swaying = false;
     const prop = (key, again = false) => {
       const d = S.props[key], m = shapes.get(key); if (!m || !d.length) return;
+      const sw = GRASSY.has(key); if (sw !== swaying) { swaying = sw; gl.uniform1f(solidInst.u.uSway, sw ? grassSway : 0); }   // the grass and flowers bend in the breeze
       if (!again) upload(m.ibuf, d);   // (the clouds draw twice, depth then colour: one upload)
       gl.bindVertexArray(m.vao); gl.drawArraysInstanced(gl.TRIANGLES, 0, m.count, d.length / 8); tris += m.count / 3 * d.length / 8;
     };
@@ -510,6 +548,7 @@ export function createRenderer(gl) {
       S.props[key] = near;
     }
     for (const key in S.props) if (!CLOUDY.has(key)) { pf?.pass(R.propPasses ? key : 'props'); if (S.frost) gl.uniform4fv(solidInst.u.uFrost, FROSTY.has(key) ? S.frost : NOFROST); prop(key); }
+    if (swaying) gl.uniform1f(solidInst.u.uSway, 0);
 
     // ground: only the chunks inside the view (their box against the frustum's sides), nearest first
     pf?.pass('ground');
@@ -537,7 +576,7 @@ export function createRenderer(gl) {
     pf?.pass('trees');
     gl.useProgram(inst.p); setLight(inst, S);
     gl.uniformMatrix4fv(inst.u.uVP, false, vp); gl.uniform1f(inst.u.uTime, S.time); gl.uniform3fv(inst.u.uAutumn, S.autumnCol); gl.uniform1f(inst.u.uSnowLine, S.snowLine ?? 999);
-    gl.uniform1f(inst.u.uSway, .012 + S.wind * .02); gl.uniform1f(inst.u.uDither, 1);
+    gl.uniform1f(inst.u.uSway, .012 + S.wind * .02); gl.uniform2fv(inst.u.uWindD, SEA_D); gl.uniform1f(inst.u.uDither, 1);
     for (const k of kinds) for (const m of [k.near, k.far]) {
       if (!m.icount) continue;
       gl.uniform1f(inst.u.uFade, m === k.near ? 1 : 2);

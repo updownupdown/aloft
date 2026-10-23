@@ -60,6 +60,7 @@ export function swellsSystem(G) {
       if (gainT > 1.5 && !said && !G.flags.dynSoar) { said = true; G.flags.dynSoar = 1; H.glint('Dynamic soaring', 'The wind gives you speed as you climb into it: dynamic soaring, the albatross way.', 'glide'); H.did('swells'); }
     },
     scene(S) {
+      S.swell = sea;   // the water's shading rides the same swell (render.js waveH)
       if (sea < .05) return;
       // whitecaps: broken pale lines along the crests near the bird, moving downwind with them
       const out = S.surface ||= [], cx = b.p[0], cz = b.p[2];
