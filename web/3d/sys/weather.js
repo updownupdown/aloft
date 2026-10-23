@@ -301,7 +301,7 @@ export function weatherSystem(G) {
       if (L.night > .05) {
         const D = 700;
         // where the moonlight comes from (sky.js: L.sun is the moon's at night)
-        if (L.el < -.05) { S.moon = [...L.sun, G.moonPhase || 0]; S.moonK = Math.max(0, Math.min(1, (L.night - .35) / .4)) * (1 - ov); }
+        { const sd = L.sunSky, md = norm([-sd[0], .6, -sd[2]]); S.moon = [...md, G.moonPhase || 0]; S.moonK = Math.max(0, Math.min(1, (L.night - .35) / .4)) * (1 - ov); }   // where the moonlight comes from at night (sky.js)
         for (const m of meteors) {
           const f = m.t / m.life;
           for (let i = 0; i < 8; i++) {

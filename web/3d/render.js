@@ -411,8 +411,11 @@ void main() {
   vec3 d = normalize(b.xyz / b.w - a.xyz / a.w);
   float up = max(d.y, 0.);
   vec3 c = skyBase(d, up);
-  float sd = max(dot(d, uSun), 0.);
-  c += uSunCol * (pow(sd, 12.) * .25 * (1. - uNight * .5) + pow(sd, 900.) * 1.2 * (1. - uNight));   // at night uSun is the moonlight: a glow round the moon
+  // the sun's glow from the real sun (uSunSky: uSun turns over to the moonlight as it sets, and the
+  // glow went with it in a jump), and a soft one round the moon
+  float sd = max(dot(d, uSunSky), 0.);
+  c += uSunCol * (pow(sd, 12.) * .25 + pow(sd, 900.) * 1.2) * (1. - uNight);
+  c += uSunCol * pow(max(dot(d, uMoon.xyz), 0.), 12.) * .14 * uMoonK;
   float cl = 0.;
   if (d.y > .02) {
     vec2 q = d.xz / (d.y + .08) * 1.6 + vec2(uTime * .004, 0.);
@@ -437,7 +440,7 @@ void main() {
     if (dot(d, m) > 0. && r < 6.) {
       float fw = fwidth(r), disc = 1. - smoothstep(1. - fw, 1. + fw, r);
       vec3 n = vec3(uv, sqrt(max(0., 1. - r * r)));
-      vec2 s2 = vec2(dot(uSunSky, mr), dot(uSunSky, mu)); s2 = dot(s2, s2) > 1e-4 ? normalize(s2) : vec2(1., 0.);
+      vec2 s2 = vec2(0., 1.);   // the sun is down behind you, over the top of the sky: the bright limb is the top (from the sun's place it swung about as the sky raced round in sleep)
       float ph = uMoon.w * 6.2832, lit = smoothstep(-.04, .08, dot(n, vec3(s2 * sin(ph), -cos(ph))));
       float sea = vn(uv * 1.7 + 3.) * .7 + vn(uv * 3.9 + 9.) * .3;
       vec3 face = vec3(.97, .95, .88) * mix(1., .76, smoothstep(.42, .72, sea)) * (.78 + .22 * n.z);

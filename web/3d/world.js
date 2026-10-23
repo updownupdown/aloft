@@ -168,7 +168,10 @@ function riverCut(x, z, h) {
   // the valley sides, and the bank over the water: a steep cut on the outer side, a low
   // shelving bar on the inner
   const s = smooth(r.w, bank, r.d), y = bed + (h - bed) * s, lip = 2 + s1 * 1.6, run = 4 - s1 * 2.5;
-  return r.d > r.w ? Math.max(y, Math.min(h, lip * smooth(r.w, r.w + run, r.d))) : y;
+  const cut = r.d > r.w ? Math.max(y, Math.min(h, lip * smooth(r.w, r.w + run, r.d))) : y;
+  // and the whole valley fades out with the river (where riverAt gives up it was still a full
+  // cut: a sheer wall across the valley's end, James 2026-10-23)
+  return h + (cut - h) * smooth(.02, .09, r.m);
 }
 export function normalAt(x, z) {
   const e = 1.5, hx = height(x + e, z) - height(x - e, z), hz = height(x, z + e) - height(x, z - e);
@@ -198,6 +201,7 @@ export const forest = (x, z) => forestOf(x, z, blend(x, z));
 
 // ---- colours -------------------------------------------------------------------------------
 const mixc = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+let facet = 2;   // the facet size of the chunk being built (chunkMesh), for the railway's ballast
 function groundColour(x, y, z, ny, bl = blend(x, z)) {
   const steep = 1 - ny;
   let c = [0, 0, 0], own = 0, noSnow = 0, sandy = 0;
@@ -231,8 +235,10 @@ function groundColour(x, y, z, ny, bl = blend(x, z)) {
   const rd = y > .3 ? roadShade(x, z) : 0;
   if (rd > 0) c = mixc(c, [.74, .66, .5], rd * (.6 + .4 * smooth(-.3, .25, fbm(x / 70, z / 70, 695, 2))));
   // the railway's ballast, grey stone with grass coming through
-  const bal = y > .3 ? railShade(x, z) : 0;
-  if (bal > 0) c = mixc(c, [.5, .48, .45], bal * (.65 + .35 * smooth(-.3, .3, fbm(x / 9, z / 9, 696, 2))));
+  // (as wide as two facets of the chunk being built, and soft: a strip narrower than a facet caught
+  // only some of them and read from afar as a dark dashed line; none on the coarsest ground)
+  const bal = y > .3 && facet < 4 ? railShade(x, z, Math.max(2.6, facet * 1.6)) : 0;
+  if (bal > 0) c = mixc(c, [.58, .55, .5], bal * .55 * (.65 + .35 * smooth(-.3, .3, fbm(x / 9, z / 9, 696, 2))));
   // snow on the heights, and in winter right down to the meadows (not on cliffs, not below water);
   // lower toward the poles, where the ice and the tundra keep some all year
   const line = snowLine(lat, env.yearFrac);
@@ -250,6 +256,7 @@ export function mapColour(x, z) {
 // size: a far tile (render.js) is one big coarse chunk, sunk a little (drop) under the near ground
 export function chunkMesh(cx, cz, N = CELLS, size = CHUNK, drop = 0) {
   const C = size / N, x0 = cx * size, z0 = cz * size;
+  facet = C;
   const H = new Float32Array((N + 1) * (N + 1));
   for (let j = 0; j <= N; j++) for (let i = 0; i <= N; i++) H[j * (N + 1) + i] = height(x0 + i * C, z0 + j * C) - drop;
   // the open sea floor is dead flat: one cell is the same picture as a thousand (its edges match
@@ -260,10 +267,16 @@ export function chunkMesh(cx, cz, N = CELLS, size = CHUNK, drop = 0) {
   for (let j = 0; j < N; j += bs) for (let i = 0; i < N; i += bs) BL.push(blend(x0 + (i + bs / 2) * C, z0 + (j + bs / 2) * C));
   const out = new Float32Array((N * N * 2 + N * 8) * 3 * 12); let o = 0, bl = null, skirt = false;
   const bake = lookBakes(x0, z0, N, size, C, H, drop);
+  // the ground's slope at an edge point of the grid (for the skirts: lit as the ground they hang
+  // from, not as a wall, which showed as dark dashes along the seams wherever one peeked out)
+  const at = (i, j) => H[Math.max(0, Math.min(N, j)) * (N + 1) + Math.max(0, Math.min(N, i))];
+  const slope = (i, j) => { const gx = (at(i + 1, j) - at(i - 1, j)) / (2 * C), gz = (at(i, j + 1) - at(i, j - 1)) / (2 * C), l = Math.hypot(gx, 1, gz); return [-gx / l, 1 / l, -gz / l]; };
+  let skirtN = null;
   const tri = (ax, ay, az, bx, by, bz, cx_, cy, cz_) => {
     let ux = bx - ax, uy = by - ay, uz = bz - az, vx = cx_ - ax, vy = cy - ay, vz = cz_ - az;
     let nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx; const l = Math.hypot(nx, ny, nz) || 1; nx /= l; ny /= l; nz /= l;
-    const mx = (ax + bx + cx_) / 3, mz = (az + bz + cz_) / 3, col = groundColour(mx, (ay + by + cy) / 3, mz, skirt ? 1 : Math.abs(ny), bl);
+    if (skirtN) [nx, ny, nz] = skirtN;
+    const mx = (ax + bx + cx_) / 3, mz = (az + bz + cz_) / 3, col = groundColour(mx, (ay + by + cy) / 3, mz, Math.abs(ny), bl);
     // a faint per-facet shade, so the ground reads as cut facets rather than noise
     const k = 1 + (ih(Math.floor(mx * 3), Math.floor(mz * 3), 77) - .5) * .05; col[0] *= k; col[1] *= k; col[2] *= k;
     let back = col;
@@ -291,6 +304,7 @@ export function chunkMesh(cx, cz, N = CELLS, size = CHUNK, drop = 0) {
     for (const [i0, j0, i1, j1] of [[e, 0, e + 1, 0], [e + 1, N, e, N], [0, e + 1, 0, e], [N, e, N, e + 1]]) {
       bl = BL[Math.floor(Math.min(j0, N - 1) / bs) * bn + Math.floor(Math.min(i0, N - 1) / bs)];
       const xa = x0 + i0 * C, za = z0 + j0 * C, xb = x0 + i1 * C, zb = z0 + j1 * C, ha = H[j0 * (N + 1) + i0], hb = H[j1 * (N + 1) + i1];
+      skirtN = slope((i0 + i1) / 2 | 0, (j0 + j1) / 2 | 0);
       tri(xa, ha, za, xb, hb, zb, xb, hb - S, zb); tri(xa, ha, za, xb, hb - S, zb, xa, ha - S, za);
     }
   }

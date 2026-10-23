@@ -135,7 +135,7 @@ export function railCut(x, z, h) {
   return Math.min(Math.max(h, n.g - k * .7), n.g + k * 1.1);
 }
 // ballast on the bed (0..1), for the ground's colour
-export function railShade(x, z) { const n = nearest(x, z); return n && n.grade && n.d < 2.6 ? 1 - n.d / 2.6 * .6 : 0; }
+export function railShade(x, z, w = 2.6) { const n = nearest(x, z); return n && n.grade && n.d < w ? 1 - n.d / w * .6 : 0; }
 export function railNear(x, z) { const n = nearest(x, z); return n ? n.d : 1e9; }
 
 export function railsNear(x, z, r) {

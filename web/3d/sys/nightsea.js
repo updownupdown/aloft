@@ -25,7 +25,8 @@ export function nightSeaSystem(G) {
     const dt = Math.min(.1, Math.max(0, S.time - lastT)); lastT = S.time;
     const f = [S.look[0] - S.cam[0], S.look[1] - S.cam[1], S.look[2] - S.cam[2]], fl = Math.hypot(...f) || 1;
     let pick = -1, best = 1;
-    if ((S.night || 0) > .5 && (S.overcast || 0) < .5) for (let i = 0; i < CENTRES.length; i++) {
+    // (not while asleep: the view looks up at the turning sky)
+    if ((S.night || 0) > .5 && (S.overcast || 0) < .5 && !b.asleep) for (let i = 0; i < CENTRES.length; i++) {
       const c = skyDir(CENTRES[i], S.pole, S.starA || 0); if (c[1] < .1) continue;
       const a = Math.acos(Math.min(1, (f[0] * c[0] + f[1] * c[1] + f[2] * c[2]) / fl)) / (GAZE.near + SPANS[i] * .6);
       if (a < best) { best = a; pick = i; }
