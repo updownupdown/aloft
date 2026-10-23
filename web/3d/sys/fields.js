@@ -1,6 +1,6 @@
 // Hunting with your head (round eight A1, A3, A4, A5): clues that tell you where the food is.
-// A1 signs to read from the air: a mouse's track across fresh snow to its hole, and the grazed
-// rings where hares feed. (Vole runways were removed: James found the pale lines confusing.)
+// A1 signs to read from the air: a mouse's track across fresh snow to its hole. (Vole runways and
+// the hares' grazed rings were removed: James found the pale lines and circles confusing.)
 // A3 the hay meadows (each farm's paddock) through the year: short and open in early spring,
 // tall by midsummer (a still mouse in it can't be made out), laid flat by a storm, mown in
 // autumn with bales left lying. A4 a fox mousing the field edges at dusk and dawn: where it
@@ -175,16 +175,9 @@ export function fieldsSystem(G) {
       for (const q of v) out.push(q[0], q[1], q[2], col[0], col[1], col[2], a * e);
     }
   }
-  function ring(out, x, z, r, w, col, a) {
-    const N = 18;
-    for (let i = 0; i < N; i++) {
-      const a0 = i / N * 6.283, a1 = (i + 1) / N * 6.283, p = (q, rr) => { const px = x + Math.cos(q) * rr, pz = z + Math.sin(q) * rr; return [px, groundAt(px, pz) + .1, pz]; };
-      for (const q of [p(a0, r - w), p(a1, r - w), p(a1, r + w), p(a0, r - w), p(a1, r + w), p(a0, r + w)]) out.push(q[0], q[1], q[2], col[0], col[1], col[2], a);
-    }
-  }
 
-  G.dev?.add({ id: 'r8-signs', title: 'Signs to read: tracks in snow, grazed rings', area: 'Food and water', round: 'R8 A1',
-    how: 'Fly 20 to 120 m over open grass near a farm: in snow a track leads to a mouse hole; hares graze rings.', go: () => toFarm(60) });
+  G.dev?.add({ id: 'r8-signs', title: 'Signs to read: tracks in snow', area: 'Food and water', round: 'R8 A1',
+    how: 'Fly 20 to 120 m over open grass near a farm: in snow a track leads to a mouse hole.', go: () => toFarm(60) });
   G.dev?.add({ id: 'r8-hay', title: 'Hay meadows through the year', area: 'Food and water', round: 'R8 A3',
     how: "Each farm's paddock: short in spring, tall in summer (still mice hide in it), laid flat after a storm, mown with bales in autumn.", go: () => toFarm(30) });
   G.dev?.add({ id: 'r8-fox', title: 'A fox mousing at dusk', area: 'Wildlife', round: 'R8 A4',
@@ -251,10 +244,6 @@ export function fieldsSystem(G) {
             (S.props.burrow ||= []).push(m.bx, groundAt(m.bx, m.bz) + .02, m.bz, 1.3, 0, .5, 0, 0);
           }
         }
-      }
-      for (const o of G.prey || []) if (o.kind === 'jackrabbit' || o.kind === 'rabbit' || o.kind === 'marmot') {
-        const d = Math.hypot(o.hx - cam[0], o.hz - cam[2]); if (d > r) continue;
-        ring(out, o.hx, o.hz, 3.6, .6, [.86, .84, .56], .18 * vis * smooth(r, r * .7, d));
       }
     },
   };
