@@ -67,6 +67,7 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .alt b:empty { display: none; }
 .alt.still .tape { opacity: .45; }
 .alt.still .ptr { display: none; }
+#ui3 .alt:not(.still) { opacity: 1 !important; }   /* flying: height and speed always show, whatever is open */
 
 /* top middle: the compass, a strip of the sky ahead, its edges fading out */
 .compass3 { position: absolute; left: 50%; top: calc(12px + env(safe-area-inset-top)); transform: translateX(-50%); width: min(320px, 38vw); height: 34px;
@@ -456,8 +457,9 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 
 /* the Map tab: the map fills the whole pane, its note and buttons float on it */
 .mappane3:not(.hidden) { display: flex; flex-direction: column; height: 100%; }
-.mapbox3 { position: relative; flex: 1; min-height: 180px; overflow: hidden; background: #e6ecef; }
+.mapbox3 { position: relative; flex: 1; min-height: 180px; overflow: hidden; background: #1a242c; }
 .mapbox3 canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+.mapbox3 canvas.mapover3 { pointer-events: none; }
 /* the Map's corners: top left where you are and how far the journey has come; top right the same
    day dial as in flight with the season in more detail; bottom left how to drop a pin */
 .mapsum3 { position: absolute; left: 12px; top: 12px; width: 200px; max-width: calc(100% - 200px); display: flex; flex-direction: column; gap: 9px; padding: 12px 14px 13px; border-radius: 18px;
