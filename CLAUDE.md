@@ -32,6 +32,7 @@ web/3d/world.js         terrain height(x,z) (coasts from earth.js, islands, pack
 web/3d/earth.js         the Earth under the world: coastDist, earthBiome, continentAt, latLon/toXZ, oceanAt (each ocean's way across), regionAt, calendar (yearFrac, dateOf, seasonAt, snowLine)
 web/3d/earthdata.js     baked grids for earth.js (made by tools/earth/bake.py from Natural Earth; do not edit by hand)
 web/3d/render.js        WebGL2 renderer: sky, chunks, instanced trees and named shapes, hawk, water, points
+web/3d/clouds.js        clouds as soft volumes (lobes integrated along the view ray) and the valley mist (S.mists); Settings > Picture > Clouds (Soft default; Polygons the fallback)
 web/3d/shapes.js        low-poly builders (builder, blob, prism, cone) and tree/ring/cloud meshes
 web/3d/hawk.js          the hawk mesh, rebuilt per frame from a pose
 web/3d/birds.js         other birds: Settings > Bird picks red-tail, osprey, barn owl or raven (sys/species.js, aloft.bird); ?bird=swift|heron|mallard tries the rest
