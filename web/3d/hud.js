@@ -17,7 +17,7 @@ const COL_OF = { hunger: '#ef8a66', thirst: '#86bde6', wings: '#e8b44a' };
 export const SAY = {
   event: { col: '#ffd36b', icon: 'keepsake' },      // something happened: a new land, an aim done, a gift
   song: { col: '#9fcaff', icon: 'songs' },          // singing: the next note, how a song went
-  tutorial: { col: '#9fe39a', icon: 'how' },        // the first season's lessons, tips
+  tutorial: { col: '#9fe39a', icon: 'how' },        // the lessons (sys/lessons.js), tips
   hint: { col: '#ffffff', icon: 'aim' },            // a nudge: what you could do here
   warn: { col: '#ff9e8a', icon: 'hunger' },         // danger, or a try that failed: skips the wait
   reply: { col: '#ffffff', icon: 'done' },          // the answer to a button just pressed: skips the wait
@@ -164,7 +164,7 @@ export function createHud(G, ui, input) {
     tipT -= dt;
     if (tipT <= 0) {
       tipNow = null;
-      for (const t of H.tips) if (!H.done[t.id] && !H.off['tip:' + tipGroup(t.id)] && t.shown < 3 && G.t > t.rest && t.when()) {
+      for (const t of H.tips) if (!H.done[t.id] && !H.off['tip:' + tipGroup(t.id)] && !G.lessons?.quiet(t.id) && t.shown < 3 && G.t > t.rest && t.when()) {
         // from the second year a tip waits as a glint instead
         if ((G.journey?.year ?? 1) >= 2) { const [ic, short] = SHORT[t.id] || ['how', '']; quiet.glint(short || null, t.text, TIP_ICON[ic] || 'how'); H.did(t.id); continue; }
         tipNow = t.id; bar.show(t); tipT = 8; t.shown++; t.rest = G.t + 68; break;

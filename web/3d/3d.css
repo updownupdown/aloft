@@ -447,11 +447,11 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .ctl3 .pic { flex: none; width: 76px; height: 50px; border-radius: 10px; background: linear-gradient(#cfe0ea, #e8ede6); }
 .ctl3 figcaption { display: flex; flex-direction: column; gap: 2px; line-height: 1.4; font-size: 12.5px; color: var(--ink2); }
 .ctl3 figcaption > span:first-child { font-weight: 700; font-size: 14px; color: var(--ink); }
-.ctl3 .th { animation: thumb3 2.2s ease-in-out infinite; }
-.ctl3 .mv-tap { transform-box: fill-box; transform-origin: center; animation-name: tap3; animation-duration: 1.1s; }
-.ctl3 .mv-side { animation-name: side3; }
-.ctl3 .orb-ccw, .ctl3 .orb-cw { animation: orb3 2.4s ease-in-out infinite; }
-.ctl3 .orb-ccw { animation-direction: reverse; }
+.ctl3 .th, .coach3 .th { animation: thumb3 2.2s ease-in-out infinite; }
+.ctl3 .mv-tap, .coach3 .mv-tap { transform-box: fill-box; transform-origin: center; animation-name: tap3; animation-duration: 1.1s; }
+.ctl3 .mv-side, .coach3 .mv-side { animation-name: side3; }
+.ctl3 .orb-ccw, .ctl3 .orb-cw, .coach3 .orb-ccw, .coach3 .orb-cw { animation: orb3 2.4s ease-in-out infinite; }
+.ctl3 .orb-ccw, .coach3 .orb-ccw { animation-direction: reverse; }
 .ctl3 .mv-hold { transform-box: fill-box; transform-origin: center; animation-name: hold3; }
 @keyframes thumb3 { 0%, 18% { transform: none; } 45%, 72% { transform: translate(var(--dx), var(--dy)); } 100% { transform: none; } }
 @keyframes tap3 { 0%, 100% { transform: scale(1); } 15% { transform: scale(.72); } 32% { transform: scale(1); } 47% { transform: scale(.72); } 64% { transform: scale(1); } }
@@ -522,7 +522,7 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .scene3 .keep3 { animation-name: dive3; }
 .scene3 .glint3 { transform-box: fill-box; transform-origin: center; animation: glint3 1.4s ease-in-out infinite; }
 @keyframes glint3 { 50% { transform: scale(1.3); opacity: .6; } }
-@media (prefers-reduced-motion: reduce) { .scene3 *, .ctl3 .th { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { .scene3 *, .ctl3 .th, .coach3 .th, .ghost3 i { animation: none !important; } }
 
 /* the Map tab: the map fills the whole pane, its note and buttons float on it */
 .mappane3:not(.hidden) { display: flex; flex-direction: column; height: 100%; }
@@ -666,3 +666,62 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .cost3 { display: grid; grid-template-columns: 120px 1fr 70px; align-items: center; gap: 10px; min-height: 22px; font-size: 12.5px; }
 .cost3 i { height: 8px; width: var(--w); border-radius: 4px; background: var(--indigo); }
 .cost3 b { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* the lessons (sys/lessons.js, coach.js): the first flight shows only the bird, the coach, the thumb
+   pads, Take off and the menu button; after it each HUD piece stays hidden until a lesson brings it in */
+#ui3.learn3 > :not(.coach3):not(.ghost3):not(.skip3):not(.pad3):not(.act3):not(.takeoff3):not(.menu3):not(.veil3):not(.fade3) { display: none !important; }
+#ui3.no-food .m3[data-m=hunger], #ui3.no-water .m3[data-m=thirst], #ui3.no-wings .m3[data-m=wings], #ui3.no-dial .corner3 .dial, #ui3.no-compass .compass3, #ui3.no-call .call3 { display: none !important; }
+#ui3.learn3 .act3:not(.gone), #ui3.learn3 .takeoff3:not(.gone) { animation: pulse3 1.8s ease-in-out infinite; }
+@keyframes pulse3 { 0%, 100% { box-shadow: var(--shadow), 0 0 0 0 rgba(63, 90, 53, .55); } 60% { box-shadow: var(--shadow), 0 0 0 12px rgba(63, 90, 53, 0); } }
+/* the coach: the thumbs doing the move, its name, one line, a bar while it is held, a tick when done */
+.coach3 { position: absolute; left: 50%; top: calc(14px + env(safe-area-inset-top)); transform: translateX(-50%); width: min(470px, calc(100vw - 170px));
+  display: flex; gap: 12px; align-items: center; padding: 10px 14px 10px 10px; border-radius: 22px; pointer-events: auto; color: var(--ink);
+  background: var(--glass2); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); border: 1px solid var(--edge); box-shadow: var(--shadow); }
+.coach3.mini { top: auto; bottom: calc(16px + env(safe-area-inset-bottom)); width: min(400px, calc(100vw - 260px)); padding: 7px 12px 7px 7px; }
+.coach3 .cth3 { flex: none; color: var(--moss); }
+.coach3 .cth3 svg { display: block; width: 96px; height: 63px; border-radius: 12px; background: var(--plate); }
+.coach3.mini .cth3 svg { width: 76px; height: 50px; }
+.coach3 .ctx3 { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.coach3 .cn3 { font-size: 11px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; }
+.coach3 .cn3:empty, .coach3 .ck3:empty { display: none; }
+.coach3 .ct3 { font-size: 17px; font-weight: 700; line-height: 1.15; }
+.coach3 .cl3 { font-size: 13.5px; line-height: 1.35; color: var(--ink2); }
+.coach3.mini .ct3 { font-size: 15px; }
+.coach3.mini .cl3 { font-size: 12.5px; }
+.coach3 .cbar3 { display: block; height: 5px; margin-top: 6px; border-radius: 3px; background: var(--mosstint); overflow: hidden; }
+.coach3 .cbar3 i { display: block; height: 100%; background: var(--moss); transform-origin: left; transform: scaleX(0); transition: transform .15s; }
+.coach3 .cskip3 { align-self: flex-start; margin-top: 4px; padding: 2px 0; border: 0; background: none; font-size: 12.5px; color: var(--ink2); text-decoration: underline; cursor: pointer; }
+.coach3 .cok3 { flex: none; display: none; width: 34px; height: 34px; border-radius: 50%; align-items: center; justify-content: center; background: var(--moss); color: #fff; }
+.coach3 .cok3 svg { width: 20px; height: 20px; stroke-width: 2.6; }
+.coach3.done .cok3 { display: flex; animation: hold3 .5s ease-out; }
+/* ghost thumbs: soft rings where the thumbs rest, doing the move (white ink, like the HUD) */
+.ghost3 { position: absolute; bottom: 20%; width: 120px; height: 120px; margin-left: -60px; pointer-events: none; }
+.ghost3.L { left: 17%; } .ghost3.R { left: 83%; }
+.ghost3 i { position: absolute; left: 50%; top: 50%; width: 58px; height: 58px; margin: -29px; border-radius: 50%; border: 2px dashed rgba(255, 255, 255, .9);
+  background: rgba(255, 255, 255, .16); box-shadow: 0 0 14px rgba(10, 20, 28, .3); animation: thumb3 2.2s ease-in-out infinite; }
+.ghost3 i.mv-tap { animation-name: tap3; animation-duration: 1.1s; }
+/* Skip, top right: then which */
+.skip3 { position: absolute; right: calc(16px + env(safe-area-inset-right)); top: calc(16px + env(safe-area-inset-top)); display: flex; flex-direction: column; align-items: flex-end; gap: 6px; pointer-events: auto; }
+.skip3 .sk3 { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.skip3 button { min-height: 38px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--edge); font-size: 14px; font-weight: 600; color: var(--ink); cursor: pointer;
+  background: var(--glass); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); box-shadow: var(--shadow); }
+.skip3 button.main3 { background: var(--moss); border-color: var(--moss); color: #fff; }
+/* Today and How to play > Lessons: the chapter, its tasks ticked */
+.lch3 { display: flex; align-items: center; gap: 8px; margin: 2px 0 6px; font-size: 15px; }
+.lch3 svg, .lgrp3 h3 svg { flex: none; width: 19px; height: 19px; color: var(--moss); }
+.lch3 small { margin-left: auto; }
+.lessons3 { list-style: none; margin: 0; padding: 0; }
+.lessons3 li { display: flex; align-items: center; gap: 10px; min-height: 38px; padding: 4px 2px; border-top: 1px solid var(--rule); font-size: 14px; }
+.lessons3 li:first-child { border-top: 0; }
+.lessons3 li > i { flex: none; display: flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid var(--btnedge); }
+.lessons3 li > i.on { background: var(--moss); border-color: var(--moss); color: #fff; }
+.lessons3 li > i svg { width: 13px; height: 13px; stroke-width: 2.8; }
+.lessons3 li.now span { font-weight: 700; }
+.lessons3 li.later, .lessons3 li.done span { color: var(--ink2); }
+.lessons3 li button, .lnote3 button { margin-left: auto; min-height: 30px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--btnedge); background: var(--btn); font-size: 12.5px; font-weight: 600; cursor: pointer; }
+.lnote3 { display: flex; align-items: center; gap: 8px; margin: 8px 0 0; font-size: 12.5px; color: var(--ink2); }
+.lbtns3 { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 12px; }
+.lbtns3 button { min-height: 40px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--btnedge); background: var(--btn); font-size: 14px; font-weight: 600; cursor: pointer; }
+.card3 .lbtns3 .main3 { width: auto; min-height: 40px; border: 0; background: var(--moss); color: #fff; }
+.lgrp3 { margin: 0 0 10px; padding: 6px 14px 8px; border-radius: 18px; background: var(--plate); }
+.lgrp3 h3 { display: flex; align-items: center; gap: 8px; margin: 6px 0 2px; }

@@ -22,7 +22,7 @@ const AIMS = {
   guide: { text: 'Add a page to your field guide.', on: 'sighted' },
   high: { text: 'Ride a thermal 250 m above the ground.', on: 'high' },
   pin: { text: 'Mark a good place on your map with a pin.', on: 'pin' },
-  // the first season's lessons (sys/season.js) use these too
+  // what the lessons teach (sys/lessons.js): never offered as aims
   perch: { text: 'Land on a branch.', on: 'land', ok: k => k === 'perch', lesson: 1 },
   drink: { text: 'Land by water and drink.', on: 'drink', lesson: 1 },
   sleep: { text: 'Roost on a branch and sleep through a night.', on: 'sleep', lesson: 1 },
@@ -36,13 +36,12 @@ export function aimsSystem(G) {
 
   // ---- the day's aim ------------------------------------------------------------------------
   function pick() {
-    // in the first season the day's lesson is the day's aim
     const pool = Object.keys(AIMS).filter(k => !AIMS[k].lesson && !A.last.includes(k) && !(k === 'land' && seenAll()));
-    A.aim = G.lessonAim?.() || pool[Math.floor(Math.random() * pool.length)] || 'rings'; A.day = G.day; A.done = false; A.count = 0;
+    A.aim = pool[Math.floor(Math.random() * pool.length)] || 'rings'; A.day = G.day; A.done = false; A.count = 0;
     A.last = [...A.last, A.aim].slice(-4);
   }
   const offer = () => G.hud.glint('Today’s aim', `If you like: ${AIMS[A.aim].text[0].toLowerCase()}${AIMS[A.aim].text.slice(1)}`, 'keepsake');
-  G.on('newDay', () => { pick(); offer(); });
+  G.on('newDay', () => { pick(); if (!G.lessons?.learning) offer(); });   // while the lessons run (sys/lessons.js) they are the day's things to do
   for (const ev of new Set(Object.values(AIMS).map(a => a.on))) G.on(ev, e => {
     const a = AIMS[A.aim]; if (!a || A.done || a.on !== ev || (a.ok && !a.ok(e))) return;
     if (++A.count < (a.n || 1)) return;
@@ -100,6 +99,7 @@ export function aimsSystem(G) {
   const tile = {};
   G.menu.onOpen(() => {
     const a = AIMS[A.aim];
+    today.el.classList.toggle('hidden', !!G.lessons?.learning);
     today.body.innerHTML = a ? `<p class="aim3 ${A.done ? 'done' : ''}"><i></i>${esc(a.text)}${a.n && !A.done ? ` <small>${A.count} of ${a.n}</small>` : ''}</p>
       <p class="feathers3">${A.feathers ? `Feathers for aims kept: ${A.feathers}` : 'Each day brings one aim. It is only an offer.'}</p>` : '';
     const L = G.life;
@@ -127,7 +127,7 @@ export function aimsSystem(G) {
     update(dt) {
       // a race left behind (the course broken off) ends quietly
       if (race && G.clock - race.t > 90) { G.companion?.stop?.(); race = null; }
-      if (!A.aim || A.day !== G.day) { pick(); if (G.t > 3) offer(); }
+      if (!A.aim || A.day !== G.day) { pick(); if (G.t > 3 && !G.lessons?.learning) offer(); }
       if ((landT -= dt) <= 0) {
         landT = 2;
         const k = landOf(b.p[0], b.p[2]);

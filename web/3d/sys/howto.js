@@ -15,13 +15,13 @@ const PIG = { water: '#4f7fa6', berry: '#a8483a', ochre: '#b8862f', leaf: '#6f8a
 // right, or the other way round), or none. The thumb moves as the mark says, over and over.
 // a mark's way on the screen ([x, y], y down) for the thumb on side s (1 left, -1 right): in is
 // toward the middle; a pair adds up, at a diagonal
-function dir(m, s) {
+export function dir(m, s) {
   const D = { up: [0, -1], down: [0, 1], in: [s, 0], out: [-s, 0] }, parts = (m || '').split(' ');
   if (!parts.every(k => D[k])) return null;
   const v = parts.reduce((a, k) => [a[0] + D[k][0], a[1] + D[k][1]], [0, 0]), l = Math.hypot(v[0], v[1]) || 1;
   return [v[0] / l, v[1] / l];
 }
-function thumbs(left, right, col) {
+export function thumbs(left, right, col) {
   const mark = (m, x, y, s) => {
     const arrow = (dx, dy) => { const tx = x + dx * 12, ty = y + dy * 12, px = -dy * 3.2, py = dx * 3.2;
       return `<path d="M${x} ${y} L${tx} ${ty} M${tx - dx * 4 + px} ${ty - dy * 4 + py} L${tx} ${ty} L${tx - dx * 4 - px} ${ty - dy * 4 - py}"/>`; };
