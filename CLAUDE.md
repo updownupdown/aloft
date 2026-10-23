@@ -83,6 +83,9 @@ from its latitude (`G.season` is the bird's own; `G.date` the calendar). Debug:
 
 - Modern JS, ES modules, 2-space indent, semicolons, single quotes. Keep files small
   and focused; shared helpers go in `util.js` / `paint.js`.
+- **Keep the Earth real** (James, 2026-10-23): a land, tree or animal only where the real place has it.
+  biomes.js `FITS` (which extra lands a cell may roll), world.js `NATIVE` (trees by continent),
+  sys/critters.js `LOCAL` (each animal's regional species, or none). Variety never beats realism.
 - The world is a pure function of (x, z) and `ih()`; never store generated content
   except in small caches. Mutable per-object state (caught mice, collected rings)
   lives in a system keyed by the object's id.

@@ -22,6 +22,37 @@ const LIVES = {
   steppe: [['jackrabbit', .3, 1], ['bison', .12, 6]], tundra: [['marmot', .2, 2], ['bison', .05, 5]], ice: [['seal', .12, 3]],
 };
 // prey: how much it fills (food, water), its name; and how fast it runs
+// who each animal is on each continent (they share the meshes and the ways): [guide key (LOCAL_PAGES),
+// how it is called when caught], or null where it doesn't live. An animal not listed lives anywhere.
+const NA = 'n-america', SA = 's-america', EU = 'europe', AF = 'africa', AS = 'asia', OC = 'oceania';
+const LOCAL = {
+  jackrabbit: (c, lat) => c === NA ? ['jackrabbit'] : c === AF || (c === AS && lat < 34) ? ['capehare', 'a hare'] : c === EU || c === AS || c === SA ? ['hare', 'a hare'] : null,
+  bison: (c, lat, land) => land === 'tundra' ? (c === NA || c === AS || c === EU ? ['muskox', ''] : null)
+    : c === NA ? ['bison'] : c === AF && land === 'savanna' ? ['wildebeest', ''] : null,
+  goat: c => c === NA ? ['goat'] : c === EU || c === AS || c === AF ? ['ibex', ''] : null,
+  marmot: c => c === NA ? ['marmot'] : c === EU || c === AS ? ['amarmot', 'a marmot'] : null,
+  lizard: c => c === NA ? ['lizard'] : c === EU ? ['walllizard', 'a lizard'] : c === AF || c === AS ? ['agama', 'a lizard'] : c === OC ? ['dragon', 'a lizard'] : c === SA ? ['iguana', 'an iguana'] : null,
+  squirrel: c => c === NA ? ['squirrel'] : c === EU || c === AS ? ['redsquirrel', 'a squirrel'] : c === AF ? ['bushsquirrel', 'a squirrel'] : c === SA ? ['redtailsquirrel', 'a squirrel'] : null,
+  seal: (c, lat) => lat < 0 ? ['furseal', ''] : ['seal'],
+  crab: (c, lat, land) => land === 'swamp' || Math.abs(lat) < 30 ? ['crab'] : ['shorecrab', 'a crab'],
+};
+const LOCAL_PAGES = {
+  capehare: ['Cape hare', 'A hare of the dry lands from the Cape to the Sahara, with long ears that shed the heat.'],
+  hare: ['Brown hare', 'Lies flat in a scrape in the open all day, then runs, jinking, at the last moment.'],
+  muskox: ['Muskox', 'An ice-age ox in a coat of long hair; the herd stands in a ring, horns out, against wolves.'],
+  wildebeest: ['Blue wildebeest', 'Gnus, a million of them, follow the rains round the Serengeti every year.'],
+  ibex: ['Ibex', 'A wild goat of the high crags, its horns ridged like a ladder; it stands where nothing else can.'],
+  amarmot: ['Alpine marmot', 'Whistles from its burrow mouth when an eagle passes over the alpine meadow.'],
+  walllizard: ['Wall lizard', 'Suns itself on old stone walls and vanishes into a crack in a blink.'],
+  agama: ['Rainbow agama', 'The male basks on the rocks in orange and blue, nodding his head at rivals.'],
+  dragon: ['Bearded dragon', 'Puffs out its spiny beard and gapes when it is threatened.'],
+  iguana: ['Green iguana', 'Basks along the branches over the rivers and drops into the water at a shadow.'],
+  furseal: ['Fur seal', 'A sea lion of the southern oceans, hauled out in colonies on the rocks.'],
+  redsquirrel: ['Red squirrel', 'Tufted ears and a red coat; it strips pine cones to the core for the seeds.'],
+  bushsquirrel: ['Bush squirrel', 'A small squirrel of the African woodland, scolding from the branches at any hawk.'],
+  redtailsquirrel: ['Red-tailed squirrel', 'Runs the branches of the South American forest, cracking palm nuts with its teeth.'],
+  shorecrab: ['Shore crab', 'Hides under the weed and stones of the rocky shore, and nips when it is turned up.'],
+};
 const PREY = { jackrabbit: [.32, .06, 'a jackrabbit', 7.5], lizard: [.14, .04, 'a lizard', 4], marmot: [.3, .06, 'a marmot', 5], crab: [.12, .1, 'a crab', 2.2], squirrel: [.22, .05, 'a squirrel', 5.5], snake: [.2, .05, 'a grass snake', 0] };
 const SPOT = {   // where in its cell an animal will stand: ground height and slope
   crab: (h, n) => h > -.15 && h < .9, seal: (h, n) => h > .1 && h < 1.6, egret: h => h < -.05 && h > -.5,
@@ -50,17 +81,20 @@ export function crittersSystem(G) {
     dragonfly: ['Common green darner', 'Hunts other insects on the wing, catching nearly every one it chases.'],
   };
   for (const [k, [n, t]] of Object.entries(PAGES)) G.guide?.page(k, n, t);
+  for (const [k, [n, t]] of Object.entries(LOCAL_PAGES)) G.guide?.page(k, n, t);
   const live = new Map(), gone = new Map();   // id -> animal; id -> G.clock taken
   let refreshT = 0;
   G.prey = [];
   const once = (id, title, msg, ic, how) => { if (!G.flags[id]) { G.flags[id] = 1; G.hud.quietly(how, title, msg, ic); } };
 
   function cellOf(gx, gz) {
-    const cx = (gx + .5) * CRIT.cell, cz = (gz + .5) * CRIT.cell, lives = LIVES[blend(cx, cz)[0].name];
+    const cx = (gx + .5) * CRIT.cell, cz = (gz + .5) * CRIT.cell, top = blend(cx, cz)[0], lives = LIVES[top.name];
     if (!lives) return [];
     const out = [];
     lives.forEach(([kind, p, n], k) => {
       if (ih(gx, gz, 220 + k) > p) return;
+      const loc = LOCAL[kind] ? LOCAL[kind](top.cont, top.lat ?? 0, top.name) : [kind];
+      if (!loc) return;   // it doesn't live on this continent
       // find a spot that suits it (a few tries round the cell)
       for (let t = 0; t < 6; t++) {
         const x = (gx + .15 + ih(gx, gz, 230 + k * 7 + t) * .7) * CRIT.cell, z = (gz + .15 + ih(gx, gz, 240 + k * 7 + t) * .7) * CRIT.cell;
@@ -70,7 +104,7 @@ export function crittersSystem(G) {
           const id = 'c' + gx + '_' + gz + '_' + k + '_' + i;
           if (gone.has(id) && G.clock - gone.get(id) < 300) continue;
           const a = ih(gx, gz, 250 + i) * 6.28, r = i ? 3 + ih(gx, gz, 260 + i) * 9 : 0, px = x + Math.cos(a) * r, pz = z + Math.sin(a) * r;
-          out.push({ id, kind, hx: x, hz: z, x: px, z: pz, y: kind === 'egret' ? WATER - .25 : groundAt(px, pz), yaw: ih(gx, gz, 270 + i) * 6.28, t: ih(gx, gz, 280 + i) * 3, go: 0, flee: 0, hidden: 0, zig: 0, up: 0 });
+          out.push({ id, kind, page: loc[0], called: loc[1], hx: x, hz: z, x: px, z: pz, y: kind === 'egret' ? WATER - .25 : groundAt(px, pz), yaw: ih(gx, gz, 270 + i) * 6.28, t: ih(gx, gz, 280 + i) * 3, go: 0, flee: 0, hidden: 0, zig: 0, up: 0 });
         }
         break;
       }
@@ -190,7 +224,7 @@ export function crittersSystem(G) {
       const above = b.p[1] - o.y, hd = Math.hypot(b.p[0] - o.x, b.p[2] - o.z);
       if (above < CRIT.catchH + focus * 2.5 && above > -1 && hd < r) {
         live.delete(o.id); gone.set(o.id, G.clock); G.prey = G.prey.filter(p => p !== o);
-        const [food, wet, name] = PREY[o.kind], high = o.y - groundAt(o.x, o.z) > 1;
+        const [food, wet, name0] = PREY[o.kind], name = o.called || name0, high = o.y - groundAt(o.x, o.z) > 1;
         G.systems.food?.take?.({ x: o.x, y: o.y, z: o.z, kind: o.kind, food, wet, name, carry: high });
         if (o.kind === 'squirrel') once('squirrel', 'Squirrel', high ? 'Snatched off the branch! Carry it to a perch to eat.' : 'A squirrel, caught on the ground.', 'prey');
         return;
@@ -203,7 +237,8 @@ export function crittersSystem(G) {
     const cam = S.cam, s = G.season?.name, L = G.light;
     if (L.daylight < .5 || (G.rain || 0) > .2) return;
     // autumn: a river of monarchs drifting south, a few metres up, along a band that moves day to day
-    if (s === 'autumn') {
+    const cont = blend(cam[0], cam[2])[0].cont;
+    if (s === 'autumn' && (cont === NA || cont === SA)) {   // (the monarchs' road is the Americas')
       const U = S.props.monarchU ||= [], D = S.props.monarchD ||= [], lane = (ih(G.day, 0, 290) - .5) * 600;
       const bx = Math.round((cam[0] - lane) / 400) * 400 + lane;
       if (Math.abs(bx - cam[0]) < 160) for (let i = 0; i < 60; i++) {
@@ -239,7 +274,7 @@ export function crittersSystem(G) {
         const shape = { jackrabbit: run ? 'jackR' : 'jack', marmot: run ? 'marmotR' : 'marmot', bison: o.flee > 0 ? 'bisonU' : 'bison', squirrel: run || o.climb ? 'squirrelR' : 'squirrel', snake: o.flee > 0 ? 'snakeS' : 'snake' }[o.kind] || o.kind;
         const hop = o.kind === 'jackrabbit' && run ? Math.abs(Math.sin(G.t * 9 + o.t)) * .35 : 0;
         (S.props[shape] ||= []).push(o.x, o.y + hop, o.z, o.kind === 'snake' ? 1.7 : 1, o.yaw, .5, 0, 0);   // a snake a little large, to read from the air
-        if (Math.abs(o.x - cam[0]) < 60 && Math.abs(o.z - cam[2]) < 60) G.sight?.(o.kind, o.x, o.y + .3, o.z, { bison: 1.5, goat: .8, seal: .7, egret: .6 }[o.kind] || .3);
+        if (Math.abs(o.x - cam[0]) < 60 && Math.abs(o.z - cam[2]) < 60) G.sight?.(o.page || o.kind, o.x, o.y + .3, o.z, { bison: 1.5, goat: .8, seal: .7, egret: .6 }[o.kind] || .3);
       }
       insects(S);
     },

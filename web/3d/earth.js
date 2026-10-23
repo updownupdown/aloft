@@ -41,6 +41,14 @@ function cellByte(x, z) {
 }
 // the baked biome there ('sea', 'forest', 'taiga' ...; biomes.js turns it into a land's palette)
 export const earthBiome = (x, z) => BIOME_IDS[cellByte(x, z) & 31];
+// how much of the ground round a point is desert, 0..1 (smooth: bilinear on the 500 m cells)
+const DRY = new Uint8Array(BIOME_IDS.length); for (const k of ['desert', 'saltflat', 'badlands']) DRY[BIOME_IDS.indexOf(k)] = 1;
+export function dryAt(x, z) {
+  const u = (wrapX(x) - X0) / CELL.step, v = clamp((z - Z0) / CELL.step, 0, CELL.nz - 1.001), i = Math.floor(u), j = Math.floor(v), fx = u - i, fz = v - j;
+  const at = (a, b) => DRY[cells[b * CELL.nx + mod(a, CELL.nx)] & 31];
+  const p = at(i, j), q = at(i + 1, j), r = at(i, j + 1), t = at(i + 1, j + 1);
+  return p + (q - p) * fx + (r - p) * fz + (p - q - r + t) * fx * fz;
+}
 // 'europe', 'africa', 'asia', 'n-america', 's-america', 'oceania', 'antarctica', or null at sea
 export const continentAt = (x, z) => CONTINENTS[cellByte(x, z) >> 5];
 

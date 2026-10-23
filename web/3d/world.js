@@ -7,7 +7,7 @@
 import { store } from './util.js';
 import { ih, fbm, smooth, clamp, WORLD, newWorld } from './noise.js';
 import { BIOMES, PAL, blend, weightOf, share, rollBiome, cellsNear } from './biomes.js';
-import { coastDist, latLon, latAt, oceanKey, regionAt, wrapX, toXZ, EARTH, NORTH, SOUTH, seasonAt, snowLine } from './earth.js';
+import { coastDist, latLon, latAt, oceanKey, regionAt, wrapX, toXZ, EARTH, NORTH, SOUTH, seasonAt, snowLine, dryAt } from './earth.js';
 import { railCut, railShade, railNear, railSolids, railLandmarks } from './rail.js';
 import { settlementsNear, buildingsNear, bridgesNear, roadShade, buildingSolids, bridgeSolids, polesNear, poleSolids, clearOf, saplingIn } from './settle.js';
 export { ih, fbm, WORLD, newWorld, PAL, blend };
@@ -139,7 +139,7 @@ export const RIVER = { scale: 1500, seed: 91, half: 8, bed: -2.2 };
 // side: which side of the channel the point is on (+1/-1); lean (-1..1) which bank is the high,
 // steep outer one along this stretch (the other is a low, wide inner bank), changing as it winds
 export function riverAt(x, z) {
-  const m = fbm(x / 2600, z / 2600, RIVER.seed + 7, 1);
+  const m = fbm(x / 2600, z / 2600, RIVER.seed + 7, 1) - dryAt(x, z) * .6;   // the deserts have none (a wadi at most)
   if (m < .02) return null;
   // the channel line is warped by noises at four sizes, so it swings in big meanders (some
   // reaches wild, some calmer), bends and doglegs within them, and small kinks close up
@@ -330,42 +330,65 @@ export const LOOKS = [
 // by a roll; each kind also comes and goes in its own slow patches, so a wood has stands of one
 // kind running into another rather than an even salt-and-pepper. Willows and poplars keep to
 // low wet ground, spruce to the heights, giant sequoias stand in groves in the high country and
-// among the redwoods, the dry lands have junipers and cacti (no pines).
+// among the redwoods, the dry lands have junipers and cacti (no pines). w is where on the Earth
+// (the cell's cont, lat, lon): cacti and Joshua trees are the Americas', the Sahara has acacias
+// and date palms, the Med its olives and stone pines, and NATIVE keeps each tree to its continents.
 const SIZE_OF = [[11, 8], [13, 8], [12, 7], [34, 18], [8, 4], [6, 5], [6, 4], [9, 5], [10, 7], [16, 7], [15, 9], [5, 4], [10, 5], [38, 18], [15, 8], [9, 6], [30, 12], [12, 6], [5, 3], [11, 6]];   // by look: [smallest grown height, extra]
 const MIX = {
   meadow: (y, wet) => [[0, 5], [8, 3], [2, 1], [1, 1], [9, wet * 4], [12, wet * 3]],
   forest: (y, wet, hi) => [[0, 6], [8, 3], [2, 1.5], [1, 2 + hi * 4], [10, hi * 3], [9, wet * 2], [12, wet * 2]],
   lakeland: (y, wet, hi) => [[0, 4], [2, 2], [1, 2 + hi * 3], [8, 1.5], [12, wet * 5], [9, wet * 2]],
   birch: (y, wet, hi) => [[2, 8], [1, 1.5], [10, 1 + hi * 2], [0, .6]],
-  redwood: (y, wet) => [[3, 7], [13, 1.2], [10, 1], [0, 1], [12, wet * 2]],
+  redwood: (y, wet, hi, tr, w) => [[3, 7], [13, sierra(w) * 1.2], [10, 1], [0, 1], [12, wet * 2]],
   moor: (y, wet) => [[2, 3], [1, 1.5], [11, 1.5], [8, .6], [12, wet * 2]],
-  mountains: (y, wet, hi) => [[1, 3], [10, 2 + hi * 3], [13, 2.2 * (1 - hi * .6)], [2, 1], [0, 1 - hi]],
+  mountains: (y, wet, hi, tr, w) => [[1, 3], [10, 2 + hi * 3], [13, sierra(w) * 2.2 * (1 - hi * .6)], [2, 1], [0, 1 - hi]],
   alpine: (y, wet, hi) => [[10, 5], [1, 3], [11, 1 - hi * .8]],
   cliffs: () => [[1, 3], [11, 2], [10, 1]],
   fjord: () => [[10, 4], [1, 3], [2, 1.5]],
   coast: (y, wet, hi, tr) => [[1, 4 * (1 - tr)], [11, 1.5 * (1 - tr)], [8, 1 - tr * .6], [15, 7 * tr]],
   karst: (y, wet, hi, tr) => [[0, 3], [11, 2 * (1 - tr)], [1, 1.5 * (1 - tr)], [8, 1], [9, wet * 2 * (1 - tr)], [15, (1 + wet * 2) * tr]],
   volcano: () => [[11, 3], [1, 1.5], [2, .5]],
-  desert: (y, wet) => [[5, 5], [6, 3], [11, 1], [9, wet * 2], [15, wet * 4]],
-  canyon: (y, wet) => [[11, 6], [5, 1], [9, wet * 5]],
+  desert: (y, wet, hi, tr, w) => AMERICAS(w) ? [[5, 5], [6, 3], [11, 1], [9, wet * 2], [15, wet * 4]]
+    : w.cont === 'oceania' ? [[4, 4], [0, 1.5], [15, wet * 3]]
+    : w.lat > 35 ? [[11, 4], [9, wet * 3]]                                   // the Gobi: saxaul scrub
+    : [[4, 3], [15, .2 + wet * 6], [11, .6]],                                // the Sahara and Arabia: acacias, date palms by water
+  canyon: (y, wet, hi, tr, w) => [[11, 6], [5, 1], [4, 2], [9, wet * 5]],
   badlands: (y, wet) => [[11, 6], [6, .4], [9, wet * 5]],
-  savanna: (y, wet, hi, tr) => [[4, 7], [11, .6], [9, wet * 2 * (1 - tr)], [15, wet * 3 * tr]],
+  savanna: (y, wet, hi, tr) => [[4, 7], [0, 2], [11, .6], [9, wet * 2 * (1 - tr)], [15, wet * 3 * tr]],
   swamp: (y, wet, hi, tr) => [[7, 6], [12, 2 * (1 - tr)], [0, 1], [15, 1.5 * tr]],
   marsh: (y, wet) => [[12, 3 + wet * 2], [0, 2], [9, 1.5]],
   taiga: (y, wet) => [[10, 6], [14, 4], [1, 2.5], [2, 1.5], [12, wet * 1.5]],
   tundra: () => [[2, 3], [14, 2], [12, 1], [11, 1]],
   rainforest: (y, wet) => [[0, 6], [16, 1.1], [8, 2], [15, .4 + wet * 3], [7, wet * 2]],
-  maquis: (y, wet) => [[18, 4], [17, 2.5], [19, 1.5], [8, 2], [11, 2], [9, wet * 2]],
+  maquis: (y, wet, hi, tr, w) => [[18, 4], [17, 2.5], [19, 1.5], [8, 2], [11, 2], [9, wet * 2], [0, MED(w) ? 0 : 3]],
   steppe: (y, wet) => [[9, wet * 4 + .3], [12, wet * 2], [2, .4], [8, .5], [11, .5]],
 };
 // how big the trees of a land grow (stunted on the moor and the heights, tall in sheltered woods)
 const SIZE_K = { moor: .7, alpine: .8, cliffs: .75, coast: .8, fjord: .9, volcano: .75, canyon: .85, badlands: .8, forest: 1.08, redwood: 1.1, tundra: .45, taiga: .95, rainforest: 1.6, maquis: .7, steppe: .8 };
-function lookFor(b, x, z, y, r, f) {
+// where each tree grows wild, by continent (w: the cell's cont, lat, lon); the rest grow anywhere
+const AMERICAS = w => w.cont === 'n-america' || w.cont === 's-america';
+const MED = w => w.lon > -10 && w.lon < 45 && w.lat > 29 && w.lat < 47;
+const sierra = w => w.cont === 'n-america' && w.lon < -115 ? 1 : 0;   // giant sequoias: the Sierra Nevada's
+const NORTHERN = w => w.cont === 'europe' || (w.cont === 'asia' && w.lat > 26) || (w.cont === 'n-america' && w.lat > 30) || (w.cont === 'africa' && w.lat > 28);   // (not the tropics)
+const NATIVE = {
+  1: w => NORTHERN(w) || w.cont === 's-america' || w.cont === 'n-america',   // pines (and Mexico's, and Chile's monkey puzzles)
+  2: NORTHERN, 10: NORTHERN, 14: NORTHERN, 9: NORTHERN,              // birch, spruce, larch, poplar
+  8: w => NORTHERN(w) || w.cont === 'n-america',                     // oaks (and Mexico's)
+  3: AMERICAS, 13: sierra, 5: w => AMERICAS(w) && w.lat < 37, 6: w => w.cont === 'n-america' && w.lat < 38,   // redwoods, sequoias, saguaros, Joshua trees
+  4: w => w.cont === 'africa' || w.cont === 'asia' || w.cont === 'oceania',   // acacias
+  16: w => w.cont !== 'europe' && w.cont !== 'oceania',              // kapok
+  17: MED, 18: MED,                                                  // stone pines, olives
+  19: w => MED(w) || w.cont === 'n-america',                         // cypress (and the Monterey cypress)
+  11: w => NORTHERN(w) || w.cont === 'africa',                       // junipers
+};
+function lookFor(b, x, z, y, r, f, w = {}) {
   const wet = smooth(5, 1.5, y), hi = smooth(45, 110, y), tr = smooth(30, 22, Math.abs(latAt(x, z)));   // tr: the tropics, where palms grow
-  const list = (MIX[b] || MIX.meadow)(y, wet, hi, tr);
-  let sum = 0; const w = list.map(([look, wt], i) => { const v = Math.max(0, wt) * Math.max(.05, 1 + 1.4 * fbm(x / 190, z / 190, 40 + look, 2)); sum += v; return v; });
+  const list = (MIX[b] || MIX.meadow)(y, wet, hi, tr, w).filter(([look]) => !w.cont || !NATIVE[look] || NATIVE[look](w));
+  if (!list.length) return LOOK.broadleaf;
+  let sum = 0; const wt = list.map(([look, v]) => { v = Math.max(0, v) * Math.max(.05, 1 + 1.4 * fbm(x / 190, z / 190, 40 + look, 2)); sum += v; return v; });
+  if (sum <= 0) return list[0][0];
   let pick = list[0][0], acc = 0;
-  for (let i = 0; i < list.length; i++) if (r * sum < (acc += w[i])) { pick = list[i][0]; break; }
+  for (let i = 0; i < list.length; i++) if (r * sum < (acc += wt[i])) { pick = list[i][0]; break; }
   return pick;
 }
 // a tree's height: its kind's range, the land's, the grove's (old woods and young ones), and its
@@ -376,9 +399,9 @@ function sizeOf(look, b, x, z, f, a, e) {
   return (s0 + e * ds) * age * grove * edge * (SIZE_K[b] || 1);
 }
 // trees per 10 m spot, by how wooded the place is
-const densityOf = (b, f, x, z) => {
+const densityOf = (b, f, x, z, w) => {
   switch (b) {
-    case 'desert': return .028;
+    case 'desert': return w && !AMERICAS(w) ? .009 : .028;   // the Sahara's few acacias, the Sonoran's cactus forest
     case 'canyon': return .012;
     case 'badlands': return .004;
     case 'saltflat': return 0;
@@ -401,12 +424,12 @@ export function treesIn(cx, cz) {
     const x = (gx + .15 + ih(gx, gz, 21) * .7) * G, z = (gz + .15 + ih(gx, gz, 22) * .7) * G;
     const p = ih(gx, gz, 23); if (p > .55) continue;
     const bl = blend(x, z), e = rollBiome(bl, ih(gx, gz, 27)), f = forestOf(x, z, bl);
-    if (p > densityOf(e.name, f, x, z)) continue;
+    if (p > densityOf(e.name, f, x, z, e)) continue;
     const y = groundAt(x, z), wet = e.name === 'swamp';
     if ((wet ? y < -1.2 || y > 3 : y < 1.2) || y > 140) continue;
     const nm = normalAt(x, z); if (nm[1] < .82) continue;
     if (roadShade(x, z) > .25 || railNear(x, z) < 6) continue;   // nor on the old tracks and the railway
-    const look = lookFor(e.name, x, z, y, ih(gx, gz, 28), f);
+    const look = lookFor(e.name, x, z, y, ih(gx, gz, 28), f, e);
     const s = sizeOf(look, e.name, x, z, f, ih(gx, gz, 29), ih(gx, gz, 24));
     t.push({ x, y: y - .3, z, s, yaw: ih(gx, gz, 25) * 6.283, kind: LOOKS[look].kind, look, id: gx * 7919 + gz, tint: ih(gx, gz, 26) });
   }
@@ -596,9 +619,9 @@ function cellSight(c) {
 const LM_KIND = {
   forest: ['oak', 'oak', 'stones', 'lookout'], lakeland: ['oak', 'oak', 'stones'], birch: ['oak', 'stones', 'lookout'], meadow: ['tower', 'stones', 'oak'],
   savanna: ['tower', 'redstones'], cliffs: ['falls'], mountains: ['cairn', 'falls', 'lookout'], alpine: ['cairn'], fjord: ['falls', 'stack'], moor: ['stones', 'cairn', 'tower'],
-  coast: ['stones', 'tower', 'stack', 'stack'], marsh: ['willow', 'stones'], swamp: ['willow'], desert: ['redstones'], canyon: ['redstones', 'falls'], badlands: ['redstones'],
+  coast: ['stones', 'tower', 'stack', 'stack'], marsh: ['willow', 'stones'], swamp: [], desert: ['redstones'], canyon: ['redstones', 'falls'], badlands: ['redstones'],
   redwood: ['lookout'], taiga: ['lookout', 'stones'], tundra: ['cairn', 'stones'], steppe: ['stones', 'tower'], maquis: ['tower', 'stones'],
-  rainforest: ['falls', 'oak'],
+  rainforest: ['falls'],
 };
 // a sea stack wants open water 4 to 12 m deep near the shore
 function stackSpot(x, z) {
@@ -700,13 +723,14 @@ const ROCKS = {
   mountains: [['boulder', .2]], alpine: [['boulder', .22]], cliffs: [['boulder', .14]], volcano: [['lava', .16]], fjord: [['stack', .35]], coast: [['stack', .3], ['boulder', .05]],
   tundra: [['boulder', .22]], taiga: [['boulder', .08]], maquis: [['boulder', .1]], steppe: [['tor', .03]],
 };
+ROCKS.sahara = [['tor', .04]];   // the Old World's deserts: rounded sandstone outcrops
 const ROCK_S = { tor: 5, hoodoo: 14, boulder: 2.4, lava: 2.2, arch: 12, stack: 0 };
 const rockCache = new Map();
 function rockAt(gx, gz) {
   const key = gx + ',' + gz; if (rockCache.has(key)) return rockCache.get(key);
   let o = null;
   const x = (gx + .2 + ih(gx, gz, 151) * .6) * ROCK_CELL, z = (gz + .2 + ih(gx, gz, 152) * .6) * ROCK_CELL, p = ih(gx, gz, 153);
-  const list = ROCKS[rollBiome(blend(x, z), ih(gx, gz, 156)).name];
+  const at = rollBiome(blend(x, z), ih(gx, gz, 156)), list = at.name === 'desert' && !AMERICAS(at) ? ROCKS.sahara : ROCKS[at.name];   // red hoodoos are the American deserts'
   // rocks gather in outcrops: thick in some patches, none in others
   const crop = smooth(.05, .45, fbm(x / 260, z / 260, 158, 2)) * 1.6;
   let kind = null, acc = 0;

@@ -132,7 +132,7 @@ export function driftSystem(G) {
       for (const o of list.bergs) if (vis(o, 2400)) (o.peaked ? P : T).push(o.x, -.3, o.z, o.s, o.yaw, .5, 0, 0);
       for (const o of list.floes) if (vis(o, 400)) {
         F.push(o.x, bob(o, .03), o.z, o.s, o.yaw, .5, 0, 0);
-        if (o.seal && !seals.has(o.id)) { SL.push(o.x, .12 + bob(o, .03), o.z, 1.4, o.yaw + 1, .5, 0, 0); G.sight?.('seal', o.x, .3, o.z, .8); }
+        if (o.seal && !seals.has(o.id)) { SL.push(o.x, .12 + bob(o, .03), o.z, 1.4, o.yaw + 1, .5, 0, 0); G.sight?.(latAt(o.x, o.z) < 0 ? 'furseal' : 'seal', o.x, .3, o.z, .8); }
       }
       for (const o of list.woods) if (vis(o, 600)) D.push(o.x, bob(o) - .02, o.z, o.s, o.yaw, .5, 0, 0);
       for (const o of list.bottles) if (vis(o, 300)) {
