@@ -6,19 +6,26 @@
 import { height, groundAt, groundNormal, forest, bands, ih, fbm, PAL, WATER, env } from '../world.js';
 import { rollBiome } from '../biomes.js';
 import { smooth } from '../util.js';
-import { builder, blob, reseed } from '../shapes.js';
+import { builder, blob, reseed, rnd } from '../shapes.js';
 
 export const FLORA = { cell: 8, near: 95, cache: 1600 };
+const TUFT_NAMES = ['tuft', 'tuft1', 'tuft2', 'tuft3'];
 
 const hex = h => [parseInt(h.slice(1, 3), 16) / 255, parseInt(h.slice(3, 5), 16) / 255, parseInt(h.slice(5, 7), 16) / 255];
 const PETAL = { flowerY: hex('#e8c24a'), flowerW: hex('#efe9dc'), flowerP: hex('#9a6fa8') };
 
-function tuft() {
-  reseed(23); const B = builder(), g1 = [.52, .66, .32], g2 = [.62, .7, .36];
-  for (let i = 0; i < 6; i++) {
-    const a = i / 6 * 6.283 + i * .7, r = .06 + (i % 3) * .03, h = .28 + (i % 4) * .07;
-    const x = Math.cos(a) * r, z = Math.sin(a) * r, lx = Math.cos(a) * .2, lz = Math.sin(a) * .2;
-    B.tri([x - .03 * Math.sin(a), 0, z + .03 * Math.cos(a)], [x + .03 * Math.sin(a), 0, z - .03 * Math.cos(a)], [x + lx * h, h, z + lz * h], i % 2 ? g1 : g2);
+// grass tufts in four makes: a few long arching blades, a dense short clump, a tall upright
+// sheaf, a sprawling one; each blade bends in two facets, and the shades vary blade to blade
+const TUFTS = [[5, .42, .5, 4], [11, .24, .25, 5], [7, .55, .15, 6], [9, .32, .75, 7]];   // blades, height, how far they arch out, seed
+function tuft([n, H, arch, sd]) {
+  reseed(23 + sd); const B = builder(), shades = [[.52, .66, .32], [.62, .7, .36], [.47, .6, .3], [.58, .64, .34]];
+  for (let i = 0; i < n; i++) {
+    const a = i / n * 6.283 + rnd() * 1.4, r = .02 + rnd() * .07, h = H * (.6 + rnd() * .55), out = arch * (.5 + rnd()) * h, w = .018 + rnd() * .016;
+    const ca = Math.cos(a), sa = Math.sin(a), x = ca * r, z = sa * r, col = shades[(i + sd) % 4];
+    const m = [x + ca * out * .35, h * .6, z + sa * out * .35], t = [x + ca * out, h * (.95 - arch * .25), z + sa * out];
+    B.tri([x - w * sa, 0, z + w * ca], [x + w * sa, 0, z - w * ca], [m[0] + w * .6 * sa, m[1], m[2] - w * .6 * ca], col);
+    B.tri([x - w * sa, 0, z + w * ca], [m[0] + w * .6 * sa, m[1], m[2] - w * .6 * ca], [m[0] - w * .6 * sa, m[1], m[2] + w * .6 * ca], col);
+    B.tri([m[0] - w * .6 * sa, m[1], m[2] + w * .6 * ca], [m[0] + w * .6 * sa, m[1], m[2] - w * .6 * ca], t, col);
   }
   return B.out();
 }
@@ -75,7 +82,7 @@ const GROUND = {
 };
 export function floraSystem(G) {
   const R = G.R;
-  R.shape('tuft', tuft()); R.shape('scrub', scrub()); R.shape('barrel', barrel()); R.shape('stone', stone()); R.shape('reeds', reeds());
+  TUFTS.forEach((t, i) => R.shape(i ? 'tuft' + i : 'tuft', tuft(t))); R.shape('scrub', scrub()); R.shape('barrel', barrel()); R.shape('stone', stone()); R.shape('reeds', reeds());
   for (const k in PETAL) R.shape(k, flower(PETAL[k]));
   const cache = new Map();
   // what grows in one cell: [kind, x, y, z, scale, yaw, tint][]
@@ -100,7 +107,7 @@ export function floraSystem(G) {
       else if (n < .8 || (k.high + k.ridge > .5 && r < .45)) kind = r < .35 * scree ? 'stone' : null;           // slopes and heights: stones, in patches
       else if (f < .25 && !snowy) kind = r < .62 ? 'tuft' : r < .78 && !G.season?.winter ? ['flowerY', 'flowerW', 'flowerP'][(ih(cx, cz, 260) * 3) | 0] : r < .78 + .04 * scree ? 'stone' : null;
       if ((kind === 'tuft' || kind === 'scrub') && snowy) kind = null;
-      if (kind) c.push([kind, x, y - .05, z, kind === 'stone' ? sc * (.6 + r) : kind === 'tuft' ? sc * 1.7 : sc, yaw, tint, gold]);
+      if (kind) c.push([kind, x, y - .05, z, kind === 'stone' ? sc * (.6 + r) : kind === 'tuft' ? sc * (1 + ih(cx, cz, 260 + i) * 1.2) : sc, yaw, tint, gold]);
     }
     if (cache.size > FLORA.cache) cache.delete(cache.keys().next().value);
     cache.set(key, c);
@@ -120,7 +127,7 @@ export function floraSystem(G) {
       const stir = (x, z) => {
         let k = 0;
         // the wind's own bands (wingcraft.js), rolling across the grass the way it blows
-        if (ws) k += Math.max(0, Math.sin((x * ws.x + z * ws.z) / 6 - ws.t)) ** 6 * ws.k * .6;
+        if (ws) k += Math.max(0, Math.sin((x * ws.x + z * ws.z) / 6 - ws.t)) ** 2 * ws.k * .5;
         if (g) {
           const s = (x - g.x) * g.dx + (z - g.z) * g.dz, side = Math.abs((x - g.x) * -g.dz + (z - g.z) * g.dx);
           if (s < 2 && s > -14 && side < g.w * .6) k += Math.exp(-((s + 4) ** 2) / 18) * g.k * (1 - side / (g.w * .6));
@@ -140,7 +147,10 @@ export function floraSystem(G) {
         for (const [kind, x, y, z, sc, yaw, tint, gold] of cell(cx, cz)) {
           if (far && kind !== 'stone') continue;   // small things only close up
           const k = (g || sk || ws) && (kind === 'tuft' || kind.startsWith('flower')) ? stir(x, z) : 0;
-          (S.props[kind] ||= []).push(x, y, z, sc * (1 - k * .3), yaw + k * 1.2, tint + k * 3, gold ? .9 : kind === 'tuft' ? autumn * .6 : 0, 0);
+          // a gust presses the blades down and shows their paler undersides (the sway itself, in
+          // waves running downwind, is the renderer's: render.js INST_VS)
+          const name = kind === 'tuft' ? TUFT_NAMES[Math.floor(tint * 97) % 4] : kind;
+          (S.props[name] ||= []).push(x, y, z, sc * (1 - k * .25), yaw, tint + k * 2, gold ? .9 : kind === 'tuft' ? autumn * .6 : 0, 0);
         }
       }
     },
