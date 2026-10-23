@@ -6,6 +6,8 @@
 import { SPECIES } from '../../src/songs.js';
 import { project, afterDraw, portrait } from '../shot.js';
 import { journal, esc } from '../journal.js';
+import { icon } from '../icons.js';
+import { continentAt } from '../earth.js';
 
 const NOTES = {
   mouse: ['Meadow vole', 'A red-tail’s favourite meal: it runs in hidden tunnels through the grass.'],
@@ -56,15 +58,40 @@ export function guideSystem(G) {
     for (const k of got) { G.hud.tally(`Field guide: ${G.guide.name(k)}`, 'guide'); G.emit('sighted', k); }
   }
 
-  // the journal's field guide: every page, the ones seen first
-  const sec = journal(G).section(60, 'Field guide <span class="count3"></span>');
-  sec.body.innerHTML = '<ul class="guide3"></ul>';
-  G.menu.onOpen(() => {
-    const all = [...pages.values()].map(p => ({ ...p, s: seen[p.key] }));
-    const list = [...all.filter(p => p.s), ...all.filter(p => !p.s)];
-    sec.el.querySelector('.count3').textContent = `${list.filter(p => p.s).length} of ${list.length} seen`;
-    sec.body.firstChild.innerHTML = list.map(p => `<li class="${p.s ? 'seen' : ''}"><div class="pic">${p.s ? `<img alt="" src="${p.s.src}">` : ''}</div><div><b>${esc(p.s ? p.name : 'Not yet seen')}</b><small>${esc(p.s ? `${p.note} ${p.s.note}` : p.hint || 'Keep your eyes open.')}</small></div></li>`).join('');
+  // Guide > Field guide: chips to show one kind at a time (songbirds near here by default), the ones
+  // seen as cards with their portraits, then the ones still to find, small, each with a hint
+  const KINDS = [['all', 'All'], ['song', 'Songbirds'], ['bird', 'Other birds'], ['land', 'Animals'], ['water', 'Water life']];
+  const BIRDY = /eagle|hawk|owl|gull|kestrel|heron|egret|crow|raven|starling|buzzard|falcon|kite|vulture|tern|puffin|albatross|gannet|pelican|booby|frigate|swan|duck|goose|stork|crane|ibis|flamingo|penguin|parrot|cormorant/i;
+  const WET = /whale|turtle|fish|seal|dolphin|shark|orca|walrus|crab|ray\b|sunfish/i;
+  const kindOf = p => p.key.startsWith('sp') ? 'song' : BIRDY.test(p.name) ? 'bird' : WET.test(p.name) ? 'water' : 'land';
+  const spOf = new Map(SPECIES.map(sp => ['sp' + sp.id, sp]));
+  const F = { kind: G.store.get('guideKind', 'all'), here: G.store.get('guideHere', true), more: false };
+  const sec = journal(G).section(60);
+  sec.body.innerHTML = '<div class="gbar3"></div><ul class="guide3"></ul><h4 class="gtodo3"></h4><ul class="gnot3"></ul>';
+  const q = c => sec.body.querySelector(c);
+  function draw() {
+    const cont = continentAt(G.b.p[0], G.b.p[2]);
+    const all = [...pages.values()].map(p => ({ ...p, s: seen[p.key], k: kindOf(p) }));
+    const near = p => !F.here || p.k !== 'song' || !cont || (spOf.get(p.key)?.cont || []).includes(cont);
+    const shown = all.filter(p => (F.kind === 'all' || p.k === F.kind) && (p.s || near(p)));
+    const n = k => { const l = all.filter(p => k === 'all' || p.k === k); return `${l.filter(p => p.s).length}/${l.length}`; };
+    q('.gbar3').innerHTML = KINDS.map(([k, t]) => `<button data-kind="${k}" class="${F.kind === k ? 'on' : ''}">${t} <small>${n(k)}</small></button>`).join('')
+      + `<button data-here class="here3g${F.here ? ' on' : ''}" title="Only the songbirds of this continent">${icon('pin')}Near here</button>`;
+    const got = shown.filter(p => p.s), todo = shown.filter(p => !p.s);
+    q('.guide3').innerHTML = got.map(p => `<li class="seen"><div class="pic"><img alt="" src="${p.s.src}"></div><div><b>${esc(p.name)}</b><small>${esc(p.note)}</small><small class="when3g">${esc(p.s.note)}</small></div></li>`).join('')
+      || '<li class="none3g">Nothing seen here yet. Fly close to an animal or a bird and hold it in view a moment.</li>';
+    q('.gtodo3').textContent = todo.length ? `Still to find: ${todo.length}` : '';
+    const few = F.more ? todo : todo.slice(0, 6);
+    q('.gnot3').innerHTML = few.map(p => `<li><span>?</span><small>${esc(p.hint || (p.k === 'song' ? 'A songbird.' : 'Keep your eyes open.'))}</small></li>`).join('')
+      + (todo.length > few.length ? `<li class="more3g"><button data-more>Show all ${todo.length}</button></li>` : '');
+  }
+  sec.body.addEventListener('click', e => {
+    const k = e.target.closest('[data-kind]'), h = e.target.closest('[data-here]');
+    if (e.target.closest('[data-more]')) { F.more = true; draw(); }
+    else if (k) { F.kind = k.dataset.kind; F.more = false; G.store.set('guideKind', F.kind); draw(); }
+    else if (h) { F.here = !F.here; G.store.set('guideHere', F.here); draw(); }
   });
+  G.menu.onOpen(() => { F.more = false; draw(); });
 
   return {
     id: 'guide',

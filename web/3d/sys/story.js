@@ -7,7 +7,8 @@
 import { height, WATER, ih } from '../world.js';
 import { buildHawk } from '../hawk.js';
 import { builder, blob, reseed } from '../shapes.js';
-import { journal } from '../journal.js';
+import { journal, esc } from '../journal.js';
+import { icon } from '../icons.js';
 import { clamp, lerp, angleTo } from '../util.js';
 
 export const HEALTH_START = .35;
@@ -146,13 +147,26 @@ export function storySystem(G) {
   G.on('newYear', () => { for (const k of kin) if (k.kind === 'young') k.leave = .01; G.hud.glint('The young leave', 'Last year’s young are grown, and fly off to find their own country.', 'bird_hawk'); });
 
   // ---- the journal ---------------------------------------------------------------------------
-  const sec = journal(G).section(40);
-  sec.body.innerHTML = '<p class="j-health"></p><p class="j-court"></p>';
+  // Journal > Nest and family: your mate, or what wins one (four bars and what would help most),
+  // then the keepsakes you carry
+  const sec = journal(G).section(40, 'Your mate');
+  sec.el.classList.add('fam3');
+  sec.body.innerHTML = '<p class="fnote3"></p><ul class="court3"></ul><p class="ftip3"></p><div class="keeps3"></div>';
+  const bar = (ic, t, v, label) => `<li><span class="si3">${icon(ic)}</span><b>${t}</b><span class="cb3"><i style="width:${Math.round(Math.min(1, v) * 100)}%"></i></span><em>${label}</em></li>`;
   G.menu.onOpen(() => {
-    const ks = St.keepsakes.length ? ` Keepsakes: ${St.keepsakes.map(k => KEEPSAKES[k] ?? k).join(', ')}.` : '';   // names: things people left (ruins.js)
-    sec.body.querySelector('.j-health').textContent = `Health: ${healthWord(St.health)}.${ks}`;
-    sec.body.querySelector('.j-court').textContent = St.mate ? `Your mate, met ${St.mate.note.replace(/\.$/, '').replace(/^Day/, 'on day')}, flies with you.`
-      : `Courtship, in spring: health ${healthWord(St.health).split(',')[0]}, ${St.keepsakes.length} of ${COURT.keep} keepsakes, ${G.learned?.size || 0} of ${COURT.songs} songs, ${Math.min(St.tricks, COURT.tricks)} of ${COURT.tricks} acrobatics.`;
+    const q = c => sec.body.querySelector(c), p = parts(), songs = G.learned?.size || 0;
+    sec.head.textContent = St.mate ? 'Your mate' : 'Finding a mate';
+    q('.fnote3').textContent = St.mate ? `Met ${St.mate.note.replace(/\.$/, '').replace(/^Day/, 'on day')}, your mate flies with you and brings the chick a meal now and then.`
+      : `In spring a hawk may come circling up to look you over. Win it with a red tail, keepsakes, songs and acrobatics.`;
+    q('.court3').innerHTML = St.mate ? '' : [
+      bar('health', 'Health', p.health, healthWord(St.health).split(',')[0]),
+      bar('keepsake', 'Keepsakes', p.keepsakes, `${Math.min(St.keepsakes.length, COURT.keep)} of ${COURT.keep}`),
+      bar('songs', 'Songs', p.songs, `${Math.min(songs, COURT.songs)} of ${COURT.songs}`),
+      bar('stoop', 'Acrobatics', p.acrobatics, `${Math.min(St.tricks, COURT.tricks)} of ${COURT.tricks}`),
+    ].join('');
+    q('.ftip3').textContent = St.mate ? '' : tip();
+    // names: things people left (ruins.js)
+    q('.keeps3').innerHTML = St.keepsakes.length ? `<h4>Keepsakes</h4><div>${St.keepsakes.map(k => `<span>${esc(KEEPSAKES[k] ?? k)}</span>`).join('')}</div>` : '';
   });
 
   return {

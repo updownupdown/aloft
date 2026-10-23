@@ -696,7 +696,7 @@ export function createRenderer(gl) {
     shapes.set(key, m);
   };
   shape('ring', ring()); shape('cloud', cloud());
-  // the clouds as soft volumes (clouds.js), when Settings > Picture > Clouds isn't Polygons
+  // the clouds as soft volumes (clouds.js), when Settings > Graphics > Clouds isn't Polygons
   const vol = createClouds(gl);
   const hawk = mesh(gl, new Float32Array(12), LAYOUT, { dynamic: true });
   const fx = mesh(gl, new Float32Array(7), [[0, 3], [1, 4]], { dynamic: true });

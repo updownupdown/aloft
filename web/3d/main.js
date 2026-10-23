@@ -231,7 +231,7 @@ if (qs.has('fps')) G.settings.fpsCap = +qs.get('fps') || 60;
   H.tip('ground', () => b.state === 'ground' && !(b.settle > 0), 'On the ground, tap a spot near by to hop over to it. Drag to turn round; pinch to see more or less round you.');
   const play = 'play';
   G.menu.tab(play, 'Play');
-  G.menu.toggle(play, { label: 'Sound', get: () => G.settings.sound, set: v => { G.settings.sound = v; audio.setOn(v); store.set('sound', v); } });
+  G.menu.toggle(play, { label: 'Sound effects', sub: 'birds, wind, wings and calls', get: () => G.settings.sound, set: v => { G.settings.sound = v; audio.setOn(v); store.set('sound', v); } });
   G.menu.toggle(play, { label: 'Music', get: () => G.settings.music, set: v => { G.settings.music = v; music.setOn(v); store.set('music', v); } });
   // volumes: music, the wind, and the birds with every other sound
   for (const [k, label] of [['music', 'Music volume'], ['wind', 'Wind volume'], ['fx', 'Birds and effects']]) {
@@ -250,7 +250,7 @@ if (qs.has('fps')) G.settings.fpsCap = +qs.get('fps') || 60;
   R.cloudStyle = CLOUDS.some(c => c[0] === cq) ? cq : CLOUDS.some(c => c[0] === store.get('clouds3d')) ? store.get('clouds3d') : 'soft';
   G.menu.choice(play, { label: 'Clouds', options: CLOUDS, get: () => R.cloudStyle, set: v => { R.cloudStyle = v; store.set('clouds3d', v); },
     sub: v => v === 'poly' ? 'see-through facets (the old look, lightest)' : v === 'soft' ? 'soft volumes you can fly into, and fog that lies in the valleys' : v === 'facet' ? 'soft volumes lit in low-poly facets, and valley fog' : 'soft volumes with drifting billowy edges, and valley fog' });
-  G.dev?.add({ id: 'clouds-volume', area: 'World', title: 'Clouds as soft volumes, fog as valley mist', how: 'Settings > Picture > Clouds: Soft, Faceted or Billowing. Fly into a cloud; on a misty morning climb out of the valley fog. Dev tools > Frame cost shows the clouds pass.' });
+  G.dev?.add({ id: 'clouds-volume', area: 'World', title: 'Clouds as soft volumes, fog as valley mist', how: 'Settings > Graphics > Clouds: Soft, Faceted or Billowing. Fly into a cloud; on a misty morning climb out of the valley fog. Dev tools > Frame cost shows the clouds pass.' });
   G.settings.rest = store.get('rest3d', true);
   G.menu.toggle(play, { label: 'Rest at 30 fps', sub: 'perched or on the ground and left alone a few seconds: half the frames, less battery', get: () => G.settings.rest, set: v => { G.settings.rest = v; store.set('rest3d', v); } });
   G.menu.toggle(play, { label: 'Show frame rate', get: () => G.settings.fps, set: v => { G.settings.fps = v; store.set('fps3d', v); H.showFps(v); } });

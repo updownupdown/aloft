@@ -23,7 +23,7 @@ const ICON_OF = { today: 'today', map: 'map', journal: 'journal', guide: 'guide'
 // older names: the Game section is Today now
 const ALIAS = { game: 'today' };
 // Settings, a page each (title, order)
-const PAGES = { audio: ['Sound', 10], graphics: ['Picture', 20], gameplay: ['Controls', 30], messages: ['Messages', 40], journey: ['Journey', 50], dev: ['Advanced', 60] };
+const PAGES = { audio: ['Sound', 10], graphics: ['Graphics', 20], gameplay: ['Controls', 30], messages: ['Messages', 40], journey: ['Journey', 50], dev: ['Advanced', 60] };
 // groups of rows: the page each sits on, its heading (none: the pill names it) and its place on the page;
 // 'today' is the row of things to do on Today
 const GROUPS = {
@@ -32,14 +32,17 @@ const GROUPS = {
 };
 // where each Settings row goes: by its label, else by the group it names (OLD names too), else Controls
 const SECTION_OF = {
-  Sound: 'audio', Music: 'audio', 'Music style': 'audio', 'Music volume': 'audio', 'Wind volume': 'audio', 'Birds and effects': 'audio',
+  'Sound effects': 'audio', Music: 'audio', 'Music style': 'audio', 'Music volume': 'audio', 'Wind volume': 'audio', 'Birds and effects': 'audio',
   Graphics: 'graphics', 'Ground detail': 'graphics', Clouds: 'graphics', 'Frame rate': 'graphics', 'Battery use': 'graphics', 'Rest at 30 fps': 'graphics',
   'Photo mode': 'today', 'Share a ghost flight': 'today', 'Start a new journey': 'journey', 'Start a new world': 'journey',
   'Show frame rate': 'dev', 'Feature list': 'dev', Update: 'dev', 'Music lab': 'dev', 'Bird song lab': 'dev',
 };
 const OLD = { sound: 'audio', app: 'dev', switch: 'gameplay', play: 'journey' };
 // rows that keep a set order within their page, whichever system adds them first; the rest follow
-const ROW_ORDER = { Graphics: 1, 'Frame rate': 2, 'Ground detail': 3, 'Battery use': 4, Clouds: 5, 'Photo mode': 1, 'Share a ghost flight': 2 };
+const ROW_ORDER = { Graphics: 1, 'Frame rate': 2, 'Ground detail': 3, 'Battery use': 4,
+  'Sound effects': 1, 'Wind volume': 2, 'Birds and effects': 3, Music: 4, 'Music style': 5, 'Music volume': 6, Clouds: 5, 'Photo mode': 1, 'Share a ghost flight': 2 };
+// rows that sit under a switch, and are greyed out while it is off (by label)
+const UNDER = { 'Wind volume': 'Sound effects', 'Birds and effects': 'Sound effects', 'Music volume': 'Music', 'Music style': 'Music' };
 // pages that moved: How to play > Hints is Settings > Messages
 const MOVED = { 'how/hints': ['play', 'messages'] };
 
@@ -63,6 +66,7 @@ export function createMenu(G, ui) {
   const repaint = letter(card);
   const M = { open: false, opens: [], acts: new Map(), sub: null, quit: null };
   let current = null, n = 0, added = 0;
+  const switches = {}, deps = [];   // each switch's get() by label; the refreshes of rows under one
   const pages = store.get('pages3d', {}), infos = {};
   const show = id => {
     id = ALIAS[id] || id;
@@ -154,7 +158,8 @@ export function createMenu(G, ui) {
     where(tab, group, label).insertAdjacentHTML('beforeend', `<button data-act="${act}" class="sw" role="switch"><span>${label}${sub ? ` <small>${sub}</small>` : ''}</span><i></i></button>`);
     const el = card.querySelector(`[data-act=${act}]`), refresh = () => { el.classList.toggle('on', !!get()); el.setAttribute('aria-checked', !!get()); };
     seat(el, label);
-    M.acts.set(act, () => { set(!get()); refresh(); });
+    switches[label] = get;
+    M.acts.set(act, () => { set(!get()); refresh(); for (const f of deps) f(); });
     M.opens.push(refresh); refresh();
     return el;
   };
@@ -181,7 +186,9 @@ export function createMenu(G, ui) {
     const el = card.querySelector(`[data-range=${act}]`), input = el.querySelector('input'), out = el.querySelector('b');
     seat(el, label);
     const show = () => { out.textContent = input.value + '%'; input.style.setProperty('--v', input.value + '%'); };
-    const refresh = () => { input.value = Math.round(get() * 100); show(); };
+    const live = () => { const off = !!UNDER[label] && switches[UNDER[label]]?.() === false; el.classList.toggle('off3', off); input.disabled = off; };
+    const refresh = () => { input.value = Math.round(get() * 100); show(); live(); };
+    if (UNDER[label]) { el.classList.add('under3'); deps.push(live); }
     input.addEventListener('input', () => { set(input.value / 100); show(); });
     M.opens.push(refresh); refresh();
     return { el, refresh };

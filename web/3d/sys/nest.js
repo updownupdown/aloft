@@ -7,6 +7,7 @@ import { height, treesNear, ih } from '../world.js';
 import { builder, blob, reseed } from '../shapes.js';
 import { DAY } from '../sky.js';
 import { journal } from '../journal.js';
+import { icon } from '../icons.js';
 
 export const NEST_TWIGS = 5, CHICK_MEALS = 5;
 const NEAR = 3.2;   // metres from the nest that count as at it
@@ -114,10 +115,24 @@ export function nestSystem(G) {
     if (!n.chick) return `An egg in your nest in ${n.place}. It hatches ${G.clock - n.eggAt > DAY * .6 ? 'very soon' : 'in about a day'}.`;
     return `A chick in your nest in ${n.place}, hungry: ${n.fed} of ${CHICK_MEALS} meals brought. Catch something and carry it home in your feet: it drops into the nest.`;
   };
-  const sec = journal(G).section(30);
-  sec.body.innerHTML = '<p></p>';
+  // Journal > Nest and family: the nest's four steps (twigs, egg, chick, fledged) as a track, then
+  // where it stands in words
+  const sec = journal(G).section(30, 'Your nest');
+  sec.el.classList.add('fam3');
+  sec.body.innerHTML = '<ol class="steps3"></ol><p class="fnote3"></p>';
   const age = () => G.nest?.years > 1 ? ` This nest has stood ${G.nest.years} years, deeper each spring, with ${trinkets()} ${trinkets() === 1 ? 'trinket' : 'trinkets'} woven in.` : '';
-  G.menu.onOpen(() => { sec.body.firstChild.textContent = status() + age() + (G.carry === 'twig' ? ' You are carrying a twig.' : ''); });
+  const pips = (n, of) => `<span class="pips3f">${Array.from({ length: of }, (_, i) => `<i${i < n ? ' class="on"' : ''}></i>`).join('')}</span>`;
+  G.menu.onOpen(() => {
+    const n = G.nest, at = !n ? 0 : n.fledged ? 4 : n.chick ? 3 : n.twigs >= NEST_TWIGS ? 2 : 1;
+    const steps = [
+      ['twig', 'Twigs', n ? pips(Math.min(n.twigs, NEST_TWIGS), NEST_TWIGS) : `<small>${NEST_TWIGS} to build</small>`],
+      ['nest', 'Egg', `<small>${at > 2 ? 'hatched' : at === 2 ? 'in the nest' : 'when it’s built'}</small>`],
+      ['bird_hawk', 'Chick', at === 3 ? pips(n.fed, CHICK_MEALS) : `<small>${at > 3 ? 'grown' : `${CHICK_MEALS} meals`}</small>`],
+      ['takeoff', 'Fledged', '<small>flies with you</small>'],
+    ];
+    sec.body.firstChild.innerHTML = steps.map(([ic, t, sub], i) => `<li class="${i + 1 < at || at === 4 ? 'done' : i + 1 === at ? 'now' : ''}"><span class="si3">${icon(ic)}</span><b>${t}</b>${sub}</li>`).join('');
+    sec.body.lastChild.textContent = status() + age() + (G.carry === 'twig' ? ' You are carrying a twig.' : '');
+  });
 
   return {
     id: 'nest',

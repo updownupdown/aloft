@@ -1,4 +1,4 @@
-// Clouds and mist as soft volumes instead of see-through polygons (Settings > Picture > Clouds;
+// Clouds and mist as soft volumes instead of see-through polygons (Settings > Graphics > Clouds;
 // the polygons stay as the fallback, 'poly').
 // A cloud is a few lobes: ellipsoids whose density falls from 1 at the core to 0 at the rim
 // (1 - r²). It is drawn on the inside of a box round its lobes, and each pixel adds up how much
