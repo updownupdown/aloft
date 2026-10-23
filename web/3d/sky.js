@@ -29,9 +29,11 @@ export function light(tod, lat, yf) {
   let m;
   const blend = (A, B, t) => Object.fromEntries(Object.keys(A).map(k => [k, mix3(A[k], B[k], t)]));
   if (el > .25) m = MOOD.day; else if (el > 0) m = blend(MOOD.dusk, MOOD.day, el / .25); else m = blend(MOOD.night, MOOD.dusk, smooth(-.2, 0, el));
-  // at night the moon lights from high in the opposite sky
-  const L = el > -.05 ? [sunDir[0], Math.max(sunDir[1], .08), sunDir[2]] : norm([-sunDir[0], .6, -sunDir[2]]);
-  return { ...m, sun: norm(L), sunSky: sunDir, el, night: smooth(.05, -.2, el), daylight: smooth(-.05, .3, el) };
+  // at night the moon lights from high in the opposite sky. The light turns over from the sun to
+  // the moon through the late twilight (it was a jump in one frame, every shadow side swapping)
+  const sun = norm([sunDir[0], Math.max(sunDir[1], .08), sunDir[2]]), moon = norm([-sunDir[0], .6, -sunDir[2]]), t = smooth(.06, -.26, el);
+  const L = norm(mix3(sun, moon, t));
+  return { ...m, sun: L, sunSky: sunDir, el, night: smooth(.05, -.2, el), daylight: smooth(-.05, .3, el) };
 }
 export const period = tod => (tod < .2 || tod > .8 ? 'night' : tod < .33 ? 'dawn' : tod > .68 ? 'dusk' : 'day');
 
