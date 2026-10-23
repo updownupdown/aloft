@@ -66,7 +66,7 @@ export function createDial(parent, { hub = false } = {}) {
       if (season) {
         // the date, the same the world over, and the season here (earth.js: by latitude)
         seasonEl.className = 'season ' + season.name;
-        seasonEl.textContent = season.date ? `${season.date}, ${season.tropic ? 'tropical summer' : season.name}` : `${season.name[0].toUpperCase()}${season.name.slice(1)}, day ${(season.d ?? 0) + 1} of ${SEASON_DAYS}`;
+        seasonEl.textContent = season.date ? `${season.date}, ${season.tropic ? 'Tropical summer' : season.name[0].toUpperCase() + season.name.slice(1)}` : `${season.name[0].toUpperCase()}${season.name.slice(1)}, day ${(season.d ?? 0) + 1} of ${SEASON_DAYS}`;
       }
       el.title = `Day ${dayN}, ${h}${season ? ', ' + season.name : ''}${now ? `. ${SAY[now][0].toUpperCase()}${SAY[now].slice(1)} now${next ? `, then ${SAY[next]}` : ''}` : ''}`;
     },

@@ -5,7 +5,7 @@ export const ICONS = {
   // Height ladder: rising air, one to three chevrons lit by how strong (hud.js; red, 2026-10-22)
   updraft: '<path class="u1" d="M6.5 20l5.5-4.5 5.5 4.5"/><path class="u2" d="M6.5 14l5.5-4.5 5.5 4.5"/><path class="u3" d="M6.5 8l5.5-4.5 5.5 4.5"/>',
   // Menu button: Pause
-  menu: '<path d="M9 6v12M15 6v12"/>',
+  menu: '<rect x="5.6" y="4.8" width="4.6" height="14.4" rx="1.4" fill="currentColor" stroke="none"/><rect x="13.8" y="4.8" width="4.6" height="14.4" rx="1.4" fill="currentColor" stroke="none"/>',
   // Resume: Play
   resume: '<path d="M8 5.5v13l10.5-6.5z"/>',
   // Quit: Door and arrow

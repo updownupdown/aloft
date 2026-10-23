@@ -1,23 +1,22 @@
-// The Map tab: the country as the hawk has seen it, north up. Everywhere starts under fog; flying
-// clears it around the hawk (wider the higher it flies), and the cleared ground is painted from the
-// terrain itself as the world is, in lit triangles coloured by what grows there. Drag to pan, pinch
-// or the wheel to zoom, tap a place for its note. Painted only while the menu shows the map: the
-// land goes to a cache a screen wider than the view on every side, so a drag only slides it.
+// The Map tab: the Earth as a globe (globe.js), spun with a finger. Everywhere starts under fog;
+// flying clears it around the hawk (wider the higher it flies). Drag to spin (flick and it coasts),
+// pinch, the wheel or the buttons to zoom, tap a place for its note, hold to drop a pin. Only places
+// that are one of a kind get a mark; a name many places share is a quiet word, once, when close.
 // Created by journey.js, which keeps the route and the landmarks; the fog saves with the journey,
 // a bit per 100 m cell over the whole Earth (earth.js), wrapping east to west like the world.
 import * as W from '../world.js';
-import { PIG, C, shade, poly, facets } from '../facet.js';
+import { PIG, C, shade, poly } from '../facet.js';
 import { clamp } from '../util.js';
 import { esc } from '../journal.js';
 import { createDial } from '../dial.js';
 import { icon } from '../icons.js';
 import { SEASON_DAYS, SEASONS } from '../sky.js';
-import { EARTH, wrapX } from '../earth.js';
+import { EARTH, wrapX, latLon, toXZ } from '../earth.js';
+import { createGlobe, prebake } from '../globe.js';
 
 const CELL = 100;                        // fog cells, metres
 const SEE = [160, 2.2, 520];             // clearing radius: base, per metre of height, most
-const ZOOM = [1.2, 160], ZOOM0 = 5;      // metres per CSS pixel: closest, farthest (most of the world), at first
-const FOG = 'rgba(0, 0, 0, .6)';
+const D = Math.PI / 180;
 // the fog: one bit per cell, columns wrapping round the world
 const FI = Math.round(EARTH.W / CELL), FJ = Math.ceil(EARTH.H / CELL), FJ0 = Math.floor(EARTH.Z0 / CELL);
 const bit = (i, j) => { const jj = j - FJ0; return jj < 0 || jj >= FJ ? -1 : jj * FI + (((i + FI / 2) % FI) + FI) % FI; };
@@ -56,184 +55,198 @@ export function mapView(G, J) {
   // top right, the same day dial as in flight, and the season in more detail beneath it
   const day = box.querySelector('.mapday3'), seasonEl = day.querySelector('.mapseason3'), dial = createDial(day);
   day.prepend(dial.el || day.querySelector('.dial'));
-  const V = { x: 0, z: 0, sc: ZOOM0, w: 0, h: 0, dpr: 1 };
-  let cache = null, open = false, raf = 0;
-  const centre = () => { V.x = b.p[0]; V.z = b.p[2]; };
+  const over = document.createElement('canvas'); over.className = 'mapover3'; cv.after(over);
+  const globe = createGlobe(cv);
+  G.menu.onOpen(() => setTimeout(prebake, 30));   // the globe's land, while the menu slides in
+  // the view: the point in the middle and the ball's radius in CSS pixels; T is where it is easing to
+  const V = { lat: 0, lon: 0, R: 300, w: 0, h: 0, dpr: 1 }, T = { lat: 0, lon: 0, R: 300 };
+  let open = false, raf = 0, spin = [0, 0], held = false;
+  const rMin = () => Math.min(V.w, V.h) * .42, rMax = () => Math.min(V.w, V.h) * 5;
+  const hawkLL = () => latLon(b.p[0], b.p[2]);
+  const centre = (R = T.R) => { const [la, lo] = hawkLL(); T.lat = la; T.lon = lo; T.R = clamp(R, rMin(), rMax()); spin = [0, 0]; soon(); };
   const fit = () => {
     const r = box.getBoundingClientRect();
     V.w = Math.max(200, Math.round(r.width)); V.h = Math.max(140, Math.round(r.height)); V.dpr = Math.min(devicePixelRatio || 1, 2);
-    cv.width = Math.round(V.w * V.dpr); cv.height = Math.round(V.h * V.dpr);
+    for (const c of [cv, over]) { c.width = Math.round(V.w * V.dpr); c.height = Math.round(V.h * V.dpr); }
   };
+  // the fog, splatted from the seen cells (a few ms; on every opening)
+  const fogNow = () => globe?.fog(fn => {
+    for (let n = 0; n < seen.length; n++) {
+      const by = seen[n]; if (!by) continue;
+      for (let q = 0; q < 8; q++) if (by & (1 << q)) {
+        const k = n * 8 + q, jj = Math.floor(k / FI), ii = k - jj * FI;
+        fn((ii - FI / 2 + .5) * CELL, (jj + FJ0 + .5) * CELL);
+      }
+    }
+  });
   G.on('menuTab', id => {
     open = id === 'map';
     pane.closest('.card3')?.classList.toggle('wide3', open);
     if (!open) return;
-    centre(); note.classList.add('hidden');
+    note.classList.add('hidden');
     const pct = Math.round(explored() * 100);
     dial.update(G.tod, G.day, false, null, G.forecast || null);
     const cap = t => t[0].toUpperCase() + t.slice(1), into = (G.season.d ?? 0) + 1, left = SEASON_DAYS - into;
     const next = SEASONS[(SEASONS.indexOf(G.season.name) + 1) % SEASONS.length];
     const pips = Array.from({ length: SEASON_DAYS }, (_, i) => `<i class="${i < into - 1 ? 'on' : i === into - 1 ? 'on now' : ''}"></i>`).join('');
     seasonEl.className = `mapseason3 ${G.season.name}`;
-    seasonEl.innerHTML = `<b>${G.date?.text ? `${G.date.text}, ` : ''}${G.season.tropic ? 'tropical summer' : G.season.name}</b><span class="pips3s">${pips}</span>
+    seasonEl.innerHTML = `<b>${G.date?.text ? `${G.date.text}, ` : ''}${cap(G.season.tropic ? 'tropical summer' : G.season.name)}</b><span class="pips3s">${pips}</span>
       <small>${G.season.tropic ? 'near the equator: summer all year' : left ? `${left} day${left > 1 ? 's' : ''} to ${next} here` : `${cap(next)} comes tomorrow`}</small>`;
     // top left: where the hawk is, and how far the journey has come
     const where = G.placeWhere(), L = G.collection?.(), found = Object.keys(J.found || {}).length;
     sum.innerHTML = `<p class="here3">${esc(cap(where))}</p>
       <div class="far3"><span><i style="width:${Math.max(2, pct)}%"></i></span><small>${pct < 1 ? (explored() * 100).toFixed(2) : pct}% of the world known</small></div>
       <ul class="tally3"><li><b>${J.year || 1}</b>${J.year > 1 ? 'years' : 'year'}</li><li><b>${found}</b>${found === 1 ? 'landmark' : 'landmarks'}</li>${L ? `<li><b>${L.lands}<span>/${L.of}</span></b>lands</li><li><b>${L.feathers}</b>${L.feathers === 1 ? 'feather' : 'feathers'}</li>` : ''}${J.pins?.length ? `<li><b>${J.pins.length}</b>${J.pins.length === 1 ? 'pin' : 'pins'}</li>` : ''}</ul>`;
-    requestAnimationFrame(() => { fit(); cache = null; draw(); });
+    requestAnimationFrame(() => {
+      fit(); fogNow();
+      // open on the hawk, close enough to see the country round it; then spin out to the whole Earth
+      const [la, lo] = hawkLL(); Object.assign(V, { lat: la, lon: lo, R: rMax() * .5 }); Object.assign(T, { lat: la, lon: lo, R: V.R });
+      draw();
+    });
   });
-  addEventListener('resize', () => { if (open) { fit(); cache = null; soon(); } });
-  const soon = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(draw); };
-
-  // screen <-> world
-  const sx = wx => (wx - V.x) / V.sc + V.w / 2, sz = wz => (wz - V.z) / V.sc + V.h / 2;
-  const wx = px => V.x + (px - V.w / 2) * V.sc, wz = py => V.z + (py - V.h / 2) * V.sc;
-
-  // the land under the fog, for a rectangle one view wider on every side
-  function paintCache() {
-    const W3 = V.w * 3, H3 = V.h * 3, c = document.createElement('canvas');
-    c.width = Math.round(W3 * V.dpr); c.height = Math.round(H3 * V.dpr);
-    const x = c.getContext('2d'); x.setTransform(V.dpr, 0, 0, V.dpr, 0, 0);
-    const ox = V.x - V.w * 1.5 * V.sc, oz = V.z - V.h * 1.5 * V.sc, sc = V.sc;
-    const X = px => ox + px * sc, Z = py => oz + py * sc;
-    const ground = (px, py) => {
-      const x0 = X(px), z0 = Z(py), y = W.height(x0, z0);
-      if (y < W.WATER + .3) return PIG.water;
-      if (W.mapColour) return W.mapColour(x0, z0);   // the biome's own colour (world.js)
-      if (y > 150) return PIG.paper;
-      if (y > 85) return PIG.rock;
-      return W.forest(x0, z0) > .15 ? PIG.wood : y < 3 ? PIG.sand : PIG.meadow;
-    };
-    const cell = clamp(14 * Math.sqrt(ZOOM0 / sc), 9, 22);
-    facets(x, 0, 0, W3, H3, cell, (px, py, t) => {
-      for (const v of t) v[2] = Math.max(W.height(X(v[0]), Z(v[1])), 0) / sc;
-      return ground(px, py);
-    }, { seed: 5, relief: 1.6 });
-    // the fog (for play testing, the land shows through it): a veil 80% black with soft holes where
-    // the hawk has been
-    const f = document.createElement('canvas'); f.width = c.width; f.height = c.height;
-    const fx = f.getContext('2d'); fx.setTransform(V.dpr, 0, 0, V.dpr, 0, 0);
-    fx.fillStyle = FOG; fx.fillRect(0, 0, W3, H3);
-    fx.globalCompositeOperation = 'destination-out';
-    const rr = CELL * 1.05 / sc, i0 = Math.floor(ox / CELL) - 1, i1 = Math.ceil(X(W3) / CELL) + 1, j0 = Math.floor(oz / CELL) - 1, j1 = Math.ceil(Z(H3) / CELL) + 1;
-    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
-      if (!has(i, j)) continue;
-      const px = ((i + .5) * CELL - ox) / sc, py = ((j + .5) * CELL - oz) / sc;
-      const g = fx.createRadialGradient(px, py, rr * .35, px, py, rr);
-      g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(1, 'rgba(0,0,0,0)');
-      fx.fillStyle = g; fx.fillRect(px - rr, py - rr, rr * 2, rr * 2);
-    }
-    x.drawImage(f, 0, 0, W3, H3);
-    cache = { c, ox, oz, sc, w: W3, h: H3 };
+  addEventListener('resize', () => { if (open) { fit(); soon(); } });
+  const soon = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(frame); };
+  // ease toward T, coast on a flick, keep going till still
+  function frame() {
+    if (!open) return;
+    if (!held && (spin[0] || spin[1])) { T.lon += spin[0]; T.lat = clamp(T.lat + spin[1], -85, 85); spin = spin.map(s => Math.abs(s) < .002 ? 0 : s * .92); }
+    const dl = ((T.lon - V.lon + 540) % 360) - 180;
+    V.lat += (T.lat - V.lat) * .3; V.lon += dl * .3; V.R *= (T.R / V.R) ** .3;
+    draw();
+    if (Math.abs(T.lat - V.lat) > .001 || Math.abs(dl) > .001 || Math.abs(T.R / V.R - 1) > .001 || spin[0] || spin[1]) raf = requestAnimationFrame(frame);
   }
+  const at = (x, z) => { const [la, lo] = latLon(x, z); return globe.project(V, V.w, V.h, la, lo); };
 
-  // what can be tapped: home, the nest, the landmarks found
+  // what can be tapped: home, the nest, the landmarks found. A landmark is "unique" (a mark and
+  // its name always) unless several share its name or it is a whole land's sight (the dunes, the
+  // salt pan): those are only named when close, and only once in a stretch of map
+  const SIGHTS = new Set(['The Singing Dunes', 'The Golden Sea', 'The Stone Forest', 'The Hundred Towers', 'The White Pan', 'The Salt Mirror', 'The Painted Hills', 'The Striped Hills']);
   function places() {
-    const out = G.home ? [{ x: G.home[0], z: G.home[1], name: 'Where you began', note: 'Your first flight started here.', col: PIG.wood }] : [];
-    if (G.nest) out.push({ x: G.nest.x, z: G.nest.z, name: 'Your nest', note: G.nest.egg || G.nest.chick ? 'Someone is waiting for you here.' : 'A nest of twigs, in a tree.', col: PIG.bark });
-    for (const l of Object.values(J.found)) out.push({ x: l.x, z: l.z, name: l.name, note: l.note, col: PIG.ring });
+    const out = G.home ? [{ x: G.home[0], z: G.home[1], name: 'Where you began', note: 'Your first flight started here.', col: PIG.wood, rank: 1 }] : [];
+    if (G.nest) out.push({ x: G.nest.x, z: G.nest.z, name: 'Your nest', note: G.nest.egg || G.nest.chick ? 'Someone is waiting for you here.' : 'A nest of twigs, in a tree.', col: PIG.bark, rank: 0 });
+    const names = {};
+    for (const l of Object.values(J.found)) names[l.name] = (names[l.name] || 0) + 1;
+    for (const l of Object.values(J.found)) out.push({ x: l.x, z: l.z, name: l.name, note: l.note, col: PIG.ring, rank: SIGHTS.has(l.name) ? 4 : names[l.name] > 1 ? 3 : 2, plain: SIGHTS.has(l.name) || names[l.name] > 1 });
     // food left on a branch (flight thread's G.caches), till it spoils
-    for (const c of G.caches || []) out.push({ x: c.x, z: c.z, name: `A ${c.kind || 'catch'} left on a branch`, note: `Left on day ${Math.floor(c.day)}. It keeps two days.`, cache: c });
-    for (const p of J.pins || []) out.push({ x: p.x, z: p.z, name: 'Your pin', note: '', pin: p });
-    for (const p of G.mapPlaces?.() || []) out.push(p);   // places other systems add (the neighbours' valley)
+    for (const c of G.caches || []) out.push({ x: c.x, z: c.z, name: `A ${c.kind || 'catch'} left on a branch`, note: `Left on day ${Math.floor(c.day)}. It keeps two days.`, cache: c, rank: 1 });
+    for (const p of J.pins || []) out.push({ x: p.x, z: p.z, name: 'Your pin', note: '', pin: p, rank: 0 });
+    for (const p of G.mapPlaces?.() || []) out.push({ rank: 2, ...p });   // places other systems add (the neighbours' valley)
     return out;
   }
+  let shown = [];   // the markers drawn, for taps
 
   function draw() {
-    if (!open || !V.w) return;
-    const x = cv.getContext('2d'); x.setTransform(V.dpr, 0, 0, V.dpr, 0, 0);
-    const vx0 = wx(0), vz0 = wz(0), vx1 = wx(V.w), vz1 = wz(V.h);
-    if (!cache || cache.sc !== V.sc || vx0 < cache.ox || vz0 < cache.oz || vx1 > cache.ox + cache.w * cache.sc || vz1 > cache.oz + cache.h * cache.sc) paintCache();
-    x.fillStyle = '#2a2f33'; x.fillRect(0, 0, V.w, V.h);
-    x.drawImage(cache.c, (cache.ox - vx0) / V.sc, (cache.oz - vz0) / V.sc, cache.w, cache.h);
-    // the marsh: a dashed line across the map where it lies, or which way it is
+    if (!open || !V.w || !globe) return;
+    globe.draw(V, V.w, V.h, V.dpr);
+    const x = over.getContext('2d'); x.setTransform(V.dpr, 0, 0, V.dpr, 0, 0); x.clearRect(0, 0, V.w, V.h);
     x.font = '600 12px Outfit, system-ui, sans-serif';
-    const label = (px, py, text) => {
-      const w = x.measureText(text).width, lx = clamp(px, 6, V.w - w - 10), ly = clamp(py, 16, V.h - 6);
-      x.fillStyle = 'rgba(255,255,255,.82)'; x.beginPath(); x.roundRect(lx - 6, ly - 13, w + 12, 18, 9); x.fill();
+    // labels keep clear of the panels over the map
+    const br = box.getBoundingClientRect(), boxes = [sum, day].map(el => { const r = el.getBoundingClientRect(); return [r.left - br.left, r.bottom - br.top, r.width, r.height]; }), named = [];
+    const free = (lx, ly, w) => !boxes.some(q => lx < q[0] + q[2] && lx + w > q[0] && ly - 14 < q[1] && ly + 4 > q[1] - (q[3] ?? 18));
+    const label = (px, py, text, plain) => {
+      const w = x.measureText(text).width + 12, lx = px + 9, ly = py - 5;
+      if (lx + w > V.w - 4 || ly > V.h - 4 || !free(lx - 6, ly, w)) return false;
+      boxes.push([lx - 6, ly + 5, w, 19]); named.push([text, px, py]);
+      if (plain) { x.fillStyle = 'rgba(255,255,255,.92)'; x.font = 'italic 500 12px Outfit, system-ui, sans-serif'; x.fillText(text, lx, ly); x.font = '600 12px Outfit, system-ui, sans-serif'; return true; }
+      x.fillStyle = 'rgba(255,255,255,.85)'; x.beginPath(); x.roundRect(lx - 6, ly - 13, w, 18, 9); x.fill();
       x.fillStyle = '#1d2b36'; x.fillText(text, lx, ly);
+      return true;
     };
-    // the ends of the Earth: the ice beyond the poles
-    for (const [ez, t] of [[EARTH.Z0, 'The edge of the northern ice'], [EARTH.Z0 + EARTH.H, 'The edge of the southern ice']]) {
-      const ez2 = sz(ez); if (ez2 < -10 || ez2 > V.h + 10) continue;
-      x.fillStyle = 'rgba(240,246,250,.75)'; if (ez < 0) x.fillRect(0, 0, V.w, Math.max(0, ez2)); else x.fillRect(0, ez2, V.w, V.h - ez2);
-      label(V.w / 2 - x.measureText(t).width / 2, ez < 0 ? ez2 + 20 : ez2 - 8, t);
-    }
-    // places on the far side of the wrap show on this side when that is nearer
-    const near = wx0 => V.x + wrapX(wx0 - V.x);
-    for (const p of places()) {
-      const px = sx(near(p.x)), py = sz(p.z); if (px < -20 || py < -20 || px > V.w + 20 || py > V.h + 20) continue;
-      if (p.pin) { pin(x, px, py, pinCol(p.pin)); continue; }
-      if (p.cache) { pin(x, px, py, '#7a4a2a'); continue; }
-      mark(x, px, py, p.col); label(px + 9, py - 6, p.name);
+    shown = []; const dots = [];
+    const close = V.R > rMax() * .3;
+    for (const p of places().sort((a, c) => a.rank - c.rank)) {
+      const [px, py, front] = at(p.x, p.z); if (!front || px < -20 || py < -20 || px > V.w + 20 || py > V.h + 20) continue;
+      if (p.pin) { pin(x, px, py, pinCol(p.pin)); shown.push([p, px, py]); continue; }
+      if (p.cache) { pin(x, px, py, '#7a4a2a'); shown.push([p, px, py]); continue; }
+      if (p.plain) {
+        // a repeated name or a land's sight: no mark, a quiet name when close, once per stretch
+        if (!close || named.some(([t, qx, qy]) => t === p.name && Math.hypot(qx - px, qy - py) < 220)) continue;
+        if (label(px - 9, py + 5, p.name, true)) shown.push([p, px, py]);
+        continue;
+      }
+      // one mark to a spot, and none under the panels
+      if (dots.some(([qx, qy]) => Math.hypot(qx - px, qy - py) < 12) || !free(px - 6, py + 6, 12)) continue;
+      dots.push([px, py]); mark(x, px, py, p.col); label(px, py, p.name); shown.push([p, px, py]);
     }
     // you: a little hawk, pointing the way you face
-    x.save(); x.translate(sx(near(b.p[0])), sz(b.p[2])); x.rotate(b.yaw);
-    poly(x, [[0, -8], [12, 1], [3, 0], [2, 7], [-2, 7], [-3, 0], [-12, 1]], C(PIG.ink, .92));
-    x.restore();
-    // north
-    poly(x, [[V.w - 18, 12], [V.w - 13, 26], [V.w - 18, 23], [V.w - 23, 26]], C(PIG.ink, .7));
-    x.fillStyle = C(PIG.ink, .75); x.textAlign = 'center'; x.fillText('N', V.w - 18, 40); x.textAlign = 'left';
+    const [hx, hy, hf] = at(b.p[0], b.p[2]);
+    if (hf) {
+      const [ax, ay] = at(b.p[0] + Math.sin(b.yaw) * 400, b.p[2] - Math.cos(b.yaw) * 400);
+      x.save(); x.translate(hx, hy); x.rotate(Math.atan2(ax - hx, hy - ay));
+      x.shadowColor = 'rgba(0,0,0,.35)'; x.shadowBlur = 4;
+      poly(x, [[0, -9], [13, 1], [3, 0], [2, 8], [-2, 8], [-3, 0], [-13, 1]], C(PIG.paper, .98));
+      x.restore();
+    }
   }
   // a pin: a round head on a short stem, its point on the place
   const pin = (x, px, py, col) => {
-    x.strokeStyle = C(PIG.ink, .7); x.lineWidth = 1.6; x.beginPath(); x.moveTo(px, py); x.lineTo(px, py - 10); x.stroke();
+    x.strokeStyle = 'rgba(255,255,255,.8)'; x.lineWidth = 1.6; x.beginPath(); x.moveTo(px, py); x.lineTo(px, py - 10); x.stroke();
     x.fillStyle = col; x.beginPath(); x.arc(px, py - 14, 6, 0, 6.283); x.fill(); x.strokeStyle = '#fff'; x.lineWidth = 1.5; x.stroke();
     x.fillStyle = 'rgba(255,255,255,.7)'; x.beginPath(); x.arc(px - 2, py - 16, 1.8, 0, 6.283); x.fill();
   };
-  const mark = (x, px, py, col) => { const P = [[px, py - 6], [px + 5, py], [px, py + 6], [px - 5, py]]; poly(x, P, C(shade(col, .85))); poly(x, [P[0], P[2], P[3]], C(shade(col, 1.15))); x.strokeStyle = C(PIG.ink, .6); x.lineWidth = 1; x.stroke(); };
-  // ---- touch: drag to pan, pinch to zoom, tap a place, double tap to fly there (play testing) ---
+  const mark = (x, px, py, col) => { const P = [[px, py - 6], [px + 5, py], [px, py + 6], [px - 5, py]]; poly(x, P, C(shade(col, .85))); poly(x, [P[0], P[2], P[3]], C(shade(col, 1.15))); x.strokeStyle = 'rgba(255,255,255,.8)'; x.lineWidth = 1; x.stroke(); };
+  // ---- touch: drag to spin, flick to coast, pinch to zoom, tap a place, double tap to fly there (play testing) ---
   const pts = new Map();
-  let pinch = 0, moved = 0, lastTap = null;
+  let pinch = 0, moved = 0, lastTap = null, lastMove = 0;
   // main.js G.travelTo: shut the menu, fade to black, set down on the nearest perch (or the
   // ground or water) there, fade back in
   function teleport(x, z) {
     x = wrapX(x); z = Math.max(EARTH.Z0 + 200, Math.min(EARTH.Z0 + EARTH.H - 200, z));
-    G.travelTo(x, z, () => { reveal(); cache = null; G.hud.toast(`Flown to ${G.placeName?.(x, z) || 'there'}.`, 3); });
+    G.travelTo(x, z, () => { reveal(); G.hud.toast(`Flown to ${G.placeName?.(x, z) || 'there'}.`, 3); });
   }
+  const toWorld = (px, py) => { const ll = globe.unproject(V, V.w, V.h, px, py); return ll && toXZ(ll[0], ll[1]); };
+  // zoom keeping the point under (px, py) still (near enough: it nudges the centre toward it)
   const zoomAt = (k, px = V.w / 2, py = V.h / 2) => {
-    const sc = clamp(V.sc * k, ZOOM[0], ZOOM[1]); if (sc === V.sc) return;
-    const ax = wx(px), az = wz(py); V.sc = sc; V.x = ax - (px - V.w / 2) * sc; V.z = az - (py - V.h / 2) * sc; soon();
+    const R = clamp(T.R * k, rMin(), rMax()); if (R === T.R) return;
+    const ll = globe.unproject(V, V.w, V.h, px, py);
+    if (ll && k > 1) { const f = 1 - T.R / R, dl = ((ll[1] - T.lon + 540) % 360) - 180; T.lat = clamp(T.lat + (ll[0] - T.lat) * f, -85, 85); T.lon += dl * f; }
+    T.R = R; soon();
   };
   const local = e => { const r = cv.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
   // a long press (still for half a second) offers a pin there
   let pressT = 0;
   const offerPin = p => {
-    const at = [wx(p[0]), wz(p[1])]; lastTap = null; moved = 99;
+    const w = toWorld(p[0], p[1]); if (!w) return;
+    lastTap = null; moved = 99;
     note.classList.remove('hidden');
     note.innerHTML = `<b>Drop a pin here</b><small>Pick its colour.</small><span class="pins3">${PINS.map(c => `<button data-pin="${c}" style="--pc:${c}" aria-label="Pin colour"></button>`).join('')}</span>`;
     note.onclick = e => {
       const k = e.target.closest('[data-pin]')?.dataset.pin; if (!k) return;
-      (J.pins ||= []).push({ id: Date.now().toString(36), col: k, x: Math.round(at[0]), z: Math.round(at[1]) });
+      (J.pins ||= []).push({ id: Date.now().toString(36), col: k, x: Math.round(w[0]), z: Math.round(w[1]) });
       if (J.pins.length > 40) J.pins.shift();
       note.classList.add('hidden'); note.onclick = null; soon(); G.hud.did('pin'); G.emit('pin');
     };
   };
   cv.addEventListener('pointerdown', e => {
-    cv.setPointerCapture(e.pointerId); pts.set(e.pointerId, local(e)); moved = 0; pinch = 0;
+    cv.setPointerCapture(e.pointerId); pts.set(e.pointerId, local(e)); moved = 0; pinch = 0; held = true; spin = [0, 0];
     clearTimeout(pressT); if (pts.size === 1) { const p0 = local(e); pressT = setTimeout(() => { if (moved < 6 && pts.size === 1) offerPin(p0); }, 550); }
   });
   cv.addEventListener('pointermove', e => {
     const p = pts.get(e.pointerId); if (!p) return;
     const q = local(e);
-    if (pts.size === 1) { V.x -= (q[0] - p[0]) * V.sc; V.z -= (q[1] - p[1]) * V.sc; moved += Math.hypot(q[0] - p[0], q[1] - p[1]); soon(); }
+    if (pts.size === 1) {
+      // a drag turns the ball under the finger: degrees per pixel from its size
+      const k = 180 / Math.PI / T.R, dlon = -(q[0] - p[0]) * k / Math.max(.2, Math.cos(T.lat * D)), dlat = (q[1] - p[1]) * k;
+      T.lon += dlon; T.lat = clamp(T.lat + dlat, -85, 85); Object.assign(V, { lat: T.lat, lon: T.lon });
+      spin = [dlon, dlat]; lastMove = performance.now();
+      moved += Math.hypot(q[0] - p[0], q[1] - p[1]); soon();
+    }
     pts.set(e.pointerId, q);
     if (pts.size === 2) {
       const [a, c] = [...pts.values()], d = Math.hypot(a[0] - c[0], a[1] - c[1]);
-      if (pinch) zoomAt(pinch / d, (a[0] + c[0]) / 2, (a[1] + c[1]) / 2);
+      if (pinch) { zoomAt(d / pinch, (a[0] + c[0]) / 2, (a[1] + c[1]) / 2); V.R = T.R; }
       pinch = d; moved = 99;
     }
   });
   const up = e => {
     const p = pts.get(e.pointerId); pts.delete(e.pointerId); pinch = 0; clearTimeout(pressT);
+    if (!pts.size) { held = false; if (performance.now() - lastMove > 80) spin = [0, 0]; soon(); }
     if (!p || moved > 6 || pts.size) return;
     const now = performance.now();
-    if (lastTap && now - lastTap.t < 350 && Math.hypot(p[0] - lastTap.p[0], p[1] - lastTap.p[1]) < 24) { lastTap = null; teleport(wx(p[0]), wz(p[1])); return; }
+    if (lastTap && now - lastTap.t < 350 && Math.hypot(p[0] - lastTap.p[0], p[1] - lastTap.p[1]) < 24) { lastTap = null; const w = toWorld(p[0], p[1]); if (w) teleport(w[0], w[1]); return; }
     lastTap = { t: now, p };
     let best = null, bd = 22;
-    for (const pl of places()) { const d = Math.hypot(sx(V.x + wrapX(pl.x - V.x)) - p[0], sz(pl.z) - p[1]); if (d < bd) { bd = d; best = pl; } }
+    for (const [pl, px, py] of shown) { const d = Math.hypot(px - p[0], py - p[1]); if (d < bd) { bd = d; best = pl; } }
     note.classList.toggle('hidden', !best); note.onclick = null;
     if (best?.pin) {
       note.innerHTML = `<b>${esc(best.name)}</b><small>Your pin. It shows on the compass when you are near.</small><span class="pins3"><button data-un="1">Remove pin</button></span>`;
@@ -241,10 +254,10 @@ export function mapView(G, J) {
     } else if (best) note.innerHTML = `<b>${esc(best.name)}</b><small>${esc(best.note || '')}</small>`;
   };
   cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
-  cv.addEventListener('wheel', e => { e.preventDefault(); const [px, py] = local(e); zoomAt(e.deltaY > 0 ? 1.15 : 1 / 1.15, px, py); }, { passive: false });
+  cv.addEventListener('wheel', e => { e.preventDefault(); const [px, py] = local(e); zoomAt(e.deltaY > 0 ? 1 / 1.2 : 1.2, px, py); }, { passive: false });
   box.querySelector('.mapbtn3').addEventListener('click', e => {
     const z = e.target.closest('[data-z]')?.dataset.z;
-    if (z === 'in') zoomAt(1 / 1.5); if (z === 'out') zoomAt(1.5); if (z === 'me') { centre(); soon(); }
+    if (z === 'in') zoomAt(1.8); if (z === 'out') zoomAt(1 / 1.8); if (z === 'me') centre(Math.max(T.R, rMax() * .5));
   });
 
   let t = 0;
