@@ -140,7 +140,7 @@ export function mapView(G, J) {
     if (!open || !V.w || !globe) return;
     globe.draw(V, V.w, V.h, V.dpr);
     const x = over.getContext('2d'); x.setTransform(V.dpr, 0, 0, V.dpr, 0, 0); x.clearRect(0, 0, V.w, V.h);
-    x.font = '600 12px Outfit, system-ui, sans-serif';
+    x.font = '600 12px Figtree, system-ui, sans-serif';
     // labels keep clear of the panels over the map
     const br = box.getBoundingClientRect(), boxes = [sum, day].map(el => { const r = el.getBoundingClientRect(); return [r.left - br.left, r.bottom - br.top, r.width, r.height]; }), named = [];
     const free = (lx, ly, w) => !boxes.some(q => lx < q[0] + q[2] && lx + w > q[0] && ly - 14 < q[1] && ly + 4 > q[1] - (q[3] ?? 18));
@@ -148,9 +148,9 @@ export function mapView(G, J) {
       const w = x.measureText(text).width + 12, lx = px + 9, ly = py - 5;
       if (lx + w > V.w - 4 || ly > V.h - 4 || !free(lx - 6, ly, w)) return false;
       boxes.push([lx - 6, ly + 5, w, 19]); named.push([text, px, py]);
-      if (plain) { x.fillStyle = 'rgba(255,255,255,.92)'; x.font = 'italic 500 12px Outfit, system-ui, sans-serif'; x.fillText(text, lx, ly); x.font = '600 12px Outfit, system-ui, sans-serif'; return true; }
+      if (plain) { x.fillStyle = 'rgba(255,255,255,.92)'; x.font = 'italic 500 12px Figtree, system-ui, sans-serif'; x.fillText(text, lx, ly); x.font = '600 12px Figtree, system-ui, sans-serif'; return true; }
       x.fillStyle = 'rgba(255,255,255,.85)'; x.beginPath(); x.roundRect(lx - 6, ly - 13, w, 18, 9); x.fill();
-      x.fillStyle = '#1d2b36'; x.fillText(text, lx, ly);
+      x.fillStyle = '#2a2420'; x.fillText(text, lx, ly);
       return true;
     };
     shown = []; const dots = [];

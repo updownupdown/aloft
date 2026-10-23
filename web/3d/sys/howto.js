@@ -6,7 +6,7 @@
 import { startLab } from '../birdlab.js';
 import { hintsPage } from '../hints.js';
 
-const INK = '#1d2b36';
+const INK = '#2a2420';
 const PIG = { water: '#4f7fa6', berry: '#a8483a', ochre: '#b8862f', leaf: '#6f8a4a', indigo: '#4f6f9e', stone: '#8a7a6a' };
 
 // a phone held sideways with a thumb on each side; marks: 'tap', 'up', 'down', 'in', 'out', a pair
@@ -89,8 +89,8 @@ const SCENES = {
   slope: `${sky()}<polygon points="0,90 0,70 70,62 120,34 160,30 160,90" fill="#b6c99a"/><polygon points="70,62 120,34 104,62" fill="#a5bb87"/><polygon points="0,90 0,80 80,78 160,64 160,90" fill="#8fae6c"/>
     <g class="wind3" stroke="#4f7fa6" stroke-width="1.4" fill="none" stroke-linecap="round"><path d="M10 60q30 -2 52 -6t30 -18"/><path d="M14 48q24 -2 44 -6t26 -16"/></g>${hawk('h lift3', 108, 22, 22, 80)}`,
   south: `<rect width="160" height="90" fill="#e4ebef"/><polygon points="0,0 160,0 160,22 0,26" fill="#8fae6c"/><polygon points="0,26 160,22 160,62 0,66" fill="#b6c99a"/><polygon points="0,66 160,62 160,90 0,90" fill="#9cc0c8"/>
-    <text x="8" y="14" font-size="8" font-weight="700" fill="#1d2b36">N  ice</text><text x="8" y="84" font-size="8" font-weight="700" fill="#1d2b36">S  ice</text>
-    <path class="route3" d="M80 10q-26 18 -6 34t4 36" fill="none" stroke="#1d2b36" stroke-width="1.6" stroke-dasharray="3 3"/>${hawk('h south3', 80, 12, 18, 180)}`,
+    <text x="8" y="14" font-size="8" font-weight="700" fill="#2a2420">N  ice</text><text x="8" y="84" font-size="8" font-weight="700" fill="#2a2420">S  ice</text>
+    <path class="route3" d="M80 10q-26 18 -6 34t4 36" fill="none" stroke="#2a2420" stroke-width="1.6" stroke-dasharray="3 3"/>${hawk('h south3', 80, 12, 18, 180)}`,
   nest: `${sky()}${hills(70)}${tree(80, 90, 1.7)}
     <g class="twigs3" stroke="#8a5a32" stroke-width="1.6" stroke-linecap="round"><path d="M88 62l12 -2"/><path d="M90 64l10 -5"/><path d="M89 60l13 1"/><path d="M91 63l10 0"/></g>
     <ellipse class="egg3" cx="96" cy="59" rx="2.2" ry="2.8" fill="#eef0e6" stroke="#b8b09c" stroke-width=".5"/>${hawk('h twig3', 30, 74, 18, 60)}`,

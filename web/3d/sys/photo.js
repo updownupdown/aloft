@@ -105,9 +105,9 @@ export function photoSystem(G) {
     const x = c.getContext('2d');
     x.fillStyle = '#fbf8f0'; x.fillRect(0, 0, c.width, c.height);
     x.drawImage(photo, pad, pad, W, ph);
-    x.fillStyle = '#1d2b36'; x.textBaseline = 'alphabetic';
-    words.forEach((t, i) => { x.font = `${i ? 500 : 600} ${Math.round(lh * .78)}px Outfit, system-ui, sans-serif`; x.fillStyle = i ? '#43535f' : '#1d2b36'; x.fillText(t, pad, pad + ph + lh * (1.35 + i), i ? W : W * .86); });
-    x.font = `600 ${Math.round(lh * .6)}px Outfit, system-ui, sans-serif`; x.fillStyle = '#8a8f8f'; x.textAlign = 'right';
+    x.fillStyle = '#2a2420'; x.textBaseline = 'alphabetic';
+    words.forEach((t, i) => { x.font = `${i ? 500 : 600} ${Math.round(lh * .78)}px Figtree, system-ui, sans-serif`; x.fillStyle = i ? '#5c5248' : '#2a2420'; x.fillText(t, pad, pad + ph + lh * (1.35 + i), i ? W : W * .86); });
+    x.font = `600 ${Math.round(lh * .6)}px Figtree, system-ui, sans-serif`; x.fillStyle = '#8a8f8f'; x.textAlign = 'right';
     x.fillText('Aloft', pad + W, pad + ph + lh * 1.35);
     return c;
   }
