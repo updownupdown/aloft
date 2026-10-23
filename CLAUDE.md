@@ -57,6 +57,7 @@ web/src/                audio.js (Web Audio synth; volumes A.vol/A.setVol: music
 web/birds.html          bird lab: every species side by side (3d/birdlab.js)
 web/lab.html            bird song lab; web/musiclab.html music lab (both share lab.css)
 web/icons/, web/fonts/  app icons (tools/icon.html + tools/make-icons.mjs), bundled fonts (SIL OFL)
+web/3d/sys/rig.js        the four-legged rig: goats, ibex, deer, fox, bison, wildebeest, muskox; walk/run/graze/alert frames built on first use (frameOf)
 web/3d/sys/*.js         systems: air (thermal clouds/motes), rings, food (hunger, thirst, mice), aim, flora (tufts, flowers, stones, reeds), bushes (world.js bushesNear; perch on top),
                         guide (field guide: G.sight(key,x,y,z,r), G.guide.page()), journey (countries and
                         landmarks found, route, years turning with your own spring), map (the Map tab: a globe to spin and zoom, fog of war, tap a place; only one-of-a-kind places get marks), nest (twigs, egg, chick),
