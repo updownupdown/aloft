@@ -4,7 +4,7 @@
 // - a name: a place or a moment, thin white words and an icon under the compass, no box; two close
 //   together share it
 // - a glint: something new to learn, an icon beside the compass that waits to be tapped; tap it
-//   and a glass card says it all. Every glint is written into Journal > Log > Notes too
+//   and a glass card says it all. Every glint is written into How to play > Things learned too
 // - a count: a count or a confirmation, small words and an icon in the same place as a name
 //   (under it when both show), gone in two seconds
 import { store } from './util.js';
