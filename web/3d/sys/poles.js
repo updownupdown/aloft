@@ -2,7 +2,7 @@
 // ice, and past it nothing. Not a wall: the last few kilometres are a place of their own. The
 // air turns white and the horizon goes, a cold wind blows steadily back toward the middle of the
 // world, the lights dance overhead all night whatever the weather, and reaching the ice edge is a
-// find (a landmark, a postcard). Further, the wind is too strong to beat: the bird is turned back.
+// find (a landmark). Further, the wind is too strong to beat: the bird is turned back.
 import { NORTH, SOUTH } from '../earth.js';
 import { height, WATER } from '../world.js';
 import { mix3, smooth } from '../util.js';

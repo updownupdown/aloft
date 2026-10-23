@@ -534,12 +534,11 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .pins3 button { min-height: 34px; padding: 0 12px 0 10px; display: flex; align-items: center; gap: 6px; border: 0; border-radius: 17px; background: rgba(29, 43, 54, .07); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
 .pins3 button[data-pin] { width: 32px; min-height: 32px; padding: 0; border-radius: 50%; background: var(--pc); box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .8), 0 1px 3px rgba(20, 40, 50, .3); }
 
-/* the journal: landmarks, the field guide and the album */
+/* the journal: landmarks and the field guide */
 .list3 { list-style: none; padding: 0; margin: 2px 0 10px; }
 .list3 li { padding: 8px 4px; border-bottom: 1px solid var(--rule); font-size: 14px; font-weight: 600; }
 .list3 li small { font-weight: 500; }
-.list3 .none, .album3 .none { font-weight: 500; color: var(--ink2); }
-.guide3 { list-style: none; padding: 0; margin: 4px 0 12px; display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px 14px; }
+.list3 .none, .guide3 { list-style: none; padding: 0; margin: 4px 0 12px; display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px 14px; }
 .guide3 li { display: flex; gap: 12px; align-items: center; padding: 8px; border-radius: 14px; background: rgba(255, 255, 255, .45); }
 .guide3 .pic { flex: none; width: 60px; height: 60px; border-radius: 12px; background: rgba(29, 43, 54, .08); overflow: hidden; }
 .guide3 img { width: 100%; height: 100%; display: block; object-fit: cover; }
@@ -547,13 +546,6 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .guide3 li:not(.seen) b { color: var(--ink2); opacity: .7; }
 .guide3 small { font-size: 12px; line-height: 1.4; margin-top: 2px; }
 .count3 { font-size: 12.5px; font-weight: 500; color: var(--ink2); margin-left: 8px; }
-.album3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin: 4px 0 10px; }
-.album3 figure { margin: 0; cursor: pointer; }
-.album3 img { display: block; width: 100%; border-radius: 12px; box-shadow: 0 2px 8px rgba(20, 40, 50, .18); }
-.album3 figcaption { font-size: 11px; color: var(--ink2); line-height: 1.3; margin-top: 4px; }
-.album3 figure.card { grid-column: span 2; }
-.album3 figure.big { grid-column: 1 / -1; }
-.album3 .none { grid-column: 1 / -1; }
 
 /* photo mode: one bar at the bottom */
 .photo3 { pointer-events: auto; position: absolute; left: 50%; bottom: calc(14px + env(safe-area-inset-bottom)); transform: translateX(-50%); display: flex; gap: 8px; align-items: center;

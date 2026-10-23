@@ -40,9 +40,3 @@ export function portrait(canvas, cx, cy, side, S = 120) {
   x.drawImage(m, 0, 0);
   return c.toDataURL('image/jpeg', .7);
 }
-// a small copy of the whole frame, for the album
-export function thumb(canvas, w = 320) {
-  const h = Math.round(w * canvas.height / canvas.width), c = document.createElement('canvas');
-  c.width = w; c.height = h; c.getContext('2d').drawImage(canvas, 0, 0, w, h);
-  return c.toDataURL('image/jpeg', .6);
-}

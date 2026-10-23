@@ -1,4 +1,4 @@
-// Low poly for things drawn from the world: the map's land and the postcards' paper are flat
+// Low poly for things drawn from the world: the map's land and paper are flat
 // polygons, each facet one colour, shaded by which way it leans toward a light in the upper left,
 // the way the world's own triangles are. Painted on demand, never every frame.
 const TAU = Math.PI * 2;

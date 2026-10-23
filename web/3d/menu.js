@@ -18,7 +18,7 @@ const TITLES = { map: 'Map', game: 'Game', play: 'Settings', journal: 'Journal',
 // the sections' icons (icons.js), by section id
 const ICON_OF = { map: 'map', journal: 'journal', game: 'game', play: 'settings', how: 'how' };
 // the pages' icons, by page id (pages without one have none)
-const PAGE_ICON = { log: 'log', songs: 'songs', lands: 'lands', landmarks: 'landmarks', guide: 'guide', album: 'album' };
+const PAGE_ICON = { log: 'log', songs: 'songs', lands: 'lands', landmarks: 'landmarks', guide: 'guide' };
 // groups of rows, in one column, in this order: the section each sits in, its heading and its icon.
 // Game: your bird, then play; Settings: audio, graphics, gameplay, dev tools
 const GROUPS = {
