@@ -88,6 +88,32 @@ export function soaringHawk() {
   return out;
 }
 
+// the same soaring hawk seen far off (past ~70 m, where it is a few pixels): its outline in a dozen
+// facets, brown above and pale below, the rufous tail, at the same size (892 triangles each was a
+// kettle of thirty costing more than the trees)
+export function soaringHawkFar() {
+  const a = [], back = [.43, .29, .18], under = [.92, .87, .78], tail = [.6, .33, .2], tailU = [.9, .82, .76];
+  const tri = (p, q, r, top, bot) => {
+    const ux = q[0] - p[0], uy = q[1] - p[1], uz = q[2] - p[2], vx = r[0] - p[0], vy = r[1] - p[1], vz = r[2] - p[2];
+    let nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+    if (ny < 0) { [q, r] = [r, q]; nx = -nx; ny = -ny; nz = -nz; }
+    const l = Math.hypot(nx, ny, nz) || 1;
+    for (const v of [p, q, r]) a.push(v[0], v[1], v[2], nx / l, ny / l, nz / l, ...top, ...bot);
+  };
+  const nose = [.28, .03, 0], neck = [.12, .07, 0], rump = [-.2, .04, 0], chin = [.14, -.03, 0], belly = [-.12, -.04, 0];
+  for (const s of [1, -1]) {
+    const side = [0, .02, .07 * s], hip = [-.15, .02, .05 * s];
+    tri(nose, neck, side, back, under); tri(neck, rump, side, back, under); tri(rump, hip, side, back, under);
+    tri(nose, side, chin, under, under); tri(chin, side, belly, under, under); tri(belly, side, hip, under, under);
+    // the wing: broad inner wing, then the hand out to the slotted tip, a little dihedral
+    const lead = [.1, .04, .08 * s], trail = [-.16, .04, .08 * s], wrist = [.12, .09, .48 * s], back2 = [-.2, .08, .46 * s], tip = [-.04, .11, .8 * s], tipB = [-.16, .1, .74 * s];
+    tri(lead, wrist, trail, back, under); tri(trail, wrist, back2, back, under); tri(wrist, tip, back2, back, under); tri(back2, tip, tipB, back, under);
+    // the tail, fanned
+    tri([-.18, .03, 0], [-.34, .03, .1 * s], [-.36, .03, 0], tail, tailU);
+  }
+  return new Float32Array(a);
+}
+
 // a lens (lenticular) cloud: smooth, flat, stacked like plates
 export function lens() {
   reseed(59); const B = builder(), W = [.98, .96, .93], S = [.9, .88, .9];
