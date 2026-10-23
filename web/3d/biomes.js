@@ -2,12 +2,13 @@
 // kilometre across (their edges warped so no line is straight), each cell gets one biome by a
 // seeded roll, and neighbouring biomes blend over a band about 200 m wide. The roll is weighted
 // by the real Earth under the cell (earth.js): a cell in the Sahara rolls dunes and now and then
-// a canyon or a salt pan, one in western Europe forest, meadow or lakeland (PALETTE).
+// a salt pan, one in western Europe forest, meadow or lakeland (PALETTE), and a land that the
+// real place doesn't have is left out of the roll (FITS: no canyons in the Sahara).
 // A biome is its ground (h: height in m at x, z), its colours (c), how wooded it is (forest),
 // and flags for the shared touches (rock on steep ground, snow up high, sand at the shore).
 // Trees, rocks and flora read the biome too (world.js, sys/flora.js).
 import { ih, fbm, ridged, softRidged, smooth, clamp } from './noise.js';
-import { earthBiome, latAt } from './earth.js';
+import { earthBiome, continentAt, latLon, coastDist } from './earth.js';
 
 export const BIOME_CELL = 950, BLEND = 210;
 
@@ -36,6 +37,7 @@ const mixc = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a
 const pick = (cols, i) => cols[((i % cols.length) + cols.length) % cols.length];
 
 // shared shapes
+function AMERICAS(c) { return c === 'n-america' || c === 's-america'; }
 const stepped = (h, step, a = .7, b = .9) => { const t = h / step, f = t - Math.floor(t); return (Math.floor(t) + smooth(a, b, f)) * step; };
 // a winding river line (0 on the river): canyons and fjords cut down along it
 export const riverLine = (x, z, s, scale) => Math.abs(fbm(x / scale, z / scale, s, 2) + fbm(x / (scale / 4), z / (scale / 4), s + 2, 1) * .08);
@@ -117,15 +119,16 @@ export const BIOMES = {
   },
   desert: {
     label: 'the dunes', forest: -.95, dry: 1, ownRock: 1, noSnow: 1, sandy: 1,
-    h: (x, z, B) => {
+    // mesas: tall red-banded buttes in the Americas, lower sandstone plateaus elsewhere
+    h: (x, z, B, e) => {
       const along = x * .8 + z * .6 + fbm(x / 400, z / 400, 76, 2) * 60;
       const dunes = 14 + B.big * 10 + (1 - Math.abs(Math.sin(along / 34))) ** 1.5 * 7 + Math.sin(along / 11 + B.mid * 4) * .8;
       const mesa = stepped(40 + B.big * 30 + B.mid * 10, 16);
-      return dunes + smooth(.35, .6, fbm(x / 700, z / 700, 77, 2)) * (mesa - dunes) * .8;
+      return dunes + smooth(.35, .6, fbm(x / 700, z / 700, 77, 2)) * (mesa - dunes) * (AMERICAS(e?.cont) ? .8 : .4);
     },
-    c: (x, y, z, st) => {
+    c: (x, y, z, st, e) => {
       const flat = mixc(mixc(PAL.dune, PAL.dune2, smooth(-.3, .3, fbm(x / 60, z / 60, 16, 2))), PAL.scrub, smooth(.25, .55, fbm(x / 25, z / 25, 17, 2)) * .4);
-      return mixc(flat, pick([PAL.redrock, PAL.ochre, PAL.buff, PAL.dune2], Math.floor((y + fbm(x / 90, z / 90, 18, 1) * 3) / 4.5)), smooth(.12, .3, st));
+      return mixc(flat, pick(AMERICAS(e?.cont) ? [PAL.redrock, PAL.ochre, PAL.buff, PAL.dune2] : [PAL.ochre, PAL.buff, PAL.dune2, PAL.buff], Math.floor((y + fbm(x / 90, z / 90, 18, 1) * 3) / 4.5)), smooth(.12, .3, st));
     },
   },
   canyon: {
@@ -241,18 +244,52 @@ export const PALETTE = {
   savanna: [['savanna', 7], ['steppe', .4]], rainforest: [['rainforest', 7], ['swamp', .6], ['karst', .2]], swamp: [['swamp', 5], ['rainforest', 1.5]],
   marsh: [['marsh', 5], ['lakeland', .6]], karst: [['karst', 5], ['rainforest', 1], ['forest', .5]], volcano: [['volcano', 3], ['mountains', 1.5]],
 };
+// The lands a cell may roll besides its own Earth biome's, where the real place has them
+// (w: { cont, lat, lon, coast } of the cell): canyons and badlands are the American West's (and
+// the Gobi's), tower karst southern Europe's and Asia's, mangroves keep to tropical shores
+const FITS = {
+  canyon: w => AMERICAS(w.cont),
+  badlands: w => AMERICAS(w.cont) || (w.cont === 'asia' && w.lat > 35),
+  karst: w => w.cont === 'europe' || w.cont === 'asia',
+  swamp: w => w.coast < 4000 && Math.abs(w.lat) < 30,
+};
+// the land nearest a point out at sea: its Earth biome and continent (a ring of looks)
+function landNear(x, z) {
+  for (const r of [900, 1800, 2700]) for (let i = 0; i < 8; i++) {
+    const a = i * Math.PI / 4, px = x + Math.cos(a) * r, pz = z + Math.sin(a) * r, e = earthBiome(px, pz);
+    if (e !== 'sea') return { e, cont: continentAt(px, pz) };
+  }
+  return null;
+}
+// whether most of the land round a point (sixteen looks out to 1.2 km) is desert
+const DRY_LANDS = new Set(['desert', 'saltflat', 'badlands', 'canyon']);
+function dryRound(x, z) {
+  let dry = 0, land = 0;
+  for (const r of [600, 1200]) for (let i = 0; i < 8; i++) { const e = earthBiome(x + Math.cos(i * Math.PI / 4) * r, z + Math.sin(i * Math.PI / 4) * r); if (e !== 'sea') { land++; if (DRY_LANDS.has(e)) dry++; } }
+  return dry * 2 >= land && dry > 0;
+}
+// what a shore cell (its middle out at sea) is on its land side: dunes by the deserts, grass by
+// the savanna, mangroves and rainforest on the wet tropical coasts, the coast elsewhere
+const DRY_SHORE = { desert: 'desert', saltflat: 'desert', canyon: 'desert', badlands: 'desert', savanna: 'savanna', steppe: 'steppe' };
 function cellAt(gx, gz) {
   const key = gx * 100003 + gz; let c = cells.get(key); if (c) return c;
   const wcx = (gx + .15 + ih(gx, gz, 321) * .7) * BIOME_CELL, wcz = (gz + .15 + ih(gx, gz, 322) * .7) * BIOME_CELL;
   let cx = wcx, cz = wcz;
   for (let i = 0; i < 3; i++) { const nx = wcx - warpX(cx, cz), nz = wcz - warpZ(cx, cz); cx = nx; cz = nz; }
-  let e = earthBiome(cx, cz);
-  if (e === 'sea' && Math.abs(latAt(cx, cz)) < 24) e = 'seaTropic';
-  const pal = PALETTE[e] || PALETTE.forest;
+  let e = earthBiome(cx, cz), cont = continentAt(cx, cz);
+  const [lat, lon] = latLon(cx, cz), w = { cont, lat, lon, coast: coastDist(cx, cz) };
+  let pal = PALETTE[e] || PALETTE.forest;
+  if (e === 'swamp' && dryRound(cx, cz)) e = 'desert';   // no mangroves on the desert coasts (the Namib, the Red Sea)
+  if (e === 'sea') {
+    const l = landNear(cx, cz);
+    if (l) w.cont = cont = l.cont;
+    pal = l && DRY_SHORE[l.e] ? [[DRY_SHORE[l.e], 1]] : Math.abs(lat) < 24 ? PALETTE.seaTropic : PALETTE.sea;
+  }
+  pal = pal.filter((p, i) => i === 0 || !FITS[p[0]] || FITS[p[0]](w));
   let tot = 0; for (const p of pal) tot += p[1];
   let r = ih(gx, gz, 323) * tot, name = pal[0][0];
   for (const p of pal) if ((r -= p[1]) < 0) { name = p[0]; break; }
-  c = { gx, gz, wcx, wcz, cx, cz, name, b: BIOMES[name], earth: e };
+  c = { gx, gz, wcx, wcz, cx, cz, name, b: BIOMES[name], earth: e, cont, lat, lon };
   cells.set(key, c); if (cells.size > 3000) cells.delete(cells.keys().next().value);
   return c;
 }
@@ -263,7 +300,7 @@ export function cellsNear(x, z, r) {
   return out;
 }
 // the biomes at a point with their weights (summing to 1), strongest first:
-// [{ name, b, w, cx, cz, gx, gz }]
+// [{ name, b, w, cx, cz, gx, gz, cont, lat, lon }] (cont: the cell's continent, earth.js)
 export function blend(x, z) {
   const wx = x + warpX(x, z), wz = z + warpZ(x, z);
   const gx0 = Math.floor(wx / BIOME_CELL), gz0 = Math.floor(wz / BIOME_CELL);
@@ -273,7 +310,7 @@ export function blend(x, z) {
     near.push([d, c]); if (d < d1) d1 = d;
   }
   const out = []; let tot = 0;
-  for (const [d, c] of near) { const w = smooth(BLEND, 0, d - d1); if (w > .002) { out.push({ name: c.name, b: c.b, w, cx: c.cx, cz: c.cz, gx: c.gx, gz: c.gz }); tot += w; } }
+  for (const [d, c] of near) { const w = smooth(BLEND, 0, d - d1); if (w > .002) { out.push({ name: c.name, b: c.b, w, cx: c.cx, cz: c.cz, gx: c.gx, gz: c.gz, cont: c.cont, lat: c.lat, lon: c.lon }); tot += w; } }
   for (const e of out) e.w /= tot;
   return out.sort((a, b) => b.w - a.w);
 }
@@ -282,4 +319,6 @@ export function weightOf(bl, key) { let s = 0; for (const e of bl) s += e.w * (e
 export const share = (bl, name) => { let s = 0; for (const e of bl) if (e.name === name) s += e.w; return s; };
 // one biome for a point, rolled by its weights (so the edges between lands mingle)
 export function rollBiome(bl, r) { for (const e of bl) if ((r -= e.w) < 0) return e; return bl[0]; }
+// the continent a point's land belongs to (its strongest cell's; at sea, the nearest shore's)
+export const realmAt = (x, z) => blend(x, z)[0].cont;
 export { clamp };

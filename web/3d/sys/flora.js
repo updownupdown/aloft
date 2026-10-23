@@ -83,8 +83,8 @@ export function floraSystem(G) {
     const key = cx * 73856093 ^ cz * 19349663;
     let c = cache.get(key); if (c) return c;
     c = [];
-    const x0 = cx * FLORA.cell, z0 = cz * FLORA.cell, k = bands(x0, z0), bio = rollBiome(k.bl, ih(cx, cz, 270)).name;
-    const ground = GROUND[bio];
+    const x0 = cx * FLORA.cell, z0 = cz * FLORA.cell, k = bands(x0, z0), roll = rollBiome(k.bl, ih(cx, cz, 270)), bio = roll.name;
+    const ground = GROUND[bio], cacti = roll.cont === 'n-america' || roll.cont === 's-america';   // barrel cacti are the Americas' alone
     for (let i = 0; i < 7; i++) {
       const x = x0 + ih(cx, cz, 200 + i) * FLORA.cell, z = z0 + ih(cx, cz, 210 + i) * FLORA.cell, y = groundAt(x, z);
       if (y < WATER - .2) continue;
@@ -96,7 +96,7 @@ export function floraSystem(G) {
       const snowy = y > env.snowLine;
       let kind = null;
       if (y < .9 || (k.marsh > .5 && r < .5)) kind = y > WATER - .2 && (k.marsh > .3 || y < .5) ? 'reeds' : null;   // at the water's edge
-      else if (ground) { kind = ground(r, n); if (kind === 'gold') { kind = 'tuft'; gold = 1; } if (kind === 'stone' && ih(cx, cz, 280 + i) > scree) kind = null; }                  // the dry and bare lands
+      else if (ground) { kind = ground(r, n); if (kind === 'gold') { kind = 'tuft'; gold = 1; } if (kind === 'barrel' && !cacti) kind = 'scrub'; if (kind === 'stone' && ih(cx, cz, 280 + i) > scree) kind = null; }                  // the dry and bare lands
       else if (n < .8 || (k.high + k.ridge > .5 && r < .45)) kind = r < .35 * scree ? 'stone' : null;           // slopes and heights: stones, in patches
       else if (f < .25 && !snowy) kind = r < .62 ? 'tuft' : r < .78 && !G.season?.winter ? ['flowerY', 'flowerW', 'flowerP'][(ih(cx, cz, 260) * 3) | 0] : r < .78 + .04 * scree ? 'stone' : null;
       if ((kind === 'tuft' || kind === 'scrub') && snowy) kind = null;

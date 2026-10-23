@@ -13,7 +13,15 @@ export function huntersSystem(G) {
   for (const [k, f] of Object.entries({ crow, eagle, kestrel, gull, raven })) { R.shape(k + 'U', f(true)); R.shape(k + 'D', f(false)); }
   R.shape('carrion', carrion());
   G.guide?.page('eagle', 'Bald eagle', 'A fishing bird, but a pirate too: it would rather rob an osprey than catch its own.');
+  G.guide?.page('wteagle', 'White-tailed eagle', 'The sea eagle of the northern coasts, broad as a barn door, and as happy to rob an osprey as to fish.');
+  G.guide?.page('fisheagle', 'African fish eagle', 'Its ringing cry is the sound of African rivers; it snatches fish, and steals them too.');
+  G.guide?.page('sbeagle', 'White-bellied sea eagle', 'Patrols the coasts of Asia and Australia for fish, and for other birds\' catches.');
   G.guide?.page('kestrel', 'American kestrel', 'The smallest falcon hangs on beating wings over one spot, watching for a mouse.');
+  G.guide?.page('ckestrel', 'Common kestrel', 'Hangs on beating wings over the verges, tail fanned, head quite still, watching for a vole.');
+  // who the pirate and the hoverer are where you are (no fish eagle robs you in South America)
+  const AM = c => c === 'n-america' || c === 's-america';
+  const eagleOf = e => e.cont === 'n-america' ? ['eagle', 'A bald eagle'] : e.cont === 'europe' || (e.cont === 'asia' && e.lat > 30) ? ['wteagle', 'A white-tailed eagle']
+    : e.cont === 'africa' ? ['fisheagle', 'An African fish eagle'] : e.cont === 'asia' || e.cont === 'oceania' ? ['sbeagle', 'A sea eagle'] : null;
   G.guide?.page('gull', 'Herring gull', 'Where gulls wheel and plunge, the fish are near the surface.');
   G.guide?.page('raven', 'Common raven', 'Ravens circle over a carcass and call the wolves and eagles to open it.');
   const once = (id, title, msg, ic, how) => { if (!G.flags[id]) { G.flags[id] = 1; G.hud.quietly(how, title, msg, ic); } };
@@ -59,11 +67,12 @@ export function huntersSystem(G) {
       }
       // the eagle and your fish
       carryT = b.carry?.kind === 'fish' && b.state === 'fly' ? carryT + dt : 0;
-      if (!pirate && carryT > 4 && Math.random() < dt * .25) {
+      const who = !pirate && carryT > 4 ? eagleOf(blend(b.p[0], b.p[2])[0]) : null;
+      if (who && Math.random() < dt * .25) {
         const a = b.yaw + Math.PI;
-        pirate = { p: [b.p[0] + Math.sin(a) * 60, b.p[1] + 25, b.p[2] - Math.cos(a) * 60], t: 0, flee: 0 };
+        pirate = { p: [b.p[0] + Math.sin(a) * 60, b.p[1] + 25, b.p[2] - Math.cos(a) * 60], t: 0, flee: 0, page: who[0] };
         G.audio.tone?.({ f: 1800, f2: 1500, dur: .12, vol: .05 }); G.audio.tone?.({ f: 1900, f2: 1400, dur: .1, vol: .05, delay: .16 }); G.audio.tone?.({ f: 1800, f2: 1300, dur: .1, vol: .05, delay: .3 });
-        once('eagle', 'Eagle', 'A bald eagle wants your fish! Get to a perch, or the ground, to eat it.', 'hunger', 'w');
+        once('eagle', 'Eagle', who[1] + ' wants your fish! Get to a perch, or the ground, to eat it.', 'hunger', 'w');
       }
       if (pirate) {
         pirate.t += dt;
@@ -93,19 +102,19 @@ export function huntersSystem(G) {
       const cam = S.cam, flap = k => Math.sin(G.t * k) > 0, push = (n, up, p, s, yaw) => (S.props[n + (up ? 'U' : 'D')] ||= []).push(p[0], p[1], p[2], s, yaw, .5, 0, 0);
       if (mob) for (const c of mob.crows) push('crow', flap(14 + c.ph % 3), c.p, 1, Math.atan2(c.v[2], c.v[0]));
       if (pirate) push('eagle', flap(5), pirate.p, 1, pirate.yaw - Math.PI / 2);
-      if (pirate && Math.hypot(pirate.p[0] - cam[0], pirate.p[2] - cam[2]) < 60) G.sight?.('eagle', ...pirate.p, 1.2);
+      if (pirate && Math.hypot(pirate.p[0] - cam[0], pirate.p[2] - cam[2]) < 60) G.sight?.(pirate.page, ...pirate.p, 1.2);
       if (G.light.daylight < .5) return;
       // a kestrel hanging over a mouse, wings beating fast
       const mice = G.systems.food?.mice;
       if (mice) {
-        let n = 0;
+        let n = 0; const kest = AM(blend(cam[0], cam[2])[0].cont) ? 'kestrel' : 'ckestrel';
         for (const m of mice.values()) {
           if (n >= 2 || m.hidden > 0 || ih(m.id | 0, 0, 410) > .35) continue;
           const d = Math.hypot(m.x - cam[0], m.z - cam[2]); if (d > 260 || d < 25) continue;
           n++;
           const p = [m.x + Math.sin(G.t * .7 + n) * .6, m.y + 12 + Math.sin(G.t * 1.1) * .4, m.z];
           push('kestrel', flap(22), p, 1, Math.PI);   // into the wind
-          if (d < 70) G.sight?.('kestrel', ...p, .5);
+          if (d < 70) G.sight?.(kest, ...p, .5);
         }
       }
       // gulls wheeling over fish near the surface, now and then one plunges

@@ -5,7 +5,7 @@
 // Everything is placed by hash in cells; only what is near the hawk is simulated, and its
 // state is forgotten when the hawk leaves. Fish can be caught: skim low over one as it rises,
 // the same forgiving reach as for mice (a tucked dive reaches further).
-import { height, forest, WATER, ih, fbm, bands, thermalsNear, thermalCentre, env } from '../world.js';
+import { height, forest, WATER, ih, fbm, bands, thermalsNear, thermalCentre, env, blend } from '../world.js';
 import { smallBird, heronStanding, heronFlying, deer, fish, soaringHawk, soaringHawkFar } from './faunashapes.js';
 import { angleTo } from '../util.js';
 
@@ -62,7 +62,8 @@ export function faunaSystem(G) {
     const f = forest(x, z), y = height(x, z);
     if (f < -.12 || f > .22 || y < 1.5 || y > 90) return null;    // the edge of the woods
     const t = tod(); if (!((t > .2 && t < .36) || (t > .64 && t < .8)) || winter() > .8 || storm() > .5) return null;
-    return { id: gx * 6007 + gz, x, z, n: 2 + Math.floor(ih(gx, gz, 114) * 3) };
+    const w = blend(x, z)[0]; if (w.cont === 'oceania' || w.cont === 'antarctica' || (w.cont === 'africa' && w.lat < 30)) return null;   // no deer there
+    return { id: gx * 6007 + gz, x, z, n: 2 + Math.floor(ih(gx, gz, 114) * 3), page: w.cont === 'n-america' || w.cont === 's-america' ? 'deer' : 'reddeer' };
   }
   // a heron wants shallow water by a shore
   function shallowNear(x, z, seed) {
@@ -293,7 +294,7 @@ export function faunaSystem(G) {
       for (const Hd of herds.values()) {
         if (!vis(Hd.x, Hd.z, 260)) continue;
         for (const d of Hd.deer) (d.graze ? dG : dS).push(d.x, d.y, d.z, 1, d.yaw, .5, 0, 0);
-        sight('deer', Hd.x, Hd.deer[0].y + 1, Hd.z, 2);
+        sight(Hd.page || 'deer', Hd.x, Hd.deer[0].y + 1, Hd.z, 2);
       }
       const hs = S.props.heron ||= [], hu = S.props.heronU ||= [], hdn = S.props.heronD ||= [];
       for (const h of herons.values()) {

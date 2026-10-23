@@ -5,7 +5,7 @@
 // lift of its own, so the miles south go by in company.
 // Each hawk follows one path (climb the kettle, glide to the next) at its own place along it, so
 // the stream is a pure function of time; only those near the camera are drawn.
-import { height, env, ih, WATER } from '../world.js';
+import { height, env, ih, WATER, blend } from '../world.js';
 import { smooth, clamp } from '../util.js';
 import { broadwing } from './critshapes.js';
 
@@ -19,6 +19,10 @@ export function raptorsSystem(G) {
   const b = G.b, H = G.hud;
   G.R.shape('broadwing', broadwing());
   G.guide?.page('broadwing', 'Broad-winged hawk', 'Crosses a continent each autumn in flocks of thousands, circling up one thermal after another and gliding on south.');
+  G.guide?.page('honeybuzzard', 'Honey buzzard', 'Streams from Europe to Africa each autumn in great kettles over the straits, where the sea crossing is shortest.');
+  // who streams south where you are: broad-wings in the Americas, honey buzzards in the Old World, none down under
+  const STREAM = { 'n-america': 'broadwing', 's-america': 'broadwing', europe: 'honeybuzzard', africa: 'honeybuzzard', asia: 'honeybuzzard' };
+  let who = 'broadwing';
   const once = (id, title, msg, ic, how) => { if (!G.flags[id]) { G.flags[id] = 1; G.hud.quietly(how, title, msg, ic); } };
   let force = 0, lane = null;   // lane: { x, day } the line of the stream this day
 
@@ -64,6 +68,7 @@ export function raptorsSystem(G) {
     update() {
       if (!on()) { lane = null; return; }
       // the stream passes within sight of wherever you were when it began
+      if (!lane || lane.day !== G.day) { who = STREAM[blend(b.p[0], b.p[2])[0].cont]; if (!who) return; }
       if (!lane || lane.day !== G.day) lane = { x: Math.round(b.p[0] / 50) * 50 + (ih(G.day, 1, 710) - .5) * 500, day: G.day };
       env.thermals = env.thermals.filter(t => !t.kettle).concat(kettlesNear());
       if (Math.abs(b.p[0] - lane.x) < 600) once('raptors' + Math.floor((G.day - 1) / 32), 'River of raptors', 'A river of raptors: hundreds of hawks streaming south, kettle after kettle. Join a kettle and glide on with them.', 'thermal', 'n');
@@ -80,7 +85,7 @@ export function raptorsSystem(G) {
           const h = hawkAt(i, t), d = Math.hypot(h.p[0] - cam[0], h.p[2] - cam[2]);
           if (d > N) continue;
           P.push(h.p[0], h.p[1], h.p[2], 1.6 + d / 160, h.yaw, .5, 0, 0);   // larger with distance, so a kettle reads as a swirl of birds, not specks
-          if (d < 90) G.sight?.('broadwing', h.p[0], h.p[1], h.p[2], .9);
+          if (d < 90) G.sight?.(who, h.p[0], h.p[1], h.p[2], .9);
         }
       }
     },
