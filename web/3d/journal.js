@@ -5,12 +5,12 @@
 //   10-29 else  not shown (the old Log: daily records were too much)
 //   30-41       Journal > Nest and family (nest 30, story 40)
 //   42          Journal > Things found (things people left, bottles)
-//   43-59       Journal > Landmarks (wonders 43, landmarks 50), but 45 is Journal > Lands (the collection)
+//   43-59       Journal > Landmarks (wonders 43, landmarks 50), but 45 is Journal > Biomes (the collection)
 //   60 on       Journal > Field guide (the Guide folded into the Journal, James 2026-10-23)
 // Songs have their own page, Journal > Songs (page('songs')). The Map has no pages: the globe fills it.
 const PAGES = {
-  landmarks: ['journal', 'Landmarks', 10], lands: ['journal', 'Lands', 20], family: ['journal', 'Nest and family', 30], finds: ['journal', 'Things found', 40],
-  notes: ['how', 'Things learned', 45], songs: ['journal', 'Songs', 50], guide: ['journal', 'Field guide', 60],
+  songs: ['journal', 'Songs', 5], family: ['journal', 'Nest and family', 8], landmarks: ['journal', 'Landmarks', 10], lands: ['journal', 'Biomes', 20],
+  finds: ['journal', 'Things found', 40], notes: ['how', 'Things learned', 45], guide: ['journal', 'Field guide', 60],
 };
 const pageOf = o => o < 10 ? 'today' : o === 15 ? 'notes' : o < 30 ? null : o < 42 ? 'family' : o < 43 ? 'finds' : o === 45 ? 'lands' : o < 60 ? 'landmarks' : 'guide';
 // a section's heading where the page already says it

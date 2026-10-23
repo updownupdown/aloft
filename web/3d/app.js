@@ -33,7 +33,16 @@ export function appRows(G) {
     askT = performance.now(); document.documentElement.requestFullscreen?.({ navigationUI: 'hide' }).catch(() => {});
   });
   let quitting = false;
-  if ('serviceWorker' in navigator && 'caches' in window) G.menu.button('play', { label: 'Update', sub: 'fetch the latest version and reload', group: 'app', onClick: () => { G.menu.set(false); update(); } });
+  if ('serviceWorker' in navigator && 'caches' in window) {
+    const row = G.menu.button('play', { label: 'Update', sub: 'fetch the latest version and reload', group: 'app', onClick: () => { G.menu.set(false); update(); } });
+    // the build this page started on: the number of sw.js's CACHE ('aloft-v220' is build 220), read
+    // once at boot so a newer build installing in the background does not claim to be running
+    caches.keys().then(ks => {
+      const n = Math.max(0, ...ks.map(k => +(/^aloft-v(\d+)$/.exec(k)?.[1] || 0)));
+      G.build = n || null;
+      row.querySelector('em').textContent = `${n ? `build ${n}` : 'build unknown (not cached yet)'}: tap to fetch the latest and reload`;
+    }).catch(() => {});
+  }
   // colour-blind aim colours: orange and blue for prey and perches in place of red and green
   // (sys/aim.js reads it; each aim ring also has its own shape)
   G.settings.cbAim = G.store.get('cbAim3d', false);

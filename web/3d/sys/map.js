@@ -10,7 +10,6 @@ import { clamp } from '../util.js';
 import { esc } from '../journal.js';
 import { createDial } from '../dial.js';
 import { icon } from '../icons.js';
-import { SEASON_DAYS, SEASONS } from '../sky.js';
 import { EARTH, wrapX, latLon, toXZ, declination } from '../earth.js';
 import { createGlobe, prebake } from '../globe.js';
 
@@ -50,7 +49,7 @@ export function mapView(G, J) {
   pane.classList.add('mappane3', 'flush3');
   pane.innerHTML = `<div class="mapbox3"><canvas></canvas><div class="mapsum3"></div><div class="mapday3"><div class="mapseason3"></div></div>
       <div class="mapbtn3"><button data-z="in" aria-label="Zoom in">${icon('zoomin')}</button><button data-z="out" aria-label="Zoom out">${icon('zoomout')}</button><button data-z="me" aria-label="Centre on the hawk">${icon('me')}</button></div>
-      <div class="mapgo3"><button data-go="landmarks">${icon('landmarks')}<span>Landmarks</span><b></b></button><button data-go="lands">${icon('lands')}<span>Lands</span><b></b></button></div>
+      <div class="mapgo3"><button data-go="landmarks">${icon('landmarks')}<span>Landmarks</span><b></b></button><button data-go="lands">${icon('lands')}<span>Biomes</span><b></b></button></div>
       <p class="maptip3">Hold the map to drop a pin.</p><div class="mapnote3 hidden"></div></div>`;
   const sum = pane.querySelector('.mapsum3'), box = pane.querySelector('.mapbox3'), cv = box.querySelector('canvas'), note = box.querySelector('.mapnote3');
   // top right, the same day dial as in flight, and the season in more detail beneath it
@@ -89,12 +88,9 @@ export function mapView(G, J) {
     note.classList.add('hidden');
     const pct = Math.round(explored() * 100);
     dial.update(G.tod, G.day, false, null, G.forecast || null);
-    const cap = t => t[0].toUpperCase() + t.slice(1), into = (G.season.d ?? 0) + 1, left = SEASON_DAYS - into;
-    const next = SEASONS[(SEASONS.indexOf(G.season.name) + 1) % SEASONS.length];
-    const pips = Array.from({ length: SEASON_DAYS }, (_, i) => `<i class="${i < into - 1 ? 'on' : i === into - 1 ? 'on now' : ''}"></i>`).join('');
+    const cap = t => t[0].toUpperCase() + t.slice(1);
     seasonEl.className = `mapseason3 ${G.season.name}`;
-    seasonEl.innerHTML = `<b>${G.date?.text ? `${G.date.text}, ` : ''}${cap(G.season.tropic ? 'tropical summer' : G.season.name)}</b><span class="pips3s">${pips}</span>
-      <small>${G.season.tropic ? 'near the equator: summer all year' : left ? `${left} day${left > 1 ? 's' : ''} to ${next} here` : `${cap(next)} comes tomorrow`}</small>`;
+    seasonEl.innerHTML = `<b>${G.date?.text ? `${G.date.text}, ` : ''}${cap(G.season.tropic ? 'tropical summer' : G.season.name)}</b>`;
     // top left: where the hawk is, and how far the journey has come
     const where = G.placeWhere(), L = G.collection?.(), found = Object.keys(J.found || {}).length;
     sum.innerHTML = `<p class="here3">${esc(cap(where))}</p>
@@ -105,8 +101,8 @@ export function mapView(G, J) {
     go.querySelector('[data-go=lands]').hidden = !L;
     requestAnimationFrame(() => {
       fit(); fogNow();
-      // open on the hawk, close enough to see the country round it; then spin out to the whole Earth
-      const [la, lo] = hawkLL(); Object.assign(V, { lat: la, lon: lo, R: rMax() * .5 }); Object.assign(T, { lat: la, lon: lo, R: V.R });
+      // open on the hawk, far enough out to see its continent
+      const [la, lo] = hawkLL(); Object.assign(V, { lat: la, lon: lo, R: rMax() * .2 }); Object.assign(T, { lat: la, lon: lo, R: V.R });
       draw();
     });
   });
