@@ -219,6 +219,7 @@
 .sglist3 li { display: flex; align-items: center; gap: 10px; padding: 0; background: none; }
 .sglist3 b { font-size: 13px; }
 .sglist3 small { display: block; color: var(--ink2, #4c5d69); }
+.sglist3 .sgnotes3 { margin: 3px 0 2px; height: 16px; }
 .sglist3 li.q b { opacity: .55; font-weight: 500; }
 .sgplay3, .sgq3 { flex: none; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; }
 .sgplay3 { border: 0; padding: 0; background: #1d2b36; color: #fff; cursor: pointer; }
@@ -234,5 +235,10 @@
 /* Journal > Songs: a heading for each continent's birds */
 .sgcont3 { margin: 18px 0 8px; font-size: 15px; font-weight: 700; color: var(--ink, #1d2b36); }
 /* a line about the song, under the scores (H.songLine), in place of the message line */
-.sgsay3 { margin: 0; max-height: 0; overflow: hidden; font-size: 13px; font-weight: 500; line-height: 1.4; color: rgba(255, 255, 255, .88); transition: max-height .4s, margin .4s; }
-.sgsay3.show { max-height: 80px; margin: 4px 4px 0 0; }
+/* a song's result sits over the card, so the card never moves (James, 10-23) */
+.sgsay3 { position: absolute; left: 72px; right: 0; bottom: calc(100% + 6px); margin: 0; padding: 7px 12px; box-sizing: border-box; border: 1px solid var(--blkedge); border-radius: 16px;
+  background: var(--blk); box-shadow: var(--shadow); font-size: 13px; font-weight: 500; line-height: 1.4; color: rgba(255, 255, 255, .88);
+  opacity: 0; transform: translateY(4px); pointer-events: none; transition: opacity .3s, transform .3s; }
+.sgsay3.show { opacity: 1; transform: none; }
+.sing3:not(.on) .sgsay3 { left: 0; }
+.sing3.lefty.on .sgsay3 { left: 0; right: 72px; }
