@@ -28,7 +28,7 @@ export function sleepSystem(G) {
   const btn = ui.querySelector('.sleep3'), veil = ui.querySelector('.night3');
   let sleeping = false, slept = 0, bared = false, spin = 0, rate = 0, a0 = 0, woke = false, early = false, upT = 0, from = 0, span = 0, tDark = DAWN.dark, tWake = DAWN.wake;
   const ahead = to => { const d = to - G.tod; return d < -.5 ? d + 1 : d; };   // how far the clock is from `to`, across midnight
-  const starA = () => ((G.day || 0) * 1.0027 + G.tod) * Math.PI * 2;   // the stars turn once a day (and a little), about the pole
+  const starA = () => ((G.yearFrac || 0) - 79 / 365 + G.tod - .5) * Math.PI * 2;   // the sky's local sidereal angle: once a day and a little, about the pole (stars.js)
   // the end: the view comes back down and the light returns (early, from a touch: no skip to dawn)
   const wake = e => {
     if (!sleeping || woke) return;
