@@ -6,6 +6,7 @@ import { CHUNK, chunkMesh, cellsFor, treesNear, ringsNear, height, normalAt, the
 import { ring, cloud, TREE_LOOKS } from './shapes.js';
 import { buildHawk, HAWK_SCALE } from './hawk.js';
 import { starPoints, starLines, GAL } from './stars.js';
+import { createClouds, mistOf } from './clouds.js';
 
 // the sky's pole and the stars to steer by, until sys/nightsea.js sets them
 const POLE = [0, .64, -.768], NOGAZE = new Float32Array(20), NOMOON = [0, 1, 0, 0], DOWN = [0, -1, 0, 0];
@@ -23,7 +24,7 @@ const COMMON_FS = `
 uniform vec3 uCam, uSun, uSunCol, uSkyAmb, uGndAmb, uFogCol, uFocus;
 uniform vec3 uZenith;
 uniform float uFogDen, uDither, uSeek, uCut, uFade, uWater, uLift, uTime;
-uniform vec4 uShadeC[8], uFrost, uSwell; uniform vec2 uFrostDir;
+uniform vec4 uShadeC[8], uFrost, uSwell, uMist; uniform vec2 uFrostDir; uniform vec3 uMistCol;
 in vec3 vPos, vNrm, vCol, vColB; in float vLeaf, vFade, vGone;
 out vec4 frag;
 float h21(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
@@ -96,7 +97,27 @@ vec3 shade(vec3 col, vec3 n, float sun) {
   vec3 amb = mix(uGndAmb, uSkyAmb, n.y * .5 + .5);
   return col * (amb + uSunCol * wrap * sun);
 }
+// mist lying low (clouds.js mistOf, uMist: top, density, how deep its soft top is in metres,
+// lumps of the top): fog thickening from nothing at a lumpy top to full uMist.z metres under it,
+// the amount along the view ray from the camera to p worked out exactly (MF: how much fog lies
+// above height y, per metre of height). Seen from above, each lump of the top is lit on the sun's
+// side, so a sea of cloud has some shape.
+vec3 mist(vec3 c, vec3 p) {
+  if (uMist.y <= 0.) return c;
+  vec3 rd = p - uCam; float L = length(rd), y0 = uCam.y, y1 = p.y, R = uMist.z;
+  vec2 at = p.xz;
+  if (y0 > uMist.x && y1 < y0) at = uCam.xz + rd.xz * clamp((y0 - uMist.x) / (y0 - y1), 0., 1.);   // where the ray comes down into it
+  float lump = vn(at / 90.) * .7 + vn(at / 31.) * .3, top = uMist.x + (lump - .5) * uMist.w;
+  #define MF(y) (max(top - (y), 0.) < R ? max(top - (y), 0.) * max(top - (y), 0.) / (2. * R) : top - (y) - R * .5)
+  float dy = y1 - y0, f = abs(dy) > .05 ? (MF(y0) - MF(y1)) / dy : clamp((top - y0) / R, 0., 1.);
+  #undef MF
+  float k = 1. - exp(-uMist.y * L * max(f, 0.));
+  float side = vn((at + uSun.xz * 14.) / 90.) * .7 + vn((at + uSun.xz * 5.) / 31.) * .3 - lump;
+  vec3 m = uMistCol * (mix(.84, 1., smoothstep(top - 40., top, max(y1, min(y0, top)))) + side * 1.6 + (lump - .5) * .12);
+  return mix(c, m, k);
+}
 vec3 haze(vec3 c, vec3 p) {
+  c = mist(c, p);
   // the haze lies low: high ground thins it, so far hills and peaks stand out on the skyline
   float d = length(p - uCam) * mix(1., .2, smoothstep(20., 250., p.y));
   float f = 1. - exp(-pow(d * uFogDen, 1.6));
@@ -386,6 +407,8 @@ export function createRenderer(gl) {
   const shapes = new Map();
   const shape = (key, data) => { const old = shapes.get(key); if (old) { gl.deleteBuffer(old.buf); gl.deleteBuffer(old.ibuf); gl.deleteVertexArray(old.vao); } shapes.set(key, mesh(gl, data, LAYOUT, { instLayout: ILAYOUT })); };
   shape('ring', ring()); shape('cloud', cloud());
+  // the clouds as soft volumes (clouds.js), when Settings > Picture > Clouds isn't Polygons
+  const vol = createClouds(gl);
   const hawk = mesh(gl, new Float32Array(12), LAYOUT, { dynamic: true });
   const fx = mesh(gl, new Float32Array(7), [[0, 3], [1, 4]], { dynamic: true });
   // per-frame data goes up through one reused Float32Array, not a new one each time (less garbage
@@ -397,7 +420,7 @@ export function createRenderer(gl) {
     gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.bufferData(gl.ARRAY_BUFFER, f, gl.DYNAMIC_DRAW);
   };
   const chunks = new Map();
-  const R = { chunks, view: 520, treeView: 360, nearTrees: 110, stats: { chunks: 0, trees: 0, tris: 0 }, treeAt: null };
+  const R = { cloudStyle: 'poly', chunks, view: 520, treeView: 360, nearTrees: 110, stats: { chunks: 0, trees: 0, tris: 0 }, treeAt: null };
   gl.disable(gl.CULL_FACE);
 
   // Ground chunks are built in a Worker (chunkwork.js) when it can run; jobs go out nearest first,
@@ -533,9 +556,10 @@ export function createRenderer(gl) {
     gl.uniform3fv(P.u.uSkyAmb, S.skyAmb); gl.uniform3fv(P.u.uGndAmb, S.gndAmb); gl.uniform3fv(P.u.uFogCol, S.horizon);
     gl.uniform1f(P.u.uFogDen, S.fogDen); gl.uniform3fv(P.u.uFocus, S.focus); gl.uniform1f(P.u.uDither, 0); gl.uniform1f(P.u.uCut, 0); gl.uniform1f(P.u.uFade, 0); gl.uniform1f(P.u.uWater, S.water ?? 0); gl.uniform1f(P.u.uLift, 0); gl.uniform3fv(P.u.uZenith, S.zenith); gl.uniform1f(P.u.uTime, S.time); if (P.u.uSeek) gl.uniform1f(P.u.uSeek, S.seek || 0); if (P.u.uSwell) gl.uniform4fv(P.u.uSwell, [SEA_D[0], SEA_D[1], S.swell ?? 0, clamp01(S.wind ?? .3)]);
     gl.uniform4fv(P.u.uShadeC, shadeC(S)); gl.uniform4fv(P.u.uFrost, S.frost || NOFROST); gl.uniform2fv(P.u.uFrostDir, S.frostDir || [1, 0]);
+    gl.uniform4fv(P.u.uMist, S.mistU || NOMIST); gl.uniform3fv(P.u.uMistCol, S.mistCol || ONE3);
   }
   // the cloud shadows as 8 vec4s (unused ones radius 0)
-  const SHADE = new Float32Array(32), NOFROST = [0, 0, 0, 0];
+  const SHADE = new Float32Array(32), NOFROST = [0, 0, 0, 0], NOMIST = [0, 0, 8, 0], ONE3 = [1, 1, 1];
   function shadeC(S) {
     SHADE.fill(0);
     (S.shadeC || []).slice(0, 8).forEach((c, i) => SHADE.set(c, i * 4));
@@ -550,6 +574,8 @@ export function createRenderer(gl) {
     R.vp = vp;
     { const fx = S.look[0] - S.cam[0], fy = S.look[1] - S.cam[1], fz = S.look[2] - S.cam[2], l = Math.hypot(fx, fy, fz) || 1; R.viewInfo = { cam: S.cam, f: [fx / l, fy / l, fz / l], fov: S.fov, aspect: w / h }; }
     let tris = 0;
+    const volumes = R.cloudStyle !== 'poly';
+    if (volumes) mistOf(S); else S.mistU = null;
     const pf = R.prof;   // perf.js: each pass timed on the GPU, when that is on
     // Solid things first, nearest first, in the shaders with no discard (SOLID), so the GPU can skip
     // shading whatever ends up hidden; then what needs discard (far land, trees); the sky last, only
@@ -646,14 +672,18 @@ export function createRenderer(gl) {
 
     // clouds last, see-through (at most half there), over everything solid: first their depth
     // alone, then their colour on just that nearest skin, so a cloud's inner faces never show
+    // (or, in the volume styles, the mist over the sky and the clouds as volumes, clouds.js; only the
+    // dust devils stay polygons)
     pf?.pass('clouds');
+    if (volumes) { vol.sky(S, invert(vp), tri); tris += vol.draw(S, vp, S.props, R.cloudStyle); }
+    const poly = key => CLOUDY.has(key) && !(volumes && vol.has(key));
     gl.useProgram(inst.p);
     gl.uniform1f(inst.u.uDither, 2);
     gl.colorMask(false, false, false, false);
-    for (const key in S.props) if (CLOUDY.has(key)) prop(key);
+    for (const key in S.props) if (poly(key)) prop(key);
     gl.colorMask(true, true, true, true); gl.depthFunc(gl.LEQUAL); gl.depthMask(false);
     gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-    for (const key in S.props) if (CLOUDY.has(key)) prop(key, true);
+    for (const key in S.props) if (poly(key)) prop(key, true);
     gl.depthMask(true); gl.disable(gl.BLEND); gl.depthFunc(gl.LESS);
 
     gl.uniform1f(inst.u.uDither, 0);

@@ -58,6 +58,7 @@ function puffShape() {
 
 export function weatherSystem(G) {
   const b = G.b, H = G.hud;
+  let mistFloor = null;
   G.R.shape('drop', dropShape()); G.R.shape('bolt', boltShape()); G.R.shape('storm', stormShape()); G.R.shape('puff', puffShape());
   let spell = 'clear', spellT = 90, flash = 0, boltT = 8, bolt = null, rainbowT = 0, rainSeen = false;
   let meteorDay = 0, meteors = [], meteorT = 0, cell = null;
@@ -215,8 +216,16 @@ export function weatherSystem(G) {
       if (flash > 0) { const f = flash * (.6 + .4 * Math.sin(G.t * 60)); for (const k of ['zenith', 'horizon', 'skyAmb', 'gndAmb']) S[k] = S[k].map(v => v + f * .5); }
       // haze: thicker in rain and snow; fog lies in the hollows, so climbing out of it clears the view
       const above = S.cam[1] - Math.max(height(S.cam[0], S.cam[2]), WATER);
-      S.fogDen = (S.fogDen || .0042) + G.rain * .004 + G.snowing * .003 + G.fog * .018 * smooth(70, 15, above);
-      if (G.fog > .05) S.horizon = mix3(S.horizon, [.9, .9, .88].map(v => v * (.3 + .7 * L.daylight)), G.fog * .5 * smooth(70, 15, above));
+      // (with volume clouds, clouds.js, the morning fog is a layer of mist over the low ground round
+      // about instead, its top a slowly followed few metres over the lowest of it)
+      const mist = G.R.cloudStyle !== 'poly';
+      S.fogDen = (S.fogDen || .0042) + G.rain * .004 + G.snowing * .003 + (mist ? 0 : G.fog * .018 * smooth(70, 15, above));
+      if (G.fog > .05 && mist) {
+        let lo = 1e9; for (let i = 0; i < 9; i++) { const a = i / 9 * 6.283, r = i ? 220 : 0; lo = Math.min(lo, Math.max(height(S.cam[0] + Math.cos(a) * r, S.cam[2] + Math.sin(a) * r), WATER)); }
+        mistFloor = mistFloor == null || Math.abs(mistFloor - lo) > 200 ? lo : mistFloor + (lo - mistFloor) * Math.min(1, .02);
+        (S.mists ||= []).push([mistFloor + 14 + 26 * G.fog, .02 * G.fog, 12, 16]);
+      }
+      if (G.fog > .05 && !mist) S.horizon = mix3(S.horizon, [.9, .9, .88].map(v => v * (.3 + .7 * L.daylight)), G.fog * .5 * smooth(70, 15, above));
       const cam = S.cam;
       // rain streaks and snowflakes in a box that moves with the camera (they stay put in the world)
       const wrap = (v, c, r) => c + ((((v - c) % (2 * r)) + 3 * r) % (2 * r)) - r;
@@ -280,8 +289,10 @@ export function weatherSystem(G) {
       const sea = hi * smooth(20, 45, height(cam[0], cam[2])) * (dayHash(4) < .4 ? 1 : 0) * smooth(.2, .25, G.tod) * (1 - smooth(.36, .45, G.tod)) * (1 - st);
       if (sea > .05) {
         const top = 72, P = S.props.puff ||= [], step = 34, R = 420;
+        // (with volume clouds, clouds.js, it is a layer of mist: top, density, lumps, thinning above)
+        if (G.R.cloudStyle !== 'poly') (S.mists ||= []).push([top + 6 - (1 - sea) * 30, .03 * sea, 18, 18]);
         const gx0 = Math.floor((cam[0] - R) / step), gz0 = Math.floor((cam[2] - R) / step);
-        for (let gz = gz0; gz <= gz0 + 2 * R / step; gz++) for (let gx = gx0; gx <= gx0 + 2 * R / step; gx++) {
+        if (G.R.cloudStyle === 'poly') for (let gz = gz0; gz <= gz0 + 2 * R / step; gz++) for (let gx = gx0; gx <= gx0 + 2 * R / step; gx++) {
           const x = (gx + ih(gx, gz, 96)) * step, z = (gz + ih(gx, gz, 97)) * step;
           const h = height(x, z); if (Math.hypot(x - cam[0], z - cam[2]) > R || h > top - 8 || h < 3) continue;
           P.push(x + Math.sin(G.t * .05 + gx) * 4, top - 6 + ih(gx, gz, 98) * 6 - (1 - sea) * 30, z, 30 + ih(gx, gz, 99) * 14, ih(gx, gz, 100) * 6.28, .5, 0, 0);

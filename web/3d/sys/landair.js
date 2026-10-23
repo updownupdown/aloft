@@ -55,8 +55,10 @@ export function landAirSystem(G) {
       // (along the shore only: out on the open sea it read as grey lumps on the water)
       const fog = (FOG_LANDS[land] || 0) * smooth(-1600, -500, coastDist(cam[0], cam[2])) * (dayHash(G, 1) < .55 ? 1 : 0) * smooth(.2, .26, G.tod) * (1 - smooth(.38, .48, G.tod));
       if (fog > .05) {
+        // (with volume clouds, clouds.js, it is a layer of mist: top, density, lumps, thinning above)
+        if (G.R.cloudStyle !== 'poly') (S.mists ||= []).push([16 - (1 - fog) * 20, .025 * fog, 8, 10]);
         const P = S.props.puff ||= [], step = 30;
-        for (let gz = -9; gz <= 9; gz++) for (let gx = -9; gx <= 9; gx++) {
+        if (G.R.cloudStyle === 'poly') for (let gz = -9; gz <= 9; gz++) for (let gx = -9; gx <= 9; gx++) {
           const ix = Math.floor(cam[0] / step) + gx, iz = Math.floor(cam[2] / step) + gz;
           const x = (ix + ih(ix, iz, 706)) * step + G.t * 1.5 % step, z = (iz + ih(ix, iz, 707)) * step;
           if (height(x, z) > 3) continue;

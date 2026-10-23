@@ -33,13 +33,13 @@ const GROUPS = {
 // where each Settings row goes: by its label, else by the group it names (OLD names too), else Controls
 const SECTION_OF = {
   Sound: 'audio', Music: 'audio', 'Music style': 'audio', 'Music volume': 'audio', 'Wind volume': 'audio', 'Birds and effects': 'audio',
-  Graphics: 'graphics', 'Ground detail': 'graphics', 'Frame rate': 'graphics', 'Battery use': 'graphics', 'Rest at 30 fps': 'graphics',
+  Graphics: 'graphics', 'Ground detail': 'graphics', Clouds: 'graphics', 'Frame rate': 'graphics', 'Battery use': 'graphics', 'Rest at 30 fps': 'graphics',
   'Photo mode': 'today', 'Share a ghost flight': 'today', 'Start a new journey': 'journey', 'Start a new world': 'journey',
   'Show frame rate': 'dev', 'Feature list': 'dev', Update: 'dev', 'Music lab': 'dev', 'Bird song lab': 'dev',
 };
 const OLD = { sound: 'audio', app: 'dev', switch: 'gameplay', play: 'journey' };
 // rows that keep a set order within their page, whichever system adds them first; the rest follow
-const ROW_ORDER = { Graphics: 1, 'Frame rate': 2, 'Ground detail': 3, 'Battery use': 4, 'Photo mode': 1, 'Share a ghost flight': 2 };
+const ROW_ORDER = { Graphics: 1, 'Frame rate': 2, 'Ground detail': 3, 'Battery use': 4, Clouds: 5, 'Photo mode': 1, 'Share a ghost flight': 2 };
 // pages that moved: How to play > Hints is Settings > Messages
 const MOVED = { 'how/hints': ['play', 'messages'] };
 
