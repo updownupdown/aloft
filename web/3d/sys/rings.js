@@ -59,8 +59,8 @@ export function ringsSystem(G) {
         let col = mix3(S.horizon, [1, 1, .98], .5 + near * .2 + (next ? .2 : 0));
         if (aimed) col = mix3(col, G.aim?.ringCol || [1, .84, .4], .4);
         const al = Math.min(.6, .34 + near * .14 + (next ? .1 : 0) + (aimed ? .08 : 0)) * Math.min(1, (360 - d) / 60);
-        // (look.js G: a soft volume of mist instead, clouds.js ringv, denser for the way on)
-        if (G.R.look?.rings && G.R.cloudStyle !== 'poly') { (S.props.ringv ||= []).push(r.x, r.y, r.z, r.r, r.yaw, Math.min(1, .3 + (next ? .4 : 0) + (aimed ? .3 : 0)), 0, 0); continue; }
+        // (a soft volume of mist, clouds.js ringv, denser for the way on)
+        if (G.R.cloudStyle !== 'poly') { (S.props.ringv ||= []).push(r.x, r.y, r.z, r.r, r.yaw, Math.min(1, .3 + (next ? .4 : 0) + (aimed ? .3 : 0)), 0, 0); continue; }
         const c = Math.cos(r.yaw), sn = Math.sin(r.yaw), N = 30;
         for (let i = 0; i < N; i++) {
           // gaps where a slow wave along the ring dips, different for each ring
