@@ -83,7 +83,7 @@ export function photoSystem(G) {
       try { if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], title: 'Aloft', text: words.join(' ') }); return; } } catch { /* cancelled: save instead */ }
       const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
       document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-      G.hud.toast('Picture saved, and a copy is in the Journal’s album.', 2.5);
+      G.hud.reply('Picture saved, and a copy is in the Journal’s album.', 2.5);
     });
     // a fresh frame to cut it from
     const S = view(), c = glCanvas(); R.draw(S, null, c.width, c.height);

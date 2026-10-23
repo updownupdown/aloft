@@ -40,14 +40,14 @@ export function ghostSystem(G) {
   // share: the path flown lately, as a link
   async function share() {
     const flown = rec.filter(q => q[4]).map(q => q.slice(0, 4));
-    if (flown.length < 40) { G.hud.toast('Fly a little first: the link carries your last few minutes in the air.', 4); return; }
+    if (flown.length < 40) { G.hud.reply('Fly a little first: the link carries your last few minutes in the air.', 4); return; }
     const u = new URL(location.href.split('?')[0]);
     u.searchParams.set('seed', WORLD.seed); u.searchParams.set('ghost', await pack(WORLD.seed, flown));
     try {
       if (navigator.share) { await navigator.share({ title: 'Aloft', text: 'Fly with my ghost in Aloft.', url: u.href }); return; }
     } catch { /* cancelled */ return; }
-    try { await navigator.clipboard.writeText(u.href); G.hud.toast('A link to your ghost flight is copied. Send it to a friend.', 4); }
-    catch { G.hud.toast('Could not share the link from here.', 3); }
+    try { await navigator.clipboard.writeText(u.href); G.hud.reply('A link to your ghost flight is copied. Send it to a friend.', 4); }
+    catch { G.hud.reply('Could not share the link from here.', 3); }
   }
   G.menu.button('play', { label: 'Share a ghost flight', sub: 'your last 3 minutes, as a link', group: 'play', onClick: () => { G.menu.set(false); share(); } });
 
@@ -59,8 +59,8 @@ export function ghostSystem(G) {
     const s = ghost[0];
     b.p = [s[0] - Math.sin(s[3]) * 22, s[1] + 3, s[2] + Math.cos(s[3]) * 22]; b.yaw = s[3];   // just behind it, the same way b.state = 'fly'; b.s = 13; b.vy = 0;
     b.perch = b.tree = b.from = null; b.settle = b.hop = 0;
-    G.hud.toast('A friend’s ghost flight: the pale hawk flies their path. Your own journey waits, unsaved here.', 7);
-  }).catch(() => G.hud.toast('That ghost link could not be read.', 4));
+    G.hud.reply('A friend’s ghost flight: the pale hawk flies their path. Your own journey waits, unsaved here.', 7);
+  }).catch(() => G.hud.reply('That ghost link could not be read.', 4));
 
   return {
     id: 'ghost',

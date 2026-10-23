@@ -128,7 +128,7 @@ export function feelSystem(G) {
         b.slip = lead.slip;
         if (b.slip > .5) {
           b.stamina = Math.min(b.maxStamina ?? 1, b.stamina + FEEL.slipRest * dt);
-          if (!slipSaid) { slipSaid = true; H.toast('In the wild hawk\'s wake: your wings rest.', 2.5); H.did('slip'); }
+          if (!slipSaid) { slipSaid = true; H.tally('In its wake: wings rest', 'glide'); H.did('slip'); }
         }
         G.slipLead = { p: [...p], ang: Math.atan2(lf[1], lf[0]) };
         if (lead.t <= 0 || !flying || !C?.here || C.busy || Math.hypot(rx, dy, rz) > 45) { lead = null; G.slipLead = null; b.slip = 0; }

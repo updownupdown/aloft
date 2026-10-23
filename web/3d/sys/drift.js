@@ -29,7 +29,7 @@ export function driftSystem(G) {
   const b = G.b, R = G.R, H = G.hud;
   R.shape('bergT', berg(false)); R.shape('bergP', berg(true)); R.shape('floe', floe()); R.shape('drift', driftwood()); R.shape('bottle', bottle());
   const found = new Set(G.store.get('bottles3d', [])), notes = G.store.get('bottleNotes3d', []);
-  const once = (id, msg, secs = 5) => { if (!G.flags[id]) { G.flags[id] = 1; H.toast(msg, secs, 'event'); } };
+  const once = (id, title, msg, ic, how) => { if (!G.flags[id]) { G.flags[id] = 1; G.hud.quietly(how, title, msg, ic); } };
   let list = { bergs: [], floes: [], woods: [], bottles: [] }, from = null;
   const seals = new Map();   // floe id -> the moment its seal slid in
 
@@ -90,9 +90,9 @@ export function driftSystem(G) {
   G.on('land', kind => {
     if (kind !== 'perch') return;
     const near = (L, r) => L.some(o => Math.hypot(o.x - b.p[0], o.z - b.p[2]) < r(o));
-    if (near(list.bergs, o => o.s * 1.1)) once('berg', 'An iceberg: rest a while. The cold seas have few other perches, and the bergs drift south a long way.', 5);
-    else if (near(list.floes, o => o.s)) once('floe', 'A pan of sea ice, rocking gently. The seals haul out on these to rest.', 4);
-    else if (near(list.woods, o => o.s)) once('driftwood', 'A drifting log, salt-silvered: a perch in the middle of the sea.', 4);
+    if (near(list.bergs, o => o.s * 1.1)) once('berg', 'Iceberg', 'An iceberg: rest a while. The cold seas have few other perches, and the bergs drift south a long way.', 'pin');
+    else if (near(list.floes, o => o.s)) once('floe', 'Sea ice', 'A pan of sea ice, rocking gently. The seals haul out on these to rest.', 'pin');
+    else if (near(list.woods, o => o.s)) once('driftwood', 'Driftwood', 'A drifting log, salt-silvered: a perch in the middle of the sea.', 'pin');
   });
 
   // ---- bottles -----------------------------------------------------------------------------
@@ -105,13 +105,13 @@ export function driftSystem(G) {
     list.bottles = list.bottles.filter(q => q !== o);
     G.story?.keepsakes?.push('message in a bottle');
     G.audio.feather?.(); G.emit('keepsake', { kind: 'bottle' });
-    H.toast(`A bottle, with a note curled inside: “${NOTES[o.note]}”`, 8, 'event');
+    H.glint('A bottle', `A bottle, with a note curled inside: “${NOTES[o.note]}”`, 'keepsake');
   }
 
   G.dev?.add({ id: 'drift', title: 'Icebergs, sea ice, driftwood and bottles', area: 'World', how: 'Bergs in the cold seas and down the North Atlantic, pans of ice with seals near the poles, logs and bottles on every ocean. Stand on a berg, a pan or a log; skim low over a bottle for its note (Journal > Log). Go puts you by the nearest berg, else log, else bottle.',
     go: () => {
       const pickO = L => L.sort((a, q) => Math.hypot(a.x - b.p[0], a.z - b.p[2]) - Math.hypot(q.x - b.p[0], q.z - b.p[2]))[0];
-      const o = pickO(list.bergs) || pickO(list.woods) || pickO(list.bottles); if (!o) return H.toast('Nothing drifting near', 2);
+      const o = pickO(list.bergs) || pickO(list.woods) || pickO(list.bottles); if (!o) return H.reply('Nothing drifting near', 2);
       b.state = 'fly'; b.p = [o.x - 50, 18 + (o.s || 0) * .4, o.z]; b.yaw = Math.PI / 2; b.s = 8; b.gamma = 0; b.vy = 0;
     } });
 

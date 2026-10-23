@@ -16,7 +16,7 @@ export function huntersSystem(G) {
   G.guide?.page('kestrel', 'American kestrel', 'The smallest falcon hangs on beating wings over one spot, watching for a mouse.');
   G.guide?.page('gull', 'Herring gull', 'Where gulls wheel and plunge, the fish are near the surface.');
   G.guide?.page('raven', 'Common raven', 'Ravens circle over a carcass and call the wolves and eagles to open it.');
-  const once = (id, msg, secs = 4) => { if (!G.flags[id]) { G.flags[id] = 1; H.toast(msg, secs); } };
+  const once = (id, title, msg, ic, how) => { if (!G.flags[id]) { G.flags[id] = 1; G.hud.quietly(how, title, msg, ic); } };
   const caw = (d = 0) => { G.audio.tone?.({ f: 620, f2: 470, dur: .16, vol: .05, delay: d }); G.audio.tone?.({ f: 600, f2: 440, dur: .14, vol: .045, delay: d + .22 }); };
   let mob = null, mobCool = 40, pirate = null, carryT = 0, eaten = {};
 
@@ -24,7 +24,7 @@ export function huntersSystem(G) {
     const a = b.yaw;
     mob = { t: 0, crows: Array.from({ length: 4 }, (_, i) => ({ p: [b.p[0] + Math.sin(a) * 30 + (i - 1.5) * 4, b.p[1] + 3, b.p[2] - Math.cos(a) * 30], ph: i * 1.6, v: [0, 0, 0] })) };
     caw(); caw(.5);
-    once('crows', 'Crows! They mob a hawk near their woods. Climb away and they give up.', 4);
+    once('crows', 'Crows', 'Crows! They mob a hawk near their woods. Climb away and they give up.', 'climb', 'w');
   }
   function carrionNear(r) {
     const out = [], x0 = b.p[0], z0 = b.p[2];
@@ -55,7 +55,7 @@ export function huntersSystem(G) {
           if (Math.hypot(c.p[0] - b.p[0], c.p[1] - b.p[1], c.p[2] - b.p[2]) < 1.6 && Math.random() < dt * 2) { b.yaw += (Math.random() - .5) * .25; G.audio.feather?.(); }
         }
         if (Math.random() < dt * .7) caw();
-        if (above > 60 || mob.t > 30 || b.state !== 'fly') { mob = null; mobCool = 120; if (above > 60) once('crowsGone', 'High enough: the crows turn back to their trees.', 3); }
+        if (above > 60 || mob.t > 30 || b.state !== 'fly') { mob = null; mobCool = 120; }
       }
       // the eagle and your fish
       carryT = b.carry?.kind === 'fish' && b.state === 'fly' ? carryT + dt : 0;
@@ -63,7 +63,7 @@ export function huntersSystem(G) {
         const a = b.yaw + Math.PI;
         pirate = { p: [b.p[0] + Math.sin(a) * 60, b.p[1] + 25, b.p[2] - Math.cos(a) * 60], t: 0, flee: 0 };
         G.audio.tone?.({ f: 1800, f2: 1500, dur: .12, vol: .05 }); G.audio.tone?.({ f: 1900, f2: 1400, dur: .1, vol: .05, delay: .16 }); G.audio.tone?.({ f: 1800, f2: 1300, dur: .1, vol: .05, delay: .3 });
-        once('eagle', 'A bald eagle wants your fish! Get to a perch, or the ground, to eat it.', 4.5);
+        once('eagle', 'Eagle', 'A bald eagle wants your fish! Get to a perch, or the ground, to eat it.', 'hunger', 'w');
       }
       if (pirate) {
         pirate.t += dt;
@@ -74,7 +74,7 @@ export function huntersSystem(G) {
           pirate.yaw = Math.atan2(dx, -dz);
           for (const [i, k] of [[0, dx], [1, dy], [2, dz]]) e[i] += k / (d || 1) * v * dt;
           if (b.carry?.kind !== 'fish' || b.state !== 'fly') { pirate.flee = 4; }   // eaten, or landed with it: it gives up
-          else if (d < 2.5) { b.carry = null; pirate.flee = 6; H.toast('The eagle snatched your fish!', 3); G.audio.feather?.(); }
+          else if (d < 2.5) { b.carry = null; pirate.flee = 6; H.say('The eagle snatched your fish!', { kind: 'warn', secs: 3, icon: 'hunger' }); G.audio.feather?.(); }
           else if (pirate.t > 35 || d > 160) pirate.flee = 4;
         }
       }
@@ -84,7 +84,7 @@ export function huntersSystem(G) {
         if (b.p[1] - c.y < 2.5 && Math.hypot(b.p[0] - c.x, b.p[2] - c.z) < 2.5) {
           eaten[c.id] = G.day; carrions = carrions.filter(o => o !== c);
           G.systems.food?.take?.({ x: c.x + 1, y: c.y, z: c.z, kind: 'carrion', food: .45, wet: .05, name: 'a share of the carrion' });
-          once('carrion', 'Carrion: the ravens showed you. Not pretty, but it fills you up.', 4);
+          once('carrion', 'Carrion', 'Carrion: the ravens showed you. Not pretty, but it fills you up.', 'hunger');
           break;
         }
       }

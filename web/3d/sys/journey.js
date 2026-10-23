@@ -47,7 +47,7 @@ export function journeySystem(G) {
     for (const l of W.landmarksNear?.(b.p[0], b.p[2], FIND_R + 400) || []) {
       if (J.found[l.id] || Math.hypot(l.x - b.p[0], l.z - b.p[2]) > FIND_R + (l.r || 0)) continue;
       J.found[l.id] = { name: l.name, x: Math.round(l.x), z: Math.round(l.z), note: `Found on ${G.date?.text || `day ${G.day}`}, in ${G.season.name}, in ${inSentence(placeName(l.x, l.z))}.` };
-      G.hud.toast(`You found ${inSentence(l.name)}.`, 3.5); G.audio.learned?.();
+      G.hud.name(l.name, 'found'); G.audio.learned?.();
       G.emit('landmark', l);
     }
   }
@@ -57,7 +57,7 @@ export function journeySystem(G) {
     if (k !== regionAt) { regionAt = k; regionT = 0; return; }
     if (!k || J.regions[k] || (regionT += dt) < 4) return;
     J.regions[k] = { name: r.name, day: G.day, date: G.date?.text || '' };
-    G.hud.toast(r.name[0].toUpperCase() + r.name.slice(1), 4);
+    G.hud.name(r.name[0].toUpperCase() + r.name.slice(1), 'a new country');
     G.emit('region', r);
   }
   // a year ends with the start of your own spring, or 32 days on where there is none
@@ -65,7 +65,7 @@ export function journeySystem(G) {
     J.family.push({ year: J.year, mate: !!G.story?.mate, chicks: J.yearChicks, landmarks: Object.keys(J.found).length });
     J.year++; J.yearChicks = 0; J.yearDay = G.day;
     G.emit('newYear', J.year);
-    G.hud.toast(`Spring, and year ${J.year} begins.`, 5);
+    G.hud.name(`Year ${J.year}`, 'spring');
   }
   G.on('season', s => { if (s.name === 'spring' && G.day - J.yearDay >= YEAR_DAYS / 2) year(); });
   G.on('newDay', () => { if (G.season.tropic && G.day - J.yearDay >= YEAR_DAYS) year(); });

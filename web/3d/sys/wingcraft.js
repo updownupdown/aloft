@@ -31,14 +31,14 @@ export function wingcraftSystem(G) {
     if (T) {   // with you in the lift: circle its core a little above you, as you do
       k.th = T.t; k.with = (k.with || 0) + dt; k.solo = 0;
       skill[i] = Math.min(1, sk + CRAFT.learn * dt);
-      if (!G.flags.teach) { G.flags.teach = 1; H.toast('Your young one follows you into the thermal and copies your circles.', 4.5); }
-      if (sk < .5 && skill[i] >= .5) H.toast('Your young hawk is finding the core on its own now.', 4);
+      if (!G.flags.teach) { G.flags.teach = 1; H.glint('Your young one learns', 'Your young one follows you into the thermal and copies your circles.', 'thermal'); }
+      if (sk < .5 && skill[i] >= .5) H.tally('Your young hawk finds the core', 'thermal');
       const [cx, cz] = thermalCentre(T.t, k.p[1]), r = T.t.r * (.55 - .2 * sk), ang = G.t * (11 / r) + k.phase;
       return [cx + Math.cos(ang) * r, b.p[1] + 5 + (k.r - 16) * .3, cz + Math.sin(ang) * r];
     }
     // you've left: if it had a while in good air with you, it stays and climbs on its own
     if (k.th && (k.with || 0) > CRAFT.soloAfter && (k.solo || 0) < CRAFT.soloFor * (.6 + sk) && Math.hypot(k.p[0] - b.p[0], k.p[2] - b.p[2]) < 600) {
-      if (!k.solo && !G.flags.teachSolo) { G.flags.teachSolo = 1; H.toast('Left in good air, your young one keeps circling and climbs on its own.', 4.5); }
+      if (!k.solo && !G.flags.teachSolo) { G.flags.teachSolo = 1; H.glint('Climbing alone', 'Left in good air, your young one keeps circling and climbs on its own.', 'thermal'); }
       k.solo = (k.solo || 0) + dt; skill[i] = Math.min(1, sk + CRAFT.learn * .5 * dt);
       const [cx, cz] = thermalCentre(k.th, k.p[1]), r = k.th.r * (.6 - .25 * sk), ang = G.t * (11 / r) + k.phase;
       const climb = (.4 + sk * 1.6) * (k.p[1] - height(cx, cz) < 260 ? 1 : 0);
@@ -51,7 +51,7 @@ export function wingcraftSystem(G) {
   G.hud.tip('wind', () => b.state === 'fly' && b.flare > .4 && (G.windK ?? 0) > .35 && b.p[1] - Math.max(height(b.p[0], b.p[2]), WATER) < 12,
     'Land into the wind: the bands in the grass and the lanes on the water run the way it blows. Into it you land slow and soft; with it you run on.');
   G.on('land', kind => {
-    if (kind === 'ground' && b.landRun > 1.5 && !G.flags.runOn) { G.flags.runOn = 1; H.toast('The wind was behind you: you came in fast and ran on. Turn into the wind to land soft.', 5); }
+    if (kind === 'ground' && b.landRun > 1.5 && !G.flags.runOn) { G.flags.runOn = 1; H.glint('Downwind landing', 'The wind was behind you: you came in fast and ran on. Turn into the wind to land soft.', 'flare'); }
     if (kind === 'water') b.wet = 1;
   });
 
@@ -67,7 +67,7 @@ export function wingcraftSystem(G) {
       if (b.state === 'swim' || b.plunge) b.wet = 1;
       else if (rain > .1) b.wet = Math.min(1, b.wet + rain * CRAFT.soak * under * dt);
       else b.wet = Math.max(0, b.wet - (b.sunning ? CRAFT.drySun : b.state === 'fly' ? CRAFT.dryFly * (1 + b.s / 20) : CRAFT.dryOpen) * dt);
-      if (b.wet > .5 && !soakSaid) { soakSaid = true; if (!G.flags.soaked) { G.flags.soaked = 1; H.toast('Your feathers are soaked: the wings feel heavy. Perch in the sun and spread them to dry.', 5); } }
+      if (b.wet > .5 && !soakSaid) { soakSaid = true; if (!G.flags.soaked) { G.flags.soaked = 1; H.glint('Soaked', 'Your feathers are soaked: the wings feel heavy. Perch in the sun and spread them to dry.', 'thirst'); } }
       if (b.wet < .1) soakSaid = false;
       // C4: the grass bands run with the wind's strength
       const ws = (G.windK ?? .3);

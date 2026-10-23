@@ -67,7 +67,7 @@ export function neighboursSystem(G) {
     if (chase > .6) {
       b.stamina = Math.max(0, b.stamina - N.harry * dt);
       if ((callT -= dt) <= 0) { callT = 2.5 + Math.random() * 2; G.audio.scream?.(false, null, .8); }
-      if (!told) { told = true; H.toast(st.met ? 'The neighbours again: they rise to see you off.' : 'A red-tail pair rises, calling: this valley is theirs. Climb high over it, or go round.', 5); st.met = true; G.emit('neighbours'); }
+      if (!told) { told = true; if (st.met) H.tally('The neighbours rise to see you off', 'bird_hawk'); else H.say('A red-tail pair rises, calling: this valley is theirs. Climb high over it, or go round.', { kind: 'warn', secs: 5, icon: 'climb' }); st.met = true; G.emit('neighbours'); }
     } else if (chase < .1 && told) { told = false; }
   }
 

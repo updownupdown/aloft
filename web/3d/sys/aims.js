@@ -41,13 +41,13 @@ export function aimsSystem(G) {
     A.aim = G.lessonAim?.() || pool[Math.floor(Math.random() * pool.length)] || 'rings'; A.day = G.day; A.done = false; A.count = 0;
     A.last = [...A.last, A.aim].slice(-4);
   }
-  const offer = () => G.hud.toast(`Today’s aim, if you like: ${AIMS[A.aim].text[0].toLowerCase()}${AIMS[A.aim].text.slice(1)}`, 6);
+  const offer = () => G.hud.glint('Today’s aim', `If you like: ${AIMS[A.aim].text[0].toLowerCase()}${AIMS[A.aim].text.slice(1)}`, 'keepsake');
   G.on('newDay', () => { pick(); offer(); });
   for (const ev of new Set(Object.values(AIMS).map(a => a.on))) G.on(ev, e => {
     const a = AIMS[A.aim]; if (!a || A.done || a.on !== ev || (a.ok && !a.ok(e))) return;
     if (++A.count < (a.n || 1)) return;
     A.done = true; A.feathers++;
-    G.hud.toast(`Today’s aim is done. A feather for your journal (${A.feathers}).`, 5);
+    G.hud.tally(`Aim done: feather ${A.feathers}`, 'keepsake');
     G.audio.ring?.();
   });
   // a thermal ride high above the ground: held for a moment and a half; and a few things other
@@ -72,8 +72,8 @@ export function aimsSystem(G) {
     if (!race || e.circuit !== race.circuit) return;
     if (!race.them) {
       G.hunger = Math.min(1, G.hunger + RACE.gift);
-      G.hud.toast('Round first! Your companion brings you a mouse.', 4); G.emit('raceWon');
-    } else G.hud.toast('Your companion finished first, and waits for you, calling.', 3.5);
+      G.hud.tally('Round first! A mouse for you', 'ring'); G.emit('raceWon');
+    } else G.hud.tally('Your companion was first', 'ring');
     race = null;
   });
 
@@ -88,7 +88,7 @@ export function aimsSystem(G) {
   G.on('landmark', l => {
     const land = landOf(l.x, l.z), want = (W.LANDS || []).find(e => e.key === land)?.sight;
     if (land && want && (l.kind === want || (want === 'summit' && l.summit)) && !A.sights[land]) {
-      A.sights[land] = 1; G.hud.toast(`The sight of ${BIOMES[land]?.label || 'this land'} is in your lands collection.`, 4);
+      A.sights[land] = 1; G.hud.tally(`${BIOMES[land]?.label || 'This land'}: in your lands`, 'lands');
     }
   });
 
@@ -131,7 +131,7 @@ export function aimsSystem(G) {
       if ((landT -= dt) <= 0) {
         landT = 2;
         const k = landOf(b.p[0], b.p[2]);
-        if (k && !A.seen[k]) { A.seen[k] = 1; if (Object.keys(A.seen).length > 1) { G.hud.toast(`A new land for your collection: ${BIOMES[k]?.label || k}.`, 4); G.emit('newLand', k); } }
+        if (k && !A.seen[k]) { A.seen[k] = 1; if (Object.keys(A.seen).length > 1) { G.hud.tally(`New land: ${BIOMES[k]?.label || k}`, 'lands'); G.emit('newLand', k); } }
       }
       if (G.thirst < drank || b.eating > 0) drank = G.thirst; else if (G.thirst - drank > .05 && b.state !== 'fly') { G.emit('drink'); drank = G.thirst; }
       if (b.asleep && !asleep) G.emit('sleep'); asleep = !!b.asleep;

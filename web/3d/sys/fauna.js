@@ -40,7 +40,7 @@ export function faunaSystem(G) {
     stop() { route = null; },
   };
   G.wild = { fish: [], flocks, herds, herons };
-  const once = (id, msg, secs = 5) => { if (!G.flags[id]) { G.flags[id] = 1; H.toast(msg, secs); } };
+  const once = (id, title, msg, ic, how) => { if (!G.flags[id]) { G.flags[id] = 1; G.hud.quietly(how, title, msg, ic); } };
   const sight = (key, x, y, z, r) => G.sight?.(key, x, y, z, r);
   const low = () => b.state !== 'fly' || b.p[1] - Math.max(height(b.p[0], b.p[2]), WATER) < 22;
   const near = (x, z, r) => Math.hypot(x - b.p[0], z - b.p[2]) < r;
@@ -131,7 +131,7 @@ export function faunaSystem(G) {
   }
   function herdStep(Hd, dt) {
     const hd = Math.hypot(Hd.x - b.p[0], Hd.z - b.p[2]);
-    if (b.state === 'fly' && hd < 40 && low() && Hd.flee <= 0) { Hd.flee = 4.5; G.audio.snort?.(); Hd.away = Math.atan2(Hd.z - b.p[2], Hd.x - b.p[0]); once('deer', 'Deer! They bound off for the trees when a shadow passes low.', 4); }
+    if (b.state === 'fly' && hd < 40 && low() && Hd.flee <= 0) { Hd.flee = 4.5; G.audio.snort?.(); Hd.away = Math.atan2(Hd.z - b.p[2], Hd.x - b.p[0]); once('deer', 'Deer', 'Deer! They bound off for the trees when a shadow passes low.', 'guide'); }
     Hd.flee -= dt;
     for (const d of Hd.deer) {
       if (Hd.flee > 0) {
@@ -155,7 +155,7 @@ export function faunaSystem(G) {
         h.state = 'fly'; h.t = 0; G.audio.heron?.();
         const a = Math.atan2(h.z - b.p[2], h.x - b.p[0]) + (Math.random() - .5);
         h.to = shallowNear(h.x + Math.cos(a) * 160, h.z + Math.sin(a) * 160, Math.random() * 6) || [h.x + Math.cos(a) * 160, h.z + Math.sin(a) * 160];
-        once('heron', 'A heron lifts from the shallows with a croak, slow and grey.', 4);
+        once('heron', 'Heron', 'A heron lifts from the shallows with a croak, slow and grey.', 'guide');
       } else if (Math.random() < dt * .1) h.yaw += (Math.random() - .5) * .8;
       h.y = WATER - .3;
     } else {
@@ -205,7 +205,7 @@ export function faunaSystem(G) {
         G.audio.splash(true);
         for (let i = 0; i < 14; i++) G.part([f.x, WATER, f.z], [(Math.random() - .5) * 4, 2 + Math.random() * 3, (Math.random() - .5) * 4], 1, [.85, .92, .95], .07);
         G.emit('catch', { kind: 'fish', x: f.x, z: f.z });
-        once('firstFish', 'A fish! Snatched from the surface. Tap Eat, or carry it to a branch or your nest.', 4);
+        once('firstFish', 'A fish', 'A fish! Snatched from the surface. Tap Eat, or carry it to a branch or your nest.', 'prey');
         return;
       }
     }
@@ -236,10 +236,10 @@ export function faunaSystem(G) {
   });
 
   G.on('gift', ev => {
-    if (ev.key === 'fish') { fishBoost = 120 * (ev.k || 1); ev.handled = true; H.toast('Fish are rising in the lakes.', 3); }
+    if (ev.key === 'fish') { fishBoost = 120 * (ev.k || 1); ev.handled = true; H.glint('Fish rising', 'Fish are rising in the lakes.', 'prey'); }
     if (ev.key === 'companion') {
       ev.handled = true; companion = { t: 150 * (ev.k || 1), a: 0, p: [b.p[0] - 20, b.p[1] + 10, b.p[2]] };
-      H.toast('A wild hawk comes to fly beside you for a while.', 4); G.audio.scream?.(true);
+      H.glint('A wild hawk', 'A wild hawk comes to fly beside you for a while. Tuck in beside it: in its wake your wings rest.', 'bird_hawk'); G.audio.scream?.(true);
     }
   });
 
@@ -275,7 +275,7 @@ export function faunaSystem(G) {
         companion.yaw = Math.atan2(tz - p[2], tx - p[0]);
         p[0] += (tx - p[0]) * k; p[1] += (ty - p[1]) * k; p[2] += (tz - p[2]) * k;
         if (b.state !== 'fly') p[1] = Math.max(p[1], height(p[0], p[2]) + 8);
-        if (companion.t <= 0) { companion = null; H.toast('The wild hawk peels away and goes its own way.', 3); }
+        if (companion.t <= 0) companion = null;
       }
     },
     scene(S) {
@@ -320,7 +320,7 @@ export function faunaSystem(G) {
           so.push(x, y, z, 1, a + (i & 1 ? Math.PI / 2 : -Math.PI / 2), .4 + (i % 3) * .2, 0, 0);
           if (i === 0) sight('kettlehawk', x, y, z, 1.2);
         }
-        if (Math.hypot(t.x - b.p[0], t.z - b.p[2]) < 200) once('kettle', 'A kettle of wild hawks circles in that thermal. Join them: they show you the core.', 5);
+        if (Math.hypot(t.x - b.p[0], t.z - b.p[2]) < 200) once('kettle', 'A kettle of hawks', 'A kettle of wild hawks circles in that thermal. Join them: they show you the core.', 'thermal');
       }
       if (companion) so.push(...companion.p, .85, companion.yaw, .9, 0, 0);
     },

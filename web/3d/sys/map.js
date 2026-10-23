@@ -192,7 +192,7 @@ export function mapView(G, J) {
   // ground or water) there, fade back in
   function teleport(x, z) {
     x = wrapX(x); z = Math.max(EARTH.Z0 + 200, Math.min(EARTH.Z0 + EARTH.H - 200, z));
-    G.travelTo(x, z, () => { reveal(); G.hud.toast(`Flown to ${G.placeName?.(x, z) || 'there'}.`, 3); });
+    G.travelTo(x, z, () => { reveal(); G.hud.reply(`Flown to ${G.placeName?.(x, z) || 'there'}.`, 3); });
   }
   const toWorld = (px, py) => { const ll = globe.unproject(V, V.w, V.h, px, py); return ll && toXZ(ll[0], ll[1]); };
   // zoom keeping the point under (px, py) still (near enough: it nudges the centre toward it)

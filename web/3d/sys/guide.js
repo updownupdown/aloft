@@ -52,7 +52,7 @@ export function guideSystem(G) {
     want.clear();
     if (!got.length) return;
     G.store.set('guide3d', seen);
-    for (const k of got) { G.hud.toast(`A new page in your field guide: ${G.guide.name(k)}.`, 3.5); G.emit('sighted', k); }
+    for (const k of got) { G.hud.tally(`Field guide: ${G.guide.name(k)}`, 'guide'); G.emit('sighted', k); }
   }
 
   // the journal's field guide: every page, the ones seen first

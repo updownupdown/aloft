@@ -35,7 +35,7 @@ export function ringsSystem(G) {
         run.next = r.k + 1;
         if (run.count >= r.of) {
           run = null; G.emit('ringLoop', { circuit: r.circuit, n: r.of, level: r.level });
-          G.hud.toast(`A whole course of ${r.of} rings, flown in one go${r.level === 'hard' ? ': a hard one' : ''}.`, 3);
+          G.hud.tally(`A whole course: ${r.of} rings${r.level === 'hard' ? ', hard' : ''}`, 'ring');
         }
         for (let i = 0; i < 20; i++) { const a = i / 20 * 6.283; G.part([r.x + Math.cos(a) * r.r * Math.cos(r.yaw), r.y + Math.sin(a) * r.r, r.z + Math.cos(a) * r.r * Math.sin(r.yaw)], [Math.cos(a) * 1.5 * Math.cos(r.yaw), Math.sin(a) * 1.5 + .5, Math.cos(a) * 1.5 * Math.sin(r.yaw)], 1.4, [.97, .97, .95], .3); }
       }

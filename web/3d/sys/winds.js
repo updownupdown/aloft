@@ -28,7 +28,7 @@ export function windsSystem(G) {
       G.waveK = day * smooth(.48, .55, G.tod) * (1 - smooth(.76, .82, G.tod)) * (1 - (G.storm || 0)) * (1 - (G.overcast || 0) * .6);
       if (!told && G.waveK > .5 && G.b.state === 'fly' && G.b.p[1] > WAVE.lo && G.b.lift > 1.2) {
         told = true;
-        if (!G.flags.wave) { G.flags.wave = 1; G.hud.toast('Wave lift! Smooth rising air downwind of the mountains, under the lens-shaped clouds.', 6); }
+        if (!G.flags.wave) { G.flags.wave = 1; G.hud.glint('Wave lift', 'Wave lift! Smooth rising air downwind of the mountains, under the lens-shaped clouds.', 'updraft'); }
       }
     },
     scene(S) {

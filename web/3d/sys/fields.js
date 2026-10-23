@@ -63,7 +63,7 @@ export function fieldsSystem(G) {
   R.shape('hay', hayShape(false)); R.shape('hayLaid', hayShape(true)); R.shape('bale', baleShape());
   R.shape('fox', foxShape(false)); R.shape('foxP', foxShape(true));
   G.guide?.page('fox', 'Red fox', 'Hunts voles by ear: it stands stock still, head cocked, then leaps high and comes down on them with its forepaws.');
-  const once = (id, msg, secs = 5) => { if (!G.flags[id]) { G.flags[id] = 1; H.toast(msg, secs); } };
+  const once = (id, title, msg, ic, how) => { if (!G.flags[id]) { G.flags[id] = 1; G.hud.quietly(how, title, msg, ic); } };
 
   // ---- A3 the hay meadows ----
   const farms = () => settlementsNear(b.p[0], b.p[2], FIELDS.fox + 200, false).filter(S => S.kind === 'farm');
@@ -93,7 +93,7 @@ export function fieldsSystem(G) {
   G.on('escaped', m => {
     if (G.day !== waryDay) { waryDay = G.day; misses.clear(); wary.clear(); }
     const k = meadowKey(m.hx, m.hz), n = (misses.get(k) || 0) + 1; misses.set(k, n);
-    if (n === FIELDS.misses) { wary.add(k); H.toast('The mice in this meadow have grown wary: they freeze and dive at the first sign of you. Try another farm.', 5); }
+    if (n === FIELDS.misses) { wary.add(k); H.glint('Wary mice', 'The mice in this meadow have grown wary: they freeze and dive at the first sign of you. Try another farm.', 'prey'); }
   });
   G.on('newDay', () => { misses.clear(); wary.clear(); });
 
@@ -137,7 +137,7 @@ export function fieldsSystem(G) {
         const M = mice(); let best = null, bd = 7;
         if (M) for (const m of M.values()) { const d = Math.hypot(m.x - f.x, m.z - f.z); if (d < bd && !(m.hidden > 0) && !(m.dig > 0)) { bd = d; best = m; } }
         if (best && Math.random() < .7) { best.flee = 2.6; best.freeze = 0; best.bolt = false; best.seen = 3; best.yaw = Math.atan2(best.x - f.x, -(best.z - f.z)); }
-        if (hd < 140) once('fox', 'A fox, mousing along the field edge. Where it pounces there are voles, and sometimes it flushes one into the open.', 6);
+        if (hd < 140) once('fox', 'Fox', 'A fox, mousing along the field edge. Where it pounces there are voles, and sometimes it flushes one into the open.', 'guide');
       }
       return;
     }
@@ -183,10 +183,10 @@ export function fieldsSystem(G) {
   G.dev?.add({ id: 'r8-fox', title: 'A fox mousing at dusk', area: 'Wildlife', round: 'R8 A4',
     how: 'At dusk or dawn near a farm, a fox trots the paddock edge and pounces where voles are; it can flush one for you.', go: () => { G.tod = .66; toFarm(35); fox = null; foxT = 0; } });
   G.dev?.add({ id: 'r8-wary', title: 'Wary fields', area: 'Food and water', round: 'R8 A5',
-    how: 'Let three mice get away in one meadow and the rest there freeze and dive much sooner, until the next day.', go: () => { wary.add(meadowKey(b.p[0], b.p[2])); waryDay = G.day; H.toast('This meadow is wary now (dev).', 2); } });
+    how: 'Let three mice get away in one meadow and the rest there freeze and dive much sooner, until the next day.', go: () => { wary.add(meadowKey(b.p[0], b.p[2])); waryDay = G.day; H.reply('This meadow is wary now (dev).', 2); } });
   function toFarm(up) {
     const S = settlementsNear(b.p[0], b.p[2], 3000, false).filter(S => S.kind === 'farm').sort((a, q) => Math.hypot(a.x - b.p[0], a.z - b.p[2]) - Math.hypot(q.x - b.p[0], q.z - b.p[2]))[0];
-    if (!S) { H.toast('No farm within 3 km', 2); return; }
+    if (!S) { H.reply('No farm within 3 km', 2); return; }
     const [x, z] = frame(S).at(0, -52), [fx, fz] = frame(S).at(0, -52 + 70);   // over the paddock's edge, looking across it
     b.state = 'fly'; b.p = [fx, height(fx, fz) + up, fz]; b.yaw = Math.atan2(x - fx, -(z - fz)); b.s = 10; b.gamma = 0;
   }
@@ -204,8 +204,8 @@ export function fieldsSystem(G) {
       const dusk = (G.tod > .64 && G.tod < .8) || (G.tod > .2 && G.tod < .29);
       if (fox) { foxStep(dt); if (fox && (!dusk || Math.hypot(fox.x - b.p[0], fox.z - b.p[2]) > FIELDS.fox + 120)) fox = null; }
       else if (dusk && (G.rain || 0) < .3 && (foxT -= dt) <= 0) { foxT = 20; spawnFox(); }
-      if (b.state === 'fly' && near.some(S => inPaddock(S, b.p[0], b.p[2])) && H0.h > .6 && !H0.mown && laid < .4) once('hay', 'Tall hay: a mouse keeping still in it is hidden. Wait for one to move or squeak, or hunt where the grass is short.', 6);
-      if (laid > .6) once('hayLaid', 'The storm has laid the hay flat: the mice in it have nowhere to hide for a while.', 5);
+      if (b.state === 'fly' && near.some(S => inPaddock(S, b.p[0], b.p[2])) && H0.h > .6 && !H0.mown && laid < .4) once('hay', 'Tall hay', 'Tall hay: a mouse keeping still in it is hidden. Wait for one to move or squeak, or hunt where the grass is short.', 'prey');
+      if (laid > .6) once('hayLaid', 'Hay laid flat', 'The storm has laid the hay flat: the mice in it have nowhere to hide for a while.', 'prey');
     },
     scene(S) {
       const cam = S.cam, above = cam[1] - Math.max(height(cam[0], cam[2]), WATER);

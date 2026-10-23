@@ -10,7 +10,7 @@ export function bushesSystem(G) {
   for (const k in BUSH_SHAPES) G.R.shape(k, BUSH_SHAPES[k]());
   let list = [], from = null;
   G.dev?.add({ id: 'bushes', title: 'Bushes you can stand on', area: 'World', how: 'Leafy shrubs at wood edges and in thickets, gorse on moors and coasts, sagebrush in the dry lands, thorn bushes on the savanna. Land on top of one.',
-    go: () => { const o = bushesNear(G.b.p[0], G.b.p[2], 300).sort((a, q) => Math.hypot(a.x - G.b.p[0], a.z - G.b.p[2]) - Math.hypot(q.x - G.b.p[0], q.z - G.b.p[2]))[0]; if (!o) return G.hud.toast('No bushes near', 2);
+    go: () => { const o = bushesNear(G.b.p[0], G.b.p[2], 300).sort((a, q) => Math.hypot(a.x - G.b.p[0], a.z - G.b.p[2]) - Math.hypot(q.x - G.b.p[0], q.z - G.b.p[2]))[0]; if (!o) return G.hud.reply('No bushes near', 2);
       const b = G.b; b.state = 'fly'; b.p = [o.x - 14, o.y + o.s + 4, o.z]; b.yaw = Math.PI / 2; b.s = 7; b.gamma = 0; } });
   return {
     id: 'bushes',

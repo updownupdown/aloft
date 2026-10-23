@@ -17,7 +17,7 @@ export function skyRiversSystem(G) {
   const b = G.b, H = G.hud;
   let here = null, k = 0, checkT = 0;
   G.skyWind = [0, 0];
-  const once = (id, msg, secs = 6) => { if (!G.flags[id]) { G.flags[id] = 1; H.toast(msg, secs, 'event'); } };
+  const once = (id, title, msg, ic, how) => { if (!G.flags[id]) { G.flags[id] = 1; G.hud.quietly(how, title, msg, ic); } };
   G.dev?.add({ id: 'skyrivers', title: 'Sky rivers: the westerlies and the trades', area: 'World', how: 'Over the North Atlantic the westerlies blow east high up, over the South Atlantic the trade winds blow west: climb above 50 m and they carry you, strongest from 230 m. Cloud streets show the way. Go puts you high over the mid Atlantic.',
     go: () => { const [x, z] = toXZ(38, -40); b.state = 'fly'; b.p = [x, 260, z]; b.yaw = Math.PI / 2; b.s = 10; b.gamma = 0; b.vy = 0; } });
   return {
@@ -33,7 +33,7 @@ export function skyRiversSystem(G) {
       const want = here ? here.v * k * up : 0, cur = Math.hypot(...G.skyWind);
       const v = cur + (want - cur) * Math.min(1, dt * .5), d = here ? here.dir : G.skyWind.map(q => q / (cur || 1));
       G.skyWind = [d[0] * v, d[1] * v];
-      if (here && k > .5 && b.state === 'fly' && up > .5) once('skyriver_' + here.way, `You are in ${here.name}, a sky river: high up it carries you ${here.way}. Ride it across; going the other way, keep low over the water.`);
+      if (here && k > .5 && b.state === 'fly' && up > .5) once('skyriver_' + here.way, 'Sky river', `You are in ${here.name}, a sky river: high up it carries you ${here.way}. Ride it across; going the other way, keep low over the water.`, 'glide');
     },
     scene(S) {
       if (!here || k < .05) return;

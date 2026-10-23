@@ -179,7 +179,7 @@ export function stillSystem(G) {
   function visit(dt) {
     const still = b.state === 'perch' && !(b.settle > 0) && idle() > STILL.quiet;
     if (still) {
-      if (!quietSaid && !G.flags.quietHour) { quietSaid = true; G.flags.quietHour = 1; H.toast('The quiet hour: sit still a while, and the world comes closer.', 5); }
+      if (!quietSaid && !G.flags.quietHour) { quietSaid = true; G.flags.quietHour = 1; H.glint('The quiet hour', 'The quiet hour: sit still a while, and the world comes closer.', 'hear'); }
       if ((visitT -= dt) <= 0 && visitors.length < 2) { spawn(); visitT = STILL.visitGap[0] + Math.random() * (STILL.visitGap[1] - STILL.visitGap[0]); }
     } else if (b.state !== 'perch') startle();
     else visitT = Math.max(visitT, 4);
@@ -253,7 +253,7 @@ export function stillSystem(G) {
       watched[watch.key] = 1; G.store.set('watched3d', watched);
       const line = WATCH[watch.key] || WATCH_ANY, note = G.guide?.note?.(watch.key) || '';
       if (!note.includes('Watched:')) G.guide?.page(watch.key, null, `${note} ${line}`.trim());
-      H.toast(`You watch the ${(G.guide?.name?.(watch.key) || watch.key).toLowerCase()} a while. A new line in your field guide.`, 4);
+      H.tally(`${G.guide?.name?.(watch.key) || watch.key}: a new line in your guide`, 'guide');
       G.emit('watched', watch.key);
     }
   }
@@ -274,7 +274,7 @@ export function stillSystem(G) {
       here.s += dt; if (!(b.settle > 0)) here.yaw = b.yaw;
       if (!here.fav && here.n >= STILL.favVisits && here.s >= STILL.favSecs) {
         here.fav = true; G.store.set('favPerch3d', favs);
-        H.toast('This perch is becoming yours: it is on your map now, and you will land facing your favourite view.', 5);
+        H.glint('Your perch', 'This perch is becoming yours: it is on your map now, and you will land facing your favourite view.', 'pin');
         G.emit('favPerch', here);
       }
     }
