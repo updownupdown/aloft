@@ -239,7 +239,7 @@ if (qs.has('fps')) G.settings.fpsCap = +qs.get('fps') || 60;
   // Clouds (clouds.js): the see-through polygons, or soft volumes in one of three lights (and with
   // them the fog as a layer of mist); ?clouds=soft|facet|billow|poly tries one without saving it
   const CLOUDS = [['poly', 'Polygons'], ['soft', 'Soft'], ['facet', 'Faceted'], ['billow', 'Billowing']], cq = new URLSearchParams(location.search).get('clouds');
-  R.cloudStyle = CLOUDS.some(c => c[0] === cq) ? cq : CLOUDS.some(c => c[0] === store.get('clouds3d')) ? store.get('clouds3d') : 'poly';
+  R.cloudStyle = CLOUDS.some(c => c[0] === cq) ? cq : CLOUDS.some(c => c[0] === store.get('clouds3d')) ? store.get('clouds3d') : 'soft';
   G.menu.choice(play, { label: 'Clouds', options: CLOUDS, get: () => R.cloudStyle, set: v => { R.cloudStyle = v; store.set('clouds3d', v); },
     sub: v => v === 'poly' ? 'see-through facets (the old look, lightest)' : v === 'soft' ? 'soft volumes you can fly into, and fog that lies in the valleys' : v === 'facet' ? 'soft volumes lit in low-poly facets, and valley fog' : 'soft volumes with drifting billowy edges, and valley fog' });
   G.dev?.add({ id: 'clouds-volume', area: 'World', title: 'Clouds as soft volumes, fog as valley mist', how: 'Settings > Picture > Clouds: Soft, Faceted or Billowing. Fly into a cloud; on a misty morning climb out of the valley fog. Dev tools > Frame cost shows the clouds pass.' });
