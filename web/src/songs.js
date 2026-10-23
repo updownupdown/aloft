@@ -177,9 +177,15 @@ const MORE = {
   'Whip-poor-will': ['Whip-poor-will', ['Quit call', [2, 2, 2], 'ccc', .35, 'quit, quit: soft calls in the dark']],
   'Tawny owl': ['Duet', ['Ke-wick', [4, 3, 4, 3], 'urur', .3, 'ke-wick: her sharp contact call alone'], ['His hoot', [3, 0, 0, 1, 0], 'rrrrd', .45, 'hoo ... hu-hu-hoooo: his long hoot alone']],
 };
+// Tap only (James, 10-23): "the ones that are slower and shorter can use arrows, but the fast
+// and long ones should use tap only". A fast song (notes under TAP_GAP s apart) or a long one (more
+// than TAP_LONG notes) is copied with taps alone; `kinds` still shapes how it sounds.
+export const TAP_GAP = .18, TAP_LONG = 6;
+const taps = (notes, gap) => gap < TAP_GAP || notes.length > TAP_LONG;
 for (const sp of SPECIES) {
   const [title, ...more] = MORE[sp.name] || ['Song'];
   sp.songs = [{ k: 0, title, notes: sp.notes, kinds: sp.kinds, gap: sp.gap, words: sp.words }, ...more.map(([t, notes, kinds, gap, words], i) => ({ k: i + 1, title: t, notes, kinds, gap, words }))];
+  for (const g of sp.songs) g.tap = taps(g.notes, g.gap);
 }
 
 // A song to learn: song k of a species (0 its first), as an object of its own with its key
@@ -188,7 +194,7 @@ const versions = new Map();
 export const songKey = (sp, k = 0) => sp.id + (k ? '.' + k : '');
 export function songOf(sp, k = 0) {
   const key = songKey(sp, k), base = sp.songs[k] || sp.songs[0];
-  if (!versions.has(key)) versions.set(key, Object.assign(Object.create(sp), { base: sp, k, title: base.title, gap: base.gap, words: base.words, dkey: key, notes: [...base.notes], kinds: base.kinds }));
+  if (!versions.has(key)) versions.set(key, Object.assign(Object.create(sp), { base: sp, k, title: base.title, gap: base.gap, words: base.words, dkey: key, notes: [...base.notes], kinds: base.kinds, tap: base.tap }));
   return versions.get(key);
 }
 
