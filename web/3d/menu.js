@@ -1,8 +1,8 @@
 // The pause menu: a sheet of frosted glass (letter.js), tidied (James's pick A, 2026-10-23). On the
-// left, the mark and "Aloft", the four sections a player asks about (Today: how am I, what now; Map:
-// where have I been; Journal: what has happened; Guide: who lives here), then How to play and
-// Settings as round icons beside Quit, and Resume, a dark pill, at the bottom. On the right, the open
-// section's title with its pages as a row of pills, then the page. Systems add a section with
+// left, the mark and "Aloft" with Quit beside them, the sections (Today: how am I, what now; Map:
+// where have I been; Journal: what has happened; Guide: who lives here; How to play; Settings), and
+// Resume, a dark pill, at the bottom. Then the open section's title with its pages down a column of
+// their own (James, 2026-10-23: easier to reach than pills along the top), then the page. Systems add a section with
 // G.menu.tab(id, title) (it returns the pane element), pages inside it with G.menu.page(tab, id,
 // title, order), and rows with G.menu.toggle() / button() / choice() (radio buttons) / range().
 // Settings rows (tab 'play') go to a page by their label (SECTION_OF), else by the group they name:
@@ -17,9 +17,7 @@ import { createDev } from './dev.js';
 import { createToday } from './today.js';
 
 // where each section sits, whichever system adds it first; others follow in the order added
-const ORDER = { today: 0, map: 1, journal: 2, guide: 3 };
-// sections that are round icons beside Quit, not rows down the rail
-const TOOLS = { how: 1, play: 2 };
+const ORDER = { today: 0, map: 1, journal: 2, guide: 3, how: 4, play: 5 };
 const TITLES = { today: 'Today', map: 'Map', journal: 'Journal', guide: 'Guide', play: 'Settings', how: 'How to play' };
 const ICON_OF = { today: 'today', map: 'map', journal: 'journal', guide: 'guide', play: 'settings', how: 'how' };
 // older names: the Game section is Today now
@@ -51,39 +49,34 @@ export function createMenu(G, ui) {
     <div class="veil3 hidden">
       <div class="card3" role="dialog" aria-label="Paused">
         <aside class="rail3">
-          <h1 data-act="title"><span>Aloft</span></h1>
+          <div class="top3"><h1 data-act="title"><span>Aloft</span></h1><button data-act="quit" class="icb3" aria-label="Quit" title="Quit (saves your journey)">${icon('quit')}</button></div>
           <nav class="tabs3" role="tablist" aria-orientation="vertical"></nav>
-          <div class="tools3"><button data-act="quit" class="icb3" aria-label="Quit" title="Quit (saves your journey)">${icon('quit')}</button></div>
           <button data-act="resume" class="resume3">${icon('resume')}<span>Resume</span></button>
         </aside>
-        <div class="body3">
-          <header class="head3"><h2></h2><nav class="subs3"></nav><span class="info3"></span></header>
-          <div class="panes3"></div>
-        </div>
+        <nav class="subs3"><h2></h2></nav>
+        <div class="panes3"></div>
       </div>
     </div>`);
-  const veil = ui.querySelector('.veil3'), card = veil.querySelector('.card3'), nav = card.querySelector('.tabs3'), tools = card.querySelector('.tools3');
-  const subs = card.querySelector('.subs3'), panes = card.querySelector('.panes3'), h2 = card.querySelector('.head3 h2'), info = card.querySelector('.info3');
+  const veil = ui.querySelector('.veil3'), card = veil.querySelector('.card3'), nav = card.querySelector('.tabs3');
+  const subs = card.querySelector('.subs3'), panes = card.querySelector('.panes3'), h2 = subs.querySelector('h2');
   const button = ui.querySelector('.menu3');
   const repaint = letter(card);
   const M = { open: false, opens: [], acts: new Map(), sub: null, quit: null };
   let current = null, n = 0, added = 0;
   const pages = store.get('pages3d', {}), infos = {};
-  const tabBtns = () => [...nav.children, ...tools.querySelectorAll('[data-tab]')];
   const show = id => {
     id = ALIAS[id] || id;
     if (!panes.querySelector(`[data-pane=${id}]`)) id = nav.firstElementChild?.dataset.tab;
     current = id; store.set('tab3d', id);
-    for (const b of tabBtns()) { const on = b.dataset.tab === id; b.classList.toggle('on', on); b.setAttribute('aria-selected', on); }
+    for (const b of nav.children) { const on = b.dataset.tab === id; b.classList.toggle('on', on); b.setAttribute('aria-selected', on); }
     for (const p of panes.children) p.classList.toggle('hidden', p.dataset.pane !== id);
     panes.scrollTop = 0;
     const pane = panes.querySelector(`[data-pane=${id}]`);
     panes.classList.toggle('flush3', !!pane?.classList.contains('flush3'));
     h2.textContent = pane?.dataset.title || '';
-    info.textContent = infos[id]?.() || '';
-    // the section's pages, if it has any, as pills beside the title
+    // the section's pages, if it has any, down their own column under its title
     const bar = barOf(id);
-    for (const x of subs.children) x.classList.toggle('hidden', x !== bar);
+    for (const x of subs.querySelectorAll('.pagetabs3')) x.classList.toggle('hidden', x !== bar);
     card.classList.toggle('nosub3', !bar);
     G.emit('menuTab', id);
     if (bar) showPage(id, pages[id]);
@@ -94,18 +87,13 @@ export function createMenu(G, ui) {
     let pane = panes.querySelector(`[data-pane=${id}]`); if (pane) return pane;
     const name = TITLES[id] || title || id, btn = document.createElement('button');
     btn.dataset.tab = id; btn.setAttribute('role', 'tab');
-    if (TOOLS[id]) {   // a round icon beside Quit
-      btn.className = 'icb3'; btn.dataset.rank = TOOLS[id]; btn.setAttribute('aria-label', name); btn.title = name; btn.innerHTML = icon(ICON_OF[id] || id);
-      tools.insertBefore(btn, [...tools.children].find(b => !b.dataset.rank || +b.dataset.rank > TOOLS[id]) || null);
-    } else {
-      const rank = ORDER[id] ?? 10 + added++;
-      btn.dataset.rank = rank; btn.innerHTML = `${icon(ICON_OF[id] || id)}<span>${name}</span>`;
-      nav.insertBefore(btn, [...nav.children].find(b => +b.dataset.rank > rank) || null);
-    }
+    const rank = ORDER[id] ?? 10 + added++;
+    btn.dataset.rank = rank; btn.innerHTML = `${icon(ICON_OF[id] || id)}<span>${name}</span>`;
+    nav.insertBefore(btn, [...nav.children].find(b => +b.dataset.rank > rank) || null);
     panes.insertAdjacentHTML('beforeend', `<section class="pane3 hidden" data-pane="${id}" data-title="${name}"></section>`);
     return panes.querySelector(`[data-pane=${id}]`);
   };
-  // a page inside a tab, with its own pill beside the title; pages sit in the order given
+  // a page inside a tab, with its own button in the pages column; pages sit in the order given
   const barOf = tab => subs.querySelector(`[data-for=${tab}]`);
   M.page = (tab, id, title, order = 50) => {
     tab = ALIAS[tab] || tab;
@@ -118,7 +106,7 @@ export function createMenu(G, ui) {
     }
     const pane = M.tab(tab);
     let bar = barOf(tab);
-    if (!bar) { subs.insertAdjacentHTML('beforeend', `<div class="pagetabs3 hidden" role="tablist" data-for="${tab}"></div>`); bar = barOf(tab); }
+    if (!bar) { subs.insertAdjacentHTML('beforeend', `<div class="pagetabs3 hidden" role="tablist" aria-orientation="vertical" data-for="${tab}"></div>`); bar = barOf(tab); }
     let page = pane.querySelector(`:scope > [data-page=${id}]`); if (page) return page;
     const btn = document.createElement('button');
     btn.dataset.page = id; btn.dataset.order = order; btn.setAttribute('role', 'tab'); btn.textContent = title;
@@ -139,8 +127,9 @@ export function createMenu(G, ui) {
     if (tab === current) bar.querySelector('.on')?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
     G.emit('menuPage', tab, id);
   };
-  // a short line at the right of a section's title (the date on Today)
+  // a short line for a section (the date on Today, today.js shows it)
   M.info = (tab, fn) => { infos[tab] = fn; };
+  M.infoOf = tab => infos[tab]?.() || '';
   // a group of rows, by name (GROUPS), made the first time it is asked for: a pale panel on its
   // Settings page, or the row of things to do on Today
   M.group = name => {
@@ -238,7 +227,7 @@ export function createMenu(G, ui) {
   addEventListener('keydown', e => { if ((e.code === 'Escape' || e.code === 'KeyP') && !G.photo) M.set(!M.open); });
   createToday(G, M);         // the Today section: your bird, how it is, where, and the day's aims (today.js)
   G.dev = createDev(G, M);   // Settings > Advanced > Feature list (dev.js)
-  G.dev.add({ id: 'menu-a', area: 'Menu and map', round: 10, title: 'The menu, tidied: Today, Map, Journal and Guide; How to play and Settings as icons; pages as pills',
+  G.dev.add({ id: 'menu-a', area: 'Menu and map', round: 10, title: 'The menu, tidied: Today, Map, Journal, Guide, How to play and Settings down the rail; each section’s pages in a column beside it',
     how: 'Open the menu: Today shows your bird, food, water, wings and health, and the day’s aims; Map has Globe, Landmarks and Lands; Settings has Sound, Picture, Controls, Messages, Journey and Advanced.' });
   return M;
 }
