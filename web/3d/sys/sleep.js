@@ -3,8 +3,12 @@
 // pole star (render.js uStarA, uStarK) for a moment, by as much as is left of the night; then the
 // night is over: the view comes back down while the clock runs on fast through first light, so the
 // day comes up as it would (only quicker), the wings full.
-// On the ground it is too exposed: the button says so instead. A touch wakes you early.
+// Only a roost: a perch at least ROOST m above the ground or water, never a bush (the ground, a bush
+// or a low rock is too exposed; there the Sleep button doesn't show). A touch wakes you early.
 import { period, light, DAY } from '../sky.js';
+import { height, WATER, bushesNear } from '../world.js';
+
+const ROOST = 2.5;   // metres above the ground or water a perch must be to sleep on
 
 // seconds: fading out and turning up, the stars turning, coming back; how fast they turn for a whole
 // night left (radians a second: three eighths of the old 60x night's 45 degrees a second)
@@ -36,9 +40,12 @@ export function sleepSystem(G) {
     if (!early) b.stamina = b.maxStamina ?? 1;
   };
   const up = () => { sleeping = b.asleep = woke = false; spin = 0; if (bared) { H.hide(false); bared = false; } };
+  // a perch safe to sleep on: high enough, and not on top of a bush
+  const roost = () => b.state === 'perch' && b.p[1] - Math.max(height(b.p[0], b.p[2]), WATER) >= ROOST
+    && !bushesNear(b.p[0], b.p[2], 4).some(o => Math.hypot(o.x - b.p[0], o.z - b.p[2]) < o.s * o.w * .45 + .3 && b.p[1] < o.y + o.s + 1);
   const sleep = () => {
     if (b.state === 'ground') { H.say('Too open to sleep on the ground. Find a branch to roost on.', { kind: 'warn', secs: 3, icon: 'sleep' }); return; }
-    if (b.state !== 'perch') return;
+    if (!roost()) { if (b.state === 'perch') H.say('Too low and open to sleep here. Find a branch to roost on.', { kind: 'warn', secs: 3, icon: 'sleep' }); return; }
     sleeping = b.asleep = true; slept = 0; spin = 0; a0 = starA();
     // the stars turn by as much as the night has left, never faster than SLEEP.spin
     const left = G.tod > .8 ? 1.2 - G.tod : Math.max(0, .2 - G.tod);
@@ -55,9 +62,9 @@ export function sleepSystem(G) {
   };
   btn.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); G.audio.unlock?.(); sleep(); });
   // for menu.js's one action button
-  (G.actions ||= {}).sleep = { run: sleep, when: () => !sleeping && period(G.tod) === 'night' && b.state === 'perch' && !(b.settle > 0) };   // only where it can roost
+  (G.actions ||= {}).sleep = { run: sleep, when: () => !sleeping && period(G.tod) === 'night' && !(b.settle > 0) && roost() };   // only where it can roost
   G.on('gesture', () => { if (sleeping && !woke && slept > 1) wake(true); });
-  H.tip('sleep', () => b.state === 'perch' && period(G.tod) === 'night', 'Night has come. Tap Sleep to roost till first light; your wings rest while you sleep.');
+  H.tip('sleep', () => b.state === 'perch' && period(G.tod) === 'night' && roost(), 'Night has come. Tap Sleep to roost till first light; your wings rest while you sleep.');
   return {
     id: 'sleep',
     scene(S) {
@@ -69,7 +76,7 @@ export function sleepSystem(G) {
     },
     update(dt) {
       const night = period(G.tod) === 'night';
-      btn.classList.toggle('gone', sleeping || !night || b.state !== 'perch' || b.settle > 0 || !!G.menu?.open);
+      btn.classList.toggle('gone', sleeping || !night || b.settle > 0 || !!G.menu?.open || !roost());
       if (!sleeping) return;
       if (b.state !== 'perch' && !woke) return wake(true);
       slept += dt;
