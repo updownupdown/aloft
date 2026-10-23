@@ -31,7 +31,7 @@ export const KINDS = {
     lobes: [[0, 0, 0, 1.7, .16, 1], [.1, .13, 0, 1.2, .09, .71], [-.05, -.1, .05, 1.2, .1, .8]] },
   puff: { base: -9, sigma: .06, col: [.97, .96, .94], under: [.86, .86, .88],
     lobes: [[0, 0, 0, .7, .22, .7], [.45, .05, .2, .45, .18, .45], [-.4, .04, -.25, .5, .2, .5]] },
-  // the look tests (look.js G, H): a ring of mist (sys/rings.js, its radius the scale), a rain shaft
+  // a ring of mist (sys/rings.js, its radius the scale), a rain shaft
   // hanging from a cloud's base to the ground (sys/weather.js, its height the scale)
   ringv: { base: -9, sigma: .16, col: [1, 1, .98], under: [.92, .92, .94],
     lobes: Array.from({ length: 16 }, (_, i) => { const a = i / 16 * Math.PI * 2, w = .17 + .05 * Math.sin(i * 2.3); return [Math.cos(a), Math.sin(a), Math.sin(i * 1.7) * .05, w, w, w * .9]; }) },
@@ -55,7 +55,7 @@ const FS = `#version 300 es
 precision highp float; precision highp sampler3D;
 uniform vec3 uCam, uSun, uSunCol, uSkyAmb, uGndAmb, uFogCol, uCol, uUnder;
 uniform float uFogDen, uTime, uStyle;
-uniform vec4 uFlash;   // lightning inside the clouds (look.js H): where, how bright
+uniform vec4 uFlash;   // lightning inside the clouds: where, how bright
 #ifdef L_POST
 uniform sampler2D uDepth; uniform vec2 uDSize, uNF; uniform vec3 uFwd;   // the world's depth (look.js Q): the clouds stop at the land
 #endif
@@ -132,9 +132,7 @@ void main() {
   float rim = pow(max(dot(rd, uSun), 0.), 5.) * exp(-od * .9);
   lit += uSunCol * rim * .7 * uK.w;
   if (uStyle > 1.5) lit *= .93 + .14 * nz;
-#ifdef L_WEATHER
   lit += vec3(.85, .88, 1.) * uFlash.w * exp(-length(hit - uFlash.xyz) / 380.) * 1.6;
-#endif
   // inside a cloud the first few metres stay thin, so you can still see your wings
   alpha *= mix(1., .9, inside);
   // haze toward the horizon, as the land has

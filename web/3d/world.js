@@ -311,15 +311,15 @@ export function chunkMesh(cx, cz, N = CELLS, size = CHUNK, drop = 0) {
   return out.subarray(0, o);
 }
 
-// The look tests' ground bakes (look.js A, B, S; env.look names those switched on):
-// light(x, z, y): A, the hollow light (hollows and foot slopes darker, ridges a touch lighter,
+// The ground bakes (and smooth shading, look.js S, when env.look names it):
+// light(x, z, y): the hollow light (hollows and foot slopes darker, ridges a touch lighter,
 // and the ground under trees), from the heights round about on a coarse grid;
-// hills(x, z): B, the eight horizon heights round the spot packed into the back colour (2 + three
+// hills(x, z): the eight horizon heights round the spot packed into the back colour (2 + three
 // 4-bit steps a channel; render.js COMMON_FS hills() reads them back);
 // normal(x, z): S, smooth shading, the ground's normal at a grid corner from its neighbours.
 const HILL_D = [10, 22, 45, 90, 180, 350, 650];
 function lookBakes(x0, z0, N, size, C, H, drop) {
-  const L = env.look || ''; if (!L) return null;
+  const L = 'hollow,hills,' + (env.look || '');
   const B = {};
   // a value grid laid over the chunk, every g metres or so, read back bilinearly
   const grid = (g, comps, fn) => {
