@@ -6,8 +6,8 @@
 import { period, DAY } from '../sky.js';
 
 // seconds: fading out and turning up, the stars turning, coming back; how fast they turn for a whole
-// night left (radians a second: three quarters of the old 60x night's 45 degrees a second)
-const SLEEP = { down: 2, hold: 2, up: 2, spin: .75 * 45 * Math.PI / 180 };
+// night left (radians a second: three eighths of the old 60x night's 45 degrees a second)
+const SLEEP = { down: 4, hold: 2, up: 4, spin: .375 * 45 * Math.PI / 180 };
 const NIGHT = .4;   // the night's share of the day (period(): before .2 and after .8)
 
 export function sleepSystem(G) {
@@ -17,8 +17,8 @@ export function sleepSystem(G) {
     #ui3 .takeoff3.sleep3 { right: calc(84px + 168px + env(safe-area-inset-right)); }
     #ui3:has(.sing3.lefty) .takeoff3.sleep3 { right: auto; left: calc(84px + 168px + env(safe-area-inset-left)); }
     #ui3 .takeoff3.sleep3::before { clip-path: none; border-radius: 50%; background: transparent; box-shadow: inset -4px -2px 0 0 var(--ink); }
-    .night3 { position: fixed; inset: 0; background: #070b14; opacity: 0; pointer-events: none; transition: opacity 1.2s; z-index: 1; }
-    .night3.on { opacity: .92; transition: opacity 2s; background: radial-gradient(ellipse at 50% 35%, #070b14 25%, #000 100%); }
+    .night3 { position: fixed; inset: 0; background: #070b14; opacity: 0; pointer-events: none; transition: opacity 4s; z-index: 1; }
+    .night3.on { opacity: .92; transition: opacity 4s; background: radial-gradient(ellipse at 50% 35%, #070b14 25%, #000 100%); }
   </style>`);
   const btn = ui.querySelector('.sleep3'), veil = ui.querySelector('.night3');
   let sleeping = false, slept = 0, bared = false, spin = 0, rate = 0, a0 = 0, woke = false;

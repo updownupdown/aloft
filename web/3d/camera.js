@@ -52,7 +52,7 @@ export function createCamera(G) {
       look = [p[0] + d[0] * 1.5 * zm, want[1] + hz * Math.tan(a), p[2] + d[2] * 1.5 * zm];
       // asleep (b.skyView, sys/sleep.js): the view sinks below and behind the bird and turns up to the
       // stars, the roosting bird dark against them at the foot of the picture
-      C.sky = (C.sky || 0) + ((b.skyView ? 1 : 0) - (C.sky || 0)) * Math.min(1, dt * 1.6);   // about two seconds each way (sys/sleep.js)
+      C.sky = (C.sky || 0) + ((b.skyView ? 1 : 0) - (C.sky || 0)) * Math.min(1, dt * .8);   // about four seconds each way (sys/sleep.js)
       if (C.sky > .001) {
         const k = C.sky * C.sky * (3 - 2 * C.sky), sw = [p[0] - d[0] * 2.4, p[1] - 1.1, p[2] - d[2] * 2.4], el = .72;
         const sl = [sw[0] + d[0] * Math.cos(el) * 10, sw[1] + Math.sin(el) * 10, sw[2] + d[2] * Math.cos(el) * 10];
