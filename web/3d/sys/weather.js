@@ -169,7 +169,7 @@ export function weatherSystem(G) {
       if (G.rain > .35) rainSeen = true;
       if (rainSeen && G.rain < .08) {
         rainSeen = false;
-        if (G.tod > .3 && G.tod < .72 && G.overcast < .75 && !G.snowing) { rainbowT = 80; H.name('Rainbow'); note(`Day ${G.day}: a rainbow.`); }
+        if (G.tod > .3 && G.tod < .72 && G.overcast < .75 && !G.snowing) { rainbowT = 80; H.name('Rainbow', 'graphics'); note(`Day ${G.day}: a rainbow.`); }
       }
       rainbowT = Math.max(0, rainbowT - dt);
       // the night's sky: the moon's phase over sixteen days, rare meteor showers, northern lights
@@ -177,7 +177,7 @@ export function weatherSystem(G) {
       if (G.tod > .78 && meteorDay !== G.day) {
         meteorDay = G.day;
         G.meteors = dayHash(2) < .14 && G.overcast < .3;
-        if (G.meteors) { H.name('Meteor shower', 'watch the sky'); note(`Day ${G.day}: a meteor shower.`); }
+        if (G.meteors) { H.name('Meteor shower', 'sleep'); note(`Day ${G.day}: a meteor shower.`); }
       }
       if (G.tod > .25 && G.tod < .7) G.meteors = false;
       if (G.meteors && L.night > .5 && (meteorT -= dt) <= 0) {

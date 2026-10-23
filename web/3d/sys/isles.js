@@ -78,7 +78,7 @@ export function islesSystem(G) {
     for (const o of near) {
       const s = o.sight; if (!s || J.found[s.id] || Math.hypot(s.x - b.p[0], s.z - b.p[2]) > 160) continue;
       J.found[s.id] = { name: s.name, x: Math.round(s.x), z: Math.round(s.z), note: `Found on ${G.date?.text || `day ${G.day}`}, in ${G.season.name}, in ${inSentence(G.placeName?.(s.x, s.z) || 'the sea')}.` };
-      H.name(s.name, 'found'); G.audio.learned?.();
+      H.name(s.name, 'landmarks'); G.audio.learned?.();
       G.emit('landmark', { id: s.id, name: s.name, x: s.x, z: s.z });
     }
   }

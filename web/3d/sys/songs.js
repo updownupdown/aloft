@@ -531,7 +531,7 @@ export function songsSystem(G) {
     // just before first light, from a perch: the dawn chorus starts from your tree
     if (b.state === 'perch' && G.tod > .12 && G.tod < .2 && chorusDay !== G.day && winter() < .5 && storm() < .4) {
       chorusDay = G.day; chorus = { t: SONG.chorus + 60, o: [b.p[0], b.p[2]], at: G.t + 1.5 };
-      later(1.6, () => { H.name('Dawn chorus'); noteNew('Dawn chorus', 'A bird answers your call from the dark, then another: the dawn chorus starts from your tree and spreads out across the valley.'); G.music.moment?.('the dawn chorus', 1); });
+      later(1.6, () => { H.name('Dawn chorus', 'songs'); noteNew('Dawn chorus', 'A bird answers your call from the dark, then another: the dawn chorus starts from your tree and spreads out across the valley.'); G.music.moment?.('the dawn chorus', 1); });
     }
     if (!G.flags.call) { G.flags.call = 1; noteNew('Your call', `Your call carries over the valley. Mice freeze where they stand, and ${FAR[BIRD] || 'birds of your kind'} far off answer.`); }
   }
@@ -612,7 +612,7 @@ export function songsSystem(G) {
       if (chorus) { if ((chorus.t -= dt) <= 0) chorus = null; }
       else if (chorusDay !== G.day && G.tod > .27 && G.tod < .31 && winter() < .5 && storm() < .4) {
         chorusDay = G.day; chorus = { t: SONG.chorus };
-        H.name('Dawn chorus'); noteNew('Dawn chorus', 'The dawn chorus: for a few minutes every bird nearby sings. Join in, and all the songs you know answer at once.');
+        H.name('Dawn chorus', 'songs'); noteNew('Dawn chorus', 'The dawn chorus: for a few minutes every bird nearby sings. Join in, and all the songs you know answer at once.');
       }
 
       // songbirds near the hawk: each sings now and then in its hours
