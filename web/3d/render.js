@@ -5,9 +5,10 @@ import { program, mesh, perspective, lookAt, mul, basis, IDENT } from './gl.js';
 import { CHUNK, chunkMesh, cellsFor, treesNear, ringsNear, height, normalAt, thermalsNear, thermalCentre, TREE, perchesOf, env, WORLD, WIND } from './world.js';
 import { ring, cloud, TREE_LOOKS } from './shapes.js';
 import { buildHawk, HAWK_SCALE } from './hawk.js';
+import { starPoints, starLines, GAL } from './stars.js';
 
 // the sky's pole and the stars to steer by, until sys/nightsea.js sets them
-const POLE = [0, .64, -.768], NOMARKS = new Float32Array(12), NOMARKK = new Float32Array(4);
+const POLE = [0, .64, -.768], NOGAZE = new Float32Array(20), NOMOON = [0, 1, 0, 0], DOWN = [0, -1, 0, 0];
 // instanced shapes that are cloud: see-through when the camera is close or inside
 const CLOUDY = new Set(['cloud', 'storm', 'puff', 'lens', 'devil']);
 // shape -> [its far twin, metres]: the soaring hawks of a kettle (fauna.js) are a few pixels past 70 m
@@ -217,7 +218,7 @@ void main() { vP = aP; gl_Position = vec4(aP, 1., 1.); }   // at the back: drawn
 const SKY_FS = `#version 300 es
 precision highp float;
 in vec2 vP; out vec4 frag;
-uniform mat4 uInvVP; uniform vec3 uZenith, uHorizon, uSun, uSunCol, uCloud; uniform float uNight, uTime, uAurora, uStarA, uStarK; uniform vec3 uPole, uMarks[4]; uniform float uMarkK[4];
+uniform mat4 uInvVP; uniform vec3 uZenith, uHorizon, uSun, uSunCol, uCloud; uniform float uNight, uTime, uAurora, uStarA, uStarK, uMoonK; uniform vec3 uPole, uGal, uSunSky; uniform vec4 uMoon;
 float h21(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
 float vn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f);
   return mix(mix(h21(i), h21(i + vec2(1, 0)), f.x), mix(h21(i + vec2(0, 1)), h21(i + vec2(1, 1)), f.x), f.y); }
@@ -227,43 +228,54 @@ void main() {
   float up = max(d.y, 0.);
   vec3 c = mix(uHorizon, uZenith, pow(up, .55));
   float sd = max(dot(d, uSun), 0.);
-  c += uSunCol * (pow(sd, 12.) * .25 + pow(sd, 900.) * 1.2) * (1. - uNight * .6);
+  c += uSunCol * (pow(sd, 12.) * .25 * (1. - uNight * .5) + pow(sd, 900.) * 1.2 * (1. - uNight));   // at night uSun is the moonlight: a glow round the moon
   float cl = 0.;
   if (d.y > .02) {
     vec2 q = d.xz / (d.y + .08) * 1.6 + vec2(uTime * .004, 0.);
     float n = vn(q) * .6 + vn(q * 2.3 + 7.) * .3 + vn(q * 5.1 + 3.) * .1;
     cl = smoothstep(.52, .78, n) * smoothstep(.02, .25, d.y);
     c = mix(c, uCloud, cl * .3);   // only faint high haze: the clouds themselves are meshes (sys/air.js)
-    // stars: round points on a sphere that turns about the pole star in the north (uStarA, from the
-    // time of day: they wheel slowly through the night, fast while you sleep, sys/sleep.js)
-    if (uNight > 0.) {
-      vec3 ax = uPole; float ca = cos(uStarA), sa = sin(uStarA);   // the pole as high as the latitude (sys/nightsea.js)
-      vec3 r = d * ca + cross(ax, d) * sa + ax * dot(ax, d) * (1. - ca);
-      float lat = asin(clamp(r.y, -1., 1.)), lon = atan(r.z, r.x);
-      vec2 q = vec2(lon, lat) * 300., g = floor(q), f = fract(q) - .5;
-      // uneven: patches and a faint band thick with stars, most of them faint, a few bright, some
-      // warm or blue-white
-      float hs = h21(g), m0 = h21(g + 5.), mag = m0 * m0 * m0 * m0;
-      float dens = .006 + .03 * smoothstep(.35, .8, vn(vec2(lon, lat) * 2.2 + 11.)) + .02 * smoothstep(.25, 0., abs(r.x * .8 + r.y * .6));
-      f -= (vec2(h21(g + 1.), h21(g + 2.)) - .5) * .5; f.x *= max(cos(lat), .05);
-      float st = step(1. - dens * cos(lat), hs) * smoothstep(.05 + .12 * mag, .015, length(f)) * (1. - cl) * smoothstep(.05, .3, d.y);
-      vec3 tint = mix(vec3(1., .86, .7), vec3(.78, .86, 1.), h21(g + 7.));
-      c += tint * st * uNight * uStarK * (.18 + 1.5 * mag) * (.7 + .3 * sin(uTime * (1.5 + 3. * h21(g + 4.)) + h21(g + 3.) * 40.));
-      // the stars to steer by: the pole star, or the Southern Cross (sys/nightsea.js)
-      for (int i = 0; i < 4; i++) c += vec3(1., .96, .88) * uMarkK[i] * smoothstep(.99997, .999992, dot(r, uMarks[i])) * uNight * (1. - cl) * smoothstep(.0, .06, d.y); }
+  }
+  // the Milky Way: a soft band along the galaxy's plane, on the sky's own sphere (the stars
+  // themselves are points, stars.js / STAR_VS, steady as you turn)
+  if (uNight > 0. && d.y > -.02) {
+    vec3 U = vec3(0., -uPole.z, uPole.y); float ca = cos(uStarA), sa = sin(uStarA);
+    float x = dot(d, U), z = -d.x;
+    vec3 e = vec3(x * ca + z * sa, dot(d, uPole), x * sa - z * ca);
+    float g = dot(e, uGal), mw = exp(-g * g * 22.) * (.55 + .45 * vn(e.xz * 3.1 + 5.) * vn(e.yz * 2.7 + 1.));
+    c += vec3(.55, .6, .75) * mw * .07 * uNight * uStarK * (1. - cl) * smoothstep(-.02, .2, d.y);
+  }
+  // the moon: a lit ball, its bright limb toward the sun, the dark part only faintly lit (earthshine),
+  // grey seas on its face
+  if (uMoonK > 0.) {
+    vec3 m = uMoon.xyz, mr = normalize(cross(m, vec3(0., 1., 0.))), mu = cross(mr, m);
+    vec2 uv = vec2(dot(d, mr), dot(d, mu)) / .045; float r = length(uv);
+    if (dot(d, m) > 0. && r < 6.) {
+      float fw = fwidth(r), disc = 1. - smoothstep(1. - fw, 1. + fw, r);
+      vec3 n = vec3(uv, sqrt(max(0., 1. - r * r)));
+      vec2 s2 = vec2(dot(uSunSky, mr), dot(uSunSky, mu)); s2 = dot(s2, s2) > 1e-4 ? normalize(s2) : vec2(1., 0.);
+      float ph = uMoon.w * 6.2832, lit = smoothstep(-.04, .08, dot(n, vec3(s2 * sin(ph), -cos(ph))));
+      float sea = vn(uv * 1.7 + 3.) * .7 + vn(uv * 3.9 + 9.) * .3;
+      vec3 face = vec3(.97, .95, .88) * mix(1., .76, smoothstep(.42, .72, sea)) * (.78 + .22 * n.z);
+      vec3 dark = c * .9 + vec3(.025, .03, .04);
+      c = mix(c, mix(dark, face, lit), disc * uMoonK);
+      float full = .5 - .5 * cos(ph);
+      c += vec3(.55, .6, .68) * exp(-max(r - 1., 0.) * 1.3) * (1. - disc) * .16 * full * uMoonK;
+    }
   }
   // northern lights: thin curtains high in the north, added to the sky (stars show through). The
   // view ray is stepped up through a layer of sky; where it meets a curtain's wavy line it glows,
   // green at the foot, fading to violet and nothing at the top, in fine vertical rays
   if (uAurora > .01 && d.y > .03) {
-    vec3 au = vec3(0.); float jit = h21(gl_FragCoord.xy * .37);
-    for (int i = 0; i < 16; i++) {
-      float k = (float(i) + jit) / 16.;
-      vec2 p = d.xz / d.y * (1. + k * 1.4);
+    vec3 au = vec3(0.);
+    // (no screen-space dither in the steps: it stood still on the screen while the sky turned, and shook)
+    for (int i = 0; i < 20; i++) {
+      float k = (float(i) + .5) / 20.;
+      vec2 p = d.xz / d.y * (1. + k * 1.4); float far = smoothstep(3., 9., length(p));   // fine detail fades low down, where it would alias
       for (int j = 0; j < 2; j++) {
-        float o = float(j), w = p.y + 2.4 + o * 1.3 + sin(p.x * .45 + o * 2. + uTime * .04) * .7 + sin(p.x * 1.3 - uTime * .07 + o) * .25;
-        float ray = .45 + .55 * vn(vec2(p.x * 9. + o * 5. + uTime * .15, k * .6));
-        float glow = exp(-w * w * 6.) * ray * smoothstep(0., .18, k) * pow(1. - k, 1.6) * (1. - o * .4);
+        float o = float(j), w = p.y + 2.4 + o * 1.3 + sin(p.x * .45 + o * 2. + uTime * .04) * .7 + sin(p.x * 1.3 - uTime * .07 + o) * .25 * (1. - far);
+        float ray = .45 + .55 * mix(vn(vec2(p.x * 4.5 + o * 5. + uTime * .08, k * .6)), .5, far);
+        float glow = exp(-w * w * 6.) * ray * smoothstep(0., .18, k) * pow(1. - k, 1.6) * (1. - o * .4) * .8;
         au += mix(vec3(.25, 1., .55), vec3(.6, .35, 1.), k) * glow;
       }
     }
@@ -279,6 +291,26 @@ const FLAT_FS = `#version 300 es
 precision highp float; in vec4 vC; out vec4 frag; uniform float uPoints;
 void main() { float a = 1.; if (uPoints > .5) { vec2 d = gl_PointCoord - .5; a = smoothstep(.5, .2, length(d)); }
   frag = vec4(vC.rgb, a * (uPoints > .5 ? .8 : vC.a)); }`;
+
+// The stars: steady points on the sky's sphere (stars.js), turned to the world as skyDir() does,
+// drawn just behind everything. Only a few of the brightest gently glow, more so low down; a
+// constellation you look at brightens (uGaze, sys/nightsea.js) and its lines come in
+const STAR_VS = `#version 300 es
+layout(location=0) in vec3 aE; layout(location=1) in vec3 aC; layout(location=2) in vec3 aK;
+uniform mat4 uVR; uniform vec3 uPole; uniform vec4 uMoon; uniform float uA, uPx, uNight, uTime, uLine, uGaze[20]; out vec3 vC;
+void main() {
+  float ca = cos(uA), sa = sin(uA), x = aE.x * ca + aE.z * sa, z = aE.x * sa - aE.z * ca;
+  vec3 d = vec3(-z, x * -uPole.z + aE.y * uPole.y, x * uPole.y + aE.y * uPole.z);
+  gl_Position = uVR * vec4(d, 1.); gl_Position.z = gl_Position.w * .99999;
+  float g = aK.y < -.5 ? 0. : uGaze[int(aK.y + .5)], low = 1. - smoothstep(.05, .4, d.y);
+  float tw = 1. + aK.z * (.16 + .2 * low) * sin(uTime * (.6 + fract(aE.x * 91.7) * .9) + aE.z * 40.);
+  float k = uNight * smoothstep(-.01, .1, d.y) * smoothstep(.9988, .9984, dot(d, uMoon.xyz));   // none in front of the moon
+  if (uLine > .5) { vC = vec3(.62, .74, 1.) * .3 * g * k; gl_PointSize = 1.; }
+  else { vC = aC * k * tw * (1. + 1.3 * g); gl_PointSize = aK.x * uPx * (1. + .3 * g); }
+}`;
+const STAR_FS = `#version 300 es
+precision highp float; in vec3 vC; out vec4 frag; uniform float uLine;
+void main() { float a = 1.; if (uLine < .5) a = 1. - smoothstep(.12, .5, length(gl_PointCoord - .5)); frag = vec4(vC * a, 1.); }`;
 
 const LAYOUT = [[0, 3], [1, 3], [2, 3], [3, 3]], ILAYOUT = [[4, 4], [5, 4]];
 
@@ -342,7 +374,8 @@ export function createRenderer(gl) {
   const lit = program(gl, LIT_VS, LIT_FS), inst = program(gl, INST_VS, LIT_FS), sky = program(gl, SKY_VS, SKY_FS);
   const SOLID_FS = LIT_FS.replace('precision highp float;', 'precision highp float;\n#define SOLID');
   const solid = program(gl, LIT_VS, SOLID_FS), solidInst = program(gl, INST_VS, SOLID_FS);
-  const flat = program(gl, FLAT_VS, FLAT_FS);
+  const flat = program(gl, FLAT_VS, FLAT_FS), stars = program(gl, STAR_VS, STAR_FS);
+  const starPts = mesh(gl, starPoints(), [[0, 3], [1, 3], [2, 3]]), starLn = mesh(gl, starLines(), [[0, 3], [2, 3]]);
   const tri = mesh(gl, new Float32Array([-1, -1, 3, -1, -1, 3]), [[0, 2]]);
   // one pair of meshes (near, far) per tree look (shapes.js TREE_LOOKS; a tree's look ?? kind)
   const kinds = TREE_LOOKS.map((L, i) => {
@@ -595,8 +628,20 @@ export function createRenderer(gl) {
     gl.useProgram(sky.p);
     gl.uniformMatrix4fv(sky.u.uInvVP, false, invert(vp));
     gl.uniform3fv(sky.u.uZenith, S.zenith); gl.uniform3fv(sky.u.uHorizon, S.horizon); gl.uniform3fv(sky.u.uSun, S.sun);
-    gl.uniform3fv(sky.u.uSunCol, S.sunCol); gl.uniform3fv(sky.u.uCloud, S.cloud); gl.uniform1f(sky.u.uNight, S.night); gl.uniform1f(sky.u.uTime, S.time); gl.uniform1f(sky.u.uAurora, S.aurora || 0); gl.uniform1f(sky.u.uStarA, S.starA || 0); gl.uniform1f(sky.u.uStarK, S.starK || 1); gl.uniform3fv(sky.u.uPole, S.pole || POLE); gl.uniform3fv(sky.u.uMarks, S.marks || NOMARKS); gl.uniform1fv(sky.u.uMarkK, S.markK || NOMARKK);
+    gl.uniform3fv(sky.u.uSunCol, S.sunCol); gl.uniform3fv(sky.u.uCloud, S.cloud); gl.uniform1f(sky.u.uNight, S.night); gl.uniform1f(sky.u.uTime, S.time); gl.uniform1f(sky.u.uAurora, S.aurora || 0); gl.uniform1f(sky.u.uStarA, S.starA || 0); gl.uniform1f(sky.u.uStarK, S.starK || 1); gl.uniform3fv(sky.u.uPole, S.pole || POLE); gl.uniform3fv(sky.u.uGal, GAL);
+    gl.uniform4fv(sky.u.uMoon, S.moon || NOMOON); gl.uniform3fv(sky.u.uSunSky, S.sunSky || S.sun); gl.uniform1f(sky.u.uMoonK, S.moonK || 0);
     gl.bindVertexArray(tri.vao); gl.drawArrays(gl.TRIANGLES, 0, 3);
+    if (S.night > .02) {
+      // the stars, added over the sky where nothing stands; a view without the camera's place, so
+      // they hold still however far out in the world you are
+      gl.useProgram(stars.p); gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE);
+      gl.uniformMatrix4fv(stars.u.uVR, false, mul(proj, lookAt([0, 0, 0], [S.look[0] - S.cam[0], S.look[1] - S.cam[1], S.look[2] - S.cam[2]], S.camUp)));
+      gl.uniform3fv(stars.u.uPole, S.pole || POLE); gl.uniform4fv(stars.u.uMoon, S.moonK > 0 ? S.moon : DOWN); gl.uniform1f(stars.u.uA, S.starA || 0); gl.uniform1f(stars.u.uPx, Math.max(1, h / 700));
+      gl.uniform1f(stars.u.uNight, S.night * Math.min(2, S.starK || 1) * (1 - (S.overcast || 0))); gl.uniform1f(stars.u.uTime, S.time); gl.uniform1fv(stars.u.uGaze, S.gaze || NOGAZE);
+      gl.uniform1f(stars.u.uLine, 0); gl.bindVertexArray(starPts.vao); gl.drawArrays(gl.POINTS, 0, starPts.count);
+      if (S.gaze) { gl.uniform1f(stars.u.uLine, 1); gl.bindVertexArray(starLn.vao); gl.drawArrays(gl.LINES, 0, starLn.count); }
+      gl.disable(gl.BLEND);
+    }
     gl.depthMask(true); gl.depthFunc(gl.LESS);
 
     // clouds last, see-through (at most half there), over everything solid: first their depth

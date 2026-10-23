@@ -173,7 +173,7 @@ export function weatherSystem(G) {
       }
       rainbowT = Math.max(0, rainbowT - dt);
       // the night's sky: the moon's phase over sixteen days, rare meteor showers, northern lights
-      G.moonPhase = ((G.day - 1) % 16 + G.tod) / 16;
+      G.moonPhase = ((G.day + 5) % 16 + G.tod) / 16;   // 0 new, .5 full (a waxing moon the first night)
       if (G.tod > .78 && meteorDay !== G.day) {
         meteorDay = G.day;
         G.meteors = dayHash(2) < .14 && G.overcast < .3;
@@ -258,16 +258,12 @@ export function weatherSystem(G) {
           }
         }
       }
-      // night: the moon (a pale disc, a sky-coloured one over it for the phase), meteors, aurora
+      // night: the moon (drawn by the sky, render.js: lit toward the sun, by its phase), meteors, aurora
+      S.moonK = 0; S.overcast = ov;
       if (L.night > .05) {
-        const sd = L.sunSky, md = norm([-sd[0], .08 + .1 * Math.max(0, -sd[1]), -sd[2] + .3]), D = 700;
-        const mp = [cam[0] + md[0] * D, cam[1] + md[1] * D, cam[2] + md[2] * D], R = 16, a = L.night * (1 - ov);
-        if (a > .05) {
-          S.motes.push(...mp, ...mix3(S.zenith, [.95, .93, .85], a), R);
-          const ph = G.moonPhase || 0, off = 2.1 * R * (1 - Math.abs(1 - 2 * ph)), s = ph < .5 ? 1 : -1;
-          const side = norm([md[2], 0, -md[0]]);
-          if (off < 2 * R - .5) S.motes.push(mp[0] + side[0] * off * s, mp[1] + .5, mp[2] + side[2] * off * s, ...S.zenith, R * 1.02);
-        }
+        const D = 700;
+        // where the moonlight comes from (sky.js: L.sun is the moon's at night)
+        if (L.el < -.05) { S.moon = [...L.sun, G.moonPhase || 0]; S.moonK = Math.max(0, Math.min(1, (L.night - .35) / .4)) * (1 - ov); }
         for (const m of meteors) {
           const f = m.t / m.life;
           for (let i = 0; i < 8; i++) {
