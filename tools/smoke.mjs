@@ -70,7 +70,7 @@ const srv = http.createServer((q, r) => {
   if (!f.startsWith(root)) { r.writeHead(403); return r.end(); }
   fs.readFile(f, (e, d) => { if (e) { r.writeHead(404); return r.end(); } r.writeHead(200, { 'content-type': types[f.split('.').pop()] || 'application/octet-stream' }); r.end(d); });
 }).listen(0);
-const url = `http://localhost:${srv.address().port}/index.html?seed=3`;
+const url = `http://localhost:${srv.address().port}/index.html?seed=3${process.env.SMOKE_Q ? '&' + process.env.SMOKE_Q : ''}`;   // SMOKE_Q: more of the query (look=all)
 const br = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--autoplay-policy=no-user-gesture-required'] });
 let failed = 0;
 const run = async (bird, names) => {

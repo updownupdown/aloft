@@ -259,15 +259,23 @@ export function chunkMesh(cx, cz, N = CELLS, size = CHUNK, drop = 0) {
   const BL = [], bs = N >= 36 ? 4 : 2, bn = N / bs;
   for (let j = 0; j < N; j += bs) for (let i = 0; i < N; i += bs) BL.push(blend(x0 + (i + bs / 2) * C, z0 + (j + bs / 2) * C));
   const out = new Float32Array((N * N * 2 + N * 8) * 3 * 12); let o = 0, bl = null, skirt = false;
+  const bake = lookBakes(x0, z0, N, size, C, H, drop);
   const tri = (ax, ay, az, bx, by, bz, cx_, cy, cz_) => {
     let ux = bx - ax, uy = by - ay, uz = bz - az, vx = cx_ - ax, vy = cy - ay, vz = cz_ - az;
     let nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx; const l = Math.hypot(nx, ny, nz) || 1; nx /= l; ny /= l; nz /= l;
     const mx = (ax + bx + cx_) / 3, mz = (az + bz + cz_) / 3, col = groundColour(mx, (ay + by + cy) / 3, mz, skirt ? 1 : Math.abs(ny), bl);
     // a faint per-facet shade, so the ground reads as cut facets rather than noise
     const k = 1 + (ih(Math.floor(mx * 3), Math.floor(mz * 3), 77) - .5) * .05; col[0] *= k; col[1] *= k; col[2] *= k;
+    let back = col;
+    if (bake && !skirt) {
+      if (bake.light) { const a = bake.light(mx, mz, (ay + by + cy) / 3); col[0] *= a; col[1] *= a; col[2] *= a * (1 + (1 - a) * .25); }
+      if (bake.hills) back = bake.hills(mx, mz);
+    }
     for (const [px, py, pz] of [[ax, ay, az], [bx, by, bz], [cx_, cy, cz_]]) {
-      out[o++] = px; out[o++] = py; out[o++] = pz; out[o++] = nx; out[o++] = ny; out[o++] = nz;
-      out[o++] = col[0]; out[o++] = col[1]; out[o++] = col[2]; out[o++] = col[0]; out[o++] = col[1]; out[o++] = col[2];
+      const sn = bake?.normal && !skirt ? bake.normal(px, pz) : null;
+      out[o++] = px; out[o++] = py; out[o++] = pz;
+      if (sn) { out[o++] = sn[0]; out[o++] = sn[1]; out[o++] = sn[2]; } else { out[o++] = nx; out[o++] = ny; out[o++] = nz; }
+      out[o++] = col[0]; out[o++] = col[1]; out[o++] = col[2]; out[o++] = back[0]; out[o++] = back[1]; out[o++] = back[2];
     }
   };
   for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
@@ -287,6 +295,73 @@ export function chunkMesh(cx, cz, N = CELLS, size = CHUNK, drop = 0) {
     }
   }
   return out.subarray(0, o);
+}
+
+// The look tests' ground bakes (look.js A, B, S; env.look names those switched on):
+// light(x, z, y): A, the hollow light (hollows and foot slopes darker, ridges a touch lighter,
+// and the ground under trees), from the heights round about on a coarse grid;
+// hills(x, z): B, the eight horizon heights round the spot packed into the back colour (2 + three
+// 4-bit steps a channel; render.js COMMON_FS hills() reads them back);
+// normal(x, z): S, smooth shading, the ground's normal at a grid corner from its neighbours.
+const HILL_D = [10, 22, 45, 90, 180, 350, 650];
+function lookBakes(x0, z0, N, size, C, H, drop) {
+  const L = env.look || ''; if (!L) return null;
+  const B = {};
+  // a value grid laid over the chunk, every g metres or so, read back bilinearly
+  const grid = (g, comps, fn) => {
+    const n = Math.max(1, Math.round(size / g)), st = size / n, v = new Float32Array((n + 1) * (n + 1) * comps);
+    for (let j = 0; j <= n; j++) for (let i = 0; i <= n; i++) fn(x0 + i * st, z0 + j * st, v, ((j * (n + 1)) + i) * comps);
+    return (x, z, c) => {
+      const fx = Math.min(n - 1e-6, Math.max(0, (x - x0) / st)), fz = Math.min(n - 1e-6, Math.max(0, (z - z0) / st)), i = fx | 0, j = fz | 0, u = fx - i, w = fz - j;
+      const at = (a, b) => v[((b * (n + 1)) + a) * comps + c];
+      return (at(i, j) * (1 - u) + at(i + 1, j) * u) * (1 - w) + (at(i, j + 1) * (1 - u) + at(i + 1, j + 1) * u) * w;
+    };
+  };
+  if (L.includes('hollow')) {
+    const ao = grid(Math.max(6, C), 2, (x, z, v, o) => {
+      let near = 0, far = 0;
+      for (let q = 0; q < 6; q++) { const an = q * 1.047 + .3; near += height(x + Math.cos(an) * 12, z + Math.sin(an) * 12); far += height(x + Math.cos(an) * 45, z + Math.sin(an) * 45); }
+      v[o] = near / 6; v[o + 1] = far / 6;
+    });
+    // the trees' patches (near chunks only, where a tree spans a few cells)
+    let TD = null; const tn = Math.max(1, Math.round(size / Math.max(C, 1.5))), ts = size / tn;
+    if (C <= 4) {
+      TD = new Float32Array((tn + 1) * (tn + 1)).fill(1);
+      for (const t of treesNear(x0 + size / 2, z0 + size / 2, size / 2 + 10)) {
+        const R = t.s * (t.kind ? .28 : .4) + 1.2, i0 = Math.max(0, Math.floor((t.x - R - x0) / ts)), i1 = Math.min(tn, Math.ceil((t.x + R - x0) / ts)), j0 = Math.max(0, Math.floor((t.z - R - z0) / ts)), j1 = Math.min(tn, Math.ceil((t.z + R - z0) / ts));
+        for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const d = Math.hypot(x0 + i * ts - t.x, z0 + j * ts - t.z); if (d < R) TD[j * (tn + 1) + i] = Math.min(TD[j * (tn + 1) + i], 1 - .3 * (1 - d / R) ** 1.4); }
+      }
+    }
+    B.light = (x, z, y) => {
+      const dn = ao(x, z, 0) - y - drop, df = ao(x, z, 1) - y - drop;
+      let a = Math.min(1.06, Math.max(.62, 1 - Math.max(dn, 0) * .035 - Math.max(df, 0) * .009 + Math.max(-df, 0) * .002));
+      if (TD) { const i = Math.round((x - x0) / ts), j = Math.round((z - z0) / ts); if (i >= 0 && j >= 0 && i <= tn && j <= tn) a *= TD[j * (tn + 1) + i]; }
+      return a;
+    };
+  }
+  if (L.includes('hills')) {
+    const hz = grid(Math.max(12, C), 8, (x, z, v, o) => {
+      const h0 = Math.max(height(x, z), WATER);
+      for (let k = 0; k < 8; k++) {
+        const dx = Math.cos(k / 8 * 6.2832), dz = Math.sin(k / 8 * 6.2832); let t = 0;
+        for (const d of HILL_D) t = Math.max(t, (height(x + dx * d, z + dz * d) - h0) / d);
+        v[o + k] = Math.atan(t);
+      }
+    });
+    B.hills = (x, z) => {
+      const q = k => Math.round(Math.sqrt(Math.min(1, hz(x, z, k) / 1.5708)) * 15);
+      return [2 + q(0) + q(1) * 16 + q(2) * 256, 2 + q(3) + q(4) * 16 + q(5) * 256, 2 + q(6) + q(7) * 16];
+    };
+  }
+  if (L.includes('smooth')) {
+    const at = (i, j) => i >= 0 && j >= 0 && i <= N && j <= N ? H[j * (N + 1) + i] : height(x0 + i * C, z0 + j * C) - drop;
+    B.normal = (x, z) => {
+      const i = Math.round((x - x0) / C), j = Math.round((z - z0) / C);
+      const nx = at(i - 1, j) - at(i + 1, j), nz = at(i, j - 1) - at(i, j + 1), ny = 2 * C, l = Math.hypot(nx, ny, nz);
+      return [nx / l, ny / l, nz / l];
+    };
+  }
+  return B;
 }
 
 // ---- trees -------------------------------------------------------------------------------

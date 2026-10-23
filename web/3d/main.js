@@ -72,6 +72,7 @@ import { driftSystem } from './sys/drift.js';
 import { islesSystem } from './sys/isles.js';
 import { skyRiversSystem } from './sys/skyrivers.js';
 import { nightSeaSystem } from './sys/nightsea.js';
+import { createLooks } from './look.js';
 
 const SYSTEMS = [speciesSystem, movesSystem, lifeSystem, clockSystem, weatherSystem, watersSystem, windsSystem, floraSystem, bushesSystem, airSystem, ringsSystem, foodSystem, aimSystem, sleepSystem, feelSystem, batterySystem, songsSystem, momentsSystem,
   guideSystem, journeySystem, nestSystem, storySystem, ruinsSystem, photoSystem, howtoSystem, faunaSystem, neighboursSystem, landsSystem, seasonsSystem, glowSystem, landAirSystem, crittersSystem, huntersSystem, aimsSystem, seasonSystem, ghostSystem,
@@ -251,6 +252,7 @@ if (qs.has('fps')) G.settings.fpsCap = +qs.get('fps') || 60;
     if (el.dataset.sure) { G.resetting = true; store.set('save3d', null); location.reload(); } else { el.dataset.sure = 1; el.firstChild.textContent = 'Tap again to start over '; }
   } });
   appRows(G);
+  createLooks(G, R);   // Settings > Advanced > Look tests (look.js)
   G.dev?.add({ id: 'frame-cost', area: 'Settings and performance', round: 'R8', title: 'Frame cost: milliseconds per system and per render pass', how: 'Fly a minute, then Settings > Dev tools > Frame cost. GPU times show where the phone offers timer queries; add ?perf=deep to time them anyway (slower).' });
   G.dev?.add({ id: 'gpu-order', area: 'Settings and performance', round: 'R8', title: 'Cheaper drawing: solid things first with no discard, nearest ground first, sky last', how: 'Nothing to see: the same picture, less GPU work. Compare battery use (Settings) with the readings from before.' });
   G.dev?.add({ id: 'rest-30', area: 'Settings and performance', round: 'R8', title: 'Rest at 30 fps when perched or on the ground and untouched', how: 'Settings > Show frame rate, perch and leave the phone 5 s: 30; touch: back to your cap. Settings > Rest at 30 fps turns it off.' });
