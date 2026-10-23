@@ -1,4 +1,5 @@
-// Low-poly meshes for the animals of the other lands (sys/critters.js) and the other hunters
+// Low-poly meshes for the small animals of the other lands (sys/critters.js; the four-legged
+// grazers are the rig's, sys/rig.js) and the other hunters
 // and pests in the air (sys/hunters.js). Facing +x, y up, real size at scale 1 (as
 // faunashapes.js). Two-frame flappers are built as (up) and (down).
 import { builder, blob, tube, reseed } from '../shapes.js';
@@ -58,45 +59,29 @@ export function crab() {
   }
   return B.out();
 }
-// a mountain goat: shaggy white, black horns
-export function goat() {
-  reseed(205); const B = builder(), w = [.92, .91, .86], w2 = [.84, .83, .78], dark = [.12, .11, .1];
-  blob(B, 0, .75, 0, .32, w, w2, [1.5, 1, .8], 2);
-  blob(B, .5, .95, 0, .13, w, w2, [1.2, 1, .8]);
-  tube(B, [.35, .85, 0], [.5, .95, 0], .1, w2);
-  for (const s of [-1, 1]) { tube(B, [.5, 1.05, .04 * s], [.42, 1.22, .05 * s], .018, dark); }
-  B.tri([.58, .86, -.03], [.58, .86, .03], [.55, .72, 0], w2);   // the beard
-  for (const [x, s] of [[.3, 1], [.3, -1], [-.3, 1], [-.3, -1]]) leg(B, x, .13 * s, .6, .045, x > 0 ? w2 : w);
-  return B.out();
-}
-// a bison: the great dark hump, a shaggy head held low
-export function bison(graze) {
-  reseed(206); const B = builder(), fur = [.32, .24, .18], fur2 = [.25, .19, .14], shag = [.42, .32, .22], horn = [.15, .14, .13];
-  blob(B, -.3, 1.05, 0, .55, fur, fur2, [1.5, 1, .9], 2);
-  blob(B, .45, 1.25, 0, .55, shag, fur, [1, 1.25, 1], 2);   // the hump and shaggy shoulders
-  const hy = graze ? .45 : .95;
-  blob(B, 1.0, hy, 0, .3, shag, fur2, [1.1, 1, .9], 2);
-  for (const s of [-1, 1]) tube(B, [1.05, hy + .2, .2 * s], [1.05, hy + .35, .3 * s], .03, horn);
-  for (const [x, s] of [[.5, 1], [.5, -1], [-.6, 1], [-.6, -1]]) leg(B, x, .22 * s, .8, .09, fur2);
-  tube(B, [-1, 1.1, 0], [-1.15, .7, 0], .03, fur2);
-  return B.out();
-}
-// a white egret standing in the shallows
-export function egret() {
+// a white egret in the shallows: standing, mid-step (one leg raised), or stabbing at a fish
+export function egret(pose = 'stand') {
   reseed(207); const B = builder(), w = [.95, .95, .93], w2 = [.88, .88, .86], bill = [.9, .78, .3], legc = [.15, .14, .14];
+  const stab = pose === 'stab', lean = stab ? .12 : 0;
   blob(B, 0, .55, 0, .14, w, w2, [1.6, .9, .85], 2);
-  tube(B, [.18, .58, 0], [.24, .82, 0], .025, w); tube(B, [.24, .82, 0], [.2, .95, 0], .022, w);
-  blob(B, .23, .97, 0, .04, w, w2, [1.3, 1, .9]);
-  tube(B, [.26, .97, 0], [.42, .94, 0], .01, bill);
-  for (const s of [-1, 1]) tube(B, [0, .45, .04 * s], [.01, 0, .03 * s], .012, legc);
+  const n1 = stab ? [.34, .5, 0] : [.24, .82, 0], hd = stab ? [.48, .3, 0] : [.2, .95, 0];
+  tube(B, [.18, .58, 0], n1, .025, w); tube(B, n1, hd, .022, w);
+  blob(B, hd[0] + .03, hd[1] + .02, 0, .04, w, w2, [1.3, 1, .9]);
+  tube(B, [hd[0] + .06, hd[1] + .02, 0], stab ? [hd[0] + .12, hd[1] - .14, 0] : [hd[0] + .22, hd[1] - .01, 0], .01, bill);
+  for (const s of [-1, 1]) {
+    if (pose === 'step' && s > 0) { tube(B, [0, .45, .04], [.12, .25, .03], .012, legc); tube(B, [.12, .25, .03], [.08, .1, .03], .011, legc); }
+    else tube(B, [lean * .3, .45, .04 * s], [.01, 0, .03 * s], .012, legc);
+  }
   return B.out();
 }
-// a harbour seal hauled out on the rocks
-export function seal() {
+// a seal hauled out: lying (k 0), head up (1), humping along (2: arched, 3: stretched)
+export function seal(k = 0) {
   reseed(208); const B = builder(), g = [.5, .5, .5], g2 = [.42, .42, .44], dark = [.2, .2, .22];
-  blob(B, 0, .2, 0, .3, g, g2, [2, .7, .9], 2);
-  blob(B, .58, .32, 0, .14, g, g2, [1.2, 1, 1], 2);
-  blob(B, .7, .32, 0, .05, dark, g2);
+  const arch = k === 2 ? .12 : 0, long = k === 3 ? 1.12 : k === 2 ? .9 : 1, hy = k === 1 ? .48 : k === 3 ? .3 : .32;
+  blob(B, 0, .2 + arch, 0, .3, g, g2, [2 * long, .7 + arch, .9], 2);
+  blob(B, .58 * long, hy, 0, .14, g, g2, [1.2, 1, 1], 2);
+  blob(B, .7 * long, hy, 0, .05, dark, g2);
+  for (const z of [-1, 1]) B.tri([.3, .12, .2 * z], [.42, .12, .2 * z], [.36, k === 3 ? .02 : .05, .34 * z], g2);   // the fore flippers
   B.tri([-.55, .15, -.02], [-.55, .15, .02], [-.78, .25, .12], g2); B.tri([-.55, .15, .02], [-.55, .15, -.02], [-.78, .25, -.12], g2);
   return B.out();
 }

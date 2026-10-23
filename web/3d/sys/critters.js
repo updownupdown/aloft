@@ -8,7 +8,9 @@
 // prey shows to the aim (G.prey) and is eaten through food.js (G.systems.food.take()).
 import { height, groundAt, groundNormal, blend, treesNear, perchesOf, ih, WATER, fencesNear } from '../world.js';
 import { bridgesNear } from '../settle.js';
-import { jackrabbit, lizard, marmot, crab, goat, bison, egret, seal, squirrel, monarch, dragonfly, snake } from './critshapes.js';
+import { jackrabbit, lizard, marmot, crab, egret, seal, squirrel, monarch, dragonfly, snake } from './critshapes.js';
+import { frameOf } from './rig.js';
+import { angleTo } from '../util.js';
 
 export const CRIT = { cell: 90, near: 240, catchR: 1.6, catchDive: 1.6, catchH: 2.2 };
 // what lives where: [kind, chance per cell, how many]
@@ -62,8 +64,9 @@ const SPOT = {   // where in its cell an animal will stand: ground height and sl
 export function crittersSystem(G) {
   const b = G.b, R = G.R;
   R.shape('jack', jackrabbit(false)); R.shape('jackR', jackrabbit(true)); R.shape('lizard', lizard());
-  R.shape('marmot', marmot(true)); R.shape('marmotR', marmot(false)); R.shape('crab', crab()); R.shape('goat', goat());
-  R.shape('bison', bison(true)); R.shape('bisonU', bison(false)); R.shape('egret', egret()); R.shape('seal', seal());
+  R.shape('marmot', marmot(true)); R.shape('marmotR', marmot(false)); R.shape('crab', crab());
+  for (const k of ['stand', 'step', 'stab']) R.shape('egret_' + k, egret(k));
+  for (let k = 0; k < 4; k++) R.shape('seal' + k, seal(k));
   R.shape('squirrel', squirrel(false)); R.shape('squirrelR', squirrel(true));
   R.shape('snake', snake(false)); R.shape('snakeS', snake(true));
   R.shape('monarchU', monarch(true)); R.shape('monarchD', monarch(false)); R.shape('dragonfly', dragonfly());
@@ -155,7 +158,7 @@ export function crittersSystem(G) {
   const step = (o, sp, dt) => {
     const nx = o.x + Math.cos(o.yaw) * sp * dt, nz = o.z + Math.sin(o.yaw) * sp * dt, h = height(nx, nz);
     const ok = o.kind === 'crab' ? h < 1.2 : o.kind === 'goat' ? h > 3 : h > .6;
-    if (ok) { o.x = nx; o.z = nz; } else o.yaw += 2.2;
+    if (ok) { o.x = nx; o.z = nz; o.s = (o.s || 0) + sp * dt; o.sp = sp; } else o.yaw += 2.2;
     o.y = o.kind === 'egret' ? WATER - .25 : groundAt(o.x, o.z);
   };
   function squirrelStep(o, dt) {
@@ -209,12 +212,32 @@ export function crittersSystem(G) {
         if (o.flee > 0) { o.yaw = o.kind === 'crab' ? away + Math.PI / 2 : away; step(o, PREY[o.kind][3], dt); }
         else if ((o.go -= dt) > 0) step(o, PREY[o.kind][3] * .3, dt); else if (Math.random() < dt * .3) { o.go = .5; o.yaw += (Math.random() - .5) * 2.5; }
         break;
-      case 'goat': if ((o.go -= dt) > 0) step(o, .6, dt); else if (Math.random() < dt * .1) { o.go = 1.5; o.yaw += (Math.random() - .5) * 2; } break;
-      case 'bison':
-        if (o.flee > 0 && hd < 14 && above < 8) { o.yaw = away; step(o, 6, dt); }
-        else { if (Math.hypot(o.x - o.hx, o.z - o.hz) > 30) o.yaw = Math.atan2(o.hz - o.z, o.hx - o.x); step(o, .35, dt); }
+      case 'goat': case 'bison': grazerStep(o, dt, hd, above, away); break;
+      case 'seal':
+        o.sp = 0;
+        if (o.flee > 0) { o.yaw += angleTo(o.yaw, away) * Math.min(1, dt * 3); step(o, 1.1, dt); o.state = 'hump'; }
+        else if ((o.go -= dt) <= 0) { o.go = 3 + Math.random() * 6; o.state = Math.random() < .3 ? 'look' : 'lie'; }
+        break;
+      case 'egret':
+        o.sp = 0;
+        if ((o.go -= dt) <= 0) { const r = Math.random(); o.state = r < .35 ? 'wade' : r < .55 ? 'stab' : 'stand'; o.go = o.state === 'stab' ? .5 : 1.5 + Math.random() * 3; if (o.state === 'wade') o.yaw += (Math.random() - .5) * 1.2; }
+        if (o.state === 'wade') { o.s = (o.s || 0) + dt; const nx = o.x + Math.cos(o.yaw) * .3 * dt, nz = o.z + Math.sin(o.yaw) * .3 * dt, h = height(nx, nz); if (h < -.05 && h > -.5) { o.x = nx; o.z = nz; } else o.yaw += 2; }
         break;
     }
+  }
+  // the grazers (goats and ibex, bison, wildebeest, muskox): they graze, wander a few steps, lift
+  // their heads at a hawk coming low, and run from one that stoops at them
+  function grazerStep(o, dt, hd, above, away) {
+    const run = o.kind === 'goat' ? 3.2 : 5.5;
+    if (o.flee > 0 && hd < 30 && above < 12) { o.state = 'run'; o.yaw += angleTo(o.yaw, away) * Math.min(1, dt * 3); step(o, run, dt); o.go = 2; return; }
+    o.sp = 0;
+    if (b.state === 'fly' && hd < 55 && above < 35 && o.state !== 'alert' && o.state !== 'run') { o.state = 'alert'; o.go = 2 + Math.random() * 2; }
+    if ((o.go -= dt) <= 0) {
+      const r = Math.random();
+      o.state = r < .55 ? 'graze' : r < .85 ? 'walk' : 'stand'; o.go = 2 + Math.random() * 5;
+      if (o.state === 'walk') o.yaw += Math.hypot(o.x - o.hx, o.z - o.hz) > 25 ? angleTo(o.yaw, Math.atan2(o.hz - o.z, o.hx - o.x)) : (Math.random() - .5) * 2;
+    }
+    if (o.state === 'walk') step(o, o.kind === 'goat' ? .55 : .8, dt);
   }
   function tryCatch() {
     if (b.state !== 'fly' || b.carry) return;   // (feet full)
@@ -261,6 +284,7 @@ export function crittersSystem(G) {
 
   return {
     id: 'critters',
+    animals: () => [...live.values()],   // (debug: window.__aloft3d.G.systems.critters.animals())
     update(dt) {
       if ((refreshT -= dt) <= 0) { refreshT = 1; refresh(); }
       for (const o of live.values()) animalStep(o, dt);
@@ -271,7 +295,11 @@ export function crittersSystem(G) {
       for (const o of live.values()) {
         if (o.hidden > 0 || Math.abs(o.x - cam[0]) > 200 || Math.abs(o.z - cam[2]) > 200) continue;
         const run = o.flee > 0 || o.go > 0;
-        const shape = { jackrabbit: run ? 'jackR' : 'jack', marmot: run ? 'marmotR' : 'marmot', bison: o.flee > 0 ? 'bisonU' : 'bison', squirrel: run || o.climb ? 'squirrelR' : 'squirrel', snake: o.flee > 0 ? 'snakeS' : 'snake' }[o.kind] || o.kind;
+        const look = o.kind === 'goat' || o.kind === 'bison' ? o.page : null;
+        const shape = look ? frameOf(R, look, { state: o.state, sp: o.sp, s: o.s, t: o.t })
+          : o.kind === 'seal' ? 'seal' + (o.state === 'hump' ? 2 + (Math.floor((o.s || 0) / .35) & 1) : o.state === 'look' ? 1 : 0)
+          : o.kind === 'egret' ? 'egret_' + (o.state === 'stab' ? 'stab' : o.state === 'wade' && (Math.floor(o.s * 1.5) & 1) ? 'step' : 'stand')
+          : { jackrabbit: run ? 'jackR' : 'jack', marmot: run ? 'marmotR' : 'marmot', squirrel: run || o.climb ? 'squirrelR' : 'squirrel', snake: o.flee > 0 ? 'snakeS' : 'snake' }[o.kind] || o.kind;
         const hop = o.kind === 'jackrabbit' && run ? Math.abs(Math.sin(G.t * 9 + o.t)) * .35 : 0;
         (S.props[shape] ||= []).push(o.x, o.y + hop, o.z, o.kind === 'snake' ? 1.7 : 1, o.yaw, .5, 0, 0);   // a snake a little large, to read from the air
         if (Math.abs(o.x - cam[0]) < 60 && Math.abs(o.z - cam[2]) < 60) G.sight?.(o.page || o.kind, o.x, o.y + .3, o.z, { bison: 1.5, goat: .8, seal: .7, egret: .6 }[o.kind] || .3);

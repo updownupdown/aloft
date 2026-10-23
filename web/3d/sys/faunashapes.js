@@ -54,19 +54,6 @@ export function heronFlying(up) {
   return B.out();
 }
 
-// a roe deer, standing alert or grazing with its head down
-export function deer(grazing) {
-  reseed(47); const B = builder(), coat = [.62, .43, .27], dark = [.45, .3, .2], rump = [.9, .86, .78], hoof = [.2, .16, .14];
-  blob(B, 0, .95, 0, .32, coat, dark, [1.9, .9, .75]);
-  blob(B, -.55, 1.0, 0, .15, rump, coat, [.8, 1, .9]);
-  const nk = grazing ? [[.45, 1.0, 0], [.75, .55, 0], [.85, .3, 0]] : [[.45, 1.05, 0], [.6, 1.32, 0], [.72, 1.38, 0]];
-  limb(B, nk[0], nk[1], .085, coat);
-  blob(B, nk[2][0], nk[2][1], 0, .12, coat, dark, [1.5, .9, .8]);
-  for (const s of [.06, -.06]) B.tri([nk[2][0] - .08, nk[2][1] + .08, s], [nk[2][0] - .02, nk[2][1] + .1, s * 2.4], [nk[2][0] - .14, nk[2][1] + .25, s * 2.2], dark);
-  for (const [x, z] of [[.4, .12], [.4, -.12], [-.42, .12], [-.42, -.12]]) { limb(B, [x, .8, z], [x + .02, .08, z], .04, coat); limb(B, [x + .02, .08, z], [x + .03, 0, z], .035, hoof); }
-  return B.out();
-}
-
 // a fish: a silver-brown spindle with a tail fan
 export function fish() {
   reseed(53); const B = builder(), back = [.42, .45, .38], side = [.78, .78, .72];

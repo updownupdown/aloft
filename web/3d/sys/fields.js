@@ -10,9 +10,10 @@
 // G.grassCover and G.wary.
 import { height, groundAt, forest, ih, fbm, env, WATER } from '../world.js';
 import { settlementsNear } from '../settle.js';
-import { builder, blob, reseed } from '../shapes.js';
+import { builder, reseed } from '../shapes.js';
 import { clamp, smooth } from '../util.js';
 import { DAY } from '../sky.js';
+import { foxPounce, frameOf } from './rig.js';
 
 export const FIELDS = { signs: 130, signsHigh: 260, meadow: 300, misses: 3, fox: 280, foxSpeed: 2.3 };
 // each farm's paddock in its own frame (settle.js layout: u along the farm, w across)
@@ -41,27 +42,10 @@ function baleShape() {
   }
   return B.out();
 }
-// a red fox, along +x: trotting, or arched in the air for its pounce
-function foxShape(pounce) {
-  reseed(pounce ? 61 : 59); const B = builder(), fur = [.78, .42, .2], pale = [.92, .86, .76], dark = [.22, .16, .13];
-  const lift = pounce ? .25 : 0, tilt = pounce ? -.35 : 0;
-  blob(B, 0, .36 + lift, 0, .24, fur, pale, [1.7, .75, .8]);                                    // body
-  blob(B, .4, .46 + lift + tilt * -.3, 0, .13, fur, pale, [1.3, .9, .9]);                         // head
-  blob(B, .55, .43 + lift + tilt * -.3, 0, .06, fur, pale, [1.6, .7, .7]);                        // muzzle
-  for (const s of [-1, 1]) B.tri([.4, .55 + lift, .05 * s], [.44, .55 + lift, .1 * s], [.42, .68 + lift, .07 * s], dark);   // ears
-  for (const [x, z] of [[.22, .08], [.22, -.08], [-.2, .08], [-.2, -.08]]) {                       // legs, black socks
-    const fx = pounce ? x + (x > 0 ? .22 : -.2) : x, fy = pounce ? lift + .1 : 0;
-    B.tri([x - .03, .3 + lift, z], [x + .03, .3 + lift, z], [fx, fy, z], dark); B.tri([x, .3 + lift, z - .03], [x, .3 + lift, z + .03], [fx, fy, z], dark);
-  }
-  blob(B, -.5, .34 + lift * 1.2, 0, .12, fur, fur, [2.2, .8, .8]);                                 // brush
-  blob(B, -.78, .32 + lift * 1.3, 0, .06, pale, pale, [1.4, 1, 1]);                                // its white tip
-  return B.out();
-}
-
 export function fieldsSystem(G) {
   const b = G.b, R = G.R, H = G.hud;
   R.shape('hay', hayShape(false)); R.shape('hayLaid', hayShape(true)); R.shape('bale', baleShape());
-  R.shape('fox', foxShape(false)); R.shape('foxP', foxShape(true));
+  R.shape('foxP', foxPounce());   // the fox: the rig's frames (rig.js frameOf), and its pounce
   G.guide?.page('fox', 'Red fox', 'Hunts voles by ear: it stands stock still, head cocked, then leaps high and comes down on them with its forepaws.');
   const once = (id, title, msg, ic, how) => { if (!G.flags[id]) { G.flags[id] = 1; G.hud.quietly(how, title, msg, ic); } };
 
@@ -122,7 +106,7 @@ export function fieldsSystem(G) {
     if (f.mode !== 'flee' && b.state !== 'fly' && hd < 16) { f.mode = 'flee'; f.yaw = Math.atan2(f.z - b.p[2], f.x - b.p[0]); f.t = 8; }
     const go = sp => {
       const nx = f.x + Math.cos(f.yaw) * sp * dt, nz = f.z + Math.sin(f.yaw) * sp * dt;
-      if (height(nx, nz) > .8) { f.x = nx; f.z = nz; } else f.yaw += 1.5;
+      if (height(nx, nz) > .8) { f.x = nx; f.z = nz; f.s = (f.s || 0) + sp * dt; f.sp = sp; } else f.yaw += 1.5;
       f.y = groundAt(f.x, f.z);
     };
     if (f.mode === 'flee') { go(7); if ((f.t -= dt) <= 0) fox = null; return; }
@@ -229,7 +213,8 @@ export function fieldsSystem(G) {
       }
       // the fox
       if (fox && Math.hypot(fox.x - cam[0], fox.z - cam[2]) < 260) {
-        (S.props[fox.mode === 'pounce' ? 'foxP' : 'fox'] ||= []).push(fox.x, fox.y, fox.z, 1.25, -fox.yaw, .5, 0, 0);
+        const fr = fox.mode === 'pounce' ? 'foxP' : frameOf(R, 'fox', { state: fox.mode === 'listen' ? 'alert' : null, sp: fox.mode === 'listen' ? 0 : fox.sp, s: fox.s });
+        (S.props[fr] ||= []).push(fox.x, fox.y, fox.z, 1.25, fox.yaw, .5, 0, 0);
         if (Math.hypot(fox.x - cam[0], fox.z - cam[2]) < 70) G.sight?.('fox', fox.x, fox.y + .4, fox.z, .5);
       }
       // A1 signs: read best from the air, not too high
