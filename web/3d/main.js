@@ -340,6 +340,7 @@ if (qs.has('fps')) G.settings.fpsCap = +qs.get('fps') || 60;
     pf.lap('Core', 'frame rate, resolution');
     input.gyroOn = b.state === 'perch' && b.settle <= 0 && !(G.singing || G.camSing);   // not while singing: tapping notes shakes the phone
     const c = input.read();
+    if (G.noControl) Object.assign(c, { pitch: 0, roll: 0, yaw: 0, keyRoll: 0, dragX: 0, dragY: 0, spread: 0, flap: null, held: false, both: false, barrel: 0 });   // the thumbs taken a moment (sys/poles.js: crossing a pole)
     pf.lap('Core', 'input');
     G.systems.clock.update(dt, c);
     pf.lap('Systems', 'clock');
