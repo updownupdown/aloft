@@ -112,7 +112,7 @@ function shade(hex, k) {
 }
 
 const cache = new Map();
-export function birdLogo(sp, cls = 'logo3') {
+export function birdLogo(sp, cls = 'blogo3') {
   const key = sp.id + cls;
   if (!cache.has(key)) {
     const o = L[sp.name] || sp.logo || { body: sp.body, head: sp.cap, breast: sp.breast };
