@@ -1,23 +1,18 @@
-// Photo mode, postcards and the album. In photo mode the world holds still and the HUD hides;
-// drag to swing the camera round the hawk, pinch (or the mouse wheel) to come closer, then take
-// the picture: it is shared or saved as a PNG, and a small copy goes in the Journal's album with
-// the day and the place. Finding a landmark puts a postcard of that moment in the album too.
+// Photo mode. The world holds still and the HUD hides; drag to swing the camera round the hawk,
+// pinch (or the mouse wheel) to come closer, then take the picture: it is shared or saved to the
+// device, framed with a line about the day and the place. Nothing is kept in the game (James,
+// 2026-10-23: no album, no postcards).
 import { height, WATER } from '../world.js';
-import { afterDraw, project, thumb, glCanvas } from '../shot.js';
-import { PIG, facets, hardShadow } from '../facet.js';
-import { journal, esc } from '../journal.js';
+import { afterDraw, glCanvas } from '../shot.js';
 import { clamp } from '../util.js';
 import { inSentence } from './journey.js';
 import { hourName } from '../dial.js';
 import { icon } from '../icons.js';
 
-const ALBUM_MAX = 16;
-
 export function photoSystem(G) {
-  const R = G.R, store = G.store;
+  const R = G.R;
   let lastS = null, cam = null, raf = 0;
-  const album = () => store.get('album3d', []);
-  const keep = item => { try { const a = album(); a.push(item); while (a.length > ALBUM_MAX) a.shift(); store.set('album3d', a); } catch { /* storage full: the picture still saves */ } };
+  try { localStorage.removeItem('aloft.album3d'); } catch { /* the old album's pictures: let them go */ }
 
   // ---- photo mode --------------------------------------------------------------------------
   const ui = document.getElementById('ui3');
@@ -75,7 +70,6 @@ export function photoSystem(G) {
       const copy = document.createElement('canvas'); copy.width = c.width; copy.height = c.height; copy.getContext('2d').drawImage(c, 0, 0);
       bar.classList.remove('hidden');
       const words = caption();
-      keep({ src: thumb(copy), note: words.join(' ') });
       const card = shareCard(copy, words);
       const blob = await new Promise(r => card.toBlob(r, 'image/jpeg', .9));
       if (!blob) return;
@@ -83,7 +77,7 @@ export function photoSystem(G) {
       try { if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], title: 'Aloft', text: words.join(' ') }); return; } } catch { /* cancelled: save instead */ }
       const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
       document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-      G.hud.reply('Picture saved, and a copy is in the Journal’s album.', 2.5);
+      G.hud.reply('Picture saved.', 2.5);
     });
     // a fresh frame to cut it from
     const S = view(), c = glCanvas(); R.draw(S, null, c.width, c.height);
@@ -118,53 +112,8 @@ export function photoSystem(G) {
     return c;
   }
 
-  // ---- postcards -----------------------------------------------------------------------------
-  // the view of the moment a landmark was found, framed with a white border on a card of faceted
-  // paper, with a greeting and the date
-  function postcard(canvas, name, date, at) {
-    const W = 400, H = 250, c = document.createElement('canvas'); c.width = W; c.height = H;
-    const x = c.getContext('2d');
-    facets(x, 0, 0, W, H, 70, cx => { const t = cx / W; return [PIG.paper[0] - 2 - t * 6, PIG.paper[1] - 4 - t * 9, PIG.paper[2] - 8 - t * 16]; }, { seed: date.length + name.length, relief: .4 });
-    const pw = 300, ph = 150, py = 18, cw = canvas.width, ch = canvas.height;
-    const sw = Math.min(cw, ch * 2), sh = sw / 2;
-    const sx = clamp(at[0] - sw / 2, 0, cw - sw), sy = clamp(at[1] - sh * .6, 0, ch - sh);
-    x.save(); x.translate(W / 2, py + ph / 2 + 6); x.rotate(-.025);
-    const frame = [[-pw / 2 - 8, -ph / 2 - 8], [pw / 2 + 8, -ph / 2 - 8], [pw / 2 + 8, ph / 2 + 8], [-pw / 2 - 8, ph / 2 + 8]];
-    hardShadow(x, frame, 4, 5, .3);
-    x.fillStyle = '#fbf8f0'; x.fillRect(-pw / 2 - 8, -ph / 2 - 8, pw + 16, ph + 16);
-    x.drawImage(canvas, sx, sy, sw, sh, -pw / 2, -ph / 2, pw, ph);
-    x.restore();
-    const ty = py + ph + 44;
-    x.fillStyle = '#1d2b36'; x.textAlign = 'center';
-    x.font = '700 22px Outfit, system-ui, sans-serif'; x.fillText(`Greetings from ${inSentence(name)}`, W / 2, ty, W - 30);
-    x.fillStyle = '#43535f'; x.font = '500 13px Outfit, system-ui, sans-serif'; x.fillText(date, W / 2, ty + 22, W - 30);
-    return c.toDataURL('image/jpeg', .72);
-  }
-  let card = null;
-  G.on('landmark', l => { card = l; });
-
-  // ---- the album, in the Journal ---------------------------------------------------------------
-  const sec = journal(G).section(70, 'Album');
-  sec.body.innerHTML = '<div class="album3"></div>';
-  const box = sec.body.firstChild;
-  box.addEventListener('click', e => e.target.closest('figure')?.classList.toggle('big'));
-  G.menu.onOpen(() => {
-    const pics = album();
-    box.innerHTML = pics.length ? pics.slice().reverse().map(p => `<figure class="${p.card ? 'card' : ''}"><img alt="" src="${p.src}"><figcaption>${esc(p.note)}</figcaption></figure>`).join('')
-      : '<p class="none">No pictures yet. Photo mode is in Settings, and finding a landmark sends a postcard.</p>';
-  });
-
   return {
     id: 'photo',
-    scene(S) {
-      lastS = S;
-      if (card) {
-        const l = card; card = null;
-        afterDraw(c => {
-          const at = project(S, [l.x, (l.y ?? height(l.x, l.z)) + 5, l.z], c.width, c.height) || { x: c.width / 2, y: c.height / 2 };
-          keep({ src: postcard(c, l.name, `${G.date?.text || `Day ${G.day}`}, ${G.season.name}`, [at.x, at.y]), note: `Postcard: ${l.name}`, card: true });
-        });
-      }
-    },
+    scene(S) { lastS = S; },
   };
 }

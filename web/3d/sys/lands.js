@@ -2,7 +2,7 @@
 // cairns, a ruined tower, the lighthouse on the sea cliffs (dark now, like every lamp: nobody
 // keeps it; the farms and villages are sys/ruins.js), and
 // waterfalls spilling over the cliffs with mist at their feet. The giant oaks and willows are
-// trees (world.js treesIn). Finding them, postcards and the journal belong to journey.js.
+// trees (world.js treesIn). Finding them and the journal belong to journey.js.
 import { landmarksNear, rocksNear, fencesNear, height, WATER, PAL, GROUND, GROUND_SET, setGroundDetail } from '../world.js';
 import { store } from '../util.js';
 import { builder, blob, prism, tube, reseed, rnd } from '../shapes.js';

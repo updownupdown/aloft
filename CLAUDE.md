@@ -41,7 +41,7 @@ web/3d/quiet.js        the quiet levels of the message line: name(title, icon) t
 web/3d/compass.js       the linear compass, top middle (N/E/S/W, nest, the way south or home, landmarks found)
 web/3d/menu.js          G.menu: tab(), page() (sub-tabs), group() (Settings columns), toggle(), button({ group, main }), choice() (radio buttons), range() (a 0-100% slider), onOpen(), subtitle(), set(on, tab, page); ORDER/TITLES/ICONS/GROUPS
 web/3d/letter.js        the menu's frame (frosted glass, .glass3 in 3d.css); swap it to restyle
-web/3d/facet.js         low-poly helpers (map land, postcards) (PIG colours, poly, facets, gem, chamfer, hardShadow, lit)
+web/3d/facet.js         low-poly helpers (map land) (PIG colours, poly, facets, gem, chamfer, hardShadow, lit)
 web/3d/icons.js         every UI icon (James's picks, 2026-10-21): ICONS and icon(key) -> a 24x24 SVG in currentColor
 web/3d/logo.js          Aloft's mark, a hawk over the hills (menu title, app icons via tools/icon.html)
 web/3d/globe.js         the Map tab's globe: one WebGL shader, land + fog textures baked from earth.js; project()/unproject() for markers
@@ -61,7 +61,7 @@ web/3d/sys/*.js         systems: air (thermal clouds/motes), rings, food (hunger
                         guide (field guide: G.sight(key,x,y,z,r), G.guide.page()), journey (countries and
                         landmarks found, route, years turning with your own spring), map (the Map tab: a globe to spin and zoom, fog of war, tap a place; only one-of-a-kind places get marks), nest (twigs, egg, chick),
                         story (health -> G.tailRed, keepsakes, tricks, courtship, mate and fledglings),
-                        photo (photo mode, postcards, album), howto (How to play and the controls map)
+                        photo (photo mode: take a picture, share or save it), howto (How to play and the controls map)
                         songs (songbirds, learning and imitating songs, dialects, mimics, alarm calls, gifts, Call), moments (music that notices),
                         aims (a daily aim and feathers, the lands collection, racing the companion),
                         season (the first season guided by the companion, one lesson a day), ghost (ghost flights by link), poles (the ice edges: white air, a wind back, aurora),

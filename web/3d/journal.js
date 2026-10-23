@@ -1,9 +1,9 @@
 // The Journal tab, shared by the systems that write in it, in pages along its top: Log, Songs,
-// Lands, Landmarks, Field guide and Album. Each system asks for a section by its place (aims 5, journey 10,
-// nest 30, story 40, lands 45, landmarks 50, field guide 60, album 70; songs have their own page) and fills it
+// Lands, Landmarks and Field guide. Each system asks for a section by its place (aims 5, journey 10,
+// nest 30, story 40, lands 45, landmarks 50, field guide 60; songs have their own page) and fills it
 // when the menu opens; the place says which page it is on.
-const PAGES = [[0, 'log', 'Log'], [45, 'lands', 'Lands'], [50, 'landmarks', 'Landmarks'], [60, 'guide', 'Field guide'], [70, 'album', 'Album']];
-const ORDER = { log: 10, songs: 20, lands: 45, landmarks: 50, guide: 60, album: 70 };
+const PAGES = [[0, 'log', 'Log'], [45, 'lands', 'Lands'], [50, 'landmarks', 'Landmarks'], [60, 'guide', 'Field guide']];
+const ORDER = { log: 10, songs: 20, lands: 45, landmarks: 50, guide: 60 };
 
 export function journal(G) {
   if (G.journal) return G.journal;
