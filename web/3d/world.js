@@ -252,6 +252,9 @@ export function chunkMesh(cx, cz, N = CELLS, size = CHUNK, drop = 0) {
   const C = size / N, x0 = cx * size, z0 = cz * size;
   const H = new Float32Array((N + 1) * (N + 1));
   for (let j = 0; j <= N; j++) for (let i = 0; i <= N; i++) H[j * (N + 1) + i] = height(x0 + i * C, z0 + j * C) - drop;
+  // the open sea floor is dead flat: one cell is the same picture as a thousand (its edges match
+  // any neighbour's exactly, being the same flat height)
+  if (N > 1 && H.every(h => h === H[0])) return chunkMesh(cx, cz, 1, size, drop);
   // the biomes are looked up once per few cells for colouring (they change over 100s of m)
   const BL = [], bs = N >= 36 ? 4 : 2, bn = N / bs;
   for (let j = 0; j < N; j += bs) for (let i = 0; i < N; i += bs) BL.push(blend(x0 + (i + bs / 2) * C, z0 + (j + bs / 2) * C));

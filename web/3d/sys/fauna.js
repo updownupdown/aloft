@@ -6,7 +6,7 @@
 // state is forgotten when the hawk leaves. Fish can be caught: skim low over one as it rises,
 // the same forgiving reach as for mice (a tucked dive reaches further).
 import { height, forest, WATER, ih, fbm, bands, thermalsNear, thermalCentre, env } from '../world.js';
-import { smallBird, heronStanding, heronFlying, deer, fish, soaringHawk } from './faunashapes.js';
+import { smallBird, heronStanding, heronFlying, deer, fish, soaringHawk, soaringHawkFar } from './faunashapes.js';
 import { angleTo } from '../util.js';
 
 export const FAUNA = {
@@ -24,7 +24,7 @@ export function faunaSystem(G) {
   const R = G.R;
   R.shape('birdU', smallBird(true)); R.shape('birdD', smallBird(false));
   R.shape('heron', heronStanding()); R.shape('heronU', heronFlying(true)); R.shape('heronD', heronFlying(false));
-  R.shape('deer', deer(false)); R.shape('deerG', deer(true)); R.shape('fish', fish()); R.shape('soar', soaringHawk());
+  R.shape('deer', deer(false)); R.shape('deerG', deer(true)); R.shape('fish', fish()); R.shape('soar', soaringHawk()); R.shape('soarFar', soaringHawkFar());
   const flocks = new Map(), herds = new Map(), herons = new Map(), fishes = new Map();
   let refreshT = 0, fishBoost = 0, companion = null, route = null;
   // the companion hawk for other systems: where it is, and fly(points, speed, done) sends it

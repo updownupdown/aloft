@@ -79,7 +79,7 @@ export function toXZ(lat, lon) {
     x += clamp(dx, -3000, 3000); z = clamp(z + clamp(dz, -3000, 3000), NORTH, SOUTH);
     if (Math.abs(dx) + Math.abs(dz) < 1) break;
   }
-  return [wrapX(x), z];
+  return [wrapX(x), clamp(z, NORTH, SOUTH)];   // (a place past the strip's polar edge: the edge, not off the world)
 }
 
 // ---- the oceans --------------------------------------------------------------------------

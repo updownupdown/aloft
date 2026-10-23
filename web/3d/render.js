@@ -10,6 +10,8 @@ import { buildHawk, HAWK_SCALE } from './hawk.js';
 const POLE = [0, .64, -.768], NOMARKS = new Float32Array(12), NOMARKK = new Float32Array(4);
 // instanced shapes that are cloud: see-through when the camera is close or inside
 const CLOUDY = new Set(['cloud', 'storm', 'puff', 'lens', 'devil']);
+// shape -> [its far twin, metres]: the soaring hawks of a kettle (fauna.js) are a few pixels past 70 m
+const LOD = { soar: ['soarFar', 70] };
 // instanced shapes that hoar frost whitens (the plants and stones; not the animals)
 const FROSTY = new Set(['tuft', 'scrub', 'bush', 'gorse', 'sage', 'thorn', 'heath', 'reeds', 'stone', 'flowerY', 'flowerW', 'flowerP', 'hay', 'hayLaid', 'bale', 'barrel']);
 const COMMON_FS = `
@@ -500,6 +502,13 @@ export function createRenderer(gl) {
       if (!again) upload(m.ibuf, d);   // (the clouds draw twice, depth then colour: one upload)
       gl.bindVertexArray(m.vao); gl.drawArraysInstanced(gl.TRIANGLES, 0, m.count, d.length / 8); tris += m.count / 3 * d.length / 8;
     };
+    // far stand-ins: past so many metres an instanced shape draws as its simpler twin, if one is made
+    for (const key in LOD) {
+      const a = S.props[key], [twin, d] = LOD[key]; if (!a?.length || !shapes.has(twin)) continue;
+      const near = [], far = S.props[twin] ||= [];
+      for (let i = 0; i < a.length; i += 8) ((a[i] - S.cam[0]) ** 2 + (a[i + 1] - S.cam[1]) ** 2 + (a[i + 2] - S.cam[2]) ** 2 > d * d ? far : near).push(a[i], a[i + 1], a[i + 2], a[i + 3], a[i + 4], a[i + 5], a[i + 6], a[i + 7]);
+      S.props[key] = near;
+    }
     for (const key in S.props) if (!CLOUDY.has(key)) { pf?.pass(R.propPasses ? key : 'props'); if (S.frost) gl.uniform4fv(solidInst.u.uFrost, FROSTY.has(key) ? S.frost : NOFROST); prop(key); }
 
     // ground: only the chunks inside the view (their box against the frustum's sides), nearest first
