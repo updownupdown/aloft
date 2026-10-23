@@ -108,20 +108,20 @@ export function howtoSystem(G) {
     <div class="ctl3"><canvas aria-hidden="true"></canvas>${MOVES.map(([l, r, c, t, s, mode]) => `<figure>${thumbs(l, r, c)}<span class="pic" data-mode="${mode}"></span><figcaption><span>${t}</span><span>${s}</span></figcaption></figure>`).join('')}</div>
     <p><small>Keyboard: W/S climb and dive, A/D bank, Shift fold (with S to stoop), E spread, Space flap, Z/X barrel roll, P or Esc for this menu.</small></p>`;
   food.innerHTML = `<div class="hows3">
-    ${card('mice', 'Mice', 'Mice twitch the grass in open meadows. Dive at one and come in low; your feet reach for it. The aim line turns berry-red when you are lined up.')}
-    ${card('drink', 'Drink', 'Land at the water’s edge or on the water. Food lasts about five minutes, water about seven. When one runs low its bar flashes; your wings then recover more slowly.')}
-    ${card('perch', 'Perch and rest', 'Slow down into a tree’s crown and you settle on one of its limbs. Trunks are hard. Tap Take off, bottom right, to fly again.')}
+    ${card('mice', 'Mice', 'Mice twitch the grass, thickest round old farms and barns; small white marks over the grass are one squeaking. Dive at one and come in low: your feet reach for it, and the aim line turns red when you are lined up. Tap Eat (bottom right) to eat it, or carry it off: on a branch it is a calmer meal, and at your nest it drops in. In late summer and autumn, perch on a bush in fruit and Eat picks a beakful of berries.')}
+    ${card('drink', 'Drink', 'Tap the water to drink: at its edge, floating on it, or a puddle after rain. The sea is salt; on islands, drink from the rain pools in the rock. Food lasts about twenty minutes, water nearly half an hour. When a bar runs low it warms and breathes, and your wings no longer fill all the way.')}
+    ${card('perch', 'Perch, rest and sleep', 'Fly slowly into a tree’s crown where a branch shows a green ring and you settle on it. Trunks are hard. Perched, tap another green ring to hop across, or the ground to glide down to it. Take off is bottom right; at night Sleep sits beside it, and the night passes under the stars with your wings full by morning. The ground is too exposed to sleep on.')}
   </div>`;
   air.innerHTML = `<div class="hows3">
-    ${card('thermal', 'Thermals', 'Leaves spiralling under a cloud mark rising air. Fly in, spread your wings wide and tip one a little lower to circle in it. Red arrows by your height show the lift: steer toward where they grow.')}
+    ${card('thermal', 'Thermals', 'Leaves spiralling under a cloud mark rising air. Fly in, spread your wings wide and tip one a little lower to circle in it. Red chevrons by your height show the lift: steer toward where they grow.')}
     ${card('slope', 'Slopes', 'Wind blowing up a slope lifts you too. Fly along the windward side of a ridge.')}
     ${card('ring', 'Rings', 'Fly through the rings of cloud for a burst of speed.')}
   </div>`;
   trip.innerHTML = `<div class="hows3">
     ${card('south', 'The whole Earth', 'The world is a small Earth: every continent, the oceans narrowed so they can be crossed, the ice at either end. Fly east or west long enough and you come round to where you began. The day turns on the dial, top right, with the date; the season is the place’s own, so the north has summer while the south has winter. The Map shows where you have been; the Journal keeps the countries and landmarks you find.')}
-    ${card('nest', 'A nest', 'Twigs lie under some broadleaf trees. Land beside one to pick it up, then perch on a branch to start a nest. Five twigs and there is an egg; when it hatches, keep part of each mouse and carry it home. Five meals and your chick fledges.')}
+    ${card('nest', 'A nest', 'Twigs lie under some broadleaf trees. Land beside one to pick it up, then perch on a branch to start a nest. Five twigs and there is an egg; when it hatches, bring it food: land at the nest with a catch in your feet and it drops in. Five meals and your chick fledges.')}
     ${card('mate', 'A mate', 'Keep well fed and watered and your hawk grows healthy: after its first year its tail turns deep red. In spring a hawk may come to look you over. A red tail, keepsakes, songs and acrobatics (a full stoop, a wingover) win it as your mate.')}
-    ${card('keepsake', 'Keepsakes and pictures', 'Rare keepsakes glint in the grass: land beside one to keep it. Animals seen up close get a page in the field guide. Photo mode (Settings) holds the world still for a picture.')}
+    ${card('keepsake', 'Keepsakes and pictures', 'Rare keepsakes glint in the grass: land beside one to keep it. Animals seen up close get a page in the field guide. Photo mode (Game, in this menu) holds the world still for a picture to share or save.')}
   </div>`;
   hintsPage(G);
   // the hawks of the controls page fly only while it shows
