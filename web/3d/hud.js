@@ -10,6 +10,8 @@ import { icon } from './icons.js';
 
 // each meter's icon (icons.js)
 const ICON_OF = { hunger: 'hunger', thirst: 'thirst', wings: 'stamina' };
+// and its colour (slim bars, James's pick D, 2026-10-23)
+const COL_OF = { hunger: '#ef8a66', thirst: '#86bde6', wings: '#e8b44a' };
 // the message line's kinds: the colour of the icon, and the icon unless the message names one
 export const SAY = {
   event: { col: '#ffd36b', icon: 'keepsake' },      // something happened: a new land, an aim done, a gift
@@ -39,26 +41,26 @@ export function createHud(G, ui, input) {
   let toastT = 0, tipNow = null, tipT = 0, altKey = '';
   const queue = [];
 
-  // a meter: a round bubble that fills from the bottom like a glass, its icon on top; it empties as
-  // the need grows, and flashes when low, faster when nearly empty (that is the whole warning: no
-  // message gets in the way)
+  // a meter: a slim bar beside its icon, the three stacked beside the menu button. It empties as
+  // the need grows; when low it warms and breathes slowly (no flashing: that is the whole warning,
+  // no message gets in the way)
   H.meter = (id, { label, colour, low = .2 }) => {
-    const col = (colour.match(/#[0-9a-f]{6}/gi) || ['#8a7a6a']).pop();
-    meters.insertAdjacentHTML('beforeend', `<span class="m3" data-m="${id}" title="${label}" style="--m:${col}"><span class="bar"><i></i><b></b></span>${icon(ICON_OF[id] || id)}<span class="nm">${label[0].toUpperCase() + label.slice(1)}</span></span>`);
+    const col = COL_OF[id] || (colour.match(/#[0-9a-f]{6}/gi) || ['#8a7a6a']).pop();
+    meters.insertAdjacentHTML('beforeend', `<span class="m3" data-m="${id}" title="${label}" style="--m:${col}">${icon(ICON_OF[id] || id)}<span class="bar"><i></i><b></b></span><span class="nm">${label[0].toUpperCase() + label.slice(1)}</span></span>`);
     const el = meters.lastElementChild, fill = el.querySelector('.bar i'), cap = el.querySelector('.bar b'), m = { v: 1, low };
     all.push(m);
     let key = '';
     // glow: a colour for a soft halo round the bar (say, how clean the last wing beat was), or none;
     // max: how far the bar can fill just now (stamina held down by hunger and thirst), the rest
-    // of the bar hatched off behind a small white mark
+    // of the bar shaded off behind a small white mark
     return (v, glow = '', max = 1) => {
       max = Math.max(0, Math.min(1, max)); v = Math.max(0, Math.min(max, v)); m.v = v;
-      const lo = v < low, k = `${Math.round(v * 100)},${lo},${v < low * .6},${glow},${Math.round(max * 100)}`;
+      const lo = v < low, k = `${Math.round(v * 100)},${lo},${glow},${Math.round(max * 100)}`;
       if (k === key) return; key = k;
-      fill.style.transform = `scaleY(${v.toFixed(3)})`;
-      cap.style.bottom = `${(max * 100).toFixed(1)}%`; el.classList.toggle('capped', max < .99);
+      fill.style.transform = `scaleX(${v.toFixed(3)})`;
+      cap.style.width = `${((1 - max) * 100).toFixed(1)}%`; el.classList.toggle('capped', max < .99);
       el.classList.toggle('glow', !!glow); if (glow) el.style.setProperty('--glow', glow);
-      el.classList.toggle('low', lo); el.classList.toggle('urgent', v < low * .6);
+      el.classList.toggle('low', lo);
     };
   };
   // the message line, top centre over the compass (which fades out under it): white words on a soft dark backing with an icon coloured by
