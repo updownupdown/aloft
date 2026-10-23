@@ -245,8 +245,10 @@ export function foodSystem(G) {
   const ui = document.getElementById('ui3') || document.body;
   ui.insertAdjacentHTML('beforeend', '<button class="takeoff3 eat3 gone" aria-label="Eat">Eat</button><style>#ui3 .takeoff3.eat3 { right: calc(var(--actr) + 150px); }</style>');
   const eatBtn = ui.querySelector('.eat3');
-  eatBtn.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); startMeal(); });
+  eatBtn.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); if (G.actions.eat.when()) startMeal(); else if (G.actions.berries.when()) G.berries.eat(); });
   (G.actions ||= {}).eat = { run: startMeal, when: () => !!b.carry && b.state !== 'fly' && !(b.settle > 0) && !(b.eating > 0) && !b.asleep };
+  // a bush in fruit under your feet (sys/berries.js)
+  G.actions.berries = { run: () => G.berries?.eat(), when: () => !b.carry && !(b.eating > 0) && !b.asleep && !!G.berries?.here() };
   G.actions.leave = { run: leave, when: () => !!b.carry && b.state === 'perch' && !(b.settle > 0) && !(b.eating > 0) };
   function eat(m) {
     caught.set(m.id, G.clock); mice.delete(m.id);
@@ -321,12 +323,12 @@ export function foodSystem(G) {
       if (b.state === 'fly' && b.meal) { const k = Math.max(.2, b.eating / (b.mealT || FOOD.meal)); b.carry = { ...b.meal, food: b.meal.food * k, wet: b.meal.wet * k }; b.meal = null; b.eating = 0; }
       if (b.eating > 0) {   // the meal: bend to the feet and tear, a bite at a time
         const t0 = b.mealT - b.eating, t1 = t0 + dt;
-        if (Math.floor(t1 / .55) > Math.floor(t0 / .55) && b.eating > .3) { G.audio.eat(); const q = [b.p[0], b.p[1] - .25, b.p[2]]; for (let k = 0; k < 3; k++) G.part(q, [(Math.random() - .5) * .8, .5 + Math.random() * .6, (Math.random() - .5) * .8], .5, b.meal?.kind === 'fish' ? [.75, .8, .82] : [.55, .44, .34], .05); }
+        if (Math.floor(t1 / .55) > Math.floor(t0 / .55) && b.eating > .3) { G.audio.eat(); const q = [b.p[0], b.p[1] - .25, b.p[2]]; for (let k = 0; k < 3; k++) G.part(q, [(Math.random() - .5) * .8, .5 + Math.random() * .6, (Math.random() - .5) * .8], .5, b.meal?.kind === 'fish' ? [.75, .8, .82] : b.meal?.kind === 'berries' ? [.7, .16, .14] : b.meal?.kind === 'bilberries' ? [.26, .24, .44] : [.55, .44, .34], .05); }
         b.eatPose = { headPitch: .7 + .35 * Math.max(0, Math.sin(t1 * 11.4)), headYaw: Math.sin(t1 * 3.1) * .2, fluff: .15 };
       } else b.eatPose = null;
       if (b.eating > 0 && b.eating - dt <= 0) finish();
       arrive();
-      eatBtn.classList.toggle('gone', !G.actions.eat.when() || !!G.menu?.open);
+      eatBtn.classList.toggle('gone', !(G.actions.eat.when() || G.actions.berries.when()) || !!G.menu?.open);
       for (let i = caches.length - 1; i >= 0; i--) if (G.day + G.tod - caches[i].day > FOOD.cacheDays) caches.splice(i, 1);
       let reach = 0;
       for (const m of mice.values()) {
@@ -344,7 +346,8 @@ export function foodSystem(G) {
       if (drinking && (G.thirst >= 1 || b.settle > 0 || b.goTo || !waterBy())) drinking = false;
       if (drinking) {
         G.thirst = Math.min(1, G.thirst + FOOD.drink * dt);
-        if ((sipT -= dt) <= 0) { sipT = 1.1; G.audio.drink(); }
+        if (G.thirst >= 1) drinking = false;   // full: stop here, as thirst creeps back before the check above next frame
+        else if ((sipT -= dt) <= 0) { sipT = 1.1; G.audio.drink(); }
         G.hud.did('drink');
       }
       // empty meters slow how fast the wings recover (the meters flash when low: no message)

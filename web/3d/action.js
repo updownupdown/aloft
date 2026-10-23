@@ -8,11 +8,12 @@ import { icon } from './icons.js';
 
 const ACTS = {
   eat: ['Eat', 'prey'],
+  berries: ['Eat', 'berry'],
   leave: ['Leave it here', 'nest'],
   sleep: ['Sleep', 'sleep'],
   takeoff: ['Take off', 'takeoff'],
 };
-const ORDER = ['eat', 'sleep', 'takeoff', 'leave'];   // the first that fits is shown first
+const ORDER = ['eat', 'berries', 'sleep', 'takeoff', 'leave'];   // the first that fits is shown first
 
 export function actionButton(G, ui) {
   ui.insertAdjacentHTML('beforeend', `<button class="act3 gone" aria-label=""><i class="ic"></i><span></span><i class="dots"></i></button>`);

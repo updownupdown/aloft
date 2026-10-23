@@ -101,6 +101,8 @@ export const ICONS = {
   // Aim: Crosshair
   aim: '<circle cx="12" cy="12" r="4"/><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/>',
   // Prey: Mouse (revised)
+  // Eat berries: a sprig of three
+  berry: '<path d="M12 3.5c0 2.5-1 4-3 5.5M12 3.5c.5 2.6 2 4.2 4.5 5M12 3.5c2-1 3.8-.8 5 .4-1.2 1-3 1.3-5-.4z"/><circle cx="8" cy="14" r="3.2"/><circle cx="15.5" cy="13.2" r="3.2"/><circle cx="11.8" cy="18.6" r="3"/>',
   prey: '<path d="M5.5 18c-.8-5.2 2.4-9.5 7-9.5 3.2 0 5.6 2 6.8 4.6l2.4 2c.4.4.2 1-.3 1.1L18.5 18zM9.8 9.4a3 3 0 1 1 5.7 1.2M5.5 17.4c-2.4.3-3.8-1-3.5-3.2.2-1.4 1.5-2 2.5-1.2M10 18v1.5M15 18v1.5"/><circle fill="currentColor" stroke="none" cx="17.5" cy="13.3" r="0.95"/>',
   // Rising air: Spiral
   thermal: '<path d="M12 12a1.8 1.8 0 0 1 3.6 0 3.6 3.6 0 0 1-7.2 0 5.4 5.4 0 0 1 10.8 0 7.2 7.2 0 0 1-14.4 0"/>',
