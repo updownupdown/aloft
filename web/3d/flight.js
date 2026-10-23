@@ -217,8 +217,8 @@ function still(b, c, dt, E) {
   // a tapped spot on the ground (aim.js sets b.goTo): hop there, a hop at a time, stopping at water
   if (b.state === 'ground' && b.goTo && b.settle <= 0 && !(b.eating > 0) && !b.asleep && !(b.wantOff > 0)) {
     const d = Math.hypot(b.goTo[0] - b.p[0], b.goTo[2] - b.p[2]);
-    if (d < .6) b.goTo = null;
-    else { const at = [...b.p]; groundHop(b, E, b.goTo); if (b.p[0] === at[0] && b.p[2] === at[2]) b.goTo = null; return; }
+    if (d < .6 || !(b.goHops > 0)) b.goTo = null;   // never more than three hops toward a tap (aim.js)
+    else { const at = [...b.p]; groundHop(b, E, b.goTo); b.goHops--; if (b.p[0] === at[0] && b.p[2] === at[2]) b.goTo = null; return; }
   }
   if (b.state === 'swim') b.p[1] = WATER + .12 + Math.sin(b.t * 2) * .03;
   if (b.wantOff > 0) b.wantOff -= dt;

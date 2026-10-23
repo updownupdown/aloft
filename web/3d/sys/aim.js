@@ -60,7 +60,7 @@ export function aimSystem(G) {
     return w < .3 ? null : [(X / w * .5 + .5) * innerWidth, (.5 - Y / w * .5) * innerHeight];
   };
   G.input.onTap = (x, y) => {
-    if (!G.R.vp || G.menu?.open) return false;
+    if (!G.R.vp || G.menu?.open || b.asleep) return false;
     const hs = G.aim.hops || []; let best = null, bd = Math.min(innerWidth, innerHeight) * .09;
     for (const h of hs) {
       const q = screen(h.p.x, h.p.y + .12, h.p.z); if (!q) continue;
@@ -94,7 +94,7 @@ export function aimSystem(G) {
     }
     if (b.state === 'perch') { G.part([to[0], to[1] + .1, to[2]], [0, .5, 0], .5, [1, 1, .95], .1); return hopDown(b, to, G.E); }
     if (b.hopAim && Math.hypot(b.hopAim[0] - to[0], b.hopAim[2] - to[2]) < 1.5) to = b.hopAim;   // a worm by the tap
-    b.goTo = to; G.part([to[0], to[1] + .1, to[2]], [0, .5, 0], .5, [1, 1, .95], .1);
+    b.goTo = to; b.goHops = 3; G.part([to[0], to[1] + .1, to[2]], [0, .5, 0], .5, [1, 1, .95], .1);
     return true;
   };
   // perches in front of the hawk, nearest first (limbs and stone tops, never treetops)

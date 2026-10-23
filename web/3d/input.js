@@ -61,7 +61,11 @@ export function createInput(el) {
     }
   };
   el.addEventListener('touchend', end); el.addEventListener('touchcancel', end);
-  el.addEventListener('click', e => I.onTap?.(e.clientX, e.clientY));   // a mouse (touch clicks are prevented)
+  // a mouse; a touch's own click is left out (a button that hides as it is pressed, Sleep or Take
+  // off, would otherwise pass its click through to the ground under it)
+  let touched = -1;
+  addEventListener('touchend', () => { touched = performance.now(); }, true);
+  el.addEventListener('click', e => { if (e.pointerType === 'touch' || performance.now() - touched < 800) return; I.onTap?.(e.clientX, e.clientY); });
   addEventListener('keydown', e => {
     I.onAny?.();
     if (e.code === 'Space' && !e.repeat) I.taps.push({ side: 0, t: performance.now() / 1000 - 1 });
