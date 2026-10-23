@@ -1,14 +1,19 @@
 // Sleep: perched at night, a Sleep button left of Take off. Sleeping, the world fades almost to
 // black as the view turns up under the bird to the sky; the stars stay bright and wheel round the
 // pole star (render.js uStarA, uStarK) for a moment, by as much as is left of the night; then the
-// night is over: the view comes back down and the light returns at first light, the wings full.
+// night is over: the view comes back down while the clock runs on fast through first light, so the
+// day comes up as it would (only quicker), the wings full.
 // On the ground it is too exposed: the button says so instead. A touch wakes you early.
-import { period, DAY } from '../sky.js';
+import { period, light, DAY } from '../sky.js';
 
 // seconds: fading out and turning up, the stars turning, coming back; how fast they turn for a whole
 // night left (radians a second: three eighths of the old 60x night's 45 degrees a second)
 const SLEEP = { down: 4, hold: 2, up: 4, spin: .375 * 45 * Math.PI / 180 };
 const NIGHT = .4;   // the night's share of the day (period(): before .2 and after .8)
+// the clock runs on under the veil until just before the sky starts to pale (the sun at elDark), then
+// on through first light to the sun at elWake as you come back (by the sun here, so a far-north
+// winter dawn comes late); if the sun stays down it falls back to the hours (dark, wake)
+const DAWN = { elDark: -.2, elWake: .1, dark: .18, wake: .26 };
 
 export function sleepSystem(G) {
   const b = G.b, H = G.hud, ui = document.getElementById('ui3') || document.body;
@@ -21,22 +26,16 @@ export function sleepSystem(G) {
     .night3.on { opacity: .92; transition: opacity 4s; background: radial-gradient(ellipse at 50% 35%, #070b14 25%, #000 100%); }
   </style>`);
   const btn = ui.querySelector('.sleep3'), veil = ui.querySelector('.night3');
-  let sleeping = false, slept = 0, bared = false, spin = 0, rate = 0, a0 = 0, woke = false;
+  let sleeping = false, slept = 0, bared = false, spin = 0, rate = 0, a0 = 0, woke = false, early = false, upT = 0, from = 0, span = 0, tDark = DAWN.dark, tWake = DAWN.wake;
+  const ahead = to => { const d = to - G.tod; return d < -.5 ? d + 1 : d; };   // how far the clock is from `to`, across midnight
   const starA = () => ((G.day || 0) * 1.0027 + G.tod) * Math.PI * 2;   // the stars turn once a day (and a little), about the pole
   // the end: the view comes back down and the light returns (early, from a touch: no skip to dawn)
-  const wake = early => {
+  const wake = e => {
     if (!sleeping || woke) return;
-    woke = true; b.skyView = false; veil.classList.remove('on');
-    if (!early) {   // the rest of the night passes while the eyes are closed
-      const left = G.tod > .8 ? 1.2 - G.tod : .2 - G.tod;
-      if (left > 0) G.systems.clock.update((left + .01) * DAY);
-      b.stamina = b.maxStamina ?? 1;
-    }
-    setTimeout(() => {
-      sleeping = b.asleep = woke = false; spin = 0;
-      if (bared) { H.hide(false); bared = false; }
-    }, SLEEP.up * 1000);
+    woke = true; early = e; upT = 0; from = G.tod; span = e ? 0 : Math.max(0, Math.min(.3, ahead(tWake))); b.skyView = false; veil.classList.remove('on');
+    if (!early) b.stamina = b.maxStamina ?? 1;
   };
+  const up = () => { sleeping = b.asleep = woke = false; spin = 0; if (bared) { H.hide(false); bared = false; } };
   const sleep = () => {
     if (b.state === 'ground') { H.say('Too open to sleep on the ground. Find a branch to roost on.', { kind: 'warn', secs: 3, icon: 'sleep' }); return; }
     if (b.state !== 'perch') return;
@@ -44,6 +43,13 @@ export function sleepSystem(G) {
     // the stars turn by as much as the night has left, never faster than SLEEP.spin
     const left = G.tod > .8 ? 1.2 - G.tod : Math.max(0, .2 - G.tod);
     rate = SLEEP.spin * Math.min(1, left / NIGHT);
+    // when the sky will pale and when the sun will be up, here
+    tDark = DAWN.dark; tWake = DAWN.wake; let dark = null;
+    for (let d = .005; d < .7; d += .005) {
+      const t = (G.tod + d) % 1, el = light(t, G.season.lat, G.yearFrac).el;
+      if (dark === null && el > DAWN.elDark) dark = (t - .005 + 1) % 1;
+      if (el > DAWN.elWake) { if (dark !== null) { tDark = dark; tWake = t; } break; }
+    }
     veil.classList.add('on'); b.skyView = true; if (!H.hidden) { H.hide(true); bared = true; }
     H.did('sleep'); G.audio.rustle?.(.3);
   };
@@ -70,7 +76,16 @@ export function sleepSystem(G) {
       if (!woke) {
         spin += rate * dt * Math.min(1, slept / SLEEP.down);   // easing in as the view turns up
         b.stamina = Math.min(b.maxStamina ?? 1, b.stamina + dt * .2);
+        // the night passes under the veil: the clock runs on toward the last of the dark
+        const left = ahead(tDark), t = SLEEP.down + SLEEP.hold - slept;
+        if (left > 0 && left < .5) G.systems.clock.update(Math.min(left, left * dt / Math.max(dt, t)) * DAY);
         if (slept > SLEEP.down + SLEEP.hold) wake(false);
+      } else {
+        // coming back: on through first light, easing out as the light comes up (in game time)
+        upT = Math.min(1, upT + dt / SLEEP.up);
+        const done = (G.tod - from + 1) % 1, step = span * (1 - (1 - upT) ** 2) - done;
+        if (step > 0) G.systems.clock.update(step * DAY);
+        if (upT >= 1) up();
       }
     },
   };
