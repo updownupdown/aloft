@@ -161,12 +161,13 @@ export function regionAt(x, z) {
 export const YEAR_DAYS = 32;
 const JUNE21 = 171 / 365;
 export const yearFrac = (day, tod = .5) => mod((day - 1 + tod) / YEAR_DAYS + JUNE21, 1);
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+// short month names, so the date fits beside the season (James, 2026-10-23: "Dec 25, Summer")
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const MDAYS = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 export function dateOf(yf) {
   let d = Math.floor(yf * 365);
   for (let m = 0; m < 12; m++) { if (d < MDAYS[m]) return { month: m, day: d + 1, text: `${MONTHS[m]} ${d + 1}` }; d -= MDAYS[m]; }
-  return { month: 11, day: 31, text: 'December 31' };
+  return { month: 11, day: 31, text: 'Dec 31' };
 }
 // the sun's declination (radians) through the year
 export const declination = yf => 23.44 * Math.PI / 180 * Math.sin(2 * Math.PI * (yf - 79 / 365));
