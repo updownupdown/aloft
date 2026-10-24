@@ -69,16 +69,16 @@ export function skyDaysSystem(G) {
       const since = G.clock - snowT, fresh = since < DAY * 1.2 && env.snow > .3;
       const morning = smooth(.19, .24, G.tod) * (1 - smooth(.4, .48, G.tod));
       let hush = Math.max((G.snowing || 0) * .5, fresh && (G.snowing || 0) < .1 ? .45 + .55 * morning : 0, forceHush > G.clock ? 1 : 0);
-      if (fresh && morning > .5 && (G.snowing || 0) < .1) once('hush' + G.day, 'Fresh snow', 'Fresh snow, and the world has gone hushed: the wind is soft, and every call carries.', 'how');
+      if (fresh && morning > .5 && (G.snowing || 0) < .1) once('hush', 'Fresh snow', 'Fresh snow, and the world has gone hushed: the wind is soft, and every call carries.', 'how');
       hush = Math.max(hush, E.k);
       G.hush += (hush - G.hush) * Math.min(1, dt * .5);
       G.windK = (G.windK ?? .3) * (1 - .55 * G.hush);   // weather sets it each frame, before this
       // C2
       G.glass += (glass() - G.glass) * Math.min(1, dt * .4);
-      if (G.glass > .5 && b.state === 'fly') once('glass' + G.day, 'Glass-off', 'Evening glass-off: the valley gives up its warmth in a broad, gentle lift. Easy soaring everywhere until dusk.', 'updraft');
+      if (G.glass > .5 && b.state === 'fly') once('glass', 'Glass-off', 'Evening glass-off: the valley gives up its warmth in a broad, gentle lift. Easy soaring everywhere until dusk.', 'updraft');
       // B7
       const F = frost();
-      if (F.k > .3 && F.melt < .5 && G.light.daylight > .2) once('frost' + G.day, 'Hoar frost', 'Hoar frost: every tree and blade white. It melts off as the sun reaches it.', 'how');
+      if (F.k > .3 && F.melt < .5 && G.light.daylight > .2) once('frost', 'Hoar frost', 'Hoar frost: every tree and blade white. It melts off as the sun reaches it.', 'how');
       if (F.k < .01) frostO = null; else if (!frostO || frostDay !== G.day) { frostO = [b.p[0], b.p[2]]; frostDay = G.day; }
       G.frost = F;
     },

@@ -64,11 +64,15 @@ export function createHud(G, ui, input) {
   H.tally = (text, ic) => H.say(text, { kind: 'tally', icon: ic });
   H.reply = (msg, secs = 3) => H.say(msg, { kind: 'reply', secs });
   // a first-time line by its level: a glint (default), a name and a glint ('n'), a warning ('w'), a tally ('t')
+  // Once read, a notice's glint never comes again (James, 2026-10-24: 'Glass-off' each evening was
+  // too much); a name ('n') still says where you are
+  H.known = store.get('known3d', {});
+  H.learned = title => { if (title && !H.known[title]) { H.known[title] = 1; store.set('known3d', H.known); } };
   H.quietly = (how, title, msg, ic) => {
     if (how === 'w') return H.say(msg, { kind: 'warn', secs: 4.5, icon: ic });
     if (how === 't') return H.tally(msg, ic);
     if (how === 'n') H.name(title, ic);
-    H.glint(title, msg, ic);
+    if (!H.known[title]) H.glint(title, msg, ic);
   };
   G.on('takeoff', () => { upAt = now(); });
   // mid-move: just off the ground, in a stoop, flaring to land
@@ -170,7 +174,7 @@ export function createHud(G, ui, input) {
     if (tipNow === id) tipT = Math.min(tipT, .3);
   };
   H.setOff = (key, off) => { if (off) H.off[key] = 1; else delete H.off[key]; store.set('hintsoff3d', H.off); };
-  H.resetTips = () => { H.done = {}; store.set('hints3d', {}); };
+  H.resetTips = () => { H.done = {}; store.set('hints3d', {}); H.known = {}; store.set('known3d', {}); };
   H.fps = n => { q('.fps3').textContent = `${Math.round(n)} FPS`; };
   H.showFps = on => q('.fps3').classList.toggle('hidden', !on);
   // photo mode hides the whole layer
