@@ -7,7 +7,7 @@ import { ring, cloud, TREE_LOOKS } from './shapes.js';
 import { buildHawk, HAWK_SCALE } from './hawk.js';
 import { starPoints, starLines, GAL } from './stars.js';
 import { createClouds, mistOf } from './clouds.js';
-import { LOOKS, GRADE_GLSL, gradeTint } from './look.js';
+import { LOOKS, GRAINS, GRADE_GLSL, gradeTint } from './look.js';
 
 // the sky's pole and the stars to steer by, until sys/nightsea.js sets them
 const POLE = [0, .64, -.768], NOGAZE = new Float32Array(20), NOMOON = [0, 1, 0, 0], DOWN = [0, -1, 0, 0];
@@ -19,10 +19,8 @@ const SEA_D = (() => { const l = Math.hypot(WIND[0], WIND[2]); return [WIND[0] /
 // the small plants that sway in the breeze as the trees do (INST_VS), much more for their size
 // flat plates lying on the ground (puddles, ice, rain pools, leaf litter): drawn pulled a little
 // toward the camera, so the ground under them never shows through in flickering slivers
-// shapes shaded round (smooth normals from their middle, INST_VS uRound): rocks and bushes
-const ROUND = /^(stone|rock_boulder|rock_tor|scrub|bush|berries|bilberries|gorse|sage|thorn|heath)/;
 const DECAL = new Set(['puddle', 'ice', 'pool', 'litter', 'petals']);
-const GRASSY = new Set(['tuft', 'tuft1', 'tuft2', 'tuft3', 'flowerY', 'flowerW', 'flowerP', 'reeds', 'hay']);
+const GRASSY = new Set(['tuft', 'tuft1', 'tuft2', 'tuft3', 'flowerY', 'flowerW', 'flowerP', 'reeds', 'hay', 'meadow']);
 const LOD = { soar: ['soarFar', 70] };
 // the shadow map's size in pixels and its reach round the hawk in metres (look.js P)
 const SHADOW_PX = 1024, SHADOW_R = 120;
@@ -31,7 +29,7 @@ const ANIMAL = /^(mouse|squirrel|marmot|jack|whale|fluke|turtle|crab|lizard|snak
 const BUILT = /^(ru_|wd_|lm_|fence_)/;
 const classOf = key => GRASSY.has(key) ? 3 : key === 'stone' ? 6 : BUILT.test(key) ? 2 : ANIMAL.test(key) ? 1 : 0;
 // instanced shapes that hoar frost whitens (the plants and stones; not the animals)
-const FROSTY = new Set(['tuft', 'tuft1', 'tuft2', 'tuft3', 'scrub', 'bush', 'gorse', 'sage', 'thorn', 'heath', 'reeds', 'stone', 'flowerY', 'flowerW', 'flowerP', 'hay', 'hayLaid', 'bale', 'barrel']);
+const FROSTY = new Set(['tuft', 'tuft1', 'tuft2', 'tuft3', 'meadow', 'scrub', 'bush', 'gorse', 'sage', 'thorn', 'heath', 'reeds', 'stone', 'flowerY', 'flowerW', 'flowerP', 'hay', 'hayLaid', 'bale', 'barrel']);
 const COMMON_FS = `
 uniform vec3 uCam, uSun, uSunCol, uSkyAmb, uGndAmb, uFogCol, uFocus;
 uniform vec3 uZenith;
@@ -75,14 +73,6 @@ float hills(vec3 b) {
 float h21(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
 float vn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f);
   return mix(mix(h21(i), h21(i + vec2(1, 0)), f.x), mix(h21(i + vec2(0, 1)), h21(i + vec2(1, 1)), f.x), f.y); }
-// value noise repeating every P cells (land detail: read relative to uTile, a 4096 m corner near
-// the camera, it carries on seamlessly when the corner moves)
-uniform vec2 uTile;
-float vnP(vec2 p, float P) { vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f);
-  #define HP(o) h21(mod(i + o, P))
-  return mix(mix(HP(vec2(0)), HP(vec2(1, 0)), f.x), mix(HP(vec2(0, 1)), HP(vec2(1, 1)), f.x), f.y);
-  #undef HP
-}
 // the drifting clouds' shadows (sys/air.js S.shadeC: x, z, radius, depth): soft discs that take
 // some of the sun off whatever is under them
 float sunlit(vec3 p) {
@@ -158,7 +148,16 @@ vec3 frosted(vec3 col, vec3 n, vec3 p) {
 vec3 shade(vec3 col, vec3 n, float sun) {
   float d = dot(n, uSun), wrap = max((d + .3) / 1.3, 0.);
   vec3 amb = mix(uGndAmb, uSkyAmb, n.y * .5 + .5);
+#ifdef L_PAINT
+  // D, painterly light (a look test): the sun warmer where it falls, a warm band where light turns
+  // to shade, and the shade tinted with the sky's own hue
+  float term = exp(-d * d * 14.) * sun;
+  vec3 skyT = clamp(uZenith / max(dot(uZenith, vec3(.333)), .03), .6, 1.6);
+  amb *= mix(vec3(1.), skyT, .35 * (1. - wrap * sun));
+  return col * (amb + uSunCol * vec3(1.08, 1., .86) * wrap * sun + uSunCol * vec3(.2, .08, 0.) * term);
+#else
   return col * (amb + uSunCol * wrap * sun);
+#endif
 }
 // mist lying low (clouds.js mistOf, uMist: top, density, how deep its soft top is in metres,
 // lumps of the top): fog thickening from nothing at a lumpy top to full uMist.z metres under it,
@@ -247,6 +246,16 @@ void main() {
     }
     if (k < .99) alpha *= k;   // (alpha to coverage, as above)
   }
+#ifdef L_CROWNS
+  // A, fluffy crowns (a look test): leafy edges cut into a crown where it turns away from the eye,
+  // in noise taken round the crown's own middle (vCrown), so it holds still as the tree sways
+  if (vLeaf > .5 && uDither > .5 && uDither < 1.5) {   // (the trees pass)
+    vec3 q = (vPos - vCrown.xyz) / vCrown.w; float dc = length(vPos - uCam);
+    float rim = 1. - abs(dot(normalize(vNrm), (uCam - vPos) / dc));
+    float lf = vn(q.xz * 7. + q.y * 5.) * .6 + vn(q.xy * 13. + q.z * 9. + 3.) * .4;
+    if (lf < smoothstep(.4, .95, rim) * .72 * (1. - smoothstep(70., 170., dc))) discard;
+  }
+#endif
 #else
   // SOLID: the same shader with no discard anywhere, so the GPU can drop hidden pixels before
   // shading them (early depth; a discard in a shader turns that off for everything it draws)
@@ -258,30 +267,19 @@ void main() {
   vec3 n = normalize(vNrm), col = vCol;
   if (!gl_FrontFacing) { n = -n; col = vColB.r > 1.5 ? vCol : vColB; }   // (the ground's back colour holds its hill shadows, hills())
   float y = vPos.y + uLift;
+#ifdef L_CROWNS
+  // (A) clumps of light and shade in the leaves; the inside of a crown, seen through its cut
+  // edges, in shadow
+  if (vLeaf > .5 && uDither > .5 && uDither < 1.5) {   // (the trees pass)
+    vec3 q = (vPos - vCrown.xyz) / vCrown.w; col *= .87 + .26 * vn(q.xz * 4. + q.y * 3. + 7.);
+    if (dot(vNrm, uCam - vPos) < 0.) col *= .55;
+  }
+#endif
   // the land's hue drifts over a few hundred metres; the grass and flowers take the same drift
   if (uClass > 4.5 && uClass < 5.5 || uClass > 2.5 && uClass < 3.5) {
     float hd = vn(vPos.xz / 380.) - .5, hd2 = vn(vPos.xz / 95. + 17.) - .5;
     col *= vec3(1. + hd * .12 + hd2 * .04, 1. + hd2 * .05, 1. - hd * .12);
   }
-#ifdef L_DETAIL
-  // land detail: soft organic patches over the ground, tens of metres across far off (some drier and
-  // warmer, some lusher), finer mottling nearer, finest at your feet. The noise repeats every 4096 m
-  // (vnP, uTile), so it can be read near the camera at full precision anywhere in the world
-  if (uClass > 4.5 && uClass < 5.5 && y > uWater) {
-    float dd = length(vPos - uCam);
-    vec2 q = vPos.xz - uTile;
-    #define F(n) (float(n) / 4096.)
-    vec2 w = vec2(vnP(q * F(96), 96.), vnP(q * F(96) + 7., 96.)) * 26.;   // a slow warp: no grid, no rows
-    float big = vnP((q + w) * F(150), 150.) * .65 + vnP((q + w) * F(380), 380.) * .35;
-    float mid = vnP((q + w * .3) * F(1900), 1900.) * .6 + vnP(q * F(4600), 4600.) * .4;
-    float fine = vnP(q * F(15000), 15000.);
-    #undef F
-    float kb = 1. - smoothstep(300., 900., dd), km = 1. - smoothstep(50., 220., dd), kf = 1. - smoothstep(6., 45., dd);
-    col *= 1. + (big - .5) * .34 * kb + (mid - .5) * .24 * km + (fine - .5) * .16 * kf;
-    float dry = clamp((big - .5) * 1.6, -1., 1.) * kb;
-    col *= dry > 0. ? mix(vec3(1.), vec3(1.07, 1.02, .85), dry) : mix(vec3(1.), vec3(.9, 1.04, .93), -dry);
-  }
-#endif
   if (uClass > 4.5 && uClass < 5.5 && y > uWater) col *= mix(.7, 1., smoothstep(uWater, uWater + .9, y));   // the wet band of shore
   if (uClass > 1.5 && uClass < 2.5) {
     float side = 1. - abs(n.y), along = dot(vPos.xz, normalize(vec2(-n.z, n.x) + 1e-4));
@@ -342,7 +340,7 @@ void main() {
 const INST_VS = `#version 300 es
 layout(location=0) in vec3 aPos; layout(location=1) in vec3 aNrm; layout(location=2) in vec3 aCol; layout(location=3) in vec3 aColB;
 layout(location=4) in vec4 iA; layout(location=5) in vec4 iB;
-uniform mat4 uVP; uniform float uTime, uSway, uSnowLine, uRound; uniform vec3 uAutumn, uO, uCtr; uniform vec2 uWindD;
+uniform mat4 uVP; uniform float uTime, uSway, uSnowLine; uniform vec3 uAutumn, uO; uniform vec2 uWindD;
 
 out vec3 vPos, vNrm, vCol, vColB; out float vLeaf, vFade, vGone, vLy; out vec4 vCrown;
 void main() {
@@ -365,9 +363,6 @@ void main() {
   vec3 rel = p + (iA.xyz - uO);   // (relative to uO, see LIT_VS)
   vPos = rel + uO;
   vec3 n = aNrm;
-  // smooth shading (James, 10-24): crowns, bushes and rocks shaded round, as if from their middle
-  if (leafy > .5 && uRound < .5) n = normalize(mix(n, normalize(aPos - vec3(0., .62, 0.)), .75));
-  else if (uRound > .5) n = normalize(mix(n, normalize(aPos - uCtr), .7));
   n.xz = vec2(c * n.x - s * n.z, s * n.x + c * n.z); vNrm = n;
   // leaves (greenish vertices) take a per-tree tint and the season's turn
   vec3 col = aCol * (.88 + iB.y * .24);
@@ -381,6 +376,31 @@ void main() {
 const SKY_VS = `#version 300 es
 layout(location=0) in vec2 aP; out vec2 vP;
 void main() { vP = aP; gl_Position = vec4(aP, 1., 1.); }   // at the back: drawn last, where depth is still clear`;
+// C, soft distance: the far land softened by its depth, a disc of taps that only takes in what lies
+// as far off, so the near never bleeds into the far; the sky stays sharp (stars), the grain is put
+// back on what was softened
+const SOFT_FS = `#version 300 es
+precision highp float;
+in vec2 vP; out vec4 frag;
+uniform sampler2D uTex, uDep; uniform vec2 uNF, uPx; uniform float uR;
+${GRADE_GLSL}
+float lin(float d) { float z = d * 2. - 1.; return 2. * uNF.x * uNF.y / (uNF.y + uNF.x - z * (uNF.y - uNF.x)); }
+float farOf(float d) { return d >= .99999 ? 1. : smoothstep(180., 650., lin(d)); }
+void main() {
+  vec2 uv = vP * .5 + .5;
+  vec3 c = texture(uTex, uv).rgb; float d = texture(uDep, uv).r, b = d >= .99999 ? 0. : farOf(d);
+  if (b > .01) {
+    vec3 acc = c; float ws = 1.;
+    for (int i = 0; i < 12; i++) {
+      float a = float(i) * 2.39996, r = sqrt((float(i) + .5) / 12.);
+      vec2 q = uv + vec2(cos(a), sin(a)) * r * uR * b * uPx;
+      float k = farOf(texture(uDep, q).r);
+      acc += texture(uTex, q).rgb * k; ws += k;
+    }
+    c = mix(c, acc / ws, b) * mix(1., grain(), b * .8);
+  }
+  frag = vec4(c, 1.);
+}`;
 const SKY_FS = `#version 300 es
 precision highp float;
 in vec2 vP; out vec4 frag;
@@ -664,8 +684,6 @@ export function createRenderer(gl) {
     let rad = 0, foot = 0;
     for (let o = 0; o < data.length; o += 12) { rad = Math.max(rad, Math.hypot(data[o], data[o + 1], data[o + 2])); foot = Math.max(foot, Math.hypot(data[o], data[o + 2])); }
     m.rad = rad; m.foot = foot;
-    let y0 = 1e9, y1 = -1e9; for (let o = 0; o < data.length; o += 12) { y0 = Math.min(y0, data[o + 1]); y1 = Math.max(y1, data[o + 1]); }
-    m.ctr = [0, (y0 + y1) * .45, 0];   // (the middle smooth shading rounds it from)
     shapes.set(key, m);
   };
   shape('ring', ring()); shape('cloud', cloud());
@@ -830,10 +848,8 @@ export function createRenderer(gl) {
     gl.uniform4fv(P.u.uMist, S.mistU || NOMIST); gl.uniform3fv(P.u.uMistCol, S.mistCol || ONE3);
     const u = P.u;
     if (u.uGradeT) gl.uniform3fv(u.uGradeT, S.gradeT || ONE3);
-    if (u.uGrain) gl.uniform2fv(u.uGrain, S.grain);
+    if (u.uGrain) gl.uniform4fv(u.uGrain, S.grain);
     if (u.uClass) gl.uniform1f(u.uClass, 0);
-    if (u.uRound) gl.uniform1f(u.uRound, 0);
-    if (u.uTile) gl.uniform2f(u.uTile, Math.round(S.cam[0] / 4096) * 4096, Math.round(S.cam[2] / 4096) * 4096);
     if (u.uClip) gl.uniform1f(u.uClip, 0);
     if (u.uWet) gl.uniform1f(u.uWet, S.wet || 0);
     if (u.uSnowAll) gl.uniform1f(u.uSnowAll, env.snow > .5 ? (env.snow - .5) * 1.6 : 0);
@@ -917,6 +933,47 @@ export function createRenderer(gl) {
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     return o;
   }
+  // C, soft distance (a look test): the frame drawn into an offscreen picture (multisampled, as the
+  // screen is), its colour and depth resolved to textures, then SOFT_FS blurs the far land by depth
+  // on the way to the screen
+  const pp = { ms: null, w: 0, h: 0 };
+  let softP = null;
+  function softTargets(w, h) {
+    if (pp.ms && pp.w === w && pp.h === h) return pp;
+    if (pp.ms) { gl.deleteFramebuffer(pp.ms); gl.deleteRenderbuffer(pp.cRB); gl.deleteRenderbuffer(pp.dRB); gl.deleteFramebuffer(pp.res); gl.deleteTexture(pp.col); gl.deleteTexture(pp.dep); }
+    pp.w = w; pp.h = h;
+    const n = Math.min(4, gl.getParameter(gl.MAX_SAMPLES));
+    pp.ms = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER, pp.ms);
+    pp.cRB = gl.createRenderbuffer(); gl.bindRenderbuffer(gl.RENDERBUFFER, pp.cRB); gl.renderbufferStorageMultisample(gl.RENDERBUFFER, n, gl.RGBA8, w, h);
+    gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.RENDERBUFFER, pp.cRB);
+    pp.dRB = gl.createRenderbuffer(); gl.bindRenderbuffer(gl.RENDERBUFFER, pp.dRB); gl.renderbufferStorageMultisample(gl.RENDERBUFFER, n, gl.DEPTH_COMPONENT24, w, h);
+    gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, pp.dRB);
+    const tex = fmt => { const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t); gl.texStorage2D(gl.TEXTURE_2D, 1, fmt, w, h);
+      const f = fmt === gl.RGBA8 ? gl.LINEAR : gl.NEAREST;
+      for (const [k, v] of [[gl.TEXTURE_MIN_FILTER, f], [gl.TEXTURE_MAG_FILTER, f], [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]]) gl.texParameteri(gl.TEXTURE_2D, k, v);
+      return t; };
+    pp.col = tex(gl.RGBA8); pp.dep = tex(gl.DEPTH_COMPONENT24);
+    pp.res = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER, pp.res);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, pp.col, 0);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, pp.dep, 0);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    softP ||= program(gl, SKY_VS, SOFT_FS);
+    return pp;
+  }
+  function soften(S, w, h) {
+    gl.bindFramebuffer(gl.READ_FRAMEBUFFER, pp.ms); gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, pp.res);
+    gl.blitFramebuffer(0, 0, w, h, 0, 0, w, h, gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT, gl.NEAREST);
+    gl.bindFramebuffer(gl.READ_FRAMEBUFFER, null); gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, null);
+    gl.viewport(0, 0, w, h); gl.disable(gl.DEPTH_TEST); gl.disable(gl.BLEND);
+    const F = softP; gl.useProgram(F.p);
+    gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, pp.dep); gl.uniform1i(F.u.uDep, 1);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, pp.col); gl.uniform1i(F.u.uTex, 0);
+    gl.uniform2f(F.u.uNF, .15, R.farView + 300); gl.uniform2f(F.u.uPx, 1 / w, 1 / h);
+    gl.uniform1f(F.u.uR, 3.2 * w / Math.max(1, innerWidth));   // the blur's reach: about 3 CSS pixels
+    if (F.u.uGrain) gl.uniform4fv(F.u.uGrain, S.grain);
+    gl.bindVertexArray(tri.vao); gl.drawArrays(gl.TRIANGLES, 0, 3);
+    gl.enable(gl.DEPTH_TEST);
+  }
   function reflectPass(S, vp, vpO, proj, w, h, pf) {
     R.reflOn = false;
     const W = S.water ?? 0; if (S.cam[1] < W + .3) return false;
@@ -998,7 +1055,6 @@ export function createRenderer(gl) {
     let d = S_.props[key]; const m = shapes.get(key); if (!m || !d.length) return;
     const sw = GRASSY.has(key); if (sw !== S_.swaying) { S_.swaying = sw; gl.uniform1f(prog.u.uSway, sw ? S_.grassSway : 0); }   // the grass and flowers bend in the breeze
     if (prog.u.uClass) gl.uniform1f(prog.u.uClass, classOf(key));
-    const round = ROUND.test(key); if (prog.u.uRound) { gl.uniform1f(prog.u.uRound, round ? 1 : 0); if (round) gl.uniform3fv(prog.u.uCtr, m.ctr); }
     let n = d.length / 8;
     if (P && !CLOUDY.has(key)) {
       if (culled.length < d.length) culled = new Float32Array(d.length * 1.5 | 0);
@@ -1102,7 +1158,7 @@ export function createRenderer(gl) {
     gl.uniform3fv(sky.u.uSunCol, S.sunCol); gl.uniform3fv(sky.u.uCloud, S.cloud); gl.uniform1f(sky.u.uNight, S.night); gl.uniform1f(sky.u.uTime, S.time); gl.uniform1f(sky.u.uAurora, S.aurora || 0); gl.uniform1f(sky.u.uStarA, S.starA || 0); gl.uniform1f(sky.u.uStarK, S.starK || 1); gl.uniform3fv(sky.u.uPole, S.pole || POLE); gl.uniform3fv(sky.u.uGal, GAL);
     gl.uniform4fv(sky.u.uMoon, S.moon || NOMOON); gl.uniform3fv(sky.u.uSunSky, S.sunSky || S.sun); gl.uniform1f(sky.u.uMoonK, S.moonK || 0);
     if (sky.u.uGradeT) gl.uniform3fv(sky.u.uGradeT, S.gradeT);
-    if (sky.u.uGrain) gl.uniform2fv(sky.u.uGrain, S.grain);
+    if (sky.u.uGrain) gl.uniform4fv(sky.u.uGrain, S.grain);
     gl.bindVertexArray(tri.vao); gl.drawArrays(gl.TRIANGLES, 0, 3);
     if (S.night > .02 && !clip) {
       // the stars, added over the sky where nothing stands; a view without the camera's place, so
@@ -1132,7 +1188,9 @@ export function createRenderer(gl) {
     { const fx = S.look[0] - S.cam[0], fy = S.look[1] - S.cam[1], fz = S.look[2] - S.cam[2], l = Math.hypot(fx, fy, fz) || 1; R.viewInfo = { cam: S.cam, f: [fx / l, fy / l, fz / l], fov: S.fov, aspect: w / h }; }
     S_.tris = 0; S_.props = S.props; S_.grassSway = .3 + S.wind * .45;
     S.gradeT = gradeTint(S); S.wet = S.wet || 0;
-    S.grain = [Math.max(1, Math.round(w / Math.max(1, innerWidth) * .9)), .075];   // (look.js grain(): cell in device pixels, strength)
+    // the grain (look.js GRAINS, grain()): cell in device pixels (CSS pixels times the screen's density), strength, blue, frame seed
+    { const g = (GRAINS.find(g => g[0] === R.grain) || GRAINS[3])[2], dpr = w / Math.max(1, innerWidth);
+      S.grain = [g[0] ? Math.max(1, Math.round(dpr * g[0] * .9)) : 1, g[1], g[2], g[3] ? (R.frameN = ((R.frameN || 0) + 1) % 61) + 1 : 0]; }
     const volumes = R.cloudStyle !== 'poly';
     if (volumes) mistOf(S); else S.mistU = null;
     const pf = R.prof;   // perf.js: each pass timed on the GPU, when that is on
@@ -1148,7 +1206,8 @@ export function createRenderer(gl) {
     // the look tests' extra passes: the shadow map (P), the world mirrored in the water (T)
     if (R.look.shadows) { pf?.pass('shadow map'); shadowPass(S); }
     R.reflOn = R.look.reflect && reflectPass(S, vp, vpO, proj, w, h, pf);
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    const soft = R.look.soft && softTargets(w, h);   // (C: drawn offscreen first, softened at the end)
+    gl.bindFramebuffer(gl.FRAMEBUFFER, soft ? soft.ms : null);
     gl.viewport(0, 0, w, h);
     // Solid things first, nearest first, in the shaders with no discard (SOLID), so the GPU can skip
     // shading whatever ends up hidden; then what needs discard (far land, trees); the sky last, only
@@ -1182,7 +1241,7 @@ export function createRenderer(gl) {
     // see-through bits: shadow, water, motes
     pf?.pass('shadow, foam');
     gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA); gl.depthMask(false);
-    gl.useProgram(flat.p); gl.uniformMatrix4fv(flat.u.uVP, false, vpO); gl.uniform3fv(flat.u.uO, O); gl.uniform1f(flat.u.uPx, h * .9); if (flat.u.uGradeT) gl.uniform3fv(flat.u.uGradeT, S.gradeT); if (flat.u.uGrain) gl.uniform2fv(flat.u.uGrain, S.grain);
+    gl.useProgram(flat.p); gl.uniformMatrix4fv(flat.u.uVP, false, vpO); gl.uniform3fv(flat.u.uO, O); gl.uniform1f(flat.u.uPx, h * .9); if (flat.u.uGradeT) gl.uniform3fv(flat.u.uGradeT, S.gradeT); if (flat.u.uGrain) gl.uniform4fv(flat.u.uGrain, S.grain);
     const sh = shadowVerts(S);
     if (sh) {
       gl.uniform1f(flat.u.uPoints, 0);
@@ -1218,6 +1277,7 @@ export function createRenderer(gl) {
       gl.bindVertexArray(fx.vao); gl.drawArrays(gl.POINTS, 0, S.motes.length / 7);
     }
     gl.depthMask(true); gl.disable(gl.BLEND);
+    if (soft) { pf?.pass('soft distance'); soften(S, w, h); }
     pf?.pass(null);
     R.stats.tris = S_.tris | 0;
   };

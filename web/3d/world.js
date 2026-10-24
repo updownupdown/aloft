@@ -266,7 +266,7 @@ export function chunkMesh(cx, cz, N = CELLS, size = CHUNK, drop = 0) {
   const BL = [], bs = N >= 36 ? 4 : 2, bn = N / bs;
   for (let j = 0; j < N; j += bs) for (let i = 0; i < N; i += bs) BL.push(blend(x0 + (i + bs / 2) * C, z0 + (j + bs / 2) * C));
   const out = new Float32Array((N * N * 2 + N * 8) * 3 * 12); let o = 0, bl = null, skirt = false;
-  const bake = lookBakes(x0, z0, N, size, C, H, drop), VC = new Float32Array((N + 1) * (N + 1) * 6);
+  const bake = lookBakes(x0, z0, N, size, C, H, drop);
   // the ground's slope at an edge point of the grid (for the skirts: lit as the ground they hang
   // from, not as a wall, which showed as dark dashes along the seams wherever one peeked out)
   const at = (i, j) => H[Math.max(0, Math.min(N, j)) * (N + 1) + Math.max(0, Math.min(N, i))];
@@ -276,20 +276,17 @@ export function chunkMesh(cx, cz, N = CELLS, size = CHUNK, drop = 0) {
     let ux = bx - ax, uy = by - ay, uz = bz - az, vx = cx_ - ax, vy = cy - ay, vz = cz_ - az;
     let nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx; const l = Math.hypot(nx, ny, nz) || 1; nx /= l; ny /= l; nz /= l;
     if (skirtN) [nx, ny, nz] = skirtN;
-    const mx = (ax + bx + cx_) / 3, mz = (az + bz + cz_) / 3, col = skirt ? groundColour(mx, (ay + by + cy) / 3, mz, Math.abs(ny), bl) : null;
-    const back = skirt ? col : bake.hills(mx, mz);
+    const mx = (ax + bx + cx_) / 3, mz = (az + bz + cz_) / 3, col = groundColour(mx, (ay + by + cy) / 3, mz, Math.abs(ny), bl);
+    // a faint per-facet shade, so the ground reads as cut facets rather than noise
+    const k = 1 + (ih(Math.floor(mx * 3), Math.floor(mz * 3), 77) - .5) * .05; col[0] *= k; col[1] *= k; col[2] *= k;
+    let back = col;
+    if (!skirt) {
+      const a = bake.light(mx, mz, (ay + by + cy) / 3); col[0] *= a; col[1] *= a; col[2] *= a * (1 + (1 - a) * .25);
+      back = bake.hills(mx, mz);
+    }
     for (const [px, py, pz] of [[ax, ay, az], [bx, by, bz], [cx_, cy, cz_]]) {
-      out[o++] = px; out[o++] = py; out[o++] = pz;
-      if (skirt) { out[o++] = nx; out[o++] = ny; out[o++] = nz; out[o++] = col[0]; out[o++] = col[1]; out[o++] = col[2]; out[o++] = col[0]; out[o++] = col[1]; out[o++] = col[2]; continue; }
-      // smooth shading (James, 10-24): each grid corner has one normal and one colour, shared by the
-      // six facets round it (the colour from its smooth slope, the hollow light at it)
-      const i = Math.round((px - x0) / C), j = Math.round((pz - z0) / C), q = (j * (N + 1) + i) * 6;
-      if (!VC[q + 5]) {
-        const sn = bake.normal(px, pz), c = groundColour(px, py, pz, Math.abs(sn[1]), bl), a = bake.light(px, pz, py);
-        VC.set([sn[0], sn[1], sn[2], c[0] * a, c[1] * a, c[2] * a * (1 + (1 - a) * .25)], q); VC[q + 5] ||= 1e-6;
-      }
-      out[o++] = VC[q]; out[o++] = VC[q + 1]; out[o++] = VC[q + 2]; out[o++] = VC[q + 3]; out[o++] = VC[q + 4]; out[o++] = VC[q + 5];
-      out[o++] = back[0]; out[o++] = back[1]; out[o++] = back[2];
+      out[o++] = px; out[o++] = py; out[o++] = pz; out[o++] = nx; out[o++] = ny; out[o++] = nz;
+      out[o++] = col[0]; out[o++] = col[1]; out[o++] = col[2]; out[o++] = back[0]; out[o++] = back[1]; out[o++] = back[2];
     }
   };
   for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
@@ -317,7 +314,6 @@ export function chunkMesh(cx, cz, N = CELLS, size = CHUNK, drop = 0) {
 // and the ground under trees), from the heights round about on a coarse grid;
 // hills(x, z): the eight horizon heights round the spot packed into the back colour (2 + three
 // 4-bit steps a channel; render.js COMMON_FS hills() reads them back);
-// normal(x, z): S, smooth shading, the ground's normal at a grid corner from its neighbours.
 const HILL_D = [10, 22, 45, 90, 180, 350, 650];
 function lookBakes(x0, z0, N, size, C, H, drop) {
   const B = {};
@@ -365,14 +361,6 @@ function lookBakes(x0, z0, N, size, C, H, drop) {
     B.hills = (x, z) => {
       const q = k => Math.round(Math.sqrt(Math.min(1, hz(x, z, k) / 1.5708)) * 15);
       return [2 + q(0) + q(1) * 16 + q(2) * 256, 2 + q(3) + q(4) * 16 + q(5) * 256, 2 + q(6) + q(7) * 16];
-    };
-  }
-  {   // (smooth shading, on for good: James 10-24)
-    const at = (i, j) => i >= 0 && j >= 0 && i <= N && j <= N ? H[j * (N + 1) + i] : height(x0 + i * C, z0 + j * C) - drop;
-    B.normal = (x, z) => {
-      const i = Math.round((x - x0) / C), j = Math.round((z - z0) / C);
-      const nx = at(i - 1, j) - at(i + 1, j), nz = at(i, j - 1) - at(i, j + 1), ny = 2 * C, l = Math.hypot(nx, ny, nz);
-      return [nx / l, ny / l, nz / l];
     };
   }
   return B;
