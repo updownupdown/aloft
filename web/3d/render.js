@@ -612,6 +612,15 @@ function toneMatch(near, far) {
   return out;
 }
 
+// how far a tree's wood at height y has swayed (render's INST_VS sway, the same sum in JS), so a
+// bird perched on a limb moves with it rather than seeming to slide along it
+export function treeSway(t, y, time, wind) {
+  const ay = (y - t.y) / t.s, D = SEA_D, ph = Math.floor(Math.abs(t.id)) % 97 + .05;
+  const wave = Math.sin((t.x * D[0] + t.z * D[1]) * .12 - time * 1.1 + Math.sin((-t.x * D[1] + t.z * D[0]) * .05) * 1.5);
+  const sway = (.35 * Math.sin(time * 1.3 + ph + t.x * .7) + .45 * wave + .35) * ay * ay * (.012 + wind * .02) * t.s;
+  return [D[0] * sway, D[1] * sway];
+}
+
 export function createRenderer(gl) {
   // the shaders, built again with the look tests' #defines (look.js O-V) whenever one is switched (R.relook)
   let lit, inst, sky, solid, solidInst, flat, stars, depthLit, depthInst, impP;
