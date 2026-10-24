@@ -101,12 +101,13 @@ export function createInput(el) {
     if (l && rr) {
       // Thumbs pulled together never move exactly alike, and they wander up and down as they
       // slide in. So a tuck must not read as a turn: sideways steering (yaw, and the tuck's bank)
-      // takes only the part both thumbs share (same way, the smaller of the two), past a small
-      // dead zone, and up/down is dead-zoned too, more so the tighter the tuck.
+      // takes the shift both thumbs share (their mean: a tuck pulls them in by equal and opposite
+      // amounts, which cancel), past a dead zone, and up/down is dead-zoned too, more so the
+      // tighter the tuck. (It once took only a shift with both thumbs the same side of where they
+      // landed, which a tuck almost never is: no steering in a stoop.)
       spread = (R.dx - L.dx) / 2;
       const tk = Math.max(0, -spread), dz = .08 + tk * .14;
-      const common = Math.sign(L.dx) === Math.sign(R.dx) ? Math.sign(L.dx) * Math.min(Math.abs(L.dx), Math.abs(R.dx)) : 0;
-      const side = dead(common, .1);
+      const side = dead((L.dx + R.dx) / 2, .12);
       pitch = -dead((L.dy + R.dy) / 2, dz) * k;
       roll = clampU(dead((R.dy - L.dy) / 2, dz) + side * tk * 1.6);
       yaw = clampU(side);

@@ -124,6 +124,7 @@ export function step(b, c, dt, E) {
   const sTurn = Math.max(5, b.s * (1 - .65 * b.tuck));
   const yawRate = Math.max(-1.9, Math.min(1.9, g * Math.tan(b.roll) / sTurn * (1 + b.flare * .3)));
   b.yaw += (yawRate + (c.yaw || 0) * FLY.yaw) * dt;   // both thumbs slid one way: a flat yaw on top
+  b.steer = Math.min(1, Math.abs(c.yaw || 0) + Math.abs(c.roll || 0) * .6);   // how hard you are steering (aim.js lets go of a mouse for it)
 
   // stall sink and flap lift live in vy, which settles back to zero
   const st = stallness(b, sStall);
