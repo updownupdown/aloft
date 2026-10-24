@@ -104,11 +104,24 @@ function arch() {
   blob(B, 0, .82, 0, .1, PAL.buff, o, [2.4, .5, 1.1], 2);
   return B.out();
 }
-// a sea stack: a pillar of rock standing in the water, a cap of turf on top
+// a sea stack (the landmark): a stout mass of rock the sea cut off the cliff, in uneven tiers that
+// lean and step in, ledges for the seabirds, a cap of turf
 function stack() {
-  reseed(70); const B = builder();
-  prism(B, 0, 0, .15, .13, -.05, .5, 10, PAL.rock); prism(B, .01, 0, .13, .11, .5, .96, 10, PAL.granite);
-  prism(B, .01, 0, .112, .09, .96, 1, 10, PAL.moss);
+  reseed(70); const B = builder(), dark = [.42, .4, .37];
+  prism(B, 0, 0, .34, .3, -.05, .2, 9, dark); prism(B, .02, .01, .3, .26, .2, .45, 9, PAL.rock);
+  prism(B, .05, -.02, .25, .21, .45, .7, 8, PAL.granite); prism(B, .07, -.01, .2, .17, .7, .95, 8, PAL.rock);
+  blob(B, -.16, .24, .14, .16, PAL.rock, dark, [1, 1.3, 1], 1); blob(B, .2, .12, -.12, .14, dark, dark, [1.1, 1, 1], 1);
+  blob(B, .07, .95, -.01, .17, PAL.moss, PAL.moss, [1, .3, 1], 1);
+  return B.out();
+}
+// a skerry: a low hump of rock just off the shore (unit height, about four times as wide), dark and
+// wet at its foot where the sea washes it
+function skerry() {
+  reseed(71); const B = builder(), dark = [.38, .37, .35], wet = [.3, .31, .3];
+  blob(B, 0, .3, 0, .6, PAL.rock, dark, [2.4, 1.1, 1.7], 1);
+  blob(B, .6, .22, .4, .45, PAL.granite, dark, [1.7, 1, 1.4], 1);
+  blob(B, -.7, .15, -.3, .4, dark, wet, [1.8, .9, 1.3], 1);
+  blob(B, .2, .62, -.15, .3, PAL.rock2, PAL.rock, [2.2, 1.3, 1.6], 1);
   return B.out();
 }
 
@@ -192,7 +205,7 @@ export function landsSystem(G) {
   });
   R.shape('lm_stones', stones()); R.shape('lm_cairn', cairn()); R.shape('lm_tower', tower()); R.shape('lm_lighthouse', lighthouse());
   R.shape('rock_tor', tor()); R.shape('rock_hoodoo', hoodoo()); R.shape('rock_boulder', boulder());
-  R.shape('rock_lava', lava()); R.shape('rock_arch', arch()); R.shape('rock_stack', stack());
+  R.shape('rock_lava', lava()); R.shape('rock_arch', arch()); R.shape('rock_stack', stack()); R.shape('rock_skerry', skerry());
   R.shape('lm_lookout', lookout());
   const fenceOf = new Map();   // run id -> { shape, at }
   const fenceShape = f => {

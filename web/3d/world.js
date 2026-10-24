@@ -700,9 +700,10 @@ const LM_KIND = {
   redwood: ['lookout'], taiga: ['lookout', 'stones'], tundra: ['cairn', 'stones'], steppe: ['stones', 'tower'], maquis: ['tower', 'stones'],
   rainforest: ['falls'],
 };
-// a sea stack wants open water 4 to 12 m deep near the shore
+// a sea stack wants shallow water just off the shore (a stack is a piece of the cliff the sea cut
+// off, so it stands close in, never out in open water)
 function stackSpot(x, z) {
-  for (let i = 0; i < 60; i++) { const a = i * 2.39996, r = 10 + i * 9, px = x + Math.cos(a) * r, pz = z + Math.sin(a) * r, h = height(px, pz); if (h < -4 && h > -12) return [px, pz]; }
+  for (let i = 0; i < 60; i++) { const a = i * 2.39996, r = 10 + i * 9, px = x + Math.cos(a) * r, pz = z + Math.sin(a) * r, h = height(px, pz); if (h < -1.5 && h > -6 && coastDist(px, pz) > -120) return [px, pz]; }
   return null;
 }
 // every land for the Journal's lands collection: its key, its name and its one sight to find
@@ -721,7 +722,7 @@ function landmarkCell(gx, gz) {
       if (kind === 'falls') { const f = fallsSpot(x, z); if (f) Object.assign(l, { x: f.x, z: f.z, drop: f.drop, dx: f.dx, dz: f.dz }); else { l.kind = 'cairn'; l.name = LM_NAMES.cairn[0]; } }
       if (kind === 'stack') { const p = stackSpot(x, z); if (p) [l.x, l.z] = p; else l.kind = null; }
       if (l.kind) finishLandmark(l, 86);
-      if (l.kind === 'stack') l.h = -l.y + 16 + ih(gx, gz, 87) * 14;   // its top stands this far over its foot
+      if (l.kind === 'stack') l.h = -l.y + 12 + ih(gx, gz, 87) * 8;   // its top stands this far over its foot (stout: lands.js stack)
       else if (!l.kind || l.y < 1) l = null;
     }
   }
@@ -791,17 +792,19 @@ export function fencesNear(x, z, r) {
 
 // Rocks in the open country, one maybe per 64 m cell: granite tors crowning the moors and the
 // savanna's kopjes, red hoodoos (tall pillars with a cap stone) and small arches in the dry
-// country, boulders in the high country, black lava rocks round the fire mountain, and sea
-// stacks standing in the fjords and bays. { x, y, z, kind, s (height in m), yaw, id }.
+// country, boulders in the high country, black lava rocks round the fire mountain, and skerries,
+// low humps of rock just off the rocky shores (fjords, cliffs, moors, the Mediterranean's maquis,
+// the north's rocky coasts; not the sandy tropics). (Tall thin sea stacks in open water were taken
+// out, James 10-24: they looked unnatural.) { x, y, z, kind, s (height in m), yaw, id }.
 // Solid, and a hawk can stand on top.
 export const ROCK_CELL = 64;
 const ROCKS = {
-  moor: [['tor', .35]], savanna: [['tor', .06]], canyon: [['hoodoo', .3], ['arch', .02]], badlands: [['hoodoo', .14]], desert: [['hoodoo', .03]],
-  mountains: [['boulder', .2]], alpine: [['boulder', .22]], cliffs: [['boulder', .14]], volcano: [['lava', .16]], fjord: [['stack', .35]], coast: [['stack', .3], ['boulder', .05]],
-  tundra: [['boulder', .22]], taiga: [['boulder', .08]], maquis: [['boulder', .1]], steppe: [['tor', .03]],
+  moor: [['tor', .35], ['skerry', .25]], savanna: [['tor', .06]], canyon: [['hoodoo', .3], ['arch', .02]], badlands: [['hoodoo', .14]], desert: [['hoodoo', .03]],
+  mountains: [['boulder', .2]], alpine: [['boulder', .22]], cliffs: [['skerry', .4], ['boulder', .14]], volcano: [['lava', .16]], fjord: [['skerry', .5]], coast: [['skerry', .45], ['boulder', .05]],
+  tundra: [['skerry', .2], ['boulder', .22]], taiga: [['skerry', .12], ['boulder', .08]], maquis: [['skerry', .25], ['boulder', .1]], steppe: [['tor', .03]],
 };
 ROCKS.sahara = [['tor', .04]];   // the Old World's deserts: rounded sandstone outcrops
-const ROCK_S = { tor: 5, hoodoo: 14, boulder: 2.4, lava: 2.2, arch: 12, stack: 0 };
+const ROCK_S = { tor: 5, hoodoo: 14, boulder: 2.4, lava: 2.2, arch: 12, skerry: 0 };
 const rockCache = new Map();
 function rockAt(gx, gz) {
   const key = gx + ',' + gz; if (rockCache.has(key)) return rockCache.get(key);
@@ -814,7 +817,7 @@ function rockAt(gx, gz) {
   if (list && crop > 0) for (const [k, w] of list) if (p < (acc += w * .6 * crop)) { kind = k; break; }
   if (kind) {
     const y = groundAt(x, z), s = ROCK_S[kind] * (.7 + ih(gx, gz, 154) * .7), yaw = ih(gx, gz, 155) * 6.283, id = gx * 9973 + gz;
-    if (kind === 'stack') { if (y < -4 && y > -26 && coastDist(x, z) > -500) o = { x, y, z, kind, s: -y + 8 + ih(gx, gz, 157) * 24, yaw, id }; }   // off the shore, never out at sea
+    if (kind === 'skerry') { if (y < -.4 && y > -5 && coastDist(x, z) > -220) o = { x, y, z, kind, s: -y + 1 + ih(gx, gz, 157) * 3.5, yaw, id }; }   // just off the shore, 1 to 4.5 m out of the water
     else if (y > 1 && groundNormal(x, z)[1] > (kind === 'arch' ? .92 : .82)) o = { x, y, z, kind, s, yaw, id };
   }
   rockCache.set(key, o); if (rockCache.size > 4000) rockCache.delete(rockCache.keys().next().value);
@@ -836,10 +839,10 @@ export function solidsNear(x, z, r) {
   // surface: the hawk adds its own height), by default on the middle of the top
   const pillar = (px, pz, rad, y0, top, perch = { x: px, y: top, z: pz }) => out.push({ x: px, z: pz, r: rad, y0, top, perch: { ...perch, top: true } });
   // rocks are drawn .3 m sunk into the ground (lands.js)
-  const TOP = { tor: 1, hoodoo: 1, boulder: .75, lava: .7, stack: 1 };
+  const TOP = { tor: 1, hoodoo: 1, boulder: .75, lava: .7, skerry: 1 };
   for (const o of rocksNear(x, z, r + 10)) {
     if (o.kind === 'arch') { for (const g of archLegs(o, o.s)) pillar(g.x, g.z, .12 * o.s, o.y - 1, o.y - .3 + o.s * .68); continue; }
-    const rad = { tor: .7, hoodoo: .16, boulder: .45, lava: .5, stack: .14 }[o.kind] * o.s;
+    const rad = { tor: .7, hoodoo: .16, boulder: .45, lava: .5, skerry: 1 }[o.kind] * o.s;
     pillar(o.x, o.z, rad, o.y - 1, o.y - .3 + o.s * TOP[o.kind]);
   }
   for (const l of landmarksNear(x, z, r + 30)) {
@@ -852,7 +855,7 @@ export function solidsNear(x, z, r) {
     if (l.kind === 'cairn') pillar(l.x, l.z, .9, l.y - 1, l.y + 2.33);
     // the lookout's cabin roof, the stack's turf
     if (l.kind === 'lookout') pillar(l.x, l.z, 2.4, l.y - 1, l.y + 16.4, { x: l.x + 1.6, y: l.y + 16.4, z: l.z });
-    if (l.kind === 'stack') pillar(l.x, l.z, .12 * l.h, l.y - 1, l.y - .3 + l.h);
+    if (l.kind === 'stack') pillar(l.x, l.z, .26 * l.h, l.y - 1, l.y - .3 + l.h);
     if (l.kind === 'arch') for (const g of archLegs(l, l.h)) pillar(g.x, g.z, .12 * l.h, l.y - 1, l.y - .5 + l.h * .68);
     if (l.kind === 'stones') for (let i = 0; i < 9; i++) {
       const a = i / 9 * 6.283, c = Math.cos(l.yaw), s = Math.sin(l.yaw), lx = Math.cos(a) * 8, lz = Math.sin(a) * 8, h = 2.6 + (i * 37 % 10) / 10 * 1.8;
