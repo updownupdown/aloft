@@ -99,7 +99,7 @@ export function createQuiet(G, ui, H) {
   }
   card.addEventListener('click', e => {
     if (!e.target.closest('[data-t]')) return;
-    card.classList.add('hidden'); if (open) drop(open); open = null; G.paused = false;
+    card.classList.add('hidden'); if (open) { H.learned?.(open.title); drop(open); } open = null; G.paused = false;
   });
   // a new day clears what waits
   G.on('newDay', () => { for (const g of [...glints]) drop(g); });
