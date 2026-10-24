@@ -31,9 +31,14 @@ export function createAudio() {
     // wind (wind and the stoop whistle) and the music (music.js plays into A.musicBus)
     const bus = k => { const g = ctx.createGain(); g.gain.value = A.level(k); g.connect(A.out); return g; };
     A.master = bus('fx'); A.windBus = bus('wind'); A.musicBus = bus('music');
-    noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
-    const d = noiseBuf.getChannelData(0); let last = 0;
-    for (let i = 0; i < d.length; i++) { const w = Math.random() * 2 - 1; last = last * .97 + w * .03; d[i] = w * .5 + last * 4; }
+    // (made a little long and its tail faded into its head, so the wind, rain and water loops
+    // have no seam: the low rumble jumped where the loop came round, a thump every 2 s that the
+    // wind made loud in the mountains)
+    const n = ctx.sampleRate * 2, fade = ctx.sampleRate * .25 | 0, raw = new Float32Array(n + fade); let last = 0;
+    for (let i = 0; i < raw.length; i++) { const w = Math.random() * 2 - 1; last = last * .97 + w * .03; raw[i] = w * .5 + last * 4; }
+    noiseBuf = ctx.createBuffer(1, n, ctx.sampleRate);
+    const d = noiseBuf.getChannelData(0); d.set(raw.subarray(0, n));
+    for (let i = 0; i < fade; i++) { const k = i / fade; d[i] = raw[i] * Math.sqrt(k) + raw[n + i] * Math.sqrt(1 - k); }
     A.wind = loop('lowpass', 420, .7, A.windBus); A.rain = loop('highpass', 2500, .3);
     // the stoop whistle: air over the wings near top speed
     A.whistle = loop('bandpass', 2600, 9, A.windBus);
