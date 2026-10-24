@@ -1,6 +1,6 @@
 // The pause menu: a sheet of frosted glass (letter.js), tidied (James's pick A, 2026-10-23). On the
 // left, the mark and "Aloft" with Quit beside them, the sections (Today: how am I, what now; Map:
-// where have I been; Journal: what has happened; Guide: who lives here; How to play; Settings), and
+// where have I been; Journal: what has happened; Guide: who lives here; Tutorial; Settings), and
 // Resume, a dark pill, at the bottom. Then the open section's title with its pages down a column of
 // their own (James, 2026-10-23: easier to reach than pills along the top), then the page. Systems add a section with
 // G.menu.tab(id, title) (it returns the pane element), pages inside it with G.menu.page(tab, id,
@@ -18,7 +18,7 @@ import { createToday } from './today.js';
 
 // where each section sits, whichever system adds it first; others follow in the order added
 const ORDER = { today: 0, map: 1, journal: 2, how: 4, play: 5 };
-const TITLES = { today: 'Today', map: 'Map', journal: 'Journal', play: 'Settings', how: 'How to play' };
+const TITLES = { today: 'Today', map: 'Map', journal: 'Journal', play: 'Settings', how: 'Tutorial' };
 const ICON_OF = { today: 'today', map: 'map', journal: 'journal', play: 'settings', how: 'how' };
 // older names: the Game section is Today now, the Guide's pages are in the Journal
 const ALIAS = { game: 'today', guide: 'journal' };
@@ -43,7 +43,7 @@ const ROW_ORDER = { Graphics: 1, 'Frame rate': 2, 'Rest at 30 fps': 3, 'Ground d
   'Sound effects': 1, 'Wind volume': 2, 'Birds and effects': 3, Music: 4, 'Music style': 5, 'Music volume': 6, 'Photo mode': 1, 'Share a ghost flight': 2 };
 // rows that sit under a switch, and are greyed out while it is off (by label)
 const UNDER = { 'Wind volume': 'Sound effects', 'Birds and effects': 'Sound effects', 'Music volume': 'Music', 'Music style': 'Music' };
-// pages that moved: How to play > Hints is Settings > Messages
+// pages that moved: Tutorial (once How to play) > Hints is Settings > Messages
 const MOVED = { 'how/hints': ['play', 'messages'] };
 
 export function createMenu(G, ui) {
@@ -236,7 +236,7 @@ export function createMenu(G, ui) {
   addEventListener('keydown', e => { if ((e.code === 'Escape' || e.code === 'KeyP') && !G.photo) M.set(!M.open); });
   createToday(G, M);         // the Today section: your bird, how it is, where, and the day's aims (today.js)
   G.dev = createDev(G, M);   // Settings > Advanced > Feature list (dev.js)
-  G.dev.add({ id: 'menu-a', area: 'Menu and map', round: 10, title: 'The menu, tidied: Today, Map, Journal, Guide, How to play and Settings down the rail; each section’s pages in a column beside it',
+  G.dev.add({ id: 'menu-a', area: 'Menu and map', round: 10, title: 'The menu, tidied: Today, Map, Journal, Guide, Tutorial and Settings down the rail; each section’s pages in a column beside it',
     how: 'Open the menu: Today shows your bird, food, water, wings and health, and the day’s aims; Map shows the globe; Journal has Songs, Nest and family, Landmarks, Biomes, Things found and the Field guide; Settings has Sound, Graphics, Controls, Messages, Journey and Advanced.' });
   return M;
 }

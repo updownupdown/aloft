@@ -1,8 +1,7 @@
 // The pages that systems write in, shared: each system asks for a section by its place and fills it
 // when the menu opens; the place says which section and page it is on (James, 2026-10-23):
 //   before 10   Today (aims 5 the day's aim, 7 your life)
-//   15          How to play > Things learned (quiet.js notes)
-//   10-29 else  not shown (the old Log: daily records were too much)
+//   10-29       not shown (the old Log: daily records were too much)
 //   30-41       Journal > Nest and family (nest 30, story 40)
 //   42          Journal > Things found (things people left, bottles)
 //   43-59       Journal > Landmarks (wonders 43, landmarks 50), but 45 is Journal > Biomes (the collection)
@@ -10,11 +9,11 @@
 // Songs have their own page, Journal > Songs (page('songs')). The Map has no pages: the globe fills it.
 const PAGES = {
   songs: ['journal', 'Songs', 5], family: ['journal', 'Nest and family', 8], landmarks: ['journal', 'Landmarks', 10], lands: ['journal', 'Biomes', 20],
-  finds: ['journal', 'Things found', 40], notes: ['how', 'Things learned', 45], guide: ['journal', 'Field guide', 60],
+  finds: ['journal', 'Things found', 40], guide: ['journal', 'Field guide', 60],
 };
-const pageOf = o => o < 10 ? 'today' : o === 15 ? 'notes' : o < 30 ? null : o < 42 ? 'family' : o < 43 ? 'finds' : o === 45 ? 'lands' : o < 60 ? 'landmarks' : 'guide';
+const pageOf = o => o < 10 ? 'today' : o < 30 ? null : o < 42 ? 'family' : o < 43 ? 'finds' : o === 45 ? 'lands' : o < 60 ? 'landmarks' : 'guide';
 // a section's heading where the page already says it
-const RETITLE = { Today: 'Today’s aim', Landmarks: 'Places found', Notes: '' };
+const RETITLE = { Today: 'Today’s aim', Landmarks: 'Places found' };
 
 export function journal(G) {
   if (G.journal) return G.journal;

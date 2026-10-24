@@ -1,6 +1,6 @@
 // Tips, as a few words and an icon at the top of the screen. Swipe one away and it never comes
-// back; touch its i to pause and read the whole of it, with a way into How to play; its gear opens
-// How to play > Hints (hints.js), where each group of tips can be turned off. Systems still
+// back; touch its i to pause and read the whole of it, with a way into the Tutorial; its gear opens
+// Settings > Messages (hints.js), where each group of tips can be turned off. Systems still
 // write their tips in full with G.hud.tip(id, when, text); the short line and the icon for each are
 // here, keyed by id (a tip not listed shows its full text with a plain dot).
 import { icon } from './icons.js';
@@ -58,8 +58,8 @@ export const ICON = { glide: 'glide', up: 'flap', bank: 'turn', updown: 'climb',
 export { SHORT };
 
 export function tipBar(G, ui, H) {
-  ui.insertAdjacentHTML('beforeend', `<div class="hint3" role="status"><span class="ic3"></span><span class="tx3"></span><button class="more3" aria-label="Pause and learn more">i</button><button class="set3" aria-label="Choose which hints show">${icon('settings')}</button></div>
-    <div class="tipmore3 hidden" role="dialog" aria-label="Tip"><p></p><div><button data-t="how">How to play</button><button data-t="ok" class="main3">Got it</button></div></div>`);
+  ui.insertAdjacentHTML('beforeend', `<div class="hint3" role="status"><span class="ic3"></span><span class="tx3"></span><button class="set3" aria-label="Choose which hints show">${icon('settings')}</button></div>
+    <div class="tipmore3 hidden" role="dialog" aria-label="Tip"><p></p><div><button data-t="how">Tutorial</button><button data-t="ok" class="main3">Got it</button></div></div>`);
   const el = ui.querySelector('.hint3'), more = ui.querySelector('.tipmore3');
   let tip = null, x0 = null, dx = 0;
   const T = {
@@ -73,20 +73,20 @@ export function tipBar(G, ui, H) {
     get id() { return tip?.id; },
   };
   // swipe it away, either way: gone for good
-  el.addEventListener('pointerdown', e => { if (e.target.closest('.more3, .set3')) return; x0 = e.clientX; dx = 0; el.setPointerCapture(e.pointerId); el.classList.add('drag'); });
+  el.addEventListener('pointerdown', e => { if (e.target.closest('.set3')) return; x0 = e.clientX; dx = 0; el.setPointerCapture(e.pointerId); el.classList.add('drag'); });
   el.addEventListener('pointermove', e => { if (x0 === null) return; dx = e.clientX - x0; el.style.transform = `translateX(calc(-50% + ${dx}px))`; el.style.opacity = String(Math.max(.2, 1 - Math.abs(dx) / 160)); });
   const up = () => {
     if (x0 === null) return; x0 = null; el.classList.remove('drag'); el.style.opacity = '';
     if (Math.abs(dx) > 50 && tip) { el.style.transform = `translateX(calc(-50% + ${Math.sign(dx) * 400}px))`; H.did(tip.id); setTimeout(() => { el.style.transform = ''; }, 400); }
-    else el.style.transform = '';
+    else { el.style.transform = ''; if (Math.abs(dx) < 8) read(); }   // a tap: read it all
   };
   el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
-  // the i: hold the world still and say it all
-  el.querySelector('.more3').addEventListener('click', () => {
+  // tapped: hold the world still and say it all
+  function read() {
     if (!tip) return;
     G.paused = true; more.querySelector('p').textContent = tip.text;
     more.classList.remove('hidden'); T.hide();
-  });
+  }
   el.querySelector('.set3').addEventListener('click', () => G.menu.set(true, 'how', 'hints'));
   more.addEventListener('click', e => {
     const t = e.target.closest('[data-t]')?.dataset.t; if (!t) return;

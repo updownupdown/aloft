@@ -10,14 +10,18 @@
 // companion hawk flies to the thing (sys/fauna.js), and a task with a new move shows its thumbs a
 // few seconds. Until eating, drinking and sleeping are learned, hunger and thirst
 // run at half speed and health holds (G.ease, read by food.js and story.js). A tip stays quiet
-// until its lesson is done (hud.js asks G.lessons.quiet). How to play > Lessons lists it all: fly
-// the first flight again, practise any task, start over, skip. Old saves (no lessons in them) are
-// counted as done.
+// until its lesson is done (hud.js asks G.lessons.quiet). The menu's Tutorial section (James,
+// 2026-10-24) has it all: the Overview lists the chapters in order (the first flight is Flying),
+// each with its progress and Replay; each chapter's own page (howto.js) shows its lessons ticked,
+// with Practise, above the cards that explain it. The payoff: a feather for the first flight and
+// for each chapter finished, once (G.feather, sys/aims.js: each makes the wings last longer).
+// Old saves (no lessons in them) are counted as done.
 import * as W from '../world.js';
 import { period } from '../sky.js';
 import { createCoach } from '../coach.js';
 import { journal, esc } from '../journal.js';
 import { icon } from '../icons.js';
+import { PAGES } from './howto.js';
 
 // ---- the first flight: [id, title, line, keys, left thumb, right thumb, how it is done] -------
 // how: 'fly' (in the air), 'land' (down anywhere), ['hold', s, test(c)] (held that long in
@@ -37,46 +41,46 @@ const STEPS = [
 ];
 
 // ---- the lessons --------------------------------------------------------------------------
-// a chapter: title, icon, its tasks. A task: id, text, say (when it
+// a chapter: title, its page in the Tutorial (howto.js PAGES), icon, its tasks. A task: id, text, say (when it
 // opens), on: an event that does it (ok: a test of the event's argument), or poll(dt, c); move: the
 // thumbs it teaches [left, right, name, line] (the coach shows them until done once); go: where the companion
 // flies (a function of the bird, below), dusk: only toward night
 const CHAPTERS = [
-  { title: 'Food', icon: 'prey', tasks: [
+  { title: 'Food', page: 'food', icon: 'prey', tasks: [
     { id: 'mouse', text: 'Catch a mouse', say: 'Your companion skims low over the grass, hunting. Watch for a mouse, then fold your wings and dive at it: thumbs in and down.', on: 'catch', move: ['in down', 'in down', 'Stoop', 'Thumbs in and down: wings folded, a steep fast dive.'], go: low },
     { id: 'eat', text: 'Eat your catch', say: 'Land with it in your feet and tap Eat. On a branch it is a calmer meal.', on: 'ate' },
   ] },
-  { title: 'Water and rest', icon: 'thirst', tasks: [
+  { title: 'Water and rest', page: 'water', icon: 'thirst', tasks: [
     { id: 'drink', text: 'Drink', say: 'Your companion heads for water. Land at its edge, or on it, and tap the water to drink.', on: 'drink', go: water },
     { id: 'perch', text: 'Land on a branch', say: 'Your companion drops to a tree. Slow down and brake onto a branch where a green ring shows: thumbs out and down.', on: 'land', ok: k => k === 'perch', move: ['out down', 'out down', 'Brake and land', 'Thumbs out and down: wings spread, you sink gently onto it.'], go: tree },
     { id: 'hop', text: 'Hop to another branch', say: 'Perched, tap another green ring to hop across to it.', poll: hopped },
     { id: 'sleep', text: 'Sleep through a night', say: 'When night comes, perch on a branch and tap Sleep. You wake at first light with your wings rested.', on: 'sleep', go: tree, dusk: true },
   ] },
-  { title: 'Rising air', icon: 'thermal', tasks: [
+  { title: 'Rising air', page: 'air', icon: 'thermal', tasks: [
     { id: 'ride', text: 'Ride rising air 60 m up', say: 'Your companion circles where the air rises: leaves spiral there. Fly in, spread your wings wide and circle with it.', poll: rode, move: ['out', 'out', 'Soar', 'Thumbs out: wings wide. Tip one a little lower to circle.'], go: thermal },
     { id: 'rings', text: 'Fly through three rings', say: 'Your companion flies through a ring of mist. Follow it: each ring gives you a burst of speed.', on: 'ring', n: 3, go: rings },
   ] },
-  { title: 'Finding your way', icon: 'south', tasks: [
+  { title: 'Finding your way', page: 'way', icon: 'south', tasks: [
     { id: 'map', text: 'Open the Map', say: 'Open the menu, top left, and look at the Map: it shows where you have been.', on: 'menuTab', ok: id => id === 'map' },
     { id: 'pin', text: 'Pin a place on the Map', say: 'On the Map, tap a place you liked and pin it. Pins show on your compass.', on: 'pin' },
     { id: 'far', text: 'Fly two kilometres to new country', say: 'Your companion sets off to see new country. Follow it a while: two kilometres from where you were at dawn.', on: 'far', go: far },
   ] },
-  { title: 'Songs', icon: 'songs', tasks: [
+  { title: 'Songs', page: 'songs', icon: 'songs', tasks: [
     { id: 'learn', text: 'Learn a songbird’s song', say: 'Songbirds sing from the trees. Perch near one and tap the notes button, bottom left: copy each note it sings.', on: 'learn', go: tree },
     { id: 'sing', text: 'Sing a song back to its bird', say: 'Perched near a songbird you have learned, sing its song: it answers, and some bring gifts.', on: 'song' },
     { id: 'call', text: 'Call out', say: 'Hold Call, top right, to call out: the longer you hold, the louder.', on: 'call' },
   ] },
-  { title: 'A home', icon: 'nest', tasks: [
+  { title: 'A home', page: 'home', icon: 'nest', tasks: [
     { id: 'twig', text: 'Pick up a twig', say: 'Twigs lie under some broadleaf trees. Land beside one to pick it up.', poll: () => G0.carry === 'twig' || !!G0.nest },
     { id: 'nest', text: 'Start a nest', say: 'With a twig in your beak, perch on a branch: your nest begins there.', poll: () => !!G0.nest },
     { id: 'keepsake', text: 'Find a keepsake', say: 'Now and then something glints in the grass. Land beside it to keep it for your nest.', on: 'keepsake' },
   ] },
-  { title: 'Flying well', icon: 'agility', tasks: [
+  { title: 'Flying well', page: 'well', icon: 'agility', tasks: [
     { id: 'zoom', text: 'Zoom up out of a dive', say: 'Dive to pick up speed, then thumbs in and up: a swept climb that keeps its speed.', poll: zoomed, move: ['in up', 'in up', 'Zoom', 'Fast, then thumbs in and up: a climb that keeps its speed.'] },
     { id: 'hover', text: 'Hover', say: 'Slow right down, then thumbs out and up: you hang on beating wings. It tires them fast.', poll: hovered, move: ['out up', 'out up', 'Hover', 'Slow, then thumbs out and up: hang on beating wings.'] },
     { id: 'barrel', text: 'A barrel roll', say: 'Left thumb down and right up, then turn both a full circle anticlockwise together: a roll.', on: 'trick', ok: k => k === 'barrel', move: ['ccw', 'ccw', 'Barrel roll', 'Left down, right up, then both round a full circle anticlockwise.'] },
   ] },
-  { title: 'The wide world', icon: 'south', tasks: [
+  { title: 'The wide world', page: 'world', icon: 'south', tasks: [
     { id: 'guide', text: 'Add a page to the field guide', say: 'Fly close by an animal you have not seen before: it gets a page in the Guide.', on: 'sighted' },
     { id: 'land', text: 'Fly over a new land', say: 'The Earth has many lands: forest, steppe, tundra, desert. Fly until you cross into a new one.', on: 'newLand' },
     { id: 'photo', text: 'Take a picture', say: 'Open the menu: Today has Photo mode. Frame a picture and take it.', on: 'photo' },
@@ -152,7 +156,8 @@ export function lessonsSystem(G) {
   const b = G.b, H = G.hud, ui = document.getElementById('ui3'), coach = createCoach(ui);
   // stage: 'flight' (the first flight), 'learn' (the lessons), 'done'; after: the stage to go
   // back to when a first flight flown again ends
-  const S = { stage: G.fresh ? 'flight' : 'done', step: 0, done: {}, practice: null, after: 'learn', intro: 0 };
+  // paid: the feathers given (flight, and chapters by index); replay: a chapter played again
+  const S = { stage: G.fresh ? 'flight' : 'done', step: 0, done: {}, practice: null, replay: null, after: 'learn', intro: 0, paid: {} };
   let hold = null, prog = 0, flaps = 0, okT = 0, stepT = 0, cur = null, openT = 0, goT = 0, sent = false, coachT = 0, count = 0, introT = 0;
 
   // ---- the HUD: hidden in the first flight, all of it after ----------------------------------
@@ -173,7 +178,8 @@ export function lessonsSystem(G) {
     S.stage = S.after; hold = null; coach.hide(); S.done.flight = 1;
     if (S.stage === 'learn') { cur = null; openT = 1e9; if (!S.intro) introT = skipped ? .5 : 3.5; else openT = 2; }
     classes();
-    if (!skipped) H.say('You can fly. The rest you learn by living.', { kind: 'tutorial', secs: 5, icon: 'done' });
+    if (!skipped) H.say('You can fly. The rest you learn by living.', { kind: 'tutorial', secs: 5, icon: 'check' });
+    if (!skipped) pay('flight', 'First flight');
   }
   coach.onSkip = which => {
     if (which === 'flight') endFlight(true);
@@ -223,9 +229,9 @@ export function lessonsSystem(G) {
     const t = first(); if (!t) return;
     S.intro = 1; G.paused = true;
     card.innerHTML = `<h2>${icon('how')}Lessons</h2>
-      <p>You can fly. Now a few small lessons teach the rest, one at a time: eating, drinking and rest first, then rising air, finding your way, songs, a nest and more.</p>
+      <p>You can fly${S.paid.flight ? ', and that earned your first feather: each feather makes your wings last longer' : ''}. Now a few small lessons teach the rest, one at a time: eating, drinking and rest first, then rising air, finding your way, songs, a nest and more. Finish a chapter for another feather.</p>
       <div class="lfirst3">${icon(CHAPTERS[t.ch].icon)}<span><small>First</small><b>${esc(t.text)}</b><span>${esc(t.say)}</span></span></div>
-      <p>Each new lesson shows as a short line at the top of the screen. All of them, ticked as you go, are in the menu: under <b>Today</b>, and in <b>How to play &gt; Lessons</b>. Nothing is required: fly as you like.</p>
+      <p>Each new lesson shows as a short line at the top of the screen. All of them, ticked as you go, are in the menu: under <b>Today</b>, and in the <b>Tutorial</b>. Nothing is required: fly as you like.</p>
       <div class="lbtns3"><button data-i="go" class="main3">Start</button><button data-i="all">See all lessons</button><button data-i="skip">No lessons, thanks</button></div>`;
     veil.classList.remove('hidden');
   }
@@ -250,22 +256,32 @@ export function lessonsSystem(G) {
   function complete(t, quiet) {
     S.done[t.id] = 1;
     if (cur === t) {
-      if (!quiet) { H.tally(`Done: ${t.text}`, 'done'); G.audio.ring?.(); }
+      if (!quiet) { H.tally(`Done: ${t.text}`, 'check'); G.audio.ring?.(); }
       cur = null; coach.hide(); S.practice = null; openT = 3;
+    }
+    if (CHAPTERS[t.ch].tasks.every(q => S.done[q.id])) {
+      pay(t.ch, CHAPTERS[t.ch].title);
+      if (S.replay === t.ch) S.replay = null;
     }
     if (S.stage === 'learn' && !first()) finish();
   }
+  // the payoff: a feather for each chapter (and the first flight), only the first time
+  function pay(k, title) {
+    if (S.paid[k]) return;
+    S.paid[k] = 1;
+    G.feather?.(title);
+  }
   function finish() {
     S.stage = 'done'; cur = null; coach.hide(); classes();
-    H.say('That is every lesson. From now on each day offers one aim under Today, if you like.', { kind: 'tutorial', secs: 7, icon: 'done' });
+    H.say('That is every lesson. From now on each day offers one aim under Today, each worth a feather.', { kind: 'tutorial', secs: 7, icon: 'check' });
   }
   function skipAll() {
-    S.stage = 'done'; hold = null; cur = null; S.practice = null; S.done.flight = 1; coach.hide(); classes();
-    H.say('Lessons skipped. How to play, in the menu, has them all whenever you want them.', { kind: 'tutorial', secs: 5 });
+    S.stage = 'done'; hold = null; cur = null; S.practice = null; S.replay = null; S.done.flight = 1; coach.hide(); classes();
+    H.say('Lessons skipped. The Tutorial, in the menu, has them all whenever you want them.', { kind: 'tutorial', secs: 5 });
   }
   // an event can tick any task not yet done (doing things ahead counts), the open one aloud
   for (const ev of new Set(TASKS.filter(t => t.on).map(t => t.on))) G.on(ev, (...a) => {
-    if (S.stage === 'flight' || (S.stage === 'done' && !cur)) return;
+    if (S.stage === 'flight' || (S.stage === 'done' && !cur && S.replay == null)) return;
     for (const t of TASKS) if (t.on === ev && (!S.done[t.id] || t === cur) && (!t.ok || t.ok(a[0]))) {
       if (t === cur && t.n && ++count < t.n) continue;
       if (t !== cur && t.n) continue;   // a count only for the open task
@@ -276,7 +292,7 @@ export function lessonsSystem(G) {
   function learn(dt, c) {
     if (!cur) {
       if ((openT -= dt) > 0) return;
-      const t = S.practice ? TASKS.find(q => q.id === S.practice) : S.stage === 'learn' ? first() : null;
+      const t = S.practice ? TASKS.find(q => q.id === S.practice) : S.replay != null ? TASKS.find(q => q.ch === S.replay && !S.done[q.id]) : S.stage === 'learn' ? first() : null;
       if (!t) return;
       open(t);
     }
@@ -311,40 +327,70 @@ export function lessonsSystem(G) {
 
   // ---- Today: the open chapter, its tasks ticked ----------------------------------------------
   const today = journal(G).section(3, 'Lessons');
-  // ---- How to play > Lessons -------------------------------------------------------------------
-  const page = G.menu.page('how', 'lessons', 'Lessons', 5);
-  G.menu.button('play', { label: 'Lessons', sub: 'learn to fly again, or practise any lesson', group: 'journey', onClick: () => G.menu.set(true, 'how', 'lessons') });
-  const tick = t => `<i class="${S.done[t.id] ? 'on' : ''}">${S.done[t.id] ? icon('done') : ''}</i>`;
+  // ---- the Tutorial: the Overview, then a page for each chapter (howto.js adds the cards) -------
+  const over = G.menu.page('how', 'lessons', 'Overview', 5);
+  const pg = Object.fromEntries(PAGES.map(([id, title, order]) => [id, G.menu.page('how', id, title, order)]));
+  const box = {};
+  for (const id in pg) { box[id] = document.createElement('div'); box[id].className = 'lchap3'; pg[id].prepend(box[id]); }
+  G.menu.button('play', { label: 'Tutorial', sub: 'learn to fly again, or replay any lesson', group: 'journey', onClick: () => G.menu.set(true, 'how', 'lessons') });
+  const mark = on => `<i class="${on ? 'on' : ''}">${on ? icon('check') : ''}</i>`;
+  const tick = t => mark(S.done[t.id]);
+  const left = ch => ch.tasks.filter(q => !S.done[q.id]).length;
+  const feather = k => S.paid[k] ? `<span class="lfeather3" title="Feather earned">${icon('feather')}</span>` : '';
+  const live = () => S.stage === 'learn' || !!S.practice || S.replay != null;
   function paint() {
-    const on = S.stage === 'learn' || !!S.practice;
+    const on = live();
     today.el.classList.toggle('hidden', !on);
     if (on) {
-      const t = cur || first(), ch = CHAPTERS[t ? t.ch : 0];
-      const n = CHAPTERS.indexOf(ch) + 1;
-      today.body.innerHTML = `<p class="lch3">${icon(ch.icon)}<b>${esc(ch.title)}</b><small>${n} of ${CHAPTERS.length}</small></p>
+      const t = cur || (S.replay != null ? TASKS.find(q => q.ch === S.replay && !S.done[q.id]) : null) || first(), ch = CHAPTERS[t ? t.ch : 0];
+      const n = CHAPTERS.indexOf(ch) + 2;
+      today.body.innerHTML = `<p class="lch3">${icon(ch.icon)}<b>${esc(ch.title)}</b><small>${n} of ${CHAPTERS.length + 1}</small></p>
         <ul class="lessons3">${ch.tasks.map(q => `<li class="${S.done[q.id] ? 'done' : q === t || q.id === t?.id ? 'now' : 'later'}">${tick(q)}<span>${esc(q.text)}</span></li>`).join('')}</ul>
-        <p class="lnote3">Each lesson opens when the last is done. Nothing is required. <button data-l="page">All lessons</button></p>`;
+        <p class="lnote3">${S.paid[CHAPTERS.indexOf(ch)] ? 'Played again: no new feather.' : 'Finish the chapter for a feather.'} <button data-l="page">Tutorial</button></p>`;
     }
-    const done = TASKS.filter(t => S.done[t.id]).length;
-    page.innerHTML = `<p><b>Learn one thing at a time.</b> ${S.stage === 'done' ? 'You have been through the lessons; fly any again.' : `${done} of ${TASKS.length} lessons done. Each opens when the last is done.`}</p>
-      <div class="lbtns3"><button data-l="flight" class="main3">Fly the first flight again</button>${S.stage !== 'done' ? '<button data-l="skip">Skip the lessons</button>' : ''}<button data-l="over">Start the lessons over</button></div>
-      ${CHAPTERS.map((ch, i) => `<section class="lgrp3"><h3>${icon(ch.icon)}${i + 1}. ${esc(ch.title)}</h3><ul class="lessons3">${ch.tasks.map(q => `<li class="${S.done[q.id] ? 'done' : ''}">${tick(q)}<span>${esc(q.text)}</span><button data-t="${q.id}">Practise</button></li>`).join('')}</ul></section>`).join('')}`;
+    // the Overview: the payoff, then every chapter in order with its progress and Replay
+    const done = TASKS.filter(t => S.done[t.id]).length + (S.done.flight ? 1 : 0), all = TASKS.length + 1;
+    const nf = G.feathers?.() || 0;
+    const row = (i, id, title, d, of, k) => `<li class="${d === of ? 'done' : ''}"><button class="lopen3" data-p="${id}">${mark(d === of)}<b>${i}. ${esc(title)}</b><small>${d === of ? 'Done' : `${d} of ${of}`}</small>${feather(k)}</button><button data-r="${k}">${d === of ? 'Replay' : k === 'flight' ? 'Fly it' : 'Start'}</button></li>`;
+    over.innerHTML = `<div class="lpay3">${icon('feather')}<span><b>Learn Aloft one chapter at a time.</b> The first flight and each chapter you finish earns a feather; so does each day’s aim, under Today. Every feather makes your wings last longer.
+        <small>${nf ? `${nf} feather${nf > 1 ? 's' : ''}: wings +${G.wingBonus?.() || 0}%` : 'No feathers yet'} · ${done} of ${all} lessons done</small></span></div>
+      <ul class="lover3">${row(1, 'controls', 'Flying', S.done.flight ? 1 : 0, 1, 'flight')}${CHAPTERS.map((ch, i) => row(i + 2, ch.page, ch.title, ch.tasks.length - left(ch), ch.tasks.length, i)).join('')}</ul>
+      <div class="lbtns3">${S.stage === 'learn' ? '<button data-l="skip">Skip the lessons</button>' : ''}<button data-l="over">Start all the lessons over</button></div>
+      <p class="lnote3">Replay clears a chapter’s ticks and plays its lessons again. Feathers come only the first time.</p>`;
+    // each chapter's page: its lessons, ticked, with Practise
+    box.controls.innerHTML = `<section class="lgrp3"><h3>${icon('flap')}1. The first flight${feather('flight')}<small>${S.done.flight ? 'Done' : 'Not yet'}</small></h3>
+      <ul class="lessons3">${STEPS.map(st => `<li class="${S.done.flight ? 'done' : ''}">${mark(S.done.flight)}<span>${esc(st[1])}</span></li>`).join('')}</ul>
+      <p class="lnote3">Ten moves, one at a time, with the thumbs shown on screen. <button data-l="flight">Fly the first flight ${S.done.flight ? 'again' : ''}</button></p></section>`;
+    CHAPTERS.forEach((ch, i) => {
+      box[ch.page].innerHTML = `<section class="lgrp3"><h3>${icon(ch.icon)}${i + 2}. ${esc(ch.title)}${feather(i)}<small>${ch.tasks.length - left(ch)} of ${ch.tasks.length}</small></h3>
+        <ul class="lessons3">${ch.tasks.map(q => `<li class="${S.done[q.id] ? 'done' : ''}">${tick(q)}<span>${esc(q.text)}</span><button data-t="${q.id}">Practise</button></li>`).join('')}</ul>
+        <p class="lnote3">${S.paid[i] ? 'Feather earned.' : 'Finish the chapter for a feather.'} <button data-r="${i}">${left(ch) === ch.tasks.length ? 'Start the chapter' : 'Replay the chapter'}</button></p></section>`;
+    });
   }
   G.menu.onOpen(paint);
-  G.on('menuPage', (tab, id) => { if (tab === 'how' && id === 'lessons') paint(); });
+  G.on('menuPage', tab => { if (tab === 'how') paint(); });
+  // replay a chapter: its ticks cleared, its lessons open one by one (the first flight flies again)
+  function replay(k) {
+    if (k === 'flight') return G.lessons.replay();
+    const i = +k; if (!CHAPTERS[i]) return;
+    for (const q of CHAPTERS[i].tasks) delete S.done[q.id];
+    S.replay = i; S.practice = null; cur = null; coach.hide(); openT = .5; G.menu.set(false);
+  }
   const act = e => {
-    const el = e.target.closest('[data-l], [data-t]'); if (!el) return;
+    const el = e.target.closest('[data-l], [data-t], [data-r], [data-p]'); if (!el) return;
     const l = el.dataset.l, t = TASKS.find(q => q.id === el.dataset.t);
+    if (el.dataset.p) return G.menu.set(true, 'how', el.dataset.p);
+    if (el.dataset.r != null) return replay(el.dataset.r);
     if (l === 'page') return G.menu.set(true, 'how', 'lessons');
     if (l === 'flight') return G.lessons.replay();
     if (l === 'skip') { skipAll(); return paint(); }
-    if (l === 'over') { S.done = { flight: 1 }; S.practice = null; cur = null; if (S.stage === 'done') S.stage = 'learn'; openT = 2; classes(); G.menu.set(false); return; }
+    if (l === 'over') { S.done = { flight: 1 }; S.practice = null; S.replay = null; cur = null; if (S.stage === 'done') S.stage = 'learn'; openT = 2; classes(); G.menu.set(false); return; }
     if (t) { S.practice = t.id; cur = null; openT = .5; G.menu.set(false); }
   };
-  page.addEventListener('click', act); today.body.addEventListener('click', act);
+  for (const el of [over, today.body, ...Object.values(box)]) el.addEventListener('click', act);
 
   G.dev?.add({ id: 'lessons', area: 'Menu and story', round: 'Tutorial 10-23', title: 'Lessons: the first flight (HUD hidden, ghost thumbs, Skip), then a chain of lessons under Today; HUD pieces appear as they matter',
-    how: 'Reset all game data (Settings > Journey), or How to play > Lessons > Fly the first flight again. Practise any lesson from that page.', go: () => G.lessons.replay() });
+    how: 'Reset all game data (Settings > Journey), or Tutorial > Flying > Fly the first flight again. Replay any chapter from the Overview; practise any lesson on its page.', go: () => G.lessons.replay() });
 
   classes();
   return {
@@ -353,11 +399,11 @@ export function lessonsSystem(G) {
       G.ease = ease();
       if (introT > 0 && (introT -= dt) <= 0 && !G.menu.open) intro();
       if (S.stage === 'flight') flight(dt, c);
-      else if (S.stage === 'learn' || S.practice) learn(dt, c);
+      else if (S.stage === 'learn' || S.practice || S.replay != null) learn(dt, c);
     },
-    save: () => ({ stage: S.stage === 'flight' ? S.after === 'done' ? 'done' : 'flight' : S.stage, step: 0, done: S.done, after: S.after, intro: S.intro }),
+    save: () => ({ stage: S.stage === 'flight' ? S.after === 'done' ? 'done' : 'flight' : S.stage, step: 0, done: S.done, after: S.after, intro: S.intro, paid: S.paid, replay: S.replay }),
     load(o) {
-      Object.assign(S, o, { practice: null });
+      Object.assign(S, { paid: {}, replay: null }, o, { practice: null });
       if (S.stage === 'learn' && !S.intro) { introT = 2; openT = 1e9; }   // left before the lessons card: it shows first
       if (S.stage === 'flight') { S.step = b.state === 'fly' ? 1 : 0; hold = { h: G.hunger, t: G.thirst, tod: G.tod }; }
       classes();

@@ -1,5 +1,5 @@
 // The coach for the lessons (sys/lessons.js): a card top centre with a phone and two thumbs doing
-// the move (How to play's drawings, howto.js thumbs()), the move's name and one line, the keys on a
+// the move (the Tutorial's drawings, howto.js thumbs()), the move's name and one line, the keys on a
 // keyboard, and a bar that fills while the move is held; ghost thumbs, big soft circles where the
 // thumbs rest on each side of the screen, doing the move too (hidden while a thumb is down); and
 // a Skip pill, top right, that asks which: this flight or every lesson.
@@ -13,7 +13,7 @@ export function createCoach(ui) {
       <span class="cth3"></span>
       <span class="ctx3"><small class="cn3"></small><b class="ct3"></b><span class="cl3"></span><small class="ck3"></small><i class="cbar3"><i></i></i>
         <button class="cskip3 hidden">Skip this one</button></span>
-      <span class="cok3">${icon('done')}</span>
+      <span class="cok3">${icon('check')}</span>
     </div>
     <div class="ghost3 L hidden"><i></i></div><div class="ghost3 R hidden"><i></i></div>
     <div class="skip3 hidden"><button data-s="ask">Skip</button>
