@@ -41,10 +41,10 @@ function countLandmarks(G, more) {
     if (!G.menu.open) return;
     for (const t = performance.now(); lmK < nx * nz && performance.now() - t < 12; lmK++) {
       const i = lmK % nx, j = Math.floor(lmK / nx);
-      for (const l of W.landmarksNear(EARTH.X0 + (i + .5) * LM_TILE, EARTH.Z0 + (j + .5) * LM_TILE, LM_TILE / 2 + 1)) lmIds.add(l.id);
+      for (const l of W.landmarksNear(EARTH.X0 + (i + .5) * LM_TILE, EARTH.Z0 + (j + .5) * LM_TILE, LM_TILE / 2 + 1)) if (W.isNotable(l)) lmIds.add(l.id);
     }
     if (lmK < nx * nz) { setTimeout(step, 40); return; }
-    lmTotal = lmIds.size + (G.isleSights?.() || 0); lmIds.clear();
+    lmTotal = lmIds.size + (G.isleSights?.() || 0) + 2;   // (+ the two ice edges, poles.js) lmIds.clear();
     store.set('lmTotal', { b, n: lmTotal }); more();
   };
   setTimeout(step, 300);

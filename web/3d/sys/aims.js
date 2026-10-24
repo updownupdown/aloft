@@ -95,12 +95,13 @@ export function aimsSystem(G) {
   G.collection = () => ({ lands: KEYS.filter(k => A.seen[k]).length, of: KEYS.length, sights: Object.keys(A.sights).length, feathers: A.feathers });
   let landT = 0;
   // a found landmark counts as its land's sight when it is the kind that land is known for
-  G.on('landmark', l => {
+  const sightOf = l => {
     const land = landOf(l.x, l.z), want = (W.LANDS || []).find(e => e.key === land)?.sight;
     if (land && want && (l.kind === want || (want === 'summit' && l.summit)) && !A.sights[land]) {
       A.sights[land] = 1; G.hud.tally(`${BIOMES[land]?.label || 'This land'}: in your biomes`, 'lands');
     }
-  });
+  };
+  G.on('landmark', sightOf); G.on('sight', sightOf);   // (a landmark found, or one passed that is only scenery)
 
   // ---- the Journal: the day's aim on the Log, the lands on their own page --------------------
   const today = journal(G).section(5, 'Today');
