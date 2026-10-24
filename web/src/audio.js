@@ -332,15 +332,18 @@ export function createAudio() {
   A.heron = () => { tone({ f: 330, f2: 240, dur: .35, vol: .08, type: 'sawtooth', lp: 1100, vib: 24, vibF: 18 }); burst({ f: 900, q: 1, dur: .35, vol: .1 }); };
   A.snort = () => burst({ f: 700, f2: 300, type: 'lowpass', dur: .18, vol: .25 });
   // A songbird note on one of the five song pitches, in that species' own voice (a `kind` of
-  // syllable, w c t b, shapes it; see birdvoice.js) (birdvoice.js:
+  // syllable, u d r l c, shapes it; see birdvoice.js) (birdvoice.js:
   // 0 chickadee, 1 robin, 2 warbler, 3 wren, 4 thrush, 5 finch, 6 owl, 7 lark), sung with the
-  // engine, pitch and space picked in the bird song lab.
-  A.note = (lane, voice = 0, vol = .16, kind = null) => {
+  // engine, pitch and space picked in the bird song lab. `o`: { pan, dist, sp } for the song tests
+  // (songs.js): where the bird sits and which species it is.
+  A.note = (lane, voice = 0, vol = .16, kind = null, o = null) => {
     if (!A.ctx) return;
-    birds().sing(BASE[lane] * keyMul(), voice, vol, kind);
+    birds().sing(BASE[lane] * keyMul(), voice, vol, kind, o);
   };
-  let BV = null;
-  const birds = () => BV || (BV = createBirdVoice(A.ctx, A.master, noiseBuf), BV.set(loadVoice()), BV);
+  let BV = null, songTests = { stereo: false, voices: false };
+  const birds = () => BV || (BV = createBirdVoice(A.ctx, A.master, noiseBuf), BV.set(loadVoice()), BV.tests = songTests, BV);
+  // the song tests (Settings > Advanced > Song tests): A stereo places, B distinct voices
+  A.songTests = t => { songTests = { ...songTests, ...t }; if (BV) BV.tests = songTests; };
   A.setBirdVoice = v => { if (BV) BV.set(v); };
   // songs echo off rock walls (0..1): canyons, fjords, sea cliffs
   A.setPlace = k => { if (A.ctx) birds().place(k); };
