@@ -10,7 +10,7 @@
 // newDay, season, pause, resume, gesture, trick ('stoop' or 'wingover').
 // Weather (sys/weather.js) sets G.rain, G.storm, G.windK (0..1); the tail colour reads G.tailRed.
 import { createGL } from './gl.js';
-import { createRenderer } from './render.js';
+import { createRenderer, treeSway } from './render.js';
 import { createPerf } from './perf.js';
 import { createInput } from './input.js';
 import { createHawk, step, perchAhead } from './flight.js';
@@ -383,6 +383,8 @@ if (qs.has('fps')) G.settings.fpsCap = +qs.get('fps') || 60;
 
     // the scene: light, camera and hawk, then whatever each system adds
     const S = { ...G.light, time: G.t, wind: (G.windK ?? .3) + (G.gustWind || 0), fogDen: .0042 + .0012 * (G.light.night || 0), autumnCol: [.8, .5, .22], props: {}, motes: [] };
+    // perched in a tree, the bird rides its limb's sway (render.js INST_VS), so it never seems to slide
+    if (b.state === 'perch' && b.tree && b.perch) { const [dx, dz] = treeSway(b.tree, b.perch.y, S.time, S.wind); b.p[0] = b.perch.x + dx; b.p[2] = b.perch.z + dz; }
     camera.update(dt, S);
     pf.lap('Core', 'camera, hawk pose');
     for (const s of systems) if (s.scene) { s.scene(S); pf.lap('Systems', s.id); }
