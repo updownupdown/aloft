@@ -26,7 +26,6 @@
 // onTap (a perch ring to hop to) before it counts as a flap. Two fingers dragging together, or
 // turning the phone (gyro, while I.gyroOn), look round instead (read as look: [x, y]).
 
-const MOUSE_LOOK = .4;   // a mouse's look: as two fingers dragged this many times as far
 const TAP_TIME = .3, TAP_MOVE = .06, PAIR = .2;
 // the barrel roll: a stick counts as turning past ROLL_ON of its reach (and stops below ROLL_OFF);
 // both must turn ROLL_TURN of a circle the same way within ROLL_TIME seconds, from the start
@@ -34,7 +33,7 @@ const TAP_TIME = .3, TAP_MOVE = .06, PAIR = .2;
 const ROLL_ON = .55, ROLL_OFF = .3, ROLL_TURN = .85, ROLL_TIME = 2.5, ROLL_START = 1.2;
 
 export function createInput(el) {
-  const I = { L: pad(), R: pad(), keys: new Set(), taps: [], invert: false, onAny: null, onTap: null, radius: 70, drag: 0, dragY: 0, pinch: 1, lk: [0, 0], mk: [0, 0], gyroOn: false };
+  const I = { L: pad(), R: pad(), keys: new Set(), taps: [], invert: false, onAny: null, onTap: null, radius: 70, drag: 0, dragY: 0, pinch: 1, lk: [0, 0], gyroOn: false };
   function pad() { return { id: null, x0: 0, y0: 0, x: 0, y: 0, t0: 0, moved: 0, dx: 0, dy: 0, a: null, a0: 0, turn: 0, tt: 0 }; }
   const size = () => Math.min(innerWidth, innerHeight);
   el.addEventListener('touchstart', e => {
@@ -68,11 +67,6 @@ export function createInput(el) {
   // off, would otherwise pass its click through to the ground under it)
   let touched = -1;
   addEventListener('touchend', () => { touched = performance.now(); }, true);
-  // a mouse moved over the world (no button held) looks round, as two fingers do: it drifts back after
-  el.addEventListener('pointermove', e => {
-    if (e.pointerType !== 'mouse' || e.buttons || performance.now() - touched < 800) return;
-    I.mk[0] -= e.movementX * MOUSE_LOOK; I.mk[1] -= e.movementY * MOUSE_LOOK;
-  });
   el.addEventListener('click', e => { if (e.pointerType === 'touch' || performance.now() - touched < 800) return; I.onTap?.(e.clientX, e.clientY); });
   addEventListener('keydown', e => {
     I.onAny?.();
@@ -139,9 +133,8 @@ export function createInput(el) {
     }
     const dragX = I.drag / size(), dragY = I.dragY / size(), pinch = I.pinch; I.drag = I.dragY = 0; I.pinch = 1;
     const look = [-I.lk[0] / size() * 3 + I.gyro[0], I.lk[1] / size() * 2 + I.gyro[1]];   // drag grabs the view; the gyro turns it
-    const mouseLook = [-I.mk[0] / size() * 3, I.mk[1] / size() * 2];   // a mouse turns it (in flight too: two thumbs there are the wings)
-    I.lk = [0, 0]; I.mk = [0, 0]; I.gyro = [0, 0];   // used up each frame (left running, a flight's two-thumb moves piled up and the view stuck looking up)
-    let out = { pitch: clampU(pitch), roll: clampU(roll), yaw, keyRoll, dragX, dragY, pinch, look: [look[0] + mouseLook[0], look[1] + mouseLook[1]], mouseLook, spread: clampU(spread), flap, held: l || rr || K.size > 0, both: l && rr, barrel };
+    I.lk = [0, 0]; I.gyro = [0, 0];   // used up each frame (left running, a flight's two-thumb moves piled up and the view stuck looking up)
+    let out = { pitch: clampU(pitch), roll: clampU(roll), yaw, keyRoll, dragX, dragY, pinch, look, spread: clampU(spread), flap, held: l || rr || K.size > 0, both: l && rr, barrel };
     // while both sticks are going round together the wings hold what they had: the circle passes
     // through tuck, bank and flare, and the hawk shouldn't lurch through each on the way
     const going = l && rr && Math.abs(L.turn) > .5 && Math.abs(R.turn) > .5 && Math.sign(L.turn) === Math.sign(R.turn);
