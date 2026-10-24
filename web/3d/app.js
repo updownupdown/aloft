@@ -83,11 +83,11 @@ export function appRows(G) {
   };
   G.on('gfxAuto', lv => { if (G.gfx.preset !== 'auto' || lv === G.gfx.level) return; G.gfx.level = lv; G.store.set('gfxAuto3d', lv); applyGfx(); });
   // what each level draws, in words (VIEW above; tree distances in main.js treeGfx; ground in lands.js)
-  const SAYS = ['you see 20% less far, trees to 270 m, full trees within 80 m',
-    'trees to 360 m, full trees within 110 m', 'you see 15% farther, trees to 415 m, full trees within 130 m'];
+  const SAYS = ['you see 20% less far, trees to 300 m (flat pictures past 150 m), full trees within 80 m',
+    'trees to 400 m (flat pictures past 210 m), full trees within 110 m', 'you see 15% farther, trees to 460 m (flat pictures past 280 m), full trees within 130 m'];
   const gfxSub = p => 'How far you see and how many trees are drawn. ' + (p === 'auto'
     ? `Auto starts at Medium and steps down when frames drop, up when there is room, never to Ultra (now ${['Low', 'Medium', 'High'][G.gfx.level]})`
-    : p === 'ultra' ? `Ultra: as High, plus real shadows of trees, rocks and you, and the hills mirrored in the water. Costly: a phone may lose a third of its frames or more`
+    : p === 'ultra' ? `Ultra: as High, with trees to 540 m (flat only past 400 m), plus real shadows of trees, rocks and you, and the hills mirrored in the water. Costly: a phone may lose a third of its frames or more`
     : `${p[0].toUpperCase() + p.slice(1)}: ${SAYS[LEVEL[p]]}`);
   let peekFps = false;
   G.menu.choice('play', { label: 'Graphics', options: PRESETS.map(p => [p, p[0].toUpperCase() + p.slice(1)]), get: () => G.gfx.preset, sub: gfxSub, set: p => {

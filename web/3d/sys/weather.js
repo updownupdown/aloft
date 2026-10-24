@@ -259,25 +259,11 @@ export function weatherSystem(G) {
       // the storm cell, and the bolt
       if (cell && st > .05) (S.props.storm ||= []).push(cell.x, Math.max(80, cam[1] + 60), cell.z, WEATHER.cell.r * 1.1 * Math.min(1, st * 1.5), 0, .5, 0, 0);
       if (bolt) (S.props.bolt ||= []).push(bolt.x, bolt.y, bolt.z, Math.max(150, cam[1] + 140 - bolt.y), bolt.yaw, .5, 0, 0);
-      // rain shafts under the storm and the rain clouds, lightning lighting the clouds from inside,
-      // the ground wet after rain
-      S.wet = 0; S.flash = null; S.rainK = 0;
-      {
-        S.wet = wet * (1 - env.snow);
-        if (bolt) S.flash = [bolt.x, Math.max(80, cam[1] + 60) + 60, bolt.z, flash];
-        else if (cflash > 0 && cflashAt) S.flash = [...cflashAt, cflash];
-        if (G.R.cloudStyle !== 'poly' && G.rain - G.snowing > .15) {
-          const sh = S.props.shaft ||= [], k = G.rain - G.snowing;
-          if (cell && st > .05) {
-            const top = Math.max(80, cam[1] + 60);
-            for (let i = 0; i < 5; i++) {
-              const a = i * 2.4 + 1, r = WEATHER.cell.r * (.15 + .35 * ((i * .37) % 1)), x = cell.x + Math.cos(a) * r, z = cell.z + Math.sin(a) * r, g = Math.max(height(x, z), WATER);
-              sh.push(x, g, z, top - g + 20, a, .3 + .5 * k * st, 0, 0);
-            }
-          }
-          S.rainK = k;   // (render.js hangs a shaft under every other rain cloud, the clouds being laid later)
-        }
-      }
+      // lightning lighting the clouds from inside, the ground wet after rain (no rain shafts: James
+      // 10-24, the dark columns didn't look right; rain is the fog and the drops)
+      S.wet = wet * (1 - env.snow); S.flash = null;
+      if (bolt) S.flash = [bolt.x, Math.max(80, cam[1] + 60) + 60, bolt.z, flash];
+      else if (cflash > 0 && cflashAt) S.flash = [...cflashAt, cflash];
       // the rainbow: a faint, wide arc far off, opposite the sun, its colours running into each
       // other (many small overlapping points read as a smooth band), fading toward its feet
       if (rainbowT > 0) {
