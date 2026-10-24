@@ -54,7 +54,7 @@ export function speciesSystem(G) {
     G.store.set('bird', BIRD);
   }
   // Settings > Your bird: one card, the bird hovering on the breeze, a button to hear its call (the bird lab's renderer,
-  // drawn only while Settings shows), with arrows either side to pick the one before or after
+  // drawn only while Settings shows); swipe it, or tap a dot, for another bird
   // one colour per stat, so the same stat reads the same across birds
   const STAT_COL = { Speed: '#d0703a', Glide: '#3f88c5', Agility: '#8a5cc6', Hover: '#2e9c86', Stamina: '#c99a1e' };
   const STAT_ICON = { Speed: 'speed', Glide: 'glide', Agility: 'agility', Hover: 'hoverstat', Stamina: 'staminastat' };
@@ -68,10 +68,9 @@ export function speciesSystem(G) {
       + (MOVE[id] ? `<span class="traits3"><span class="move">${MOVE[id]}</span><span class="goal">Life goal: ${GOALS[id].title.toLowerCase()}</span></span>` : '');
   };
   const box = G.menu.group('bird');
-  box.insertAdjacentHTML('beforeend', `<div class="birdpick3"><button class="arr3" data-step="-1" aria-label="The bird before">‹</button>
-    <div class="birdcard3"><canvas aria-hidden="true"></canvas><span class="pic"></span><button class="hear3" aria-label="Hear its call"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12" fill="none"/></svg></button><b></b><small></small><span class="birdmore3"></span><button class="home3"></button><span class="dots3">${CHOICES.map(() => '<i></i>').join('')}</span></div>
-    <button class="arr3" data-step="1" aria-label="The next bird">›</button></div>${tried ? `<p><small>Flying as ${nameOf(tried).toLowerCase()} for now, a study bird from the link.</small></p>` : ''}`);
-  const card = box.querySelector('.birdcard3'), pic = card.querySelector('.pic'), dots = [...card.querySelectorAll('.dots3 i')];
+  box.insertAdjacentHTML('beforeend', `<div class="birdpick3">
+    <div class="birdcard3"><canvas aria-hidden="true"></canvas><span class="pic"></span><button class="hear3" aria-label="Hear its call"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12" fill="none"/></svg></button><b></b><small></small><span class="birdmore3"></span><button class="home3"></button><span class="dots3">${CHOICES.map((c, k) => `<button data-to="${k}" aria-label="${nameOf(c)}"><i></i></button>`).join('')}</span></div></div>${tried ? `<p><small>Flying as ${nameOf(tried).toLowerCase()} for now, a study bird from the link.</small></p>` : ''}`);
+  const card = box.querySelector('.birdcard3'), pic = card.querySelector('.pic'), dots = [...card.querySelectorAll('.dots3 button')];
   const show = () => {
     const id = tried || BIRD, i = CHOICES.indexOf(BIRD);
     pic.dataset.bird = id; card.querySelector('b').textContent = nameOf(id); card.querySelector('small').textContent = tried ? 'A study bird' : BLURB[id] || '';
@@ -88,16 +87,26 @@ export function speciesSystem(G) {
       G.menu.set(false); G.hud.reply(`You fly from ${HOME[BIRD]}.`, 4); return;
     }
     if (e.target.closest('.hear3')) { G.audio.unlock?.(); G.audio.call?.(tried || BIRD); return; }
-    const a = e.target.closest('[data-step]'); if (!a || tried) return;
-    use(CHOICES[(CHOICES.indexOf(BIRD) + +a.dataset.step + CHOICES.length) % CHOICES.length]); G.store.set('bird', BIRD); show();
+    const d = e.target.closest('[data-to]'); if (d && !tried) pick(CHOICES[+d.dataset.to]);
   });
+  const pick = id => { use(id); G.store.set('bird', BIRD); show(); };
+  const step = n => { if (!tried) pick(CHOICES[(CHOICES.indexOf(BIRD) + n + CHOICES.length) % CHOICES.length]); };
+  // swipe the card sideways for the next bird (left) or the one before (right)
+  let sx = null, sy = 0;
+  card.addEventListener('pointerdown', e => { if (!e.target.closest('button')) { sx = e.clientX; sy = e.clientY; } });
+  card.addEventListener('pointerup', e => {
+    if (sx === null) return;
+    const dx = e.clientX - sx, dy = e.clientY - sy; sx = null;
+    if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.5) step(dx < 0 ? 1 : -1);
+  });
+  card.addEventListener('pointercancel', () => { sx = null; });
   G.dev?.add({ id: 'albatross', area: 'Birds', round: 'Earth', pr: 215, title: 'Royal albatross: a seabird to fly, from Taiaroa Head',
     how: 'Settings > Journey > Your bird: the albatross, then Fly from its home. Skim low over the sea in S-turns across the wind to soar without flapping.',
     go: () => { use('albatross'); G.store.set('bird', BIRD); show(); card.querySelector('.home3').click(); } });
   let shown = false;
   G.on('menuTab', () => { shown = false; }); G.on('menuPage', (tab, id) => { shown = tab === 'play' && id === 'journey'; });
   G.on('resume', () => { shown = false; });
-  queueMicrotask(() => startLab(card.querySelector('canvas'), [pic], () => 'hover', { active: () => shown && G.menu.open }));
+  queueMicrotask(() => startLab(card.querySelector('canvas'), [pic], () => 'hover', { active: () => shown && G.menu.open, backdrop: false }));
   return {
     id: 'species',
     // the owl's night sight: the dark lifts as if the owl's gift were on

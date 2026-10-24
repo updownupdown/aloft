@@ -254,9 +254,17 @@ if (qs.has('fps')) G.settings.fpsCap = +qs.get('fps') || 60;
   G.menu.toggle(play, { label: 'Rest at 30 fps', sub: 'perched or on the ground and left alone a few seconds: half the frames, less battery', get: () => G.settings.rest, set: v => { G.settings.rest = v; store.set('rest3d', v); } });
   G.menu.toggle(play, { label: 'Show frame rate', get: () => G.settings.fps, set: v => { G.settings.fps = v; store.set('fps3d', v); H.showFps(v); } });
   G.menu.button(play, { label: 'Music lab', sub: 'shape the music: strings, piano, pace', href: 'musiclab.html', group: 'sound' });
-  G.menu.button(play, { label: 'Start a new journey', sub: 'in your bird’s own country', group: 'play', onClick: el => {
-    if (el.dataset.sure) { G.resetting = true; store.set('save3d', null); location.reload(); } else { el.dataset.sure = 1; el.firstChild.textContent = 'Tap again to start over '; }
+  // one way to start over: every aloft. key goes (journey, journal, world seed, settings), as on the first
+  // launch; three taps, each saying how many are left (James, 2026-10-24)
+  const ASK = ['Reset all game data ', 'Tap twice more to erase everything ', 'Tap once more: this can’t be undone '];
+  const reset = G.menu.button(play, { label: 'Reset all game data', sub: 'your journey, journal, world and settings, as on the first launch', group: 'play', onClick: el => {
+    const n = (+el.dataset.taps || 0) + 1;
+    if (n < 3) { el.dataset.taps = n; el.firstChild.textContent = ASK[n]; el.classList.add('warn3'); return; }
+    G.resetting = true;
+    try { for (const k of Object.keys(localStorage)) if (k.startsWith('aloft.')) localStorage.removeItem(k); } catch { /* private mode */ }
+    const u = new URL(location.href); u.searchParams.delete('seed'); location.replace(u.href);
   } });
+  G.menu.onOpen(() => { delete reset.dataset.taps; reset.firstChild.textContent = ASK[0]; reset.classList.remove('warn3'); });
   appRows(G);
   createLooks(G, R);   // Settings > Advanced > Look tests (look.js)
   G.dev?.add({ id: 'frame-cost', area: 'Settings and performance', round: 'R8', title: 'Frame cost: milliseconds per system and per render pass', how: 'Fly a minute, then Settings > Dev tools > Frame cost. GPU times show where the phone offers timer queries; add ?perf=deep to time them anyway (slower).' });

@@ -87,7 +87,8 @@ export function poseAt(mode, t) {
 }
 
 // getMode(cell) names each cell's mode; active() false skips drawing (a menu that is shut)
-export function startLab(canvas, cells, getMode, { active = () => true, eye = [0, .8, 1.75] } = {}) {
+// backdrop: false leaves the canvas clear, for a page that paints its own sky behind the bird
+export function startLab(canvas, cells, getMode, { active = () => true, eye = [0, .8, 1.75], backdrop = true } = {}) {
   const gl = canvas.getContext('webgl2', { antialias: true, alpha: true, premultipliedAlpha: true });
   if (!gl) return false;
   gl.enable(gl.DEPTH_TEST); gl.enable(gl.SCISSOR_TEST);
@@ -112,8 +113,10 @@ export function startLab(canvas, cells, getMode, { active = () => true, eye = [0
       if (r.bottom < cr.top || r.top > cr.bottom || r.width < 2) return;
       const x = Math.round((r.left - cr.left) * dpr), y = Math.round((cr.bottom - r.bottom) * dpr), w = Math.round(r.width * dpr), h = Math.round(r.height * dpr);
       gl.viewport(x, y, w, h); gl.scissor(x, y, w, h);
-      gl.useProgram(B.p); gl.uniform1f(B.u.uSeed, i * 5.3); gl.uniform1f(B.u.uShift, t * .15);
-      gl.bindVertexArray(bgVao); gl.disable(gl.DEPTH_TEST); gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4); gl.enable(gl.DEPTH_TEST);
+      if (backdrop) {
+        gl.useProgram(B.p); gl.uniform1f(B.u.uSeed, i * 5.3); gl.uniform1f(B.u.uShift, t * .15);
+        gl.bindVertexArray(bgVao); gl.disable(gl.DEPTH_TEST); gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4); gl.enable(gl.DEPTH_TEST);
+      }
 
       const id = el.dataset.bird || 'hawk', { pose, roll, pitch, still, spin = 0 } = poseAt(getMode(el), t + i * .37);
       const tris = id === 'hawk' ? buildHawk(pose) : buildBird(id, pose);

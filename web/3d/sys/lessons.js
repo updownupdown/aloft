@@ -344,7 +344,7 @@ export function lessonsSystem(G) {
   page.addEventListener('click', act); today.body.addEventListener('click', act);
 
   G.dev?.add({ id: 'lessons', area: 'Menu and story', round: 'Tutorial 10-23', title: 'Lessons: the first flight (HUD hidden, ghost thumbs, Skip), then a chain of lessons under Today; HUD pieces appear as they matter',
-    how: 'Start a new journey (Settings > Journey), or How to play > Lessons > Fly the first flight again. Practise any lesson from that page.', go: () => G.lessons.replay() });
+    how: 'Reset all game data (Settings > Journey), or How to play > Lessons > Fly the first flight again. Practise any lesson from that page.', go: () => G.lessons.replay() });
 
   classes();
   return {

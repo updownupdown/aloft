@@ -70,7 +70,7 @@ const SHIPPED = [
   ['ring-courses', 'Flight', 93, 'Rings in climbing courses, new each day', 'Find a low ring; the next one glows a little higher.'],
   ['forecast', 'HUD', 93, 'Weather forecast on the day dial', 'Watch the band beside the dial before rain.'],
   ['stamina-cap', 'Food and water', 95, 'Low food or water lowers max stamina', 'Let hunger fall below a third: the wings bubble shows a hatched cap.'],
-  ['new-world', 'Settings and performance', 90, 'Start a new world', 'Game > Play > Start a new world (tap twice).'],
+  ['new-world', 'Settings and performance', 90, 'Reset all game data', 'Settings > Journey > Reset all game data (tap three times).'],
   ['biomes', 'World', 89, 'Biomes in patches, seeded worlds, 20 lands', 'Fly a few km in any direction; Journal > Biomes.'],
   ['yaw', 'Flight', 88, 'Both thumbs slid one way yaw', 'Slide both thumbs left together.'],
   ['map-fly', 'Menu and map', 81, 'Map: double tap to fly there', 'Menu > Map, double tap a known place.'],
