@@ -28,9 +28,14 @@ export const KINDS = {
   cloudW: { base: -.04, sigma: .07, col: [.98, .97, .95], under: [.8, .81, .85],
     lobes: Array.from({ length: 11 }, (_, i) => { const a = i * 2.4, r = i ? .35 + (i % 4) * .3 : 0; return [Math.cos(a) * r * 1.3, .08 + (i % 3) * .05, Math.sin(a) * r * .75, .5 + (i % 3) * .07, .22 + (i % 2) * .06, .45 + (i % 4) * .05]; }) },
   cloudT: { base: -.06, sigma: .09, col: [.99, .98, .96], under: [.76, .77, .82],
-    lobes: [...Array.from({ length: 5 }, (_, i) => { const a = i / 5 * Math.PI * 2; return [Math.cos(a) * .5, .15, Math.sin(a) * .5, .5, .4, .5]; }),
-      ...Array.from({ length: 3 }, (_, i) => { const a = i / 3 * Math.PI * 2 + .5; return [Math.cos(a) * .28 + .05, .75, Math.sin(a) * .28, .42, .42, .42]; }),
-      [.1, 1.25, -.05, .36, .38, .36], [-.12, 1.3, .1, .3, .32, .3], [.05, 1.7, 0, .27, .26, .27]] },
+    // (heaped unevenly and leaning downwind, not stacked balls: James 10-24, the stacked one looked silly)
+    lobes: (() => {
+      let sd = 11; const r = () => (sd = (sd * 16807) % 2147483647) / 2147483647, L = [];
+      for (let i = 0; i < 7; i++) { const a = i / 7 * 6.283 + r() * .6, d = .35 + r() * .3; L.push([Math.cos(a) * d * 1.2, .12 + r() * .1, Math.sin(a) * d * .8, .38 + r() * .2, .32 + r() * .1, .38 + r() * .18]); }
+      for (let i = 0; i < 6; i++) { const a = r() * 6.283, d = .1 + r() * .35, y = .45 + r() * .5; L.push([.12 + Math.cos(a) * d + y * .12, y, Math.sin(a) * d * .8, .3 + r() * .14, .28 + r() * .12, .3 + r() * .12]); }
+      for (let i = 0; i < 5; i++) { const a = r() * 6.283, d = r() * .3, y = 1 + r() * .45; L.push([.3 + Math.cos(a) * d + (y - 1) * .2, y, Math.sin(a) * d * .7, .2 + r() * .14, .2 + r() * .1, .2 + r() * .12]); }
+      return L;
+    })() },
   cloudP: { base: -.06, sigma: .085, col: [.98, .97, .95], under: [.82, .83, .86],
     lobes: Array.from({ length: 6 }, (_, i) => { const a = i * 2.1 + .4, r = i ? .55 + (i % 3) * .35 : 0; return [Math.cos(a) * r, .12 + (i % 2) * .08, Math.sin(a) * r * .8, .3 + (i % 3) * .05, .26, .3 + (i % 2) * .05]; }) },
   storm: { base: -.05, sigma: .06, col: [.78, .78, .8], under: [.36, .37, .42],
@@ -86,7 +91,7 @@ void main() {
   if (abs(ld.y) > 1e-5) { float tb = (uK.y - lo.y) / ld.y; if (ld.y > 0.) { fromBelow = tb > 0.; tA = max(tA, tb); } else tB = min(tB, tb); }
   else if (lo.y < uK.y) discard;
   if (tB <= tA) discard;
-  float tau = 0., tn = 1e9, wsum = 0.; vec3 n = vec3(0.);
+  float tau = 0., tn = 1e9, wsum = 0., tw = 0.; vec3 n = vec3(0.);
   int N = int(uK.x);
   for (int i = 0; i < ${MAXL}; i++) {
     if (i >= N) break;
@@ -102,7 +107,7 @@ void main() {
     // the lobe's outward normal where the ray goes in; the nearer lobes show
     vec3 nl = (fromBelow && t1 <= tA + 1e-4) ? vec3(0., -1., 0.) : normalize((q + e * t1) * iv);
     float w = I * exp(-(t1 - tA) * 3.);
-    n += nl * w; wsum += w; tn = min(tn, t1);
+    n += nl * w; wsum += w; tw += t1 * w; tn = min(tn, t1);
   }
   if (tau <= 1e-5) discard;
   n = normalize(n / wsum);
@@ -110,10 +115,13 @@ void main() {
   if (facets) n = normalize(floor(n * 1.15 + .5) + n * .2);   // snapped to a few ways, in the cloud's own frame, so they turn with it
   // back to the world's frame
   n = vec3(c * n.x - s * n.z, n.y, s * n.x + c * n.z);
-  vec3 hit = uCam + rd * (tn * vI.w);
+  // where the light is taken: the lobes' entry points weighted as their normals are, so the edge of
+  // a nearer lobe doesn't step the shade (it showed as rings across a cloud's base)
+  float te = wsum > 0. ? tw / wsum : tn;
+  vec3 hit = uCam + rd * (te * vI.w);
   float od = tau * vI.w * uK.z * (.7 + vY.z * .6);   // the optical depth, thicker for a denser tint
   float alpha = (1. - exp(-od)) * vY.w;
-  vec3 lp = lo + ld * tn;   // where the ray goes in, in the cloud's frame
+  vec3 lp = lo + ld * te;   // where the light is taken, in the cloud's frame
   float nz = .5;
   if (uStyle > 1.5) {
     // billows: a slow 3D noise eats into the thin rim and mottles the light
@@ -133,20 +141,16 @@ void main() {
   float inside = step(tA, 1e-4) * step(tn, 1e-4);
   wrap = mix(wrap, .55, inside);
   vec3 lit = col * (uSkyAmb * 1.1 + uGndAmb * .15 + uSunCol * (.4 + .6 * wrap));
-#ifdef L_UNDERGLOW
-  // E (look test): at sunrise and sunset the clouds' undersides lit warm from below the horizon
+  // at sunrise and sunset the clouds' undersides lit warm from below the horizon (James kept it, 10-24)
   { float gold = smoothstep(.3, .04, uSun.y) * smoothstep(-.12, -.01, uSun.y);
     lit += uSunCol * vec3(1., .6, .36) * gold * (.45 * low + .3 * max(-n.y, 0.)) * (.4 + .6 * uK.w); }
-#endif
-#ifdef L_GLORY
-  // G (look test): the glory, rings of colour opposite the sun on a cloud seen from above
+  // the glory: rings of colour opposite the sun on a cloud seen from above (render.js glory())
   if (hit.y < uCam.y) {
     float a = degrees(acos(clamp(dot(rd, -uSun), -1., 1.)));
     #define SP(t) (vec3(smoothstep(.45, .95, t) + .45 * (1. - smoothstep(0., .2, t)), clamp(1. - abs(t - .55) * 2.6, 0., 1.), 1. - smoothstep(.1, .55, t)) * smoothstep(0., .18, t) * smoothstep(1., .82, t))
-    lit += uSunCol * (SP((a - .8) / 2.4) * .8 + SP((a - 3.6) / 2.6) * .45 + vec3(.25) * smoothstep(1.4, 0., a)) * .3 * smoothstep(.04, .15, uSun.y);
+    lit += uSunCol * (SP((a - .8) / 2.4) * .8 + SP((a - 3.6) / 2.6) * .45 + vec3(.25) * smoothstep(1.4, 0., a)) * .21 * smoothstep(.04, .15, uSun.y);
     #undef SP
   }
-#endif
   // the silver rim: thin cloud between you and the sun glows
   float rim = pow(max(dot(rd, uSun), 0.), 5.) * exp(-od * .9);
   lit += uSunCol * rim * .7 * uK.w;
