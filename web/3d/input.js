@@ -16,8 +16,9 @@
 //   tap both at once             a full flap; one thumb alone flaps one wing (a weak flap and a nudge);
 //                                the closer together the two taps, the less the flap tires you (sync)
 // A single held thumb works as a small stick on its own (up/down pitch, left/right bank).
-// Keyboard for desktop: W/S or Up/Down pitch, A/D or Left/Right bank, Shift or Q tuck,
-// E flare, Space flap, Z / X barrel roll left / right.
+// Keyboard for desktop: W/S or Up/Down pitch, A/D or Left/Right bank, Shift fold, Ctrl spread,
+// Space flap, Z / X barrel roll left / right (T take off, E and Up/Down for the action button: action.js;
+// P and M the menu and the Map: menu.js).
 // Perched or standing, a drag sideways turns the bird (read as dragX), perched a drag up or down
 // tips the view (dragY: down looks up, as if pulling the sky into view), on the ground two fingers
 // pinch the view in or out (pinch), and a tap may be taken by
@@ -71,7 +72,9 @@ export function createInput(el) {
     if (e.code === 'Space' && !e.repeat) I.taps.push({ side: 0, t: performance.now() / 1000 - 1 });
     if ((e.code === 'KeyZ' || e.code === 'KeyX') && !e.repeat) I.keyBarrel = e.code === 'KeyZ' ? 1 : -1;
     I.keys.add(e.code);
-    if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
+    // Ctrl spreads the wings, so keep the browser's Ctrl shortcuts (bookmark, save, select all...) out of
+    // the way where it lets us (Ctrl+W, T and N it never does)
+    if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code) || (e.ctrlKey && !e.target.closest?.('input, textarea'))) e.preventDefault();
   });
   addEventListener('keyup', e => I.keys.delete(e.code));
   addEventListener('blur', () => I.keys.clear());
@@ -117,7 +120,7 @@ export function createInput(el) {
     const K = I.keys, key = (...c) => c.some(x => K.has(x));
     if (key('KeyW', 'ArrowUp')) pitch = 1 * k; if (key('KeyS', 'ArrowDown')) pitch = -1 * k;
     if (key('KeyA', 'ArrowLeft')) roll = keyRoll = -1; if (key('KeyD', 'ArrowRight')) roll = keyRoll = 1;
-    if (key('ShiftLeft', 'ShiftRight', 'KeyQ')) spread = -1; if (key('KeyE')) spread = 1;
+    if (key('ShiftLeft', 'ShiftRight')) spread = -1; if (key('ControlLeft', 'ControlRight')) spread = 1;
     // taps: two thumbs within PAIR of each other are one full flap
     let flap = null; const now = performance.now() / 1000;
     I.taps.sort((a, b) => a.t - b.t);

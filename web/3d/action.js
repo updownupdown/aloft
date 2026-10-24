@@ -1,7 +1,8 @@
 // One action button, bottom middle (placed by sys/songs.css): it shows the one action that fits now
-// (Eat with a catch in your feet, Sleep on a roost at night, else Take off; Leave it here with a
-// catch on a branch), and a swipe up or down on it turns to the other when
-// both fit, shown as dots. Each action comes from the system that owns it (G.actions: takeoff in
+// (Eat with a catch in your feet, Drink by fresh water, Sleep on a roost at night, else Take off; Leave
+// it here with a catch on a branch), and a swipe up or down on it turns to the other when
+// both fit, shown as dots. Keys: T takes off, E runs the action shown (or the first that isn't Take
+// off), Up/Down turn to the other. Each action comes from the system that owns it (G.actions: takeoff in
 // main.js, sleep in sys/sleep.js) as { run(), when() }. Settings can turn it off for the separate
 // buttons.
 import { icon } from './icons.js';
@@ -9,11 +10,12 @@ import { icon } from './icons.js';
 const ACTS = {
   eat: ['Eat', 'prey'],
   berries: ['Eat', 'berry'],
+  drink: ['Drink', 'thirst'],
   leave: ['Leave it here', 'nest'],
   sleep: ['Sleep', 'sleep'],
   takeoff: ['Take off', 'takeoff'],
 };
-const ORDER = ['eat', 'berries', 'sleep', 'takeoff', 'leave'];   // the first that fits is shown first
+const ORDER = ['eat', 'berries', 'drink', 'sleep', 'takeoff', 'leave'];   // the first that fits is shown first
 
 export function actionButton(G, ui) {
   ui.insertAdjacentHTML('beforeend', `<button class="act3 gone" aria-label=""><i class="ic"></i><span></span><i class="dots"></i></button>`);
@@ -47,6 +49,19 @@ export function actionButton(G, ui) {
     if (!swiped && shown) { e.stopPropagation(); G.actions[shown].run(); key = ''; refresh(); }
   });
   btn.addEventListener('pointercancel', () => { y0 = null; });
+  // keys: T take off, E the action shown (never Take off: that is T), Up/Down turn to the next
+  addEventListener('keydown', e => {
+    if (e.repeat || G.menu?.open || G.photo || e.target.closest?.('input, textarea')) return;
+    const list = fits(), run = id => { G.actions[id].run(); key = ''; refresh(); };
+    if (e.code === 'KeyT' && list.includes('takeoff')) run('takeoff');
+    else if (e.code === 'KeyE') {
+      const cur = list[pick % Math.max(1, list.length)], id = cur && cur !== 'takeoff' ? cur : list.find(i => i !== 'takeoff');
+      if (id) run(id);
+    } else if ((e.code === 'ArrowUp' || e.code === 'ArrowDown') && G.b.state !== 'fly' && list.length > 1) {
+      if (list.join(',') !== key) refresh();
+      pick = (pick + (e.code === 'ArrowUp' ? 1 : list.length - 1)) % list.length; refresh();
+    }
+  });
   setInterval(refresh, 150);
   refresh();
 }

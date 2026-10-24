@@ -126,7 +126,7 @@ export function howtoSystem(G) {
   G.menu.tab('how').insertAdjacentHTML('beforeend', `<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>${HAWK}</defs></svg>`);
   add('controls', `<p><b>Your two thumbs are your wings.</b> Put one on each side of the screen; each becomes a stick where it lands.</p>
     <div class="ctl3"><canvas aria-hidden="true"></canvas>${MOVES.map(([l, r, c, t, s, mode]) => `<figure>${thumbs(l, r, c)}<span class="pic" data-mode="${mode}"></span><figcaption><span>${t}</span><span>${s}</span></figcaption></figure>`).join('')}</div>
-    <p><small>Keyboard: W/S climb and dive, A/D bank, Shift fold (with S to stoop), E spread, Space flap, Z/X barrel roll, P or Esc for this menu.</small></p>`);
+    <p><small>Keyboard: W/S climb and dive, A/D bank, Shift fold (with S to stoop), Ctrl spread, Space flap, Z/X barrel roll; T take off, E eat, drink or sleep (Up/Down for the other action); P or Esc for this menu, M for the Map.</small></p>`);
   cards('food',
     card('mice', 'Hunting mice', 'Mice twitch the grass, thickest round old farms and barns; small white marks over the grass are one squeaking. Fold your wings and dive at it, then come in low: your feet reach for it, and the aim line turns red when you are lined up. A mouse that sees your shadow bolts for its burrow, so come in fast.'),
     card('perch', 'Eating', 'A catch stays in your feet until you tap Eat on the action button. On a branch it is a calmer meal and fills you more, or swipe the button to Leave it here for later. Fly home with it and it drops into your nest by itself.'),

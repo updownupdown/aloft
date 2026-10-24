@@ -237,7 +237,12 @@ export function createMenu(G, ui) {
     const a = e.target.closest('[data-act]')?.dataset.act; if (!a) return;
     if (a === 'resume') M.set(false); else if (a === 'quit') M.quit?.(); else M.acts.get(a)?.(e.target.closest('[data-act]'));
   });
-  addEventListener('keydown', e => { if ((e.code === 'Escape' || e.code === 'KeyP') && !G.photo) M.set(!M.open); });
+  // P or Esc: the menu, on the section last open; M: the Map
+  addEventListener('keydown', e => {
+    if (G.photo || e.repeat || e.target.closest?.('input, textarea')) return;
+    if (e.code === 'Escape' || e.code === 'KeyP') M.set(!M.open);
+    else if (e.code === 'KeyM') { if (M.open && current === 'map') M.set(false); else M.set(true, 'map'); }
+  });
   createToday(G, M);         // the Today section: your bird, how it is, where, and the day's aims (today.js)
   G.dev = createDev(G, M);   // Settings > Advanced > Feature list (dev.js)
   G.dev.add({ id: 'menu-a', area: 'Menu and map', round: 10, title: 'The menu, tidied: Today, Map, Journal, Guide, Tutorial and Settings down the rail; each section’s pages in a column beside it',

@@ -249,6 +249,8 @@ export function foodSystem(G) {
   (G.actions ||= {}).eat = { run: startMeal, when: () => !!b.carry && b.state !== 'fly' && !(b.settle > 0) && !(b.eating > 0) && !b.asleep };
   // a bush in fruit under your feet (sys/berries.js)
   G.actions.berries = { run: () => G.berries?.eat(), when: () => !b.carry && !(b.eating > 0) && !b.asleep && !!G.berries?.here() };
+  // Drink at the water's edge or afloat on fresh water (the same as a tap on the water)
+  G.actions.drink = { run: () => G.water.drink(), when: () => waterBy() && !drinking && G.thirst < .99 && !salt() && !(b.settle > 0) && !(b.eating > 0) && !b.asleep };
   G.actions.leave = { run: leave, when: () => !!b.carry && b.state === 'perch' && !(b.settle > 0) && !(b.eating > 0) };
   function eat(m) {
     caught.set(m.id, G.clock); mice.delete(m.id);
