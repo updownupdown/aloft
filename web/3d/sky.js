@@ -3,7 +3,7 @@
 import { mix3, norm, smooth } from './util.js';
 import { latAt, seasonAt, yearFrac, dateOf, declination } from './earth.js';
 
-export const DAY = 480;          // seconds in a day
+export const DAY = 600;          // seconds in a day (10 minutes: James 10-24, a quarter longer than the old 8)
 export const SEASON_DAYS = 8;    // days in a season (a year is 32: earth.js YEAR_DAYS)
 export const SEASONS = ['summer', 'autumn', 'winter', 'spring'];
 
