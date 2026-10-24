@@ -62,13 +62,14 @@ export function createQuiet(G, ui, H) {
     },
     get count() { return glints.length; },
     // free: the message line and the tips are quiet and the bird is not mid-move
-    update(dt, free) {
+    // told: called when a name shows (hud.js paces them with the rest)
+    update(dt, free, told) {
       if ((nameT -= dt) <= 0 && nameEl.classList.contains('show')) nameEl.classList.remove('show');
       if (nameT <= -.6 && free && Q.pending.length) {
         const now = performance.now() / 1000;
         Q.pending = Q.pending.filter(n => now - n.at < 20);
         const n = Q.pending.shift();
-        if (n) { names = [n.title]; nameIc.innerHTML = icon(n.ic); nameT = QUIET.nameSecs; draw(); }
+        if (n) { names = [n.title]; nameIc.innerHTML = icon(n.ic); nameT = QUIET.nameSecs; draw(); told?.(); }
       }
       if ((tallyT -= dt) <= 0) tallyEl.classList.remove('show');
       for (const g of glints) {

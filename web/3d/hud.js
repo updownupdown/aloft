@@ -26,10 +26,12 @@ export const SAY = {
   glint: { col: '#ffe9b0', icon: 'how' },           // something new to learn: an icon to tap beside the compass
   tally: { col: '#ffffff', icon: 'done' },          // a count or a confirmation: a few words, then gone
 };
-// the line's pace (the quiet messages study): one line every `gap` seconds, except warn, reply,
-// song and the lessons; a line that has waited `stale` seconds becomes a glint instead (or goes,
-// if it can't); no words in the first seconds after take-off, in a stoop or a flare
-export const PACE = { gap: 45, stale: 20, takeoff: 5 };
+// the pace (James, 2026-10-24: one message per 30 s of play): one piece of news every `gap`
+// seconds of play, whichever kind it is (a line, a tip, a glint, a name); warn, reply, song,
+// tally and the lessons are exempt. A line that has waited `stale` seconds becomes a glint instead
+// (or goes, if it can't), and glints wait their turn too; no words in the first seconds after
+// take-off, in a stoop or a flare
+export const PACE = { gap: 30, stale: 20, takeoff: 5 };
 const LOUD = new Set(['warn', 'reply', 'song', 'tutorial']);
 
 export function createHud(G, ui, input) {
@@ -49,11 +51,16 @@ export function createHud(G, ui, input) {
   const H = { off: store.get('hintsoff3d', {}), said: store.get('said3d', {}), tips: [], done: store.get('hints3d', {}), status: '', flight: null, counter: '', hidden: false };
   const bar = tipBar(G, ui, H);
   const all = [];   // every meter: { v, low }
-  let toastT = 0, tipNow = null, tipT = 0, altKey = '', lastSay = -1e9, upAt = -1e9;
+  let toastT = 0, tipNow = null, tipT = 0, altKey = '', upAt = -1e9;
+  // play: seconds of play (the menu open stops it); lastInfo: when the last piece of news showed
+  let play = 0, lastInfo = -1e9;
+  const open = () => play - lastInfo >= PACE.gap, told = () => { lastInfo = play; };
+  const glints = [];   // glints waiting their turn: [title, text, icon]
   const queue = [], now = () => performance.now() / 1000;
   const quiet = createQuiet(G, ui, H);
   H.name = (title, ic) => H.say(title, { kind: 'name', icon: ic });
-  H.glint = (title, text, ic) => H.say(text, { kind: 'glint', title, icon: ic });
+  // now: a lesson's glint, not held back by the pace
+  H.glint = (title, text, ic, now) => H.say(text, { kind: now ? 'lesson' : 'glint', title, icon: ic });
   H.tally = (text, ic) => H.say(text, { kind: 'tally', icon: ic });
   H.reply = (msg, secs = 3) => H.say(msg, { kind: 'reply', secs });
   // a first-time line by its level: a glint (default), a name and a glint ('n'), a warning ('w'), a tally ('t')
@@ -100,7 +107,12 @@ export function createHud(G, ui, input) {
       if (!seen.includes(m)) { seen.unshift(m); seen.length = Math.min(seen.length, 8); store.set('said3d', H.said); }
     }
     if (kind === 'name') return quiet.name(msg, ic);
-    if (kind === 'glint') return quiet.glint(title, msg, ic);
+    if (kind === 'lesson') return quiet.glint(title, msg, ic);
+    if (kind === 'glint') {
+      if (open() && !(tipNow && tipT > .3)) { told(); return quiet.glint(title, msg, ic); }
+      if (!glints.some(g => g[1] === msg)) { glints.push([title, msg, ic]); if (glints.length > 6) glints.shift(); }
+      return;
+    }
     if (kind === 'tally') return quiet.tally(msg, ic);
     if (kind !== 'reply' && H.off['say:' + kind]) return;
     // inside a song: the Sing card says it (songs.js sets H.songLine while it is open)
@@ -111,7 +123,7 @@ export function createHud(G, ui, input) {
     pump();
   };
   // the next line that may show now
-  const may = m => LOUD.has(m[2]) || (!busy() && now() - lastSay >= PACE.gap);
+  const may = m => LOUD.has(m[2]) || (!busy() && open());
   function pump() {
     // a song line cuts in; what it interrupts goes back to the front of the queue
     const si = queue.findIndex(m => m[2] === 'song');
@@ -124,7 +136,7 @@ export function createHud(G, ui, input) {
     // waited too long: a glint keeps it (a lesson or a warning still shows)
     for (let i = queue.length - 1; i >= 0; i--) {
       const m = queue[i];
-      if (now() - m[4] > PACE.stale && !may(m) && m[2] !== 'tutorial') { queue.splice(i, 1); if (m[2] !== 'warn' && m[2] !== 'reply') quiet.glint(null, m[0], m[3] || SAY[m[2]]?.icon); }
+      if (now() - m[4] > PACE.stale && !may(m) && m[2] !== 'tutorial') { queue.splice(i, 1); if (m[2] !== 'warn' && m[2] !== 'reply') H.glint(null, m[0], m[3] || SAY[m[2]]?.icon); }
     }
     const i = queue.findIndex(may);
     if (i >= 0) show(queue.splice(i, 1)[0]);
@@ -133,11 +145,22 @@ export function createHud(G, ui, input) {
     toastKey = kind + '|' + msg; toastEl.dataset.icon = ic || ''; toastTx.textContent = msg; toastEl.dataset.kind = kind;
     toastIc.innerHTML = icon(ic || SAY[kind]?.icon || 'keepsake'); toastIc.style.color = SAY[kind]?.col || SAY.event.col;
     toastEl.classList.add('show'); toastT = secs;
-    if (!LOUD.has(kind)) lastSay = now();
+    if (!LOUD.has(kind)) told();
     ui.style.setProperty('--msgh', toastEl.offsetHeight + 'px');   // a tip steps down below it
   }
   H.toast = (msg, secs = 4, kind = 'event') => H.say(msg, { kind, secs });
   toastEl.querySelector('.set3').addEventListener('click', () => G.menu.set(true, 'how', 'hints'));
+  // swipe the line away, either way (James, 2026-10-24)
+  let sx = null, sdx = 0;
+  toastEl.addEventListener('pointerdown', e => { if (e.target.closest('.set3')) return; sx = e.clientX; sdx = 0; toastEl.setPointerCapture(e.pointerId); toastEl.classList.add('drag'); e.stopPropagation(); });
+  toastEl.addEventListener('pointermove', e => { if (sx === null) return; sdx = e.clientX - sx; toastEl.style.transform = `translateX(calc(-50% + ${sdx}px))`; toastEl.style.opacity = String(Math.max(.2, 1 - Math.abs(sdx) / 160)); });
+  const swiped = () => {
+    if (sx === null) return; sx = null; toastEl.classList.remove('drag'); toastEl.style.opacity = '';
+    if (Math.abs(sdx) > 50) { toastEl.style.transform = `translateX(calc(-50% + ${Math.sign(sdx) * 400}px))`; toastT = 0; toastEl.classList.remove('show'); setTimeout(() => { toastEl.style.transform = ''; }, 400); }
+    else toastEl.style.transform = '';
+  };
+  toastEl.addEventListener('pointerup', swiped); toastEl.addEventListener('pointercancel', swiped);
+  toastEl.addEventListener('touchstart', e => e.stopPropagation());
   // a tip shows while `when()` holds, until H.did(id) is called or it is swiped away (both are
   // remembered). It shows for eight seconds at a time, then rests a minute, at most three times a
   // session; tips.js gives it its short line and icon
@@ -157,17 +180,20 @@ export function createHud(G, ui, input) {
   // until the weather can say what is coming: the weather now, for the next minute or so
   const nowOnly = s => s > 60 ? null : G.storm > .5 ? 'storm' : G.snowing > .3 ? 'snow' : G.rain > .3 ? 'rain' : G.fog > .4 ? 'fog' : G.overcast > .4 ? 'cloud' : 'clear';
   H.update = dt => {
-    toastT -= dt;
+    toastT -= dt; play += dt;
     if (toastT <= 0 && toastEl.classList.contains('show')) toastEl.classList.remove('show');
     if (queue.length) pump();
-    quiet.update(dt, toastT <= -.5 && !busy() && !(tipNow && tipT > .3));
+    const free = toastT <= -.5 && !busy() && !(tipNow && tipT > .3);
+    // a waiting glint, or a name, when the pace allows; a name waits only a little (quiet.js)
+    if (free && glints.length && open()) { told(); quiet.glint(...glints.shift()); }
+    quiet.update(dt, free && open(), told);
     tipT -= dt;
     if (tipT <= 0) {
       tipNow = null;
-      for (const t of H.tips) if (!H.done[t.id] && !H.off['tip:' + tipGroup(t.id)] && !G.lessons?.quiet(t.id) && t.shown < 3 && G.t > t.rest && t.when()) {
+      if (open() && toastT <= -.5) for (const t of H.tips) if (!H.done[t.id] && !H.off['tip:' + tipGroup(t.id)] && !G.lessons?.quiet(t.id) && t.shown < 3 && G.t > t.rest && t.when()) {
         // from the second year a tip waits as a glint instead
-        if ((G.journey?.year ?? 1) >= 2) { const [ic, short] = SHORT[t.id] || ['how', '']; quiet.glint(short || null, t.text, TIP_ICON[ic] || 'how'); H.did(t.id); continue; }
-        tipNow = t.id; bar.show(t); tipT = 8; t.shown++; t.rest = G.t + 68; break;
+        if ((G.journey?.year ?? 1) >= 2) { const [ic, short] = SHORT[t.id] || ['how', '']; H.glint(short || null, t.text, TIP_ICON[ic] || 'how'); H.did(t.id); continue; }
+        tipNow = t.id; bar.show(t); tipT = 8; t.shown++; t.rest = G.t + 68; told(); break;
       }
     }
     if (!tipNow || tipT <= .3 || H.done[tipNow]) bar.hide();
