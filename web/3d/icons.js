@@ -120,6 +120,11 @@ export const ICONS = {
   twig: '<path d="M4 20L20 4M11 13l-4-5M15 9l4.5 1.5"/>',
   // Keepsake: Four-point star
   keepsake: '<path d="M12 3c.8 5 4 8.2 9 9-5 .8-8.2 4-9 9-.8-5-4-8.2-9-9 5-.8 8.2-4 9-9z"/>',
+  // the Map's pins: add one, its colour (a dropper), fly there, take it away
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  dropper: '<path d="M14.5 5.5l4 4M16.5 3.5a2.1 2.1 0 0 1 3 0l1 1a2.1 2.1 0 0 1 0 3l-2.5 2.5-4-4zM13.5 8.5l-7.8 7.8L4.5 20l3.7-1.2 7.8-7.8"/>',
+  travel: '<path d="M3 13.5l18-8-6.5 15-3-6.5zM11.5 14L21 5.5"/>',
+  trash: '<path d="M4.5 7h15M10 4h4M6.5 7l1 12.5h9l1-12.5M10 10.5v6M14 10.5v6"/>',
 };
 // the playable birds as filled silhouettes, for Call (the bird you fly): seen from below in flight,
 // the owl perched and facing you

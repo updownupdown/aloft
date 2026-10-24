@@ -47,6 +47,8 @@ export function islesSystem(G) {
     const lat = latAt(I.x, I.z), sea = lat < 0 ? 'the southern islands' : 'the island sea';
     return { kind, name: `${SIGHT[kind][0].toUpperCase()}${SIGHT[kind].slice(1)} of ${sea}`, group: `${gx},${gz}` };
   }
+  // how many archipelagos hold a sight, for the Map's count of landmarks (map.js, counted once)
+  G.isleSights = () => islesNear(0, 0, 1e5).filter(sightOf).length;
   function infoOf(I) {
     const k = keyOf(I); let o = info.get(k); if (o) return o;
     const seed = I.real !== undefined ? I.real * 13 + 1 : Math.abs(Math.round(I.x * .013 + I.z * .029));

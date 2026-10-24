@@ -41,7 +41,7 @@ const SHIPPED = [
   ['float-hover', 'Flight', 137, 'Float in to land and hover', 'Flare and push both thumbs up; at a stop, up and outward hovers.'],
   ['slope-takeoff', 'Ground and perch', 137, 'Take off on a slope turns toward open air', 'Land on a hillside, tap Take off.'],
   ['walls', 'World', 135, 'Uneven stone walls with fallen stones', 'Look for walls across fields and moors.'],
-  ['map-corners', 'Menu and map', 134, 'Map corners: dial, place, tallies; pins by colour', 'Map: hold to drop a pin.'],
+  ['map-corners', 'Menu and map', 282, 'Map corners: tallies of how many top left, the place on the find-me button', 'Open the Map.'],
   ['rivers', 'World', 133, 'Winding rivers with foam and rapids; water rises after rain', 'Follow a river downhill; watch it after rain.'],
   ['ring-aim', 'Flight', 132, 'Rings: soft yellow aim when lined up', 'Line up on a ring of mist.'],
   ['far-terrain', 'World', 131, 'Finer ground, real far terrain', 'Climb high and look at the horizon.'],
@@ -67,7 +67,7 @@ const SHIPPED = [
   ['new-world', 'Settings and performance', 90, 'Reset all game data', 'Settings > Journey > Reset all game data (tap three times).'],
   ['biomes', 'World', 89, 'Biomes in patches, seeded worlds, 20 lands', 'Fly a few km in any direction; Journal > Biomes.'],
   ['yaw', 'Flight', 88, 'Both thumbs slid one way yaw', 'Slide both thumbs left together.'],
-  ['map-fly', 'Menu and map', 81, 'Map: double tap to fly there', 'Map: double tap a known place.'],
+  ['map-pins', 'Menu and map', 282, 'Map pins: tap to drop, + Add pin, 12 colours, Fast-travel where explored', 'Map: tap anywhere, then a pin or a landmark.'],
 ];
 
 export function createDev(G, M) {
