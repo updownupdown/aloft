@@ -39,7 +39,27 @@ export function createAudio() {
     A.whistle = loop('bandpass', 2600, 9, A.windBus);
     // water tumbling near a waterfall
     A.babble = loop('bandpass', 1500, .8);
+    // rain pattering on what you sit on: two looping beds of drops (a sparse one, and a dense one
+    // that comes in as the rain gets heavier) through one filter for the surface. Two sources for
+    // the whole shower: a node per drop (20 a second) overloaded the audio on phones (James, 10-24)
+    const drops = (secs, n) => {
+      const buf = ctx.createBuffer(1, ctx.sampleRate * secs | 0, ctx.sampleRate), d = buf.getChannelData(0);
+      for (let k = 0; k < n; k++) {
+        const at = Math.random() * (d.length - 2000) | 0, tau = ctx.sampleRate * (.003 + Math.random() * .006), v = .4 + Math.random() * .6;
+        for (let i = 0; i < 2000; i++) d[at + i] += (Math.random() * 2 - 1) * v * Math.exp(-i / tau);
+      }
+      return buf;
+    };
+    const pf = ctx.createBiquadFilter(); pf.type = 'bandpass'; pf.frequency.value = 2600; pf.Q.value = 1.5; pf.connect(A.master);
+    A.drops = { fl: pf, beds: [drops(2.1, 26), drops(2.9, 70)].map(buf => {
+      const src = ctx.createBufferSource(); src.buffer = buf; src.loop = true;
+      const g = ctx.createGain(); g.gain.value = 0; src.connect(g).connect(pf); src.start(); return g;
+    }) };
   };
+  // rain on the perch: amount 0..1 and the surface (still.js); ambience() fades it with the menu
+  const SURF = { leaves: [3200, 2.5, 1], needles: [5800, 2, .6], open: [1600, 1, .7], roof: [2400, 1.2, 1.2], post: [700, 2, 1.1], stone: [2800, 1.8, .7] };
+  let pat = 0, patSurf = 'open';
+  A.patter = (amount, surf = 'open') => { pat = amount; patSurf = SURF[surf] ? surf : 'open'; };
   // volumes 0..1 (the wind's 1 is its old level: the default sits 30% under it)
   A.vol = { music: 1, wind: .7, fx: 1 };
   // a bus's gain: its volume, or nothing for the wind and effects while Sound effects is off (the
@@ -99,6 +119,12 @@ export function createAudio() {
     if (birdBus) { birdBus.fb.gain.setTargetAtTime(.24 + .22 * hush, t, .5); birdBus.wet.gain.setTargetAtTime(.32 + .3 * hush, t, .5); }
     A.wind.fl.frequency.setTargetAtTime(300 + windAmt * 900 - pines * 120 + surf * 200 * sigh, t, .3);
     A.rain.g.gain.setTargetAtTime(rainAmt * .035 * open, t, fade);
+    if (A.drops) {
+      const [f, q, v] = SURF[patSurf], d = A.drops;
+      d.fl.frequency.setTargetAtTime(f, t, .1); d.fl.Q.setTargetAtTime(q, t, .1);
+      d.beds[0].gain.setTargetAtTime(Math.min(1, pat * 2) * .055 * v * open, t, fade);
+      d.beds[1].gain.setTargetAtTime(Math.max(0, pat - .4) * .07 * v * open, t, fade);
+    }
     A.whistle.g.gain.setTargetAtTime((scene.stoop || 0) * .07 * open, t, .15);
     A.whistle.fl.frequency.setTargetAtTime(2200 + (scene.stoop || 0) * 900, t, .15);
     A.babble.g.gain.setTargetAtTime((scene.falls || 0) * .09 * (.8 + .2 * Math.sin(t * 6.3)) * (.4 + .6 * low) * open, t, .25);
