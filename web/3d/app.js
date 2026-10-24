@@ -1,7 +1,6 @@
 // The app around the game: Update (fetch every file afresh and reload), Quit, Quiet meters, a new
 // world, and full screen always (asked for again on the next touch whenever the phone's bars come
 // back).
-import { WORLD, newWorld } from './world.js';
 import { actionButton } from './action.js';
 
 export function appRows(G) {
@@ -64,10 +63,6 @@ export function appRows(G) {
     const el = document.querySelector('.bye3');
     el.querySelector('button').onclick = () => { el.remove(); G.paused = false; quitting = false; };
   }
-  // a new world: another seed (world.js), a fresh journey in it; asks twice, like a new journey
-  G.menu.button('play', { label: 'Start a new world', sub: `this is world ${WORLD.seed}`, group: 'play', onClick: el => {
-    if (el.dataset.sure) { G.resetting = true; newWorld(); } else { el.dataset.sure = 1; el.firstChild.textContent = 'Tap again for a new world '; }
-  } });
   // Graphics: one row for how much the world draws. Low, Medium or High pick a level (0, 1, 2);
   // Ultra is High with real shadows and mirror reflections (look.js P and T; Auto never picks it);
   // Auto starts at Medium and lets the frame watch (G6, flight thread) move G.gfx.level. Systems

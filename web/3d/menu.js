@@ -7,7 +7,7 @@
 // title, order), and rows with G.menu.toggle() / button() / choice() (radio buttons) / range().
 // Settings rows (tab 'play') go to a page by their label (SECTION_OF), else by the group they name:
 // Sound, Picture, Controls, Messages, Journey, Advanced. The old Game section's rows went to Today
-// (Photo mode, ghost flights) and Settings > Journey (your bird, new journey, new world).
+// (Photo mode, ghost flights) and Settings > Journey (your bird, Lessons, Reset all game data).
 // G.menu.onOpen(fn) refreshes a pane each time the menu opens; G.menu.subtitle(fn) gives the date line
 // at the top of Today.
 import { letter } from './letter.js';
@@ -23,7 +23,7 @@ const ICON_OF = { today: 'today', map: 'map', journal: 'journal', play: 'setting
 // older names: the Game section is Today now, the Guide's pages are in the Journal
 const ALIAS = { game: 'today', guide: 'journal' };
 // Settings, a page each (title, order)
-const PAGES = { audio: ['Sound', 10], graphics: ['Graphics', 20], gameplay: ['Controls', 30], messages: ['Messages', 40], journey: ['Journey', 50], dev: ['Advanced', 60] };
+const PAGES = { audio: ['Sounds', 10], graphics: ['Graphics', 20], gameplay: ['Controls', 30], messages: ['Messages', 40], journey: ['Journey', 50], dev: ['Advanced', 60] };
 // groups of rows: the page each sits on, its heading (none: the pill names it) and its place on the page;
 // 'today' is the row of things to do on Today
 const GROUPS = {
@@ -34,7 +34,7 @@ const GROUPS = {
 const SECTION_OF = {
   'Sound effects': 'audio', Music: 'audio', 'Music style': 'audio', 'Music volume': 'audio', 'Wind volume': 'audio', 'Birds and effects': 'audio',
   Graphics: 'graphics', 'Ground detail': 'graphics', 'Frame rate': 'graphics', 'Battery use': 'graphics', 'Rest at 30 fps': 'graphics',
-  'Photo mode': 'today', 'Share a ghost flight': 'today', 'Start a new journey': 'journey', 'Start a new world': 'journey',
+  'Photo mode': 'today', 'Share a ghost flight': 'today', 'Reset all game data': 'journey',
   'Show frame rate': 'dev', 'Feature list': 'dev', Update: 'dev', 'Music lab': 'dev', 'Bird song lab': 'dev',
 };
 const OLD = { sound: 'audio', app: 'dev', switch: 'gameplay', play: 'journey' };
