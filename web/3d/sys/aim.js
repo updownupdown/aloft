@@ -158,9 +158,11 @@ export function aimSystem(G) {
         if (A.lock && (mice.has(A.lock.id) || G.prey?.includes(A.lock)) && !(A.lock.hidden > 0) && A.focus > hold && (!best || bd > 6)) best = A.lock;
         A.target = best; A.lock = A.focus > hold ? best : null;
         // a pull toward the mouse while diving at it, firmer the tighter the tuck
+        // (steering hard yourself, it lets go: the turn is yours, and it finds a mouse on the new line)
+        if ((b.steer || 0) > .35) A.lock = null;
         if (best && A.focus > .2) {
           const want = Math.atan2(best.x - b.p[0], -(best.z - b.p[2])), dy = Math.atan2(best.y + .3 - b.p[1], Math.hypot(best.x - b.p[0], best.z - b.p[2]));
-          const k = Math.min(1, A.focus * dt * 3.4);
+          const k = Math.min(1, A.focus * dt * 3.4) * (1 - Math.min(1, (b.steer || 0) * 2.5));
           b.yaw += Math.atan2(Math.sin(want - b.yaw), Math.cos(want - b.yaw)) * k;
           b.gamma += (Math.max(-1.3, dy) - b.gamma) * k;
         }
