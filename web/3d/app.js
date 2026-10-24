@@ -64,7 +64,7 @@ export function appRows(G) {
     el.querySelector('button').onclick = () => { el.remove(); G.paused = false; quitting = false; };
   }
   // Graphics: one row for how much the world draws. Low, Medium or High pick a level (0, 1, 2);
-  // Ultra is High with real shadows and mirror reflections (look.js P and T; Auto never picks it);
+  // Ultra is High with mirror reflections (look.js T; real shadows were taken out, James 10-24; Auto never picks it);
   // Auto starts at Medium and lets the frame watch (G6, flight thread) move G.gfx.level. Systems
   // listen for 'gfx' (ground detail, tree density, tree distance); the ground's view distance is set here. After a change
   // the frame rate shows for a little while in play, so the difference can be seen
@@ -82,7 +82,7 @@ export function appRows(G) {
     'trees to 400 m (flat pictures past 210 m), full trees within 110 m', 'you see 15% farther, trees to 460 m (flat pictures past 280 m), full trees within 130 m'];
   const gfxSub = p => 'How far you see and how many trees are drawn. ' + (p === 'auto'
     ? `Auto starts at Medium and steps down when frames drop, up when there is room, never to Ultra (now ${['Low', 'Medium', 'High'][G.gfx.level]})`
-    : p === 'ultra' ? `Ultra: as High, with trees to 540 m (flat only past 400 m), plus real shadows of trees, rocks and you, and the hills mirrored in the water. Costly: a phone may lose a third of its frames or more`
+    : p === 'ultra' ? `Ultra: as High, with trees to 540 m (flat only past 400 m), plus the hills mirrored in the water. Costly: a phone may lose a fifth of its frames or more`
     : `${p[0].toUpperCase() + p.slice(1)}: ${SAYS[LEVEL[p]]}`);
   let peekFps = false;
   G.menu.choice('play', { label: 'Graphics', options: PRESETS.map(p => [p, p[0].toUpperCase() + p.slice(1)]), get: () => G.gfx.preset, sub: gfxSub, set: p => {

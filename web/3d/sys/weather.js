@@ -6,7 +6,7 @@
 // of cloud filling the valleys of the high country on still mornings.
 // Sets G.overcast, G.rain, G.storm, G.snowing, G.windK, G.fog (0..1) and env.thermal; the
 // snowline (env.snow) follows the season and the ground is repainted when it moves.
-import { height, WATER, env, bands, WIND, ih, fbm, forest } from '../world.js';
+import { height, WATER, env, bands, WIND, ih, fbm } from '../world.js';
 import { builder, blob, reseed } from '../shapes.js';
 import { DAY } from '../sky.js';
 import { snowAt, snowLine, yearFrac } from '../earth.js';
@@ -265,10 +265,6 @@ export function weatherSystem(G) {
       S.wet = wet * (1 - env.snow); S.flash = null;
       if (bolt) S.flash = [bolt.x, Math.max(80, cam[1] + 60) + 60, bolt.z, flash];
       else if (cflash > 0 && cflashAt) S.flash = [...cflashAt, cflash];
-      // the look tests' light (look.js B dew, F dappled light): dew in the early morning when dry;
-      // the wood's cover round the camera when it is low among the trees
-      S.dew = smooth(.2, .24, G.tod) * smooth(.36, .29, G.tod) * (1 - rk) * (1 - env.snow) * (1 - G.snowing);
-      S.dapple = above < 30 ? smooth(.15, .55, forest(cam[0], cam[2])) * smooth(30, 12, above) * L.daylight * (1 - ov * .8) : 0;
       // the rainbow (render.js bow()): round the point opposite the sun, in the sky and in front of
       // whatever is far off, fading in and out
       S.bow = null;
