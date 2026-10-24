@@ -21,6 +21,7 @@ function leaf() {
 export function airSystem(G) {
   const b = G.b;
   // the fair-weather clouds drifting over (x, y, z, size, yaw), more and lower when overcast
+  const SIZE = { cloud: 1, cloudW: 1.5, cloudT: 1.05, cloudP: .8 };
   function driftClouds(cx, cz, r) {
     const out = [], C = 420, oc = G.overcast || 0, dx = G.clock * WIND[0] * 2.2, dz = G.clock * WIND[2] * 2.2;
     const a = Math.floor((cx - dx - r) / C), b2 = Math.floor((cx - dx + r) / C), c0 = Math.floor((cz - dz - r) / C), c1 = Math.floor((cz - dz + r) / C);
@@ -28,20 +29,26 @@ export function airSystem(G) {
       if (ih(gx, gz, 300 + k) > .28 + oc * .55) continue;
       const x = (gx + ih(gx, gz, 310 + k)) * C + dx, z = (gz + ih(gx, gz, 320 + k)) * C + dz;
       if (Math.hypot(x - cx, z - cz) > r) continue;
-      out.push([x, 300 + ih(gx, gz, 330 + k) * 140 - oc * 60, z, 24 + ih(gx, gz, 340 + k) * 26 + oc * 12, ih(gx, gz, 350 + k) * 6.283]);
+      // (each picks a kind, clouds.js KINDS: the round heap, a wide raft, a tall tower or a scatter of
+      // puffs, and a size from small to big, the big ones rarer)
+      const w = ih(gx, gz, 360 + k), kind = w < .48 ? 'cloud' : w < .66 ? 'cloudW' : w < .82 ? 'cloudT' : 'cloudP';
+      const u = ih(gx, gz, 340 + k), size = (16 + u * u * 52) * SIZE[kind] + oc * 12;
+      out.push([x, 300 + ih(gx, gz, 330 + k) * 140 - oc * 60, z, size, ih(gx, gz, 350 + k) * 6.283, kind]);
     }
     return out;
   }
   // where each cloud's shadow lies, along the sun; deeper on a bright day, gone under a grey sky
   let shadows = [], castT = 0;
   function cast() {
-    const L = G.light, sd = L.sunSky, oc = G.overcast || 0, k = .5 * L.daylight * (1 - oc * .85) * (1 - (G.eclipse || 0));
+    // (eased in as the sun climbs: they all came on at once in the morning, a jump in the land's tone)
+    const L = G.light, sd = L.sunSky, oc = G.overcast || 0, k = .5 * L.daylight * (1 - oc * .85) * (1 - (G.eclipse || 0)) * smooth(.12, .26, sd[1]);
     shadows = [];
     if (sd[1] < .12 || k < .03) return;
     for (const c of driftClouds(b.p[0], b.p[2], 1300)) {
       const g = Math.max(height(c[0], c[2]), WATER), up = (c[1] - g) / sd[1];
       const x = c[0] - sd[0] * up, z = c[2] - sd[2] * up;
-      shadows.push([x, z, c[3] * 1.5, k, Math.hypot(x - b.p[0], z - b.p[2])]);
+      const d = Math.hypot(x - b.p[0], z - b.p[2]);
+      shadows.push([x, z, c[3] * 1.5, k * smooth(900, 600, d), d]);   // (fading out before the 900 m cut, not popping)
     }
   }
   env.shade = (x, z) => {
@@ -60,7 +67,7 @@ export function airSystem(G) {
     },
     scene(S) {
       const clouds = S.props.cloud ||= [];
-      for (const c of driftClouds(S.cam[0], S.cam[2], 1000)) clouds.push(c[0], c[1], c[2], c[3], c[4], .7 - (G.overcast || 0) * .5, 0, 0);
+      for (const c of driftClouds(S.cam[0], S.cam[2], 1000)) (G.R.cloudStyle === 'poly' ? clouds : S.props[c[5]] ||= []).push(c[0], c[1], c[2], c[3], c[4], .7 - (G.overcast || 0) * .5, 0, 0);
       // their shadows: the nearest few, as soft discs (x, z, radius, depth)
       S.shadeC = shadows.filter(q => q[4] < 900).sort((p, q) => p[4] - q[4]).slice(0, 8).map(q => [q[0], q[1], q[2], q[3]]);
       for (const t of thermalsNear(S.cam[0], S.cam[2], 650)) {

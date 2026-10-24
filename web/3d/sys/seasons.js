@@ -35,6 +35,14 @@ export function seasonsSystem(G) {
   G.R.shape('petals', scatter([[.96, .84, .88], [.98, .94, .95], [.9, .72, .8]], 30, .045, 67));
   let from = null, ice = [], litter = [], petals = [], puddles = [], fallers = [];
 
+  // the height a flat plate of radius r can lie at over (x, z): just above the ground at its centre
+  // and round its rim, or null where the ground under it is too uneven
+  function levelAt(x, z, r) {
+    let lo = groundAt(x, z), hi = lo;
+    for (let k = 0; k < 8; k++) { const g = groundAt(x + Math.cos(k * .785) * r, z + Math.sin(k * .785) * r); lo = Math.min(lo, g); hi = Math.max(hi, g); }
+    return hi - lo > .12 ? null : hi + .02;
+  }
+
   function place() {
     const s = G.season || {}, cold = env.snow > .42 && s.name !== 'summer', x0 = b.p[0], z0 = b.p[2];
     ice = []; litter = []; petals = []; puddles = []; fallers = [];
@@ -46,7 +54,12 @@ export function seasonsSystem(G) {
       // ice: thickest where the water is shallowest, and more of it the colder it gets
       if (cold && h < -.05 && h > -2.2 && ih(gx, gz, 503) < (1 + h / 2.2) * 1.4 * Math.min(1, (env.snow - .4) * 2.5)) ice.push(x, .04, z, 3 + ih(gx, gz, 504) * 2.2, ih(gx, gz, 505) * 6.28, ih(gx, gz, 506), 0, 0);
       // puddles in level hollows while the ground is wet
-      else if (wet && h > 1 && ih(gx, gz, 507) < .06 && groundNormal(x, z)[1] > .97) puddles.push(x, groundAt(x, z) + .03, z, .8 + ih(gx, gz, 508) * 1.2, ih(gx, gz, 509) * 6.28, ih(gx, gz, 510), 0, 0);
+      // (only where the ground under its rim is near level, set just above the rim's highest point:
+      // a flat plate on facets that rise through it flickered where the two crossed)
+      else if (wet && h > 1 && ih(gx, gz, 507) < .06 && groundNormal(x, z)[1] > .97) {
+        const r = .8 + ih(gx, gz, 508) * 1.2, y = levelAt(x, z, r);
+        if (y != null) puddles.push(x, y, z, r, ih(gx, gz, 509) * 6.28, ih(gx, gz, 510), 0, 0);
+      }
     }
     G.puddles = puddles;   // food.js: a puddle can be drunk from
     // under the broadleaves: litter in autumn (and leaves coming down), petals in spring

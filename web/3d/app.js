@@ -69,10 +69,11 @@ export function appRows(G) {
     if (el.dataset.sure) { G.resetting = true; newWorld(); } else { el.dataset.sure = 1; el.firstChild.textContent = 'Tap again for a new world '; }
   } });
   // Graphics: one row for how much the world draws. Low, Medium or High pick a level (0, 1, 2);
+  // Ultra is High with real shadows and mirror reflections (look.js P and T; Auto never picks it);
   // Auto starts at Medium and lets the frame watch (G6, flight thread) move G.gfx.level. Systems
   // listen for 'gfx' (ground detail, tree density, tree distance); the ground's view distance is set here. After a change
   // the frame rate shows for a little while in play, so the difference can be seen
-  const PRESETS = ['auto', 'low', 'medium', 'high'], LEVEL = { low: 0, medium: 1, high: 2 }, VIEW = [.8, 1, 1.15];
+  const PRESETS = ['auto', 'low', 'medium', 'high', 'ultra'], LEVEL = { low: 0, medium: 1, high: 2, ultra: 2 }, VIEW = [.8, 1, 1.15];
   const R = G.R, base = R.view;
   G.gfx = { preset: PRESETS.includes(G.store.get('gfx3d')) ? G.store.get('gfx3d') : 'auto', level: 1 };
   G.gfx.level = LEVEL[G.gfx.preset] ?? G.store.get('gfxAuto3d', 1);
@@ -85,7 +86,9 @@ export function appRows(G) {
   const SAYS = ['you see 20% less far, trees to 270 m, full trees within 80 m',
     'trees to 360 m, full trees within 110 m', 'you see 15% farther, trees to 415 m, full trees within 130 m'];
   const gfxSub = p => 'How far you see and how many trees are drawn. ' + (p === 'auto'
-    ? `Auto starts at Medium and steps down when frames drop, up when there is room (now ${['Low', 'Medium', 'High'][G.gfx.level]})` : `${p[0].toUpperCase() + p.slice(1)}: ${SAYS[LEVEL[p]]}`);
+    ? `Auto starts at Medium and steps down when frames drop, up when there is room, never to Ultra (now ${['Low', 'Medium', 'High'][G.gfx.level]})`
+    : p === 'ultra' ? `Ultra: as High, plus real shadows of trees, rocks and you, and the hills mirrored in the water. Costly: a phone may lose a third of its frames or more`
+    : `${p[0].toUpperCase() + p.slice(1)}: ${SAYS[LEVEL[p]]}`);
   let peekFps = false;
   G.menu.choice('play', { label: 'Graphics', options: PRESETS.map(p => [p, p[0].toUpperCase() + p.slice(1)]), get: () => G.gfx.preset, sub: gfxSub, set: p => {
     G.gfx.preset = p; G.store.set('gfx3d', p);

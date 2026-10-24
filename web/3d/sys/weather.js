@@ -337,6 +337,7 @@ export function weatherSystem(G) {
     },
     // debug: __aloft3d.G.systems.weather.set('storm')
     set(s, secs = 999) { setSpell(s, secs); },
+    get spell() { return spell; },   // (dev.js's debug link)
     rainbow() { rainbowT = 80; },
   };
 }

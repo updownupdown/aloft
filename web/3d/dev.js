@@ -6,6 +6,7 @@
 // shipped before that are listed here in SHIPPED, newest first.
 import { store } from './util.js';
 import { icon } from './icons.js';
+import { BIRD } from './hawk.js';
 
 export const AREAS = ['Flight', 'Ground and perch', 'World', 'Wildlife', 'Food and water', 'Songs and music', 'HUD', 'Menu and map',
   'Journal and story', 'Settings and performance', 'Birds'];
@@ -135,5 +136,28 @@ export function createDev(G, M) {
   });
   G.on?.('resume', () => show(false));
   M.button('play', { label: 'Feature list', sub: 'what was added, to test', group: 'dev', onClick: () => show(true) });
+  // Copy debug link: this very moment as a link (where you are, which way you face, the time,
+  // the date, the weather, the bird, the graphics), to paste to Claude, who opens it and sees the
+  // same view; ?dbg=... puts you there a moment after the world has loaded
+  const snap = () => {
+    const b = G.b, W = G.systems?.weather;
+    return { p: b.p.map(v => +v.toFixed(2)), yaw: +b.yaw.toFixed(3), gamma: +(b.gamma || 0).toFixed(3), state: b.state, tod: +G.tod.toFixed(4), day: G.day,
+      wx: W?.spell, fog: +(G.fog || 0).toFixed(2), rain: +(G.rain || 0).toFixed(2), bird: BIRD, gfx: G.gfx && [G.gfx.preset, G.gfx.level], res: +(G.res || 1).toFixed(2),
+      build: G.build, looks: Object.keys(G.R.look || {}).filter(k => G.R.look[k]), ua: navigator.userAgent.slice(0, 120) };
+  };
+  M.button('play', { label: 'Copy debug link', sub: 'this place, time and weather as a link, to paste to Claude with what looks wrong', group: 'dev', onClick: async el => {
+    const u = new URL(location.href); u.search = ''; u.searchParams.set('dbg', btoa(JSON.stringify(snap()))); if (BIRD !== 'hawk') u.searchParams.set('bird', BIRD);
+    try { await navigator.clipboard.writeText(u.href); el.firstChild.textContent = 'Copied: paste it to Claude '; } catch { prompt('Debug link', u.href); }
+  } });
+  const dq = new URLSearchParams(location.search).get('dbg');
+  if (dq) try {
+    const o = JSON.parse(atob(dq));
+    setTimeout(() => {
+      const b = G.b; b.p = o.p.slice(); b.yaw = o.yaw; b.gamma = o.gamma || 0; b.state = 'fly'; b.vy = 0;
+      G.tod = o.tod; if (o.day) G.day = o.day; if (o.wx) G.systems?.weather?.set(o.wx, 300);
+      if (o.fog > .2) G.fog = o.fog;
+      console.log('[aloft dbg]', o);
+    }, 2500);
+  } catch (e) { console.log('[aloft dbg] bad link', e); }
   return D;
 }
