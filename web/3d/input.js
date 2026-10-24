@@ -33,8 +33,10 @@ const TAP_TIME = .3, TAP_MOVE = .06, PAIR = .2;
 const ROLL_ON = .55, ROLL_OFF = .3, ROLL_TURN = .85, ROLL_TIME = 2.5, ROLL_START = 1.2;
 
 export function createInput(el) {
-  const I = { L: pad(), R: pad(), keys: new Set(), taps: [], invert: false, onAny: null, onTap: null, radius: 70, drag: 0, dragY: 0, pinch: 1, lk: [0, 0], gyroOn: false };
-  function pad() { return { id: null, x0: 0, y0: 0, x: 0, y: 0, t0: 0, moved: 0, dx: 0, dy: 0, a: null, a0: 0, turn: 0, tt: 0 }; }
+  // ctl: the Controls lab's switches (sys/ctllab.js): reach (the stick's reach as a share of the
+  // short side), dead1 (a dead zone on a single thumb), holdFlap (a tap beside a held thumb is a full flap)
+  const I = { L: pad(), R: pad(), keys: new Set(), taps: [], invert: false, onAny: null, onTap: null, radius: 70, drag: 0, dragY: 0, pinch: 1, lk: [0, 0], gyroOn: false, ctl: {} };
+  function pad() { return { id: null, x0: 0, y0: 0, x: 0, y: 0, t0: 0, moved: 0, dx: 0, dy: 0, rx: 0, a: null, a0: 0, turn: 0, tt: 0 }; }
   const size = () => Math.min(innerWidth, innerHeight);
   el.addEventListener('touchstart', e => {
     e.preventDefault(); I.onAny?.();
@@ -54,15 +56,16 @@ export function createInput(el) {
     }
     if (two && g0 > 20) I.pinch *= gap() / g0;   // how much the two fingers spread (>1) or closed
   }, { passive: false });
-  const end = e => {
+  // a touch the system took away (touchcancel: the notification shade, a palm) is not a tap
+  const end = cancel => e => {
     I.onAny?.();   // touchend is what lets a page start sound
     for (const t of e.changedTouches) for (const [side, P] of [[-1, I.L], [1, I.R]]) if (P.id === t.identifier) {
       const now = performance.now() / 1000;
-      if (now - P.t0 < TAP_TIME && P.moved < TAP_MOVE * size() && !I.onTap?.(P.x0, P.y0)) I.taps.push({ side, t: P.t0, y: P.y0 / innerHeight });
-      P.id = null; P.dx = P.dy = 0; P.a = null; P.turn = 0;
+      if (!cancel && now - P.t0 < TAP_TIME && P.moved < TAP_MOVE * size() && !I.onTap?.(P.x0, P.y0)) I.taps.push({ side, t: P.t0, y: P.y0 / innerHeight });
+      P.id = null; P.dx = P.dy = P.rx = 0; P.a = null; P.turn = 0;
     }
   };
-  el.addEventListener('touchend', end); el.addEventListener('touchcancel', end);
+  el.addEventListener('touchend', end(false)); el.addEventListener('touchcancel', end(true));
   // a mouse; a touch's own click is left out (a button that hides as it is pressed, Sleep or Take
   // off, would otherwise pass its click through to the ground under it)
   let touched = -1;
@@ -92,9 +95,11 @@ export function createInput(el) {
 
   // what the wings are asking for this frame: { pitch, roll, spread, flap, held }
   I.read = () => {
-    const r = I.radius = size() * .13;
+    const r = I.radius = size() * (I.ctl.reach || .13);
     for (const P of [I.L, I.R]) if (P.id !== null) {
-      P.dx = clampU((P.x - P.x0) / r); P.dy = clampU((P.y - P.y0) / r);
+      // rx: the sideways shift unclamped (to twice the reach), for steering with the thumbs pulled in
+      P.rx = Math.max(-2, Math.min(2, (P.x - P.x0) / r));
+      P.dx = clampU(P.rx); P.dy = clampU((P.y - P.y0) / r);
     }
     const L = I.L, R = I.R, l = L.id !== null, rr = R.id !== null;
     const barrel = l && rr ? circles(L, R) : I.keyBarrel || 0; I.keyBarrel = 0;
@@ -106,21 +111,27 @@ export function createInput(el) {
       // takes the shift both thumbs share (their mean: a tuck pulls them in by equal and opposite
       // amounts, which cancel), past a dead zone, and up/down is dead-zoned too, more so the
       // tighter the tuck. (It once took only a shift with both thumbs the same side of where they
-      // landed, which a tuck almost never is: no steering in a stoop.)
+      // landed, which a tuck almost never is: no steering in a stoop.) The mean takes the shifts
+      // unclamped: thumbs pulled in past the stick's reach were clamped at it, so their slide
+      // together counted only on the thumb coming back out, at half strength, and a deep tuck
+      // couldn't steer at all.
       spread = (R.dx - L.dx) / 2;
       const tk = Math.max(0, -spread), dz = .08 + tk * .14;
-      const side = dead((L.dx + R.dx) / 2, .12);
+      const side = dead(clampU((L.rx + R.rx) / 2), .12);
       pitch = -dead((L.dy + R.dy) / 2, dz) * k;
       roll = clampU(dead((R.dy - L.dy) / 2, dz) + side * tk * 1.6);
       yaw = clampU(side);
     } else if (l || rr) {
-      const P = l ? L : R; pitch = -P.dy * k; roll = P.dx;
+      const P = l ? L : R, dz = I.ctl.dead1 ? .08 : 0; pitch = -dead(P.dy, dz) * k; roll = dead(P.dx, dz);
     }
     const K = I.keys, key = (...c) => c.some(x => K.has(x));
     if (key('KeyW', 'ArrowUp')) pitch = 1 * k; if (key('KeyS', 'ArrowDown')) pitch = -1 * k;
     if (key('KeyA', 'ArrowLeft')) roll = keyRoll = -1; if (key('KeyD', 'ArrowRight')) roll = keyRoll = 1;
     if (key('ShiftLeft', 'ShiftRight')) spread = -1; if (key('KeyQ')) spread = 1;
-    // taps: two thumbs within PAIR of each other are one full flap
+    // taps: two thumbs within PAIR of each other are one full flap. A tap on its own is a weak
+    // flap with that wing, read as soon as no partner can come: the other side idle past the
+    // pair window, or the other thumb down as a stick (held too long, or slid, to be a tap); it
+    // once waited the whole PAIR + TAP_TIME, half a second after the thumb went down
     let flap = null; const now = performance.now() / 1000;
     I.taps.sort((a, b) => a.t - b.t);
     while (I.taps.length) {
@@ -128,7 +139,10 @@ export function createInput(el) {
       if (a.side === 0) { I.taps.shift(); flap = { q: 1, side: 0, sync: .8 }; break; }
       const b = I.taps.find(t => t !== a && t.side !== a.side && Math.abs(t.t - a.t) < PAIR);
       if (b) { I.taps.splice(I.taps.indexOf(b), 1); I.taps.shift(); flap = { q: 1, side: 0, sync: 1 - Math.abs(b.t - a.t) / PAIR }; break; }
-      if (now - a.t > PAIR + TAP_TIME) { I.taps.shift(); flap = { q: .55, side: a.side }; break; }
+      const o = a.side < 0 ? R : L, held = o.id !== null && (Math.abs(o.t0 - a.t) >= PAIR || now - o.t0 > TAP_TIME || o.moved >= TAP_MOVE * size());
+      if (now - a.t > PAIR + TAP_TIME || (o.id === null && now - a.t > PAIR) || held) {
+        I.taps.shift(); flap = held && I.ctl.holdFlap ? { q: 1, side: 0, sync: .8 } : { q: .55, side: a.side }; break;
+      }
       break;
     }
     const dragX = I.drag / size(), dragY = I.dragY / size(), pinch = I.pinch; I.drag = I.dragY = 0; I.pinch = 1;
