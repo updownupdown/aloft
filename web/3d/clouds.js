@@ -41,12 +41,9 @@ export const KINDS = {
     lobes: [[0, 0, 0, 1.7, .16, 1], [.1, .13, 0, 1.2, .09, .71], [-.05, -.1, .05, 1.2, .1, .8]] },
   puff: { base: -9, sigma: .06, col: [.97, .96, .94], under: [.86, .86, .88],
     lobes: [[0, 0, 0, .7, .22, .7], [.45, .05, .2, .45, .18, .45], [-.4, .04, -.25, .5, .2, .5]] },
-  // a ring of mist (sys/rings.js, its radius the scale), a rain shaft
-  // hanging from a cloud's base to the ground (sys/weather.js, its height the scale)
+  // a ring of mist (sys/rings.js, its radius the scale)
   ringv: { base: -9, sigma: .16, col: [1, 1, .98], under: [.92, .92, .94],
     lobes: Array.from({ length: 16 }, (_, i) => { const a = i / 16 * Math.PI * 2, w = .17 + .05 * Math.sin(i * 2.3); return [Math.cos(a), Math.sin(a), Math.sin(i * 1.7) * .05, w, w, w * .9]; }) },
-  shaft: { base: -9, sigma: .022, col: [.66, .68, .74], under: [.55, .57, .63],
-    lobes: [[0, .5, 0, .09, .52, .09], [.05, .34, .04, .07, .36, .07], [-.04, .62, -.03, .08, .42, .08], [.02, .15, -.05, .06, .2, .06]] },
 };
 const MAXL = 24;
 export const STYLES = ['poly', 'soft', 'facet', 'billow'];
@@ -66,9 +63,6 @@ precision highp float; precision highp sampler3D;
 uniform vec3 uCam, uSun, uSunCol, uSkyAmb, uGndAmb, uFogCol, uCol, uUnder;
 uniform float uFogDen, uTime, uStyle;
 uniform vec4 uFlash;   // lightning inside the clouds: where, how bright
-#ifdef L_POST
-uniform sampler2D uDepth; uniform vec2 uDSize, uNF; uniform vec3 uFwd;   // the world's depth (look.js Q): the clouds stop at the land
-#endif
 ${GRADE_GLSL}
 uniform vec4 uK;   // lobes, base, sigma, the light's strength (0 at night .. 1)
 uniform vec4 uC[${MAXL}], uR[${MAXL}];
@@ -82,10 +76,6 @@ void main() {
   // into the cloud's own frame (unyawed, unscaled: a local t is vI.w metres)
   vec3 lo = vec3(c * o.x + s * o.z, o.y, -s * o.x + c * o.z), ld = vec3(c * rd.x + s * rd.z, rd.y, -s * rd.x + c * rd.z);
   float tA = 0., tB = length(vPos - uCam) / vI.w + 1e-3;
-#ifdef L_POST
-  { float z = texture(uDepth, gl_FragCoord.xy / uDSize).r * 2. - 1., lin = 2. * uNF.x * uNF.y / (uNF.y + uNF.x - z * (uNF.y - uNF.x));
-    tB = min(tB, lin / max(dot(rd, uFwd), .05) / vI.w); }
-#endif
   // a flat base: only cloud above it
   bool fromBelow = false;
   if (abs(ld.y) > 1e-5) { float tb = (uK.y - lo.y) / ld.y; if (ld.y > 0.) { fromBelow = tb > 0.; tA = max(tA, tb); } else tB = min(tB, tb); }
@@ -148,7 +138,7 @@ void main() {
   // haze toward the horizon, as the land has
   float hd = length(hit - uCam) * mix(1., .2, smoothstep(20., 250., hit.y));
   lit = mix(lit, uFogCol, 1. - exp(-pow(hd * uFogDen, 1.6)));
-  lit = grade(lit) * (.965 + .05 * h21(floor(gl_FragCoord.xy)));
+  lit = grade(lit) * grain();
   frag = vec4(lit * alpha, alpha);
 }`;
 // the mist over the sky: drawn at the back like the sky, only where the camera is in or under it
@@ -229,16 +219,10 @@ export function createClouds(gl) {
     },
     // the volumes, after everything solid and the sky; props: S.props (the same 8 floats a cloud
     // instance has always had)
-    // (flip: drawn mirrored, look.js T, so the boxes' inside is the other winding; post: the world's
-    // depth to stop at, look.js Q)
-    draw(S, vp, props, style, flip = false, post = null) {
+    // (flip: drawn mirrored, Graphics: Ultra's reflections, so the boxes' inside is the other winding)
+    draw(S, vp, props, style, flip = false) {
       const list = [];
-      // (sorted by each one's middle: a rain shaft's origin is on the ground, and sorting it by that
-      // swapped it in front of and behind the cloud above it as you flew, so it flashed)
-      for (const key in props) if (kinds[key]) {
-        const d = props[key], mid = key === 'shaft' ? .45 : 0;
-        for (let i = 0; i < d.length; i += 8) list.push([key, i, (d[i] - S.cam[0]) ** 2 + (d[i + 1] + d[i + 3] * mid - S.cam[1]) ** 2 + (d[i + 2] - S.cam[2]) ** 2]);
-      }
+      for (const key in props) if (kinds[key]) { const d = props[key]; for (let i = 0; i < d.length; i += 8) list.push([key, i, (d[i] - S.cam[0]) ** 2 + (d[i + 1] - S.cam[1]) ** 2 + (d[i + 2] - S.cam[2]) ** 2]); }
       if (!list.length) return 0;
       // farthest first, so nearer clouds lay over farther ones; runs of one kind go in one draw
       list.sort((a, b) => b[2] - a[2]);
@@ -249,9 +233,8 @@ export function createClouds(gl) {
       gl.uniform1f(u.uTime, S.time); gl.uniform1f(u.uStyle, STYLES.indexOf(style) - 1);
       gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_3D, tex); gl.uniform1i(u.uNoise, 0);
       if (u.uGradeT) gl.uniform3fv(u.uGradeT, S.gradeT || [1, 1, 1]);
+      if (u.uGrain) gl.uniform2fv(u.uGrain, S.grain || [1, .075]);
       if (u.uFlash) gl.uniform4fv(u.uFlash, S.flash || [0, 0, 0, 0]);
-      if (u.uDepth) gl.uniform1i(u.uDepth, 1);   // (never on the noise's unit)
-      if (post && u.uDepth) { gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, post.tex); gl.uniform1i(u.uDepth, 1); gl.activeTexture(gl.TEXTURE0); gl.uniform2fv(u.uDSize, post.size); gl.uniform2fv(u.uNF, post.nf); gl.uniform3fv(u.uFwd, post.fwd); }
       // the inside of each box: its far faces, tested against the land's depth
       gl.enable(gl.CULL_FACE); gl.cullFace(flip ? gl.FRONT : gl.BACK);   // (box() winds its faces inward)
       gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA); gl.depthMask(false); gl.depthFunc(gl.LEQUAL);
@@ -280,6 +263,7 @@ export function createClouds(gl) {
       gl.useProgram(mistP.p);
       gl.uniformMatrix4fv(mistP.u.uInvVP, false, inv); gl.uniform3fv(mistP.u.uCam, S.cam); gl.uniform3fv(mistP.u.uMistCol, S.mistCol); gl.uniform4fv(mistP.u.uMist, M);
       if (mistP.u.uGradeT) gl.uniform3fv(mistP.u.uGradeT, S.gradeT || [1, 1, 1]);
+      if (mistP.u.uGrain) gl.uniform2fv(mistP.u.uGrain, S.grain || [1, .075]);
       gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA); gl.depthMask(false); gl.depthFunc(gl.LEQUAL);
       gl.bindVertexArray(tri.vao); gl.drawArrays(gl.TRIANGLES, 0, 3);
       gl.depthMask(true); gl.disable(gl.BLEND); gl.depthFunc(gl.LESS);

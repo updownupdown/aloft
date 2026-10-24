@@ -306,8 +306,12 @@ if (qs.has('fps')) G.settings.fpsCap = +qs.get('fps') || 60;
     if (lowT >= (playT < 30 ? 6 : 9) && lv > 0) { G.emit('gfxAuto', lv - 1); lowT = highT = sinceT = 0; }
     else if (highT >= 45 && lv < 2) { G.emit('gfxAuto', lv + 1); lowT = highT = sinceT = 0; }
   }
-  // the level also sets how far trees are drawn, and how far they keep their detailed mesh
-  const treeGfx = lv => { R.treeView = 360 * [.75, 1, 1.15][lv ?? 1]; R.nearTrees = 110 * [.7, 1, 1.2][lv ?? 1]; };
+  // the level also sets how far trees are drawn, how far they keep their detailed mesh, and where
+  // they turn to flat pictures (render.js updateTrees; Ultra keeps the meshes farthest)
+  const treeGfx = lv => {
+    const u = G.gfx?.preset === 'ultra', i = lv ?? 1;
+    R.treeView = u ? 540 : [300, 400, 460][i]; R.nearTrees = 110 * [.7, 1, 1.2][i] * (u ? 1.15 : 1); R.flatTrees = u ? 400 : [150, 210, 280][i];
+  };
   G.on('gfx', treeGfx); treeGfx(G.gfx?.level);
 
   function frame(now) {
