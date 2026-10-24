@@ -35,9 +35,9 @@ const STEPS = [
   ['dive', 'Dive', 'Now both thumbs down.', 'S or Down', 'down', 'down', ['hold', 1.6, c => c.pitch < -.45]],
   ['left', 'Turn left', 'Left thumb down, right thumb up: you turn toward the lower wing.', 'A or Left', 'down', 'up', ['hold', 2, c => c.roll < -.4]],
   ['right', 'Turn right', 'Right thumb down, left thumb up.', 'D or Right', 'up', 'down', ['hold', 2, c => c.roll > .4]],
-  ['soar', 'Soar', 'Slide both thumbs out to the edges: wings wide, slow and floating.', 'Ctrl', 'out', 'out', ['hold', 2.5, c => c.spread > .45]],
+  ['soar', 'Soar', 'Slide both thumbs out to the edges: wings wide, slow and floating.', 'Q', 'out', 'out', ['hold', 2.5, c => c.spread > .45]],
   ['fast', 'Fast glide', 'Slide both thumbs in toward the middle: wings folded, faster.', 'Shift', 'in', 'in', ['hold', 2, c => c.spread < -.45]],
-  ['land', 'Land', 'Thumbs out and down: wings spread to brake, and you settle on the ground or a branch.', 'Ctrl and S together', 'out down', 'out down', 'land'],
+  ['land', 'Land', 'Thumbs out and down: wings spread to brake, and you settle on the ground or a branch.', 'Q and S together', 'out down', 'out down', 'land'],
 ];
 
 // ---- the lessons --------------------------------------------------------------------------

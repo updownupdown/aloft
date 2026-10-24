@@ -55,6 +55,7 @@ export function step(b, c, dt, E) {
   b.tuck += (tuckT - b.tuck) * Math.min(1, dt * 5);
   b.flare += (Math.max(0, c.spread) - b.flare) * Math.min(1, dt * 6);
   if (b.state !== 'fly') { b.spin = 0; b.barrel = null; return still(b, c, dt, E); }
+  look(b, c, dt);
   // the wing's shape with the thumbs up or down: spread and up floats (and hovers when slow), spread
   // and down brakes; folded and down stoops, folded and up zooms
   const up = Math.max(0, Math.min(1, c.pitch / .6)), dn = Math.max(0, Math.min(1, -c.pitch / .6));
@@ -204,13 +205,7 @@ function still(b, c, dt, E) {
     if (c.pinch && c.pinch !== 1) b.zoomPinch = (b.zoomPinch || 1) * c.pinch;
   } else { b.yaw += turn; b.view = null; }
   b.sPrev = 0; b.acc = 0;
-  // look round (two fingers, or the gyro): the view swings, then drifts back after a pause
-  const lk = c.look || [0, 0];
-  if (Math.abs(lk[0]) + Math.abs(lk[1]) > 1e-4) {
-    b.lookT = 2.2;
-    b.lookYaw = Math.max(-2.6, Math.min(2.6, (b.lookYaw || 0) + lk[0]));
-    b.lookPitch = Math.max(-.7, Math.min(1.45, (b.lookPitch || 0) + lk[1]));
-  } else if ((b.lookT = (b.lookT || 0) - dt) < 0) { const k = Math.min(1, dt * 2); b.lookYaw = (b.lookYaw || 0) * (1 - k); b.lookPitch = (b.lookPitch || 0) * (1 - Math.min(1, dt * .7)); }   // the tip comes back slowly
+  look(b, c, dt);
   // perched or standing, one finger dragged up or down tips the view (down looks up, far enough to
   // see into the boughs overhead), and it eases back a few seconds after; nothing walks: on the
   // ground the bird gets about by hops
@@ -437,4 +432,15 @@ function ground(b, E) {
   }
   if (b.t - b.lastHit > .4) { b.lastHit = b.t; b.stamina = Math.max(0, b.stamina - .1); E.bump(b.p, 'ground'); }
   b.gamma = Math.max(b.gamma, .25); b.s *= .6; b.vy = Math.max(b.vy, 1.5);
+}
+
+// look round (two fingers, the gyro, or a mouse): the view swings, then drifts back after a pause;
+// in flight only the mouse (two thumbs there are the wings), and it swings less far and comes back sooner (camera.js)
+function look(b, c, dt) {
+  const fly = b.state === 'fly', lk = (fly ? c.mouseLook : c.look) || [0, 0];
+  if (Math.abs(lk[0]) + Math.abs(lk[1]) > 1e-4) {
+    b.lookT = fly ? 1.4 : 2.2;
+    b.lookYaw = Math.max(-2.6, Math.min(2.6, (b.lookYaw || 0) + lk[0]));
+    b.lookPitch = Math.max(fly ? -.6 : -.7, Math.min(fly ? .6 : 1.45, (b.lookPitch || 0) + lk[1]));
+  } else if ((b.lookT = (b.lookT || 0) - dt) < 0) { const k = Math.min(1, dt * 2); b.lookYaw = (b.lookYaw || 0) * (1 - k); b.lookPitch = (b.lookPitch || 0) * (1 - Math.min(1, dt * (fly ? 2 : .7))); }   // the tip comes back slowly
 }
