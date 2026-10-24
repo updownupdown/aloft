@@ -270,7 +270,7 @@ if (qs.has('fps')) G.settings.fpsCap = +qs.get('fps') || 60;
   } });
   G.menu.onOpen(() => { delete reset.dataset.taps; reset.firstChild.textContent = ASK[0]; reset.classList.remove('warn3'); });
   appRows(G);
-  createLooks(G, R);   // the Ultra looks (look.js)
+  createLooks(G, R);   // Settings > Advanced > Look tests, and the Ultra looks (look.js)
   G.dev?.add({ id: 'frame-cost', area: 'Settings and performance', round: 'R8', title: 'Frame cost: milliseconds per system and per render pass', how: 'Fly a minute, then Settings > Advanced > Frame cost. GPU times show where the phone offers timer queries; add ?perf=deep to time them anyway (slower).' });
   G.dev?.add({ id: 'gpu-order', area: 'Settings and performance', round: 'R8', title: 'Cheaper drawing: solid things first with no discard, nearest ground first, sky last', how: 'Nothing to see: the same picture, less GPU work. Compare battery use (Settings) with the readings from before.' });
   G.dev?.add({ id: 'rest-30', area: 'Settings and performance', round: 'R8', title: 'Rest at 30 fps when perched or on the ground and untouched', how: 'Settings > Show frame rate, perch and leave the phone 5 s: 30; touch: back to your cap. Settings > Rest at 30 fps turns it off.' });

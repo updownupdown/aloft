@@ -133,6 +133,20 @@ void main() {
   float inside = step(tA, 1e-4) * step(tn, 1e-4);
   wrap = mix(wrap, .55, inside);
   vec3 lit = col * (uSkyAmb * 1.1 + uGndAmb * .15 + uSunCol * (.4 + .6 * wrap));
+#ifdef L_UNDERGLOW
+  // E (look test): at sunrise and sunset the clouds' undersides lit warm from below the horizon
+  { float gold = smoothstep(.3, .04, uSun.y) * smoothstep(-.12, -.01, uSun.y);
+    lit += uSunCol * vec3(1., .6, .36) * gold * (.45 * low + .3 * max(-n.y, 0.)) * (.4 + .6 * uK.w); }
+#endif
+#ifdef L_GLORY
+  // G (look test): the glory, rings of colour opposite the sun on a cloud seen from above
+  if (hit.y < uCam.y) {
+    float a = degrees(acos(clamp(dot(rd, -uSun), -1., 1.)));
+    #define SP(t) (vec3(smoothstep(.45, .95, t) + .45 * (1. - smoothstep(0., .2, t)), clamp(1. - abs(t - .55) * 2.6, 0., 1.), 1. - smoothstep(.1, .55, t)) * smoothstep(0., .18, t) * smoothstep(1., .82, t))
+    lit += uSunCol * (SP((a - .8) / 2.4) * .8 + SP((a - 3.6) / 2.6) * .45 + vec3(.25) * smoothstep(1.4, 0., a)) * .3 * smoothstep(.04, .15, uSun.y);
+    #undef SP
+  }
+#endif
   // the silver rim: thin cloud between you and the sun glows
   float rim = pow(max(dot(rd, uSun), 0.), 5.) * exp(-od * .9);
   lit += uSunCol * rim * .7 * uK.w;

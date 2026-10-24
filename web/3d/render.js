@@ -34,7 +34,7 @@ const FROSTY = new Set(['tuft', 'tuft1', 'tuft2', 'tuft3', 'scrub', 'bush', 'gor
 const COMMON_FS = `
 uniform vec3 uCam, uSun, uSunCol, uSkyAmb, uGndAmb, uFogCol, uFocus;
 uniform vec3 uZenith;
-uniform float uFogDen, uDither, uSeek, uCut, uFade, uWater, uLift, uTime, uRain;
+uniform float uFogDen, uDither, uSeek, uCut, uFade, uWater, uLift, uTime, uRain, uDew, uDapple;
 uniform vec4 uShadeC[8], uFrost, uSwell, uMist; uniform vec2 uFrostDir; uniform vec3 uMistCol;
 // what is being drawn (0 a prop, 1 an animal, 2 a building, 3 grass and
 // flowers, 4 the hawk, 5 the ground, 6 a stone), the wet after rain, snow lying, the screen's size
@@ -110,6 +110,14 @@ vec3 bow(vec3 d) {
   vec3 c = spectrum((a - 40.2) / 2.4) + spectrum((53.6 - a) / 3.6) * .35 + vec3(.06) * smoothstep(40.5, 36., a) * smoothstep(5., 25., a);
   return c * uBow.w;
 }
+#ifdef L_GLORY
+// G (look test): the glory, rings of colour round the point opposite the sun (where your own
+// shadow falls) on mist or cloud seen from above
+vec3 glory(vec3 d) {
+  float a = degrees(acos(clamp(dot(d, -uSun), -1., 1.)));
+  return (spectrum((a - .8) / 2.4) * .8 + spectrum((a - 3.6) / 2.6) * .45 + vec3(.25) * smoothstep(1.4, 0., a)) * smoothstep(.04, .15, uSun.y);
+}
+#endif
 vec4 waterAt(vec3 P, float depth) {
   vec3 v = normalize(uCam - P), lit = uSkyAmb + uSunCol * .6;
   float dist = length(uCam - P), near = 1. - smoothstep(90., 480., dist);
@@ -165,6 +173,12 @@ vec4 waterAt(vec3 P, float depth) {
   float wind = clamp(uSwell.z + uSwell.w - .35, 0., 1.);
   float cap = step(h21(i * 1.7 + c1 * 9. + floor(uTime * .5)), wind * .1) * smoothstep(.8, 1.8, crest) * near;
   float foam = max(1. - smoothstep(.04, .2, depth), cap * .8);
+#ifdef L_FOAM
+  // C (look test): soft foam lapping at the shore, a wider broken band that runs in and out
+  { float lap = .5 + .5 * sin(uTime * 1.2 + vn(P.xz / 11.) * 6.2832);
+    float br = vn(P.xz * 1.6 + uTime * .15) * .6 + vn(P.xz * 4.1 - uTime * .25) * .4;
+    foam = max((1. - smoothstep(.02, .14 + .3 * lap, depth)) * smoothstep(.3, .62, br) * (1. - smoothstep(120., 400., dist)), cap * .8); }
+#endif
   return vec4(mix(c, vec3(.95) * lit, foam * .8), mix(.3, 1., smoothstep(0., 3.5, depth)));
 }
 // hoar frost (sys/skydays.js S.frost: amount, the melt line, where it is measured from): white
@@ -198,6 +212,9 @@ vec3 mist(vec3 c, vec3 p) {
   // the one even colour the mist over the sky has, clouds.js MIST_FS, so the far land meets the sky)
   float above = smoothstep(top - 12., top + 12., y0);   // (eased, not a step: crossing the top turned the whole view at once)
   vec3 m = uMistCol * mix(1., mix(.84, 1., smoothstep(top - 40., top, max(y1, min(y0, top)))) + side * 1.6 + (lump - .5) * .12, above);
+#ifdef L_GLORY
+  m += uSunCol * glory(rd / L) * above * .35;
+#endif
   return mix(c, m, k);
 }
 // the haze's colour along a view direction: warm toward the sun and cool away from it (the sky's
@@ -221,6 +238,12 @@ vec3 haze(vec3 c, vec3 p) {
   float over = uMist.y > 0. ? smoothstep(-15., 15., uCam.y - uMist.x - uMist.w * .5) : 1.;
   vec3 o = over > 0. ? aerial(mist(c, p), p) : c;
   o = over < 1. ? mix(mist(aerial(c, p), p), o, over) : o;
+#ifdef L_RIDGES
+  // D (look test): far ridges in layered blues, a little cooler and paler with each distance, as
+  // in an ink-wash painting, by day
+  { float dd = length(p - uCam), l = dot(o, vec3(.3, .55, .15));
+    o = mix(o, vec3(l) * vec3(.84, .93, 1.1) + uFogCol * .12, smoothstep(300., 1500., dd) * .5 * smoothstep(.05, .3, uSun.y)); }
+#endif
   // the rainbow hangs in the rain in front of what is far off
   return uBow.w > 0. ? o + bow(normalize(p - uCam)) * smoothstep(80., 450., length(p - uCam)) : o;
 }
@@ -283,6 +306,14 @@ void main() {
     float hd = vn(vPos.xz / 380.) - .5, hd2 = vn(vPos.xz / 95. + 17.) - .5;
     col *= vec3(1. + hd * .12 + hd2 * .04, 1. + hd2 * .05, 1. - hd * .12);
   }
+#ifdef L_WIND
+  // A (look test): waves of wind rolling across far meadows, pale bands running downwind
+  if ((uClass > 4.5 && uClass < 5.5 || uClass > 2.5 && uClass < 3.5) && col.g > col.r * 1.05 && n.y > .75) {
+    vec2 wd = normalize(uSwell.xy + 1e-4); float along = dot(vPos.xz, wd), side = dot(vPos.xz, vec2(-wd.y, wd.x));
+    float w = vn(vec2(along / 55. - uTime * (.35 + .5 * uSwell.w), side / 160.)) * .7 + vn(vec2(along / 23. - uTime * .9, side / 70.)) * .3;
+    col = mix(col, col * vec3(1.12, 1.1, .96) + .03, smoothstep(.58, .85, w) * smoothstep(25., 90., length(vPos - uCam)) * (.3 + .4 * uSwell.w));
+  }
+#endif
   if (uClass > 4.5 && uClass < 5.5 && y > uWater) col *= mix(.7, 1., smoothstep(uWater, uWater + .9, y));   // the wet band of shore
   if (uClass > 1.5 && uClass < 2.5) {
     float side = 1. - abs(n.y), along = dot(vPos.xz, normalize(vec2(-n.z, n.x) + 1e-4));
@@ -300,11 +331,33 @@ void main() {
   if (uClass > .5 && uClass < 1.5) col *= mix(1.12, .88, smoothstep(-.6, .7, n.y));   // counter-shading: dark backs, pale bellies
   if (uFrost.x > 0. && uDither < 1.5 && y > uWater) col = frosted(col, n, vPos);
   float sun = sunlit(vPos);
+#ifdef L_DAPPLE
+  // F (look test): dappled light under the trees, near the camera when you are in a wood
+  if (uDapple > 0.) {
+    float dc = length(vPos - uCam);
+    if (dc < 40.) {
+      vec2 q = vPos.xz - uSun.xz / max(uSun.y, .25) * vPos.y * .15;
+      float m = vn(q * .8 + vec2(sin(uTime * .6), cos(uTime * .45)) * .2) * .6 + vn(q * 2.2 + uTime * .05) * .4;
+      sun *= mix(1., .3 + 1.2 * smoothstep(.38, .72, m), uDapple * (1. - smoothstep(18., 40., dc)));
+    }
+  }
+#endif
 #ifdef L_SHADOW
   sun *= shadowAt(vPos, n);
 #endif
   if (uClass > 4.5 && uClass < 5.5 && vColB.r > 1.5) sun *= hills(vColB);
   vec3 c = shade(col, n, sun), hp = vPos;
+#ifdef L_DEW
+  // B (look test): dew on the grass at dawn, tiny glints looking toward the low sun
+  if (uDew > 0. && (uClass > 4.5 && uClass < 5.5 || uClass > 2.5 && uClass < 3.5)) {
+    float dc = length(vPos - uCam);
+    if (dc < 60.) {
+      float s = h21(floor(vPos.xz * 9.) + floor(vPos.y * 9.) * 7.1);
+      float sp = pow(max(dot(reflect(-uSun, vec3(0, 1, 0)), (uCam - vPos) / dc), 0.), 3.);
+      c += uSunCol * step(.986, s) * (.5 + sp * 1.5) * uDew * sun * (1. - smoothstep(20., 60., dc));
+    }
+  }
+#endif
   { vec3 vd = normalize(vPos - uCam); float bk = pow(max(dot(vd, uSun), 0.), 3.) * sun;
     if (vLeaf > .5 || uClass > 3.5 && uClass < 4.5) c += col * uSunCol * bk * .5 * (1. - max(dot(n, uSun), 0.));   // leaves and feathers lit through
     if (uClass > .5 && uClass < 1.5 || uClass > 3.5 && uClass < 4.5) c += uSunCol * pow(1. - abs(dot(n, vd)), 3.) * (.1 + .45 * bk); }   // a rim of light
@@ -844,6 +897,8 @@ export function createRenderer(gl) {
     if (u.uGradeT) gl.uniform3fv(u.uGradeT, S.gradeT || ONE3);
     if (u.uGrain) gl.uniform4fv(u.uGrain, S.grain);
     if (u.uRain) gl.uniform1f(u.uRain, S.rainU?.k || 0);
+    if (u.uDew) gl.uniform1f(u.uDew, S.dew || 0);
+    if (u.uDapple) gl.uniform1f(u.uDapple, S.dapple || 0);
     if (u.uBow) gl.uniform4fv(u.uBow, S.bow || NOBOW);
     if (u.uClass) gl.uniform1f(u.uClass, 0);
     if (u.uClip) gl.uniform1f(u.uClip, 0);
