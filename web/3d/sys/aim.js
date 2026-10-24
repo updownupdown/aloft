@@ -78,6 +78,8 @@ export function aimSystem(G) {
       if (d < td) { td = d; to = [px, py, pz]; }
     }
     if (!to) return false;
+    // Play test B (trials.js): perched, a tap on a mouse near by drops you on it (food.js resolves the pounce)
+    if (b.state === 'perch' && G.trial?.pounce) { const m = G.pounceAt?.(to); if (m) { G.part([m.x, m.y + .1, m.z], [0, .5, 0], .5, [1, 1, .95], .1); return hopDown(b, [m.x, m.y, m.z], G.E); } }
     // the water: drink if it is in reach, else go to the nearest dry spot by it, then drink
     const pud = G.water?.puddleAt(to[0], to[2], .3), wet = to[1] <= WATER || pud;
     if (b.state === 'swim') return wet && Math.hypot(to[0] - b.p[0], to[2] - b.p[2]) < 6 ? G.water.drink() : false;

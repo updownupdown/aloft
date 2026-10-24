@@ -138,6 +138,29 @@ export function foodSystem(G) {
     return out;
   }
   G.mouseCells = cellMice;   // sys/fields.js reads the homes for its signs
+  // Play test B (trials.js): a pounce from a perch. aim.js asks for the mouse by a tapped spot (in the
+  // open, within 35 m, below you); the hawk drops on it (flight.js hopDown) and the mouse, which hasn't
+  // seen a thing from a still perch, keeps still until the last moment; landing on it is the catch
+  G.pounceAt = to => {
+    if (b.state !== 'perch' || b.settle > 0 || b.carry || b.eating > 0) return null;
+    let best = null, bd = 2.5;
+    for (const m of mice.values()) {
+      if (m.hidden > 0 || m.dig > 0 || m.cover) continue;
+      const d = Math.hypot(m.x - to[0], m.z - to[2]);
+      if (d < bd && Math.hypot(m.x - b.p[0], m.z - b.p[2]) < 35 && m.y < b.p[1] - 1) { bd = d; best = m; }
+    }
+    if (best) G.pounce = { m: best, t: G.t };
+    return best;
+  };
+  function pounce() {
+    const P = G.pounce; if (!P) return;
+    if (b.state !== 'ground') { G.pounce = null; return; }
+    if (b.settle > 0) return;
+    G.pounce = null; const m = P.m, hd = Math.hypot(b.p[0] - m.x, b.p[2] - m.z);
+    if (mice.has(m.id) && !(m.hidden > 0) && hd < FOOD.catchR + .8) { eat(m); return; }
+    if (mice.has(m.id) && !m.bolt) { m.bolt = true; m.flee = 3; m.freeze = 0; }
+    G.hud.tally('It got away', 'prey');
+  }
   function refresh() {
     const r = FOOD.near, c0 = Math.floor((b.p[0] - r) / FOOD.cell), c1 = Math.floor((b.p[0] + r) / FOOD.cell);
     const d0 = Math.floor((b.p[2] - r) / FOOD.cell), d1 = Math.floor((b.p[2] + r) / FOOD.cell), seen = new Set();
@@ -156,6 +179,7 @@ export function foodSystem(G) {
     const w = G.wary?.(m.hx, m.hz) || 0;   // a meadow where you missed a few times: its mice are on edge (sys/fields.js)
     if (m.seen > 0) m.seen -= dt;
     if (m.hidden > 0) { m.hidden -= dt; m.x = m.bx; m.z = m.bz; m.y = height(m.x, m.z); return; }
+    if (G.pounce?.m === m && b.settle > .4) { m.y = height(m.x, m.z); return; }   // a pounce on its way (play test B): it hasn't seen you yet
     // digging down: a moment of flying earth, then it is gone
     if (m.dig > 0) {
       m.dig -= dt;
@@ -330,7 +354,7 @@ export function foodSystem(G) {
         b.eatPose = { headPitch: .7 + .35 * Math.max(0, Math.sin(t1 * 11.4)), headYaw: Math.sin(t1 * 3.1) * .2, fluff: .15 };
       } else b.eatPose = null;
       if (b.eating > 0 && b.eating - dt <= 0) finish();
-      arrive();
+      arrive(); pounce();
       eatBtn.classList.toggle('gone', !(G.actions.eat.when() || G.actions.berries.when()) || !!G.menu?.open);
       for (let i = caches.length - 1; i >= 0; i--) if (G.day + G.tod - caches[i].day > FOOD.cacheDays) caches.splice(i, 1);
       let reach = 0;
@@ -367,7 +391,15 @@ export function foodSystem(G) {
       if ((rustleT -= dt) <= 0) {
         rustleT = .25;
         const hunt = b.state === 'fly' && (G.aim?.focus || 0) > .35, k = (hunt ? FOOD.squeakHunt : FOOD.squeak) * (BIRD === 'owl' ? 1.5 : 1);
-        for (const m of mice.values()) if (!(m.hidden > 0) && !(m.dig > 0) && !(m.freeze > 0 && m.flee <= 0) && Math.random() < (m.flee > 0 ? .4 : k) && !squeaks.some(q => q.m === m)) { squeaks.push({ m, t: 0 }); m.seen = 2; }
+        // perched and still (play test B), the mice within 45 m show themselves as often as to a hunting hawk
+        const still = G.trial?.pounce && b.state === 'perch' && b.settle <= 0 && !b.asleep;
+        let near = false;
+        for (const m of mice.values()) {
+          if (m.hidden > 0 || m.dig > 0 || (m.freeze > 0 && m.flee <= 0)) continue;
+          const close = still && Math.hypot(m.x - b.p[0], m.z - b.p[2]) < 45; near ||= close && !m.cover;
+          if (Math.random() < (m.flee > 0 ? .4 : close ? FOOD.squeakHunt : k) && !squeaks.some(q => q.m === m)) { squeaks.push({ m, t: 0 }); m.seen = 2; }
+        }
+        if (near && !G.flags.pounceHint) { G.flags.pounceHint = 1; G.hud.glint('From your perch', 'A mouse in the open below. Tap it to drop on it from your perch.', 'prey'); }
       }
     },
     scene(S) {

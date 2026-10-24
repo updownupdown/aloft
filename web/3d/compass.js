@@ -4,13 +4,13 @@
 // lights up for a while what is round you within about ten seconds' flight: thermals, landmarks not
 // yet found and rings of mist (CALLSEE).
 import { pinCol } from './sys/map.js';
-import { thermalsNear, landmarksNear, ringsNear, isNotable } from './world.js';
+import { thermalsNear, landmarksNear, ringsNear, isNotable, height, WATER, coastDist } from './world.js';
 import { icon } from './icons.js';
 
 const SPAN = Math.PI * .55;          // from the middle to either edge
 const POINTS = [['N', 0], ['NE', 45], ['E', 90], ['SE', 135], ['S', 180], ['SW', 225], ['W', 270], ['NW', 315]];
 // each mark's icon (icons.js)
-const MARK = { nest: 'nest', south: 'south', home: 'home', pin: 'pin', place: 'landmarks', therm: 'thermal', ring: 'ring', find: 'landmarks' };
+const MARK = { nest: 'nest', south: 'south', home: 'home', pin: 'pin', place: 'landmarks', therm: 'thermal', ring: 'ring', find: 'landmarks', water: 'thirst' };
 // a Call's look round: how far (m, about ten seconds' flight), how long the marks stay (s) and fade
 // at the end, and at most how many of each
 export const CALLSEE = { r: 320, secs: 10, fade: 3, most: 3 };
@@ -48,7 +48,29 @@ export function createCompass(G, ui) {
     const pins = (J?.pins || []).map(p => [p, Math.hypot(p.x - x, p.z - z)]).filter(([, d]) => d > 40 && d < 4000).sort((a, c) => a[1] - c[1]).slice(0, 2);
     for (const [p] of pins) out.push(['pin', p.x, p.z, p.name || 'Your pin', pinCol(p)]);
     if (seenT > 0) out.push(...seen);
+    if (wBest && Math.hypot(wBest[0] - x, wBest[1] - z) > 35) out.push(['water', wBest[0], wBest[1], 'Fresh water']);
     return out;
+  }
+  // Play test A (trials.js): thirsty in flight, the nearest fresh water (a river, a lake, a puddle or a rain
+  // pool; the sea is salt) within 2.4 km, searched a ring of samples a frame outward from the bird, again
+  // after it has moved on 60 m
+  let wk = 1, wBest = null, wFrom = null;
+  const fresh = (x, z) => height(x, z) < WATER && coastDist(x, z) > 30;
+  function water() {
+    if (!G.trial?.water || G.thirst >= .6 || b.state !== 'fly') { wBest = null; wk = 1; wFrom = null; return; }
+    const x = b.p[0], z = b.p[2];
+    if (wFrom && Math.hypot(wFrom[0] - x, wFrom[1] - z) > 60) { wk = 1; wFrom = null; }
+    if (wk > 40) return;
+    if (wk === 1) {
+      wFrom = [x, z];
+      let bd = 400; const was = wBest; wBest = null;
+      for (const P of [G.puddles || [], G.pools || []]) for (let i = 0; i < P.length; i += 8) { const d = Math.hypot(P[i] - x, P[i + 2] - z); if (d < bd) { bd = d; wBest = [P[i], P[i + 2]]; } }
+      if (wBest) { wk = 99; return; }
+      wBest = was;   // kept while the new search runs
+    }
+    const r = wk * 60, n = Math.max(8, Math.round(r / 9.5));
+    for (let i = 0; i < n; i++) { const a = i / n * 6.283, qx = x + Math.cos(a) * r, qz = z + Math.sin(a) * r; if (fresh(qx, qz)) { wBest = [qx, qz]; wk = 99; return; } }
+    if (++wk > 40) wBest = null;   // nothing within 2.4 km
   }
   function setMarks(list) {
     const k = list.map(m => m[0] + m[3]).join('|');
@@ -69,6 +91,7 @@ export function createCompass(G, ui) {
       el.classList.toggle('hidden', !!hide);
       if (hide) return;
       if (seenT > 0 && (seenT -= dt) <= 0) markT = 0;   // the Call's marks go
+      water();
       if ((markT -= dt) <= 0) { markT = 1; setMarks(places()); }
       const fade = Math.min(1, Math.max(0, seenT) / CALLSEE.fade);
       const yaw = b.yaw;
