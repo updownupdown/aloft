@@ -1,17 +1,19 @@
 // The Map tab: the Earth as a globe (globe.js), spun with a finger. Everywhere starts under fog;
 // flying clears it around the hawk (wider the higher it flies). Drag to spin (flick and it coasts),
-// pinch, the wheel or the buttons to zoom, tap a place for its note, hold to drop a pin. Only places
+// pinch, the wheel or the buttons to zoom. A tap drops a passing pin (+ Add pin keeps it) or picks a
+// pin or a place: its card, bottom left, has its name and Fast-travel (only where explored). Only places
 // that are one of a kind get a mark; a name many places share is a quiet word, once, when close.
 // Created by journey.js, which keeps the route and the landmarks; the fog saves with the journey,
 // a bit per 100 m cell over the whole Earth (earth.js), wrapping east to west like the world.
 import * as W from '../world.js';
 import { PIG, C, shade, poly } from '../facet.js';
-import { clamp } from '../util.js';
+import { clamp, store } from '../util.js';
 import { esc } from '../journal.js';
 import { createDial } from '../dial.js';
 import { icon } from '../icons.js';
 import { EARTH, wrapX, latLon, toXZ, declination } from '../earth.js';
 import { createGlobe, prebake } from '../globe.js';
+import { FEATHER } from './aims.js';
 
 const CELL = 100;                        // fog cells, metres
 const SEE = [160, 2.2, 520];             // clearing radius: base, per metre of height, most
@@ -19,11 +21,35 @@ const D = Math.PI / 180;
 // the fog: one bit per cell, columns wrapping round the world
 const FI = Math.round(EARTH.W / CELL), FJ = Math.ceil(EARTH.H / CELL), FJ0 = Math.floor(EARTH.Z0 / CELL);
 const bit = (i, j) => { const jj = j - FJ0; return jj < 0 || jj >= FJ ? -1 : jj * FI + (((i + FI / 2) % FI) + FI) % FI; };
-// your own pins: a long press drops one in the colour you pick (they mean what you like); they
-// show on the compass. Pins dropped before had a kind, and keep that kind's colour
-export const PINS = ['#e8a33a', '#c0533f', '#d977a8', '#8a6fc0', '#3f8fd0', '#5f9a4a', '#f4f1e8'];
+// your own pins, in twelve colours (they mean what you like; a new one takes a colour no pin has
+// yet); they show on the compass. Pins dropped before had a kind, and keep that kind's colour
+export const PINS = ['#c0533f', '#e07a3a', '#e8a33a', '#e5d04a', '#9cc25a', '#5f9a4a', '#3fb0a8', '#7fc4e8', '#3f8fd0', '#8a6fc0', '#d977a8', '#f4f1e8'];
 const OLD = { thermal: '#e8a33a', water: '#3f8fd0', perch: '#5f9a4a', food: '#c0533f', mark: '#8a6fc0' };
-export const pinCol = p => p.col || OLD[p.kind] || PINS[3];
+export const pinCol = p => p.col || OLD[p.kind] || PINS[9];
+
+// how many landmarks the whole Earth holds, for the Map's tally: counted once per build, a tile
+// of the world at a time and only while the menu is open (a few seconds of work in all)
+const LM_TILE = 4000;
+let lmTotal = 0, lmK = 0;
+const lmIds = new Set();
+function countLandmarks(G, more) {
+  if (lmTotal) return true;
+  const had = store.get('lmTotal'), b = String(G.build || 0);
+  if (had?.b === b && had.n) { lmTotal = had.n; return true; }
+  const nx = Math.ceil(EARTH.W / LM_TILE), nz = Math.ceil(EARTH.H / LM_TILE);
+  const step = () => {
+    if (!G.menu.open) return;
+    for (const t = performance.now(); lmK < nx * nz && performance.now() - t < 12; lmK++) {
+      const i = lmK % nx, j = Math.floor(lmK / nx);
+      for (const l of W.landmarksNear(EARTH.X0 + (i + .5) * LM_TILE, EARTH.Z0 + (j + .5) * LM_TILE, LM_TILE / 2 + 1)) lmIds.add(l.id);
+    }
+    if (lmK < nx * nz) { setTimeout(step, 40); return; }
+    lmTotal = lmIds.size + (G.isleSights?.() || 0); lmIds.clear();
+    store.set('lmTotal', { b, n: lmTotal }); more();
+  };
+  setTimeout(step, 300);
+  return false;
+}
 
 export function mapView(G, J) {
   const b = G.b, seen = new Uint8Array(Math.ceil(FI * FJ / 8));
@@ -47,11 +73,11 @@ export function mapView(G, J) {
   // ---- the tab: the globe fills it (no pages; Landmarks and Lands are in the Journal, a tap away) ----
   const pane = G.menu.tab('map', 'Map');
   pane.classList.add('mappane3', 'flush3');
-  pane.innerHTML = `<div class="mapbox3"><canvas></canvas><div class="mapsum3"></div><div class="mapday3"><div class="mapseason3"></div></div>
-      <div class="mapbtn3"><button data-z="in" aria-label="Zoom in">${icon('zoomin')}</button><button data-z="out" aria-label="Zoom out">${icon('zoomout')}</button><button data-z="me" aria-label="Centre on the hawk">${icon('me')}</button></div>
-      <div class="mapgo3"><button data-go="places">${icon('landmarks')}<span>Landmarks</span><b></b></button><button data-go="lands">${icon('lands')}<span>Biomes</span><b></b></button></div>
-      <p class="maptip3">Hold the map to drop a pin.</p><div class="mapnote3 hidden"></div></div>`;
+  pane.innerHTML = `<div class="mapbox3"><canvas></canvas><div class="mapsum3"></div><div class="mapday3"><div class="mapseason3"></div><small class="mapyear3"></small></div>
+      <div class="mapbtn3"><button data-z="in" aria-label="Zoom in">${icon('zoomin')}</button><button data-z="out" aria-label="Zoom out">${icon('zoomout')}</button><button data-z="me" class="mapme3" aria-label="Centre on the hawk"><span></span>${icon('me')}</button></div>
+      <p class="maptip3">Tap the map to drop a pin.</p><div class="mapnote3 hidden"></div></div>`;
   const sum = pane.querySelector('.mapsum3'), box = pane.querySelector('.mapbox3'), cv = box.querySelector('canvas'), note = box.querySelector('.mapnote3');
+  const hereEl = box.querySelector('.mapme3 span'), yearEl = box.querySelector('.mapyear3');
   // top right, the same day dial as in flight, and the season in more detail beneath it
   const day = box.querySelector('.mapday3'), seasonEl = day.querySelector('.mapseason3'), dial = createDial(day);
   day.prepend(dial.el || day.querySelector('.dial'));
@@ -79,26 +105,27 @@ export function mapView(G, J) {
       }
     }
   });
-  // bottom left: the landmarks and lands found, each a way to its Journal page
-  const go = box.querySelector('.mapgo3');
-  go.addEventListener('click', e => { const b = e.target.closest('[data-go]'); if (b) G.menu.set(true, 'journal', b.dataset.go); });
+  // top left: how much is known, the feathers, the biomes and the landmarks found, each of how many
+  // (biomes and landmarks a way to their Journal page)
+  sum.addEventListener('click', e => { const b = e.target.closest('[data-go]'); if (b) G.menu.set(true, 'journal', b.dataset.go); });
+  const tally = () => {
+    const pct = explored() * 100, L = G.collection?.(), found = Object.keys(J.found || {}).length;
+    const row = (ic, n, of, word, go) => `<li${go ? ` data-go="${go}" role="button"` : ''}>${icon(ic)}<b>${n}<span>/${of}</span></b>${word}</li>`;
+    sum.innerHTML = `<div class="far3"><span><i style="width:${Math.max(2, Math.round(pct))}%"></i></span><small>${pct < 1 ? pct.toFixed(2) : Math.round(pct)}% of the world explored</small></div>
+      <ul class="tally3">${L ? row('feather', L.feathers, FEATHER.most, L.feathers === 1 ? 'feather' : 'feathers') + row('lands', L.lands, L.of, 'biomes', 'lands') : ''}${row('landmarks', found, lmTotal || '…', found === 1 ? 'landmark' : 'landmarks', 'places')}</ul>`;
+  };
   G.on('menuTab', id => {
     open = id === 'map';
     if (!open) return;
-    note.classList.add('hidden');
-    const pct = Math.round(explored() * 100);
+    pick(null);
     dial.update(G.tod, G.day, false, null, G.forecast || null);
     const cap = t => t[0].toUpperCase() + t.slice(1);
     seasonEl.className = `mapseason3 ${G.season.name}`;
     seasonEl.innerHTML = `<b>${G.date?.text ? `${G.date.text}, ` : ''}${cap(G.season.tropic ? 'tropical summer' : G.season.name)}</b>`;
-    // top left: where the hawk is, and how far the journey has come
-    const where = G.placeWhere(), L = G.collection?.(), found = Object.keys(J.found || {}).length;
-    sum.innerHTML = `<p class="here3">${esc(cap(where))}</p>
-      <div class="far3"><span><i style="width:${Math.max(2, pct)}%"></i></span><small>${pct < 1 ? (explored() * 100).toFixed(2) : pct}% of the world known</small></div>
-      <ul class="tally3"><li><b>${J.year || 1}</b>${J.year > 1 ? 'years' : 'year'}</li>${L ? `<li><b>${L.feathers}</b>${L.feathers === 1 ? 'feather' : 'feathers'}</li>` : ''}${J.pins?.length ? `<li><b>${J.pins.length}</b>${J.pins.length === 1 ? 'pin' : 'pins'}</li>` : ''}</ul>`;
-    go.querySelector('[data-go=places] b').textContent = found;
-    go.querySelector('[data-go=lands] b').textContent = L ? `${L.lands}/${L.of}` : '';
-    go.querySelector('[data-go=lands]').hidden = !L;
+    yearEl.textContent = `${J.year || 1} ${J.year > 1 ? 'years' : 'year'}`;
+    // where the hawk is, on the button that finds it
+    hereEl.textContent = cap(G.placeWhere());
+    tally(); countLandmarks(G, () => { if (open) tally(); });
     requestAnimationFrame(() => {
       fit(); fogNow();
       // open on the hawk, far enough out to see its continent
@@ -131,7 +158,7 @@ export function mapView(G, J) {
     for (const l of Object.values(J.found)) out.push({ x: l.x, z: l.z, name: l.name, note: l.note, col: PIG.ring, rank: SIGHTS.has(l.name) ? 4 : names[l.name] > 1 ? 3 : 2, plain: SIGHTS.has(l.name) || names[l.name] > 1 });
     // food left on a branch (flight thread's G.caches), till it spoils
     for (const c of G.caches || []) out.push({ x: c.x, z: c.z, name: `A ${c.kind || 'catch'} left on a branch`, note: `Left on day ${Math.floor(c.day)}. It keeps two days.`, cache: c, rank: 1 });
-    for (const p of J.pins || []) out.push({ x: p.x, z: p.z, name: 'Your pin', note: '', pin: p, rank: 0 });
+    for (const p of J.pins || []) out.push({ x: p.x, z: p.z, name: p.name || 'Your pin', note: '', pin: p, rank: 0 });
     for (const p of G.mapPlaces?.() || []) out.push({ rank: 2, ...p });   // places other systems add (the neighbours' valley)
     return out;
   }
@@ -160,7 +187,7 @@ export function mapView(G, J) {
     const close = V.R > rMax() * .3;
     for (const p of places().sort((a, c) => a.rank - c.rank)) {
       const [px, py, front] = at(p.x, p.z); if (!front || px < -20 || py < -20 || px > V.w + 20 || py > V.h + 20) continue;
-      if (p.pin) { pin(x, px, py, pinCol(p.pin)); shown.push([p, px, py]); continue; }
+      if (p.pin) { pin(x, px, py, pinCol(p.pin), sel?.pin === p.pin); shown.push([p, px, py]); continue; }
       if (p.cache) { pin(x, px, py, '#7a4a2a'); shown.push([p, px, py]); continue; }
       if (p.plain) {
         // a repeated name or a land's sight: no mark, a quiet name when close, once per stretch
@@ -170,8 +197,10 @@ export function mapView(G, J) {
       }
       // one mark to a spot, and none under the panels
       if (dots.some(([qx, qy]) => Math.hypot(qx - px, qy - py) < 12) || !free(px - 6, py + 6, 12)) continue;
-      dots.push([px, py]); mark(x, px, py, p.col); label(px, py, p.name); shown.push([p, px, py]);
+      dots.push([px, py]); mark(x, px, py, p.col, sel?.place && sel.place.name === p.name && sel.place.x === p.x); label(px, py, p.name); shown.push([p, px, py]);
     }
+    // the passing pin a tap leaves, till it is added or another tap moves it
+    if (sel?.temp) { const [px, py, front] = at(sel.x, sel.z); if (front) pin(x, px, py, 'rgba(255,255,255,.55)', true); }
     // you: a little hawk, pointing the way you face
     const [hx, hy, hf] = at(b.p[0], b.p[2]);
     if (hf) {
@@ -183,15 +212,16 @@ export function mapView(G, J) {
     }
   }
   // a pin: a round head on a short stem, its point on the place
-  const pin = (x, px, py, col) => {
+  const pin = (x, px, py, col, on) => {
+    if (on) { x.fillStyle = 'rgba(255,255,255,.28)'; x.beginPath(); x.arc(px, py - 14, 11, 0, 6.283); x.fill(); }
     x.strokeStyle = 'rgba(255,255,255,.8)'; x.lineWidth = 1.6; x.beginPath(); x.moveTo(px, py); x.lineTo(px, py - 10); x.stroke();
     x.fillStyle = col; x.beginPath(); x.arc(px, py - 14, 6, 0, 6.283); x.fill(); x.strokeStyle = '#fff'; x.lineWidth = 1.5; x.stroke();
     x.fillStyle = 'rgba(255,255,255,.7)'; x.beginPath(); x.arc(px - 2, py - 16, 1.8, 0, 6.283); x.fill();
   };
-  const mark = (x, px, py, col) => { const P = [[px, py - 6], [px + 5, py], [px, py + 6], [px - 5, py]]; poly(x, P, C(shade(col, .85))); poly(x, [P[0], P[2], P[3]], C(shade(col, 1.15))); x.strokeStyle = 'rgba(255,255,255,.8)'; x.lineWidth = 1; x.stroke(); };
-  // ---- touch: drag to spin, flick to coast, pinch to zoom, tap a place, double tap to fly there (play testing) ---
+  const mark = (x, px, py, col, on) => { if (on) { x.fillStyle = 'rgba(255,255,255,.3)'; x.beginPath(); x.arc(px, py, 10, 0, 6.283); x.fill(); } const P = [[px, py - 6], [px + 5, py], [px, py + 6], [px - 5, py]]; poly(x, P, C(shade(col, .85))); poly(x, [P[0], P[2], P[3]], C(shade(col, 1.15))); x.strokeStyle = 'rgba(255,255,255,.8)'; x.lineWidth = 1; x.stroke(); };
+  // ---- touch: drag to spin, flick to coast, pinch to zoom, tap to pin or pick ----
   const pts = new Map();
-  let pinch = 0, moved = 0, lastTap = null, lastMove = 0;
+  let pinch = 0, moved = 0, lastMove = 0;
   // main.js G.travelTo: shut the menu, fade to black, set down on the nearest perch (or the
   // ground or water) there, fade back in
   function teleport(x, z) {
@@ -207,23 +237,45 @@ export function mapView(G, J) {
     T.R = R; soon();
   };
   const local = e => { const r = cv.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
-  // a long press (still for half a second) offers a pin there
-  let pressT = 0;
-  const offerPin = p => {
-    const w = toWorld(p[0], p[1]); if (!w) return;
-    lastTap = null; moved = 99;
-    note.classList.remove('hidden');
-    note.innerHTML = `<b>Drop a pin here</b><small>Pick its colour.</small><span class="pins3">${PINS.map(c => `<button data-pin="${c}" style="--pc:${c}" aria-label="Pin colour"></button>`).join('')}</span>`;
-    note.onclick = e => {
-      const k = e.target.closest('[data-pin]')?.dataset.pin; if (!k) return;
-      (J.pins ||= []).push({ id: Date.now().toString(36), col: k, x: Math.round(w[0]), z: Math.round(w[1]) });
-      if (J.pins.length > 40) J.pins.shift();
-      note.classList.add('hidden'); note.onclick = null; soon(); G.hud.did('pin'); G.emit('pin');
-    };
-  };
+
+  // the card, bottom left: what is picked. { temp, x, z } a passing pin; { pin } one of yours;
+  // { place } a place found. Fast-travel to any place found, and to a pin where the fog has cleared
+  let sel = null, swatch = false, noGo = 0;
+  const nameAt = (x, z) => { const n = G.placeName?.(x, z) || 'Somewhere'; return n[0].toUpperCase() + n.slice(1); };
+  const known = (x, z) => [[0, 0], [CELL, 0], [-CELL, 0], [0, CELL], [0, -CELL]].some(([dx, dz]) => isSeen(x + dx, z + dz));
+  const freeCol = () => { const used = new Set((J.pins || []).map(pinCol)), left = PINS.filter(c => !used.has(c)); const L = left.length ? left : PINS; return L[Math.floor(Math.random() * L.length)]; };
+  function pick(s) { sel = s; swatch = false; clearTimeout(noGo); card(); soon(); }
+  function card() {
+    note.classList.toggle('hidden', !sel); if (!sel) { note.innerHTML = ''; return; }
+    const go = `<button data-act="go">${icon('travel')}Fast-travel</button>`;
+    if (sel.temp) note.innerHTML = `<b>${esc(sel.name)}</b><span class="pins3"><button data-act="add">${icon('plus')}Add pin</button></span>`;
+    else if (sel.pin) {
+      const c = pinCol(sel.pin);
+      note.innerHTML = `<b>${esc(sel.pin.name || 'Your pin')}</b><small>Your pin. It shows on the compass when you are near.</small>
+        <span class="pins3"><button data-act="col" class="pcol3" style="--pc:${c}" aria-label="Pin colour">${icon('dropper')}</button>${go}<button data-act="rm">${icon('trash')}Remove</button></span>
+        ${swatch ? `<span class="swatch3">${PINS.map(k => `<button data-col="${k}" style="--pc:${k}"${k === c ? ' class="on"' : ''} aria-label="Colour"></button>`).join('')}</span>` : ''}`;
+    } else note.innerHTML = `<b>${esc(sel.place.name)}</b>${sel.place.note ? `<small>${esc(sel.place.note)}</small>` : ''}<span class="pins3">${go}</span>`;
+    note.insertAdjacentHTML('beforeend', '<small class="nogo3" hidden>Explore this area to fast-travel to it.</small>');
+  }
+  note.addEventListener('click', e => {
+    const c = e.target.closest('[data-col]')?.dataset.col; if (c && sel?.pin) { sel.pin.col = c; swatch = false; card(); soon(); return; }
+    const act = e.target.closest('[data-act]')?.dataset.act; if (!act || !sel) return;
+    if (act === 'add') {
+      const p = { id: Date.now().toString(36), col: freeCol(), x: Math.round(sel.x), z: Math.round(sel.z), name: sel.name };
+      (J.pins ||= []).push(p); if (J.pins.length > 40) J.pins.shift();
+      G.hud.did('pin'); G.emit('pin'); pick({ pin: p });
+    } else if (act === 'col') { swatch = !swatch; card(); }
+    else if (act === 'rm') { J.pins = J.pins.filter(q => q !== sel.pin); pick(null); }
+    else if (act === 'go') {
+      const t = sel.pin || sel.place;
+      if (sel.place || known(t.x, t.z)) { pick(null); teleport(t.x, t.z); return; }
+      const m = note.querySelector('.nogo3'); m.hidden = false;
+      clearTimeout(noGo); noGo = setTimeout(() => { m.hidden = true; }, 2600);
+    }
+  });
+
   cv.addEventListener('pointerdown', e => {
     cv.setPointerCapture(e.pointerId); pts.set(e.pointerId, local(e)); moved = 0; pinch = 0; held = true; spin = [0, 0];
-    clearTimeout(pressT); if (pts.size === 1) { const p0 = local(e); pressT = setTimeout(() => { if (moved < 6 && pts.size === 1) offerPin(p0); }, 550); }
   });
   cv.addEventListener('pointermove', e => {
     const p = pts.get(e.pointerId); if (!p) return;
@@ -243,19 +295,16 @@ export function mapView(G, J) {
     }
   });
   const up = e => {
-    const p = pts.get(e.pointerId); pts.delete(e.pointerId); pinch = 0; clearTimeout(pressT);
+    const p = pts.get(e.pointerId); pts.delete(e.pointerId); pinch = 0;
     if (!pts.size) { held = false; if (performance.now() - lastMove > 80) spin = [0, 0]; soon(); }
     if (!p || moved > 6 || pts.size) return;
-    const now = performance.now();
-    if (lastTap && now - lastTap.t < 350 && Math.hypot(p[0] - lastTap.p[0], p[1] - lastTap.p[1]) < 24) { lastTap = null; const w = toWorld(p[0], p[1]); if (w) teleport(w[0], w[1]); return; }
-    lastTap = { t: now, p };
+    // a tap: a pin or a place under it, else a passing pin there
     let best = null, bd = 22;
-    for (const [pl, px, py] of shown) { const d = Math.hypot(px - p[0], py - p[1]); if (d < bd) { bd = d; best = pl; } }
-    note.classList.toggle('hidden', !best); note.onclick = null;
-    if (best?.pin) {
-      note.innerHTML = `<b>${esc(best.name)}</b><small>Your pin. It shows on the compass when you are near.</small><span class="pins3"><button data-un="1">Remove pin</button></span>`;
-      note.onclick = e => { if (!e.target.closest('[data-un]')) return; J.pins = J.pins.filter(q => q !== best.pin); note.classList.add('hidden'); soon(); };
-    } else if (best) note.innerHTML = `<b>${esc(best.name)}</b><small>${esc(best.note || '')}</small>`;
+    for (const [pl, px, py] of shown) { const d = Math.hypot(px - p[0], (pl.pin ? py - 14 : py) - p[1]); if (d < bd) { bd = d; best = pl; } }
+    if (best?.pin) return pick({ pin: best.pin });
+    if (best) return pick({ place: best });
+    const w = toWorld(p[0], p[1]);
+    pick(w ? { temp: true, x: w[0], z: w[1], name: nameAt(w[0], w[1]) } : null);
   };
   cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
   cv.addEventListener('wheel', e => { e.preventDefault(); const [px, py] = local(e); zoomAt(e.deltaY > 0 ? 1 / 1.2 : 1.2, px, py); }, { passive: false });

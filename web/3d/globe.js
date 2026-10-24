@@ -19,16 +19,14 @@ const HEX = {
 const RGB = Object.fromEntries(Object.entries(HEX).map(([k, h]) => [k, [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16))]));
 const SHALLOW = [104, 158, 176], DEEP = [38, 84, 112], ICE = RGB.ice;
 
-// how rugged each land is: the shader raises ridges where it is (the texture's alpha)
-const ROUGH = { mountains: 255, volcano: 255, alpine: 230, fjord: 200, canyon: 190, badlands: 170, cliffs: 160, karst: 130, moor: 70, taiga: 60, tundra: 50 };
-// the biome colours (and roughness) on the 500 m cell grid, once, so a texel only blends four of them
+// the biome colours on the 500 m cell grid, once, so a texel only blends four of them
 let grid = null;
 function biomeGrid() {
   if (grid) return grid;
   const nx = CELL.nx, nz = CELL.nz, g = new Float32Array(nx * nz * 4);
   for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {
     const b = earthBiome(EARTH.X0 + (i + .5) * CELL.step, EARTH.Z0 + (j + .5) * CELL.step), c = RGB[b] || RGB.meadow, k = (j * nx + i) * 4;
-    g[k] = c[0]; g[k + 1] = c[1]; g[k + 2] = c[2]; g[k + 3] = ROUGH[b] ?? 25;
+    g[k] = c[0]; g[k + 1] = c[1]; g[k + 2] = c[2]; g[k + 3] = 255;
   }
   return (grid = g);
 }
@@ -40,22 +38,23 @@ let landPx = null;
 export const prebake = () => { landPx ||= bakeLand(); };
 function bakeLand() {
   const px = new Uint8Array(TW * TH * 4), g = biomeGrid(), nx = CELL.nx, nz = CELL.nz, st = CELL.step;
-  new Uint32Array(px.buffer).fill(new Uint32Array(new Uint8Array([...ICE, 30]).buffer)[0]);   // past the strip: the polar ice
+  new Uint32Array(px.buffer).fill(new Uint32Array(new Uint8Array([...ICE, 255]).buffer)[0]);   // past the strip: the polar ice
   const put = (u, v, x, z) => {
     const d = coastDist(x, z), k = (v * TW + ((u % TW) + TW) % TW) * 4;
-    let r, gg, bb, ro = 0;
+    let r, gg, bb;
     if (d < 0) { const t = Math.min(1, -d / 2600); r = SHALLOW[0] + (DEEP[0] - SHALLOW[0]) * t; gg = SHALLOW[1] + (DEEP[1] - SHALLOW[1]) * t; bb = SHALLOW[2] + (DEEP[2] - SHALLOW[2]) * t; }
     else {
-      const cu = (x - EARTH.X0) / st - .5, cv = Math.min(nz - 1.001, Math.max(0, (z - EARTH.Z0) / st - .5));
+      // the cells' edges wander (a gentle warp), so lands meet in soft curves, not squares
+      const wu = .55 * Math.sin(z / 700 + 1.7 * Math.sin(x / 1100)) + .3 * Math.sin((x + z) / 330), wv = .55 * Math.sin(x / 800 + 1.7 * Math.sin(z / 900)) + .3 * Math.sin((x - z) / 290);
+      const cu = (x - EARTH.X0) / st - .5 + wu, cv = Math.min(nz - 1.001, Math.max(0, (z - EARTH.Z0) / st - .5 + wv));
       const i = Math.floor(cu), j = Math.floor(cv), fx = cu - i, fz = cv - j;
       const i0 = ((i % nx) + nx) % nx, i1 = (i0 + 1) % nx, a = (j * nx + i0) * 4, b = (j * nx + i1) * 4, c = ((j + 1) * nx + i0) * 4, e = ((j + 1) * nx + i1) * 4;
       const w0 = (1 - fx) * (1 - fz), w1 = fx * (1 - fz), w2 = (1 - fx) * fz, w3 = fx * fz;
       r = g[a] * w0 + g[b] * w1 + g[c] * w2 + g[e] * w3; gg = g[a + 1] * w0 + g[b + 1] * w1 + g[c + 1] * w2 + g[e + 1] * w3; bb = g[a + 2] * w0 + g[b + 2] * w1 + g[c + 2] * w2 + g[e + 2] * w3;
-      ro = g[a + 3] * w0 + g[b + 3] * w1 + g[c + 3] * w2 + g[e + 3] * w3;
       if (d < 120) { const t = .86 + .14 * Math.min(1, Math.max(0, (d - 60) / 60)); r *= t; gg *= t; bb *= t; }   // a darker coastline
       if (d < 70) { const t = .5 + d / 140; r = SHALLOW[0] + (r - SHALLOW[0]) * t; gg = SHALLOW[1] + (gg - SHALLOW[1]) * t; bb = SHALLOW[2] + (bb - SHALLOW[2]) * t; }   // a soft shore
     }
-    px[k] = r; px[k + 1] = gg; px[k + 2] = bb; px[k + 3] = ro;
+    px[k] = r; px[k + 1] = gg; px[k + 2] = bb; px[k + 3] = 255;
   };
   const corner = (i, j, ref) => {
     const n = j * LL.nx + ((i % LL.nx) + LL.nx) % LL.nx;
@@ -86,17 +85,23 @@ const VS = `#version 300 es
 in vec2 p; void main() { gl_Position = vec4(p, 0., 1.); }`;
 const FS = `#version 300 es
 precision highp float;
-uniform sampler2D land, fog; uniform vec2 C; uniform float R, veil; uniform mat3 M; uniform vec3 S;
+uniform sampler2D land, fog; uniform vec2 C; uniform float R, veil, dpr; uniform mat3 M; uniform vec3 S;
 out vec4 o;
 const float PI = 3.14159265;
-// value noise on the ball, for the ridges of rugged land
+// value noise, for the paper's fibres and the hand-drawn lines
 float h3(vec3 p) { p = fract(p * .3183099 + .1); p *= 17.; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
 float vn(vec3 x) {
   vec3 i = floor(x), f = fract(x); f = f * f * (3. - 2. * f);
   return mix(mix(mix(h3(i), h3(i + vec3(1, 0, 0)), f.x), mix(h3(i + vec3(0, 1, 0)), h3(i + vec3(1, 1, 0)), f.x), f.y),
              mix(mix(h3(i + vec3(0, 0, 1)), h3(i + vec3(1, 0, 1)), f.x), mix(h3(i + vec3(0, 1, 1)), h3(i + vec3(1, 1, 1)), f.x), f.y), f.z);
 }
-float ridge(vec3 x) { return (1. - abs(2. * vn(x) - 1.)) * .65 + (1. - abs(2. * vn(x * 2.7) - 1.)) * .35; }
+// paper: a grain on every screen pixel and soft fibres a few pixels long, the same over land and sea
+float gh(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
+float paper(vec2 f) {
+  vec2 q = f / dpr;
+  vec2 a = mat2(.8, .6, -.6, .8) * q, b = mat2(.5, -.87, .87, .5) * q;
+  return 1. + (gh(floor(f)) - .5) * .08 + (vn(vec3(q * .045, 1.)) - .5) * .07 + (vn(vec3(a * vec2(.7, .09), 3.)) - .5) * .035 + (vn(vec3(b * vec2(.6, .08), 9.)) - .5) * .03;
+}
 void main() {
   vec2 p = (gl_FragCoord.xy - C) / R; float r = length(p), aa = 1.5 / R;
   vec3 bg = mix(vec3(.10, .14, .18), vec3(.16, .22, .28), clamp(1. - gl_FragCoord.y / (C.y * 2.), 0., 1.) * .5);
@@ -107,12 +112,6 @@ void main() {
   vec2 uv = vec2(lon / (2. * PI) + .5, .5 - lat / PI);
   vec2 dx = dFdx(uv), dy = dFdy(uv); dx.x -= round(dx.x); dy.x -= round(dy.x);   // no seam where lon wraps
   vec4 tx = textureGrad(land, uv, dx, dy); vec3 c = tx.rgb;
-  // rugged land: ridges lit from the upper left, faded out when too small to see
-  float px = 1. / R, fade = smoothstep(.0035, .0012, px);
-  if (tx.a > .05 && fade > 0.) {
-    vec3 q = w * 140.; float e = .35, r0 = ridge(q), r1 = ridge(q + M * vec3(-e, e, 0.));
-    c *= 1. + clamp((r1 - r0) * 1.6, -.5, .5) * tx.a * fade + (r0 - .5) * .12 * tx.a * fade;
-  }
   float seen = textureGrad(fog, uv, dx, dy).r;
   c *= mix(1. - veil, 1., smoothstep(.0, .6, seen));
   // light from the upper left, a little darker at the rim, and a faint line every 30 degrees
@@ -121,8 +120,13 @@ void main() {
   // where it is day on Earth now: the night side in blue shade, a warm band at the dusk line
   float sun = dot(w, S), day = smoothstep(-.14, .12, sun);
   c = mix(c * vec3(.36, .42, .6), c, day) + vec3(.5, .28, .12) * (1. - abs(sun) / .14) * step(abs(sun), .14) * .12;
-  vec2 g = abs(fract(vec2(lat, lon) / (PI / 6.) + .5) - .5) / fwidth(vec2(lat, lon) / (PI / 6.));
-  c = mix(c, vec3(1.), (1. - smoothstep(0., 1., min(g.x, g.y))) * .08);
+  // the lines every 30 degrees, drawn by hand: they wander a little, and the ink comes and goes
+  vec2 ll = vec2(lat, lon) / (PI / 6.) + (vec2(vn(w * 2.2), vn(w * 2.2 + 7.)) - .5) * .16 + (vec2(vn(w * 7.), vn(w * 7. + 3.)) - .5) * .03;
+  vec2 g = abs(fract(ll + .5) - .5) / max(fwidth(ll), vec2(1e-5)) / dpr;
+  float ink = .35 + .65 * smoothstep(.2, .8, vn(w * 6.)), lonFade = smoothstep(1.4, 1.2, abs(lat));
+  float line = max((1. - smoothstep(.2, 1.1, g.x)), (1. - smoothstep(.2, 1.1, g.y)) * lonFade);
+  c = mix(c, vec3(1., .96, .88), line * ink * .26);
+  c *= paper(gl_FragCoord.xy);
   c += vec3(.45, .65, .85) * pow(1. - v.z, 3.) * .35;   // the air at the edge
   o = vec4(mix(c, bg + vec3(.45, .65, .85) * .55, smoothstep(1. - aa, 1. + aa, r)), 1.);
 }`;
@@ -177,7 +181,7 @@ export function createGlobe(canvas) {
       gl.useProgram(P.p); gl.bindVertexArray(vao);
       gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, land); gl.uniform1i(P.u.land, 0);
       gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, fogTex); gl.uniform1i(P.u.fog, 1);
-      gl.uniform2f(P.u.C, w / 2 * dpr, h / 2 * dpr); gl.uniform1f(P.u.R, V.R * dpr); gl.uniform1f(P.u.veil, veil);
+      gl.uniform2f(P.u.C, w / 2 * dpr, h / 2 * dpr); gl.uniform1f(P.u.R, V.R * dpr); gl.uniform1f(P.u.veil, veil); gl.uniform1f(P.u.dpr, dpr);
       gl.uniformMatrix3fv(P.u.M, false, G.turn(V));
       const sa = sun[0] * D, so = sun[1] * D;
       gl.uniform3f(P.u.S, Math.cos(sa) * Math.sin(so), Math.sin(sa), Math.cos(sa) * Math.cos(so));

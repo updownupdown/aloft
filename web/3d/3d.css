@@ -550,11 +550,17 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .mapbox3 { position: relative; flex: 1; min-height: 180px; overflow: hidden; background: #1a242c; }
 .mapbox3 canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: grab; }
 .mapbox3 canvas.mapover3 { pointer-events: none; }
-/* the Map's corners: top left where you are and how far the journey has come; top right the same
-   day dial as in flight with the season in more detail; bottom left how to drop a pin */
-.mapsum3 { position: absolute; left: 12px; top: 12px; width: 200px; max-width: calc(100% - 200px); display: flex; flex-direction: column; gap: 9px; padding: 12px 14px 13px; border-radius: 18px;
-  background: var(--dusk); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); box-shadow: var(--shadow); color: var(--pale2); pointer-events: none; }
-.mapsum3 .here3 { margin: 0; font-size: 14px; font-weight: 600; line-height: 1.35; color: var(--pale); }
+/* the Map's corners: top left how far the journey has come (explored, feathers, biomes, landmarks);
+   top right the same day dial as in flight, the season and the years; bottom left the pins and
+   places picked; bottom right zoom and where you are */
+.mapsum3 { position: absolute; left: 12px; top: 12px; width: 196px; max-width: calc(100% - 200px); display: flex; flex-direction: column; gap: 9px; padding: 12px 12px 10px 14px; border-radius: 18px;
+  background: var(--dusk); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); box-shadow: var(--shadow); color: var(--pale2); }
+.mapsum3 .tally3 { grid-template-columns: 1fr; gap: 1px; margin: 0 -6px; }
+.mapsum3 .tally3 li { align-items: center; gap: 8px; padding: 3px 6px; border-radius: 10px; font-size: 12.5px; }
+.mapsum3 .tally3 li[data-go] { cursor: pointer; } .mapsum3 .tally3 li[data-go]:active { background: rgba(244, 239, 230, .1); }
+.mapsum3 .tally3 svg { width: 17px; height: 17px; flex: none; fill: none; stroke: var(--pale2); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.mapsum3 .tally3 b { min-width: 44px; font-size: 14px; font-variant-numeric: tabular-nums; }
+.mapsum3 .tally3 b span { color: var(--pale2); }
 .mapsum3 .far3 { display: grid; gap: 4px; }
 .mapsum3 .far3 span { height: 5px; border-radius: 3px; background: rgba(244, 239, 230, .18); overflow: hidden; }
 .mapsum3 .far3 i { display: block; height: 100%; border-radius: 3px; background: var(--pale2); }
@@ -569,6 +575,7 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .mapseason3 { display: grid; justify-items: center; gap: 4px; width: 150px; text-align: center; filter: var(--halo); --sc: var(--leaf); }
 .mapseason3.summer { --sc: #8fae4c; } .mapseason3.autumn { --sc: #c9782f; } .mapseason3.winter { --sc: #9cb6cf; } .mapseason3.spring { --sc: #e39bb4; }
 .mapseason3 b { font-size: 13.5px; font-weight: 600; }
+.mapday3 .mapyear3 { font-size: 12px; font-weight: 600; color: #fff; filter: var(--halo); }
 .mapseason3 small { font-size: 11.5px; color: #fff; opacity: .92; }
 .mapseason3 .pips3s { width: 100%; margin: 0; }
 .mapseason3 .pips3s i { background: rgba(255, 255, 255, .35); }
@@ -578,24 +585,29 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .pips3s i { flex: 1; height: 5px; border-radius: 3px; background: rgba(42, 36, 32, .13); }
 .pips3s i.on { background: var(--sc); }
 .maptip3 { position: absolute; left: 12px; bottom: 60px; margin: 0; max-width: calc(100% - 100px); font-size: 13px; font-weight: 600; color: #fff; filter: var(--halo); pointer-events: none; }
-.mapbox3:has(.mapnote3:not(.hidden)) .maptip3, .mapbox3:has(.mapnote3:not(.hidden)) .mapgo3 { display: none; }
-/* bottom left: Landmarks and Lands, with their counts, each opening its Journal page */
-.mapgo3 { position: absolute; left: 12px; bottom: 12px; display: flex; gap: 8px; }
-.mapgo3 button { display: flex; align-items: center; gap: 7px; height: 40px; padding: 0 14px 0 11px; border: 0; border-radius: 20px; cursor: pointer;
-  background: var(--glass2); box-shadow: 0 1px 4px rgba(40, 30, 20, .18); font-family: var(--text); font-size: 13.5px; font-weight: 500; color: var(--ink); }
-.mapgo3 svg { width: 19px; height: 19px; fill: none; stroke: var(--ink); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.mapgo3 b { font-weight: 700; font-variant-numeric: tabular-nums; }
-.mapgo3 button:active { transform: scale(.96); }
-.mapbtn3 { position: absolute; right: 12px; bottom: 12px; display: flex; flex-direction: column; gap: 8px; }
+.mapbox3:has(.mapnote3:not(.hidden)) .maptip3 { display: none; }
+.mapbtn3 { position: absolute; right: 12px; bottom: 12px; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+/* where you are, on the button that centres on you: the name left of the mark */
+.mapbtn3 .mapme3 { width: auto; max-width: min(340px, 44vw); gap: 8px; padding: 0 10px 0 14px; border-radius: 24px; }
+.mapme3 span { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; font: 600 13px/1.25 var(--text); text-align: right; }
+.mapme3 span:empty { display: none; } .mapbtn3 .mapme3:has(span:empty) { width: 48px; padding: 0; }
 .mapbtn3 button { width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: 14px; background: var(--glass2); box-shadow: 0 1px 4px rgba(40, 30, 20, .15); cursor: pointer; }
 .mapbtn3 svg { width: 28px; height: 28px; fill: none; stroke: var(--ink); stroke-width: 2; stroke-linecap: round; }
 .mapbtn3 svg .dot { fill: var(--ink); stroke: none; }
 .mapbtn3 button:active { background: var(--btn); transform: scale(.95); }
-.mapnote3 { position: absolute; left: 12px; bottom: 12px; max-width: min(320px, 64%); padding: 10px 14px; border-radius: 14px; background: var(--glass2); box-shadow: 0 2px 8px rgba(40, 30, 20, .15); font-size: 12.5px; line-height: 1.45; }
+.mapnote3 { position: absolute; left: 12px; bottom: 12px; width: min(300px, calc(100% - 200px)); padding: 10px 14px; border-radius: 14px; background: var(--glass2); box-shadow: 0 2px 8px rgba(40, 30, 20, .15); font-size: 12.5px; line-height: 1.45; }
 .mapnote3 b { display: block; font-size: 15px; }
 .pins3 { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .pins3 button { min-height: 34px; padding: 0 12px 0 10px; display: flex; align-items: center; gap: 6px; border: 0; border-radius: 17px; background: rgba(42, 36, 32, .07); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
-.pins3 button[data-pin] { width: 32px; min-height: 32px; padding: 0; border-radius: 50%; background: var(--pc); box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .8), 0 1px 3px rgba(40, 30, 20, .3); }
+.pins3 svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+/* a pin's colour: a round swatch with a dropper; tapped, the twelve colours */
+.pins3 .pcol3 { width: 34px; padding: 0; justify-content: center; border-radius: 50%; background: var(--pc); color: #fff; box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .75); }
+.pins3 .pcol3 svg { filter: drop-shadow(0 0 1.5px rgba(0, 0, 0, .6)); }
+.swatch3 { display: grid; grid-template-columns: repeat(6, 28px); gap: 7px; margin-top: 9px; }
+.swatch3 button { width: 28px; height: 28px; padding: 0; border: 0; border-radius: 50%; background: var(--pc); cursor: pointer; box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .35); }
+.swatch3 button.on { box-shadow: 0 0 0 2px var(--pale); }
+.mapnote3 .nogo3 { display: block; margin-top: 7px; color: var(--pale); font-weight: 600; }
+.mapnote3 .nogo3[hidden] { display: none; }
 
 /* the journal: landmarks and the field guide */
 .list3 { list-style: none; padding: 0; margin: 2px 0 10px; }
@@ -824,10 +836,12 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 
 /* the Map's overlays are dark with pale text (James, 2026-10-23), so they sit quietly on the globe */
 .mapsum3 .far3 small, .mapsum3 .tally3 li { color: var(--pale2); } .mapsum3 .tally3 b { color: var(--pale); }
-.mapgo3 button, .mapbtn3 button, .mapnote3 { background: var(--dusk2); color: var(--pale); box-shadow: 0 1px 6px rgba(0, 0, 0, .25); }
-.mapgo3 svg, .mapbtn3 svg { stroke: var(--pale); } .mapbtn3 svg .dot { fill: var(--pale); }
+.mapbtn3 button, .mapnote3 { background: var(--dusk2); color: var(--pale); box-shadow: 0 1px 6px rgba(0, 0, 0, .25); }
+.mapbtn3 svg { stroke: var(--pale); } .mapbtn3 svg .dot { fill: var(--pale); }
 .mapbtn3 button:active { background: var(--dusk); }
 .mapnote3 small, .mapnote3 p { color: var(--pale2); }
+.mapnote3 .pins3 button:not(.pcol3) { background: rgba(244, 239, 230, .13); color: var(--pale); }
+.mapnote3 .pins3 button:not(.pcol3):active { background: rgba(244, 239, 230, .22); }
 /* Settings > Graphics > Battery use: a small table of readings */
 .batt3 { margin: 8px 0 0; padding: 10px 14px 12px 16px; border-radius: 15px; background: var(--btn); box-shadow: 0 1px 4px rgba(40, 30, 20, .08); }
 .batt3 .bhead3 { display: flex; align-items: center; justify-content: space-between; min-height: 30px; font-size: 15px; }

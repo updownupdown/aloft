@@ -194,7 +194,7 @@ if (qs.has('fps')) G.settings.fpsCap = +qs.get('fps') || 60;
   };
   G.E = E;
 
-  // travel (the map's double tap): the menu shuts, the view fades to black, the hawk is set down on
+  // travel (the Map's Fast-travel): the menu shuts, the view fades to black, the hawk is set down on
   // the nearest perch to the spot (a branch, a bush, a stone; within TRAVEL_R m), else on the
   // ground or the water there, and the view fades back in
   const TRAVEL_R = 45;

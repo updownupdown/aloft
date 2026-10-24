@@ -30,7 +30,7 @@ export function createCompass(G, ui) {
     if (G.ghost) out.push(['ghost', G.ghost.x, G.ghost.z, 'The ghost flight']);
     // your own pins, the two nearest within 4 km, each in its colour
     const pins = (J?.pins || []).map(p => [p, Math.hypot(p.x - x, p.z - z)]).filter(([, d]) => d > 40 && d < 4000).sort((a, c) => a[1] - c[1]).slice(0, 2);
-    for (const [p] of pins) out.push(['pin', p.x, p.z, 'Your pin', pinCol(p)]);
+    for (const [p] of pins) out.push(['pin', p.x, p.z, p.name || 'Your pin', pinCol(p)]);
     return out;
   }
   function setMarks(list) {
