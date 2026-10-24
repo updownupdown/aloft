@@ -247,7 +247,7 @@ export function createMenu(G, ui) {
   createToday(G, M);         // the Today section: your bird, how it is, where, and the day's aims (today.js)
   if (desk()) M.group('keys').insertAdjacentHTML('beforeend', keysHtml());   // Settings > Controls > Keyboard, on desktop only (the keys: howto.js)
   G.dev = createDev(G, M);   // Settings > Advanced > Feature list (dev.js)
-  G.dev.add({ id: 'menu-a', area: 'Menu and map', round: 10, title: 'The menu, tidied: Today, Map, Journal, Guide, Tutorial and Settings down the rail; each section’s pages in a column beside it',
-    how: 'Open the menu: Today shows your bird, food, water, wings and health, and the day’s aims; Map shows the globe; Journal has Songs, Nest and family, Landmarks, Biomes, Things found and the Field guide; Settings has Sound, Graphics, Controls, Messages, Journey and Advanced.' });
+  G.dev.add({ id: 'menu-a', area: 'Menu and map', round: 10, title: 'The menu, tidied: Today, Map, Journal, Tutorial and Settings down the rail; each section’s pages in a column beside it',
+    how: 'Open the menu: Today shows your bird, food, water, wings and health, and the day’s aims; Map shows the globe; Journal has Songs, Places, Things and Nest; Settings has Sounds, Graphics, Controls, Messages, Journey and Advanced.' });
   return M;
 }

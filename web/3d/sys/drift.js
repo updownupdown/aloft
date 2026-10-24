@@ -114,7 +114,7 @@ export function driftSystem(G) {
     H.glint('A bottle', `A bottle, with a note curled inside: “${NOTES[o.note]}”`, 'keepsake');
   }
 
-  G.dev?.add({ id: 'drift', title: 'Icebergs, sea ice, driftwood and bottles', area: 'World', how: 'Bergs in the cold seas and down the North Atlantic, pans of ice near the poles, logs and bottles on every ocean. Stand on a berg, a pan or a log; skim low over a bottle for its note (Journal > Log). Go puts you by the nearest berg, else log, else bottle.',
+  G.dev?.add({ id: 'drift', title: 'Icebergs, sea ice, driftwood and bottles', area: 'World', how: 'Bergs in the cold seas and down the North Atlantic, pans of ice near the poles, logs and bottles on every ocean. Stand on a berg, a pan or a log; skim low over a bottle for its note (Journal > Things). Go puts you by the nearest berg, else log, else bottle.',
     go: () => {
       const pickO = L => L.sort((a, q) => Math.hypot(a.x - b.p[0], a.z - b.p[2]) - Math.hypot(q.x - b.p[0], q.z - b.p[2]))[0];
       const o = pickO(list.bergs) || pickO(list.woods) || pickO(list.bottles); if (!o) return H.reply('Nothing drifting near', 2);

@@ -81,7 +81,7 @@ const CHAPTERS = [
     { id: 'barrel', text: 'A barrel roll', say: 'Left thumb down and right up, then turn both a full circle anticlockwise together: a roll.', on: 'trick', ok: k => k === 'barrel', move: ['ccw', 'ccw', 'Barrel roll', 'Left down, right up, then both round a full circle anticlockwise.'] },
   ] },
   { title: 'The wide world', page: 'world', icon: 'south', tasks: [
-    { id: 'guide', text: 'Add a page to the field guide', say: 'Fly close by an animal you have not seen before: it gets a page in the Guide.', on: 'sighted' },
+    { id: 'guide', text: 'Add a page to the field guide', say: 'Fly close by an animal you have not seen before: it gets a page under Journal > Things.', on: 'sighted' },
     { id: 'land', text: 'Fly over a new land', say: 'The Earth has many lands: forest, steppe, tundra, desert. Fly until you cross into a new one.', on: 'newLand' },
   ] },
 ];

@@ -6,7 +6,7 @@ import { SAY } from './hud.js';
 import { SHORT, ICON, TIP_GROUPS, tipGroup } from './tips.js';
 
 const KINDS = [
-  ['event', 'Things that happen', 'A mate, an egg, a song learned: one line at most a minute'],
+  ['event', 'Things that happen', 'A mate, an egg, a song learned: one line every half minute at most'],
   ['warn', 'Warnings', 'Danger, or something you tried that didn’t work'],
   ['tutorial', 'Lessons', 'The end of the first flight, and the lessons when they end'],
   ['hint', 'Nudges', 'What you could do here'],

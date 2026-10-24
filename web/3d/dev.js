@@ -64,7 +64,7 @@ const SHIPPED = [
   ['forecast', 'HUD', 93, 'Weather forecast on the day dial', 'Watch the band beside the dial before rain.'],
   ['stamina-cap', 'Food and water', 95, 'Low food or water lowers max stamina', 'Let hunger fall below a third: the wings bar shows a shaded cap.'],
   ['new-world', 'Settings and performance', 90, 'Reset all game data', 'Settings > Advanced > Reset all game data (tap three times).'],
-  ['biomes', 'World', 89, 'Biomes in patches, seeded worlds, 20 lands', 'Fly a few km in any direction; Journal > Biomes.'],
+  ['biomes', 'World', 89, 'Biomes in patches, seeded worlds, 20 lands', 'Fly a few km in any direction; Journal > Places.'],
   ['yaw', 'Flight', 88, 'Both thumbs slid one way yaw', 'Slide both thumbs left together.'],
   ['map-pins', 'Menu and map', 282, 'Map pins: tap to drop, + Add pin, 12 colours, Fast-travel where explored', 'Map: tap anywhere, then a pin or a landmark.'],
 ];
