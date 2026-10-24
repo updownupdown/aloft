@@ -15,7 +15,7 @@
 // amount along the view ray integrated exactly; and over the sky where the camera is in it.
 import { program, mesh } from './gl.js';
 import { GRADE_GLSL } from './look.js';
-const NO_GRAIN = [1, .075, 1, 0];
+const NO_GRAIN = [1, .05, 0, 0];
 
 // lobes [x, y, z, rx, ry, rz] in each shape's own units (the instance scales and yaws it), laid
 // as the polygon shapes' blobs are (shapes.js cloud, weather.js storm and puff, faunashapes.js

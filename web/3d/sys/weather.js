@@ -22,14 +22,6 @@ export const WEATHER = {
 // the snowline by season and day in it (0 summer .. 1 deep winter): it creeps down through
 // autumn and winter, a step each day, and climbs back through spring
 
-function dropShape() {
-  const B = builder(), c = [.74, .79, .86];
-  // a thin streak, leaning downwind along +x (instances turn it to the wind)
-  const a = [0, 0, 0], b = [.25, 1.3, 0], w = .012;
-  B.tri([a[0], a[1], -w], [b[0], b[1], -w], [b[0], b[1], w], c); B.tri([a[0], a[1], -w], [b[0], b[1], w], [a[0], a[1], w], c);
-  B.tri([a[0] - w, a[1], 0], [b[0] - w, b[1], 0], [b[0] + w, b[1], 0], c); B.tri([a[0] - w, a[1], 0], [b[0] + w, b[1], 0], [a[0] + w, a[1], 0], c);
-  return B.out();
-}
 function boltShape() {
   reseed(23); const B = builder(), c = [1.25, 1.22, 1.1];
   let p = [0, 1, 0];
@@ -59,7 +51,7 @@ function puffShape() {
 export function weatherSystem(G) {
   const b = G.b, H = G.hud;
   let mistFloor = null;
-  G.R.shape('drop', dropShape()); G.R.shape('bolt', boltShape()); G.R.shape('storm', stormShape()); G.R.shape('puff', puffShape());
+  G.R.shape('bolt', boltShape()); G.R.shape('storm', stormShape()); G.R.shape('puff', puffShape());
   let spell = 'clear', spellT = 90, flash = 0, boltT = 8, bolt = null, rainbowT = 0, rainSeen = false;
   // how wet the ground is (it wets in rain and dries over a few minutes), lightning
   // flickering inside the storm cloud between strokes
@@ -237,15 +229,24 @@ export function weatherSystem(G) {
       }
       if (G.fog > .05 && !mist) S.horizon = mix3(S.horizon, [.9, .9, .88].map(v => v * (.3 + .7 * L.daylight)), G.fog * .5 * smooth(70, 15, above));
       const cam = S.cam;
-      // rain streaks and snowflakes in a box that moves with the camera (they stay put in the world)
+      // snowflakes in a box that moves with the camera (they stay put in the world)
       const wrap = (v, c, r) => c + ((((v - c) % (2 * r)) + 3 * r) % (2 * r)) - r;
-      const wyaw = Math.atan2(WIND[2], WIND[0]);
-      if (G.rain - G.snowing > .02) {
-        const d = S.props.drop ||= [], n = Math.round((G.rain - G.snowing) * 260), R = 22, Y = 14;
-        for (let i = 0; i < n; i++) {
-          const hx = ih(i, 1, 95) * 999, hz = ih(i, 2, 95) * 999, hy = ih(i, 3, 95) * 999;
-          const y = cam[1] + Y - (((hy + G.t * 16) % (2 * Y)));
-          d.push(wrap(hx - y * .2, cam[0], R), y, wrap(hz, cam[2], R), 1, -wyaw, .5, 0, 0);
+      // the rain (rain.js): a fine drizzle round you, veils far off only when it pours, and where it
+      // lands, rings on the water (render.js waterAt) and small splashes on the ground
+      const rk = Math.max(0, G.rain - G.snowing);
+      S.rainU = rk > .02 ? { k: rk, veil: smooth(.62, .95, rk), wind: [WIND[0] * (1.5 + 3 * G.windK), WIND[2] * (1.5 + 3 * G.windK)],
+        col: mix3(S.horizon, [1, 1, 1], .35).map(v => v * (.35 + .65 * L.daylight)) } : null;
+      if (rk > .02 && above < 60) {
+        const R = 16, P = .4, sc = mix3(S.horizon, [1, 1, 1], .5).map(v => v * (.4 + .6 * L.daylight));
+        for (let i = 0, n = Math.round(rk * 150); i < n; i++) {
+          const ph = ih(i, 7, 95), u = G.t / P + ph, cyc = Math.floor(u), f = u - cyc;
+          const x = cam[0] + (ih(i, cyc, 96) - .5) * 2 * R, z = cam[2] + (ih(i, cyc, 97) - .5) * 2 * R, y = height(x, z);
+          if (y < WATER + .05) continue;   // (on water the rings show it)
+          const r = .03 + f * .14, lift = Math.sin(Math.min(1, f * 1.4) * Math.PI) * .09, a = 1 - f;
+          for (let j = 0; j < 4; j++) {
+            const an = j * 1.571 + ph * 6.283;
+            S.motes.push(x + Math.cos(an) * r, y + .02 + lift, z + Math.sin(an) * r, ...sc.map(v => v * a), .016);
+          }
         }
       }
       if (G.snowing > .02) {
@@ -264,23 +265,12 @@ export function weatherSystem(G) {
       S.wet = wet * (1 - env.snow); S.flash = null;
       if (bolt) S.flash = [bolt.x, Math.max(80, cam[1] + 60) + 60, bolt.z, flash];
       else if (cflash > 0 && cflashAt) S.flash = [...cflashAt, cflash];
-      // the rainbow: a faint, wide arc far off, opposite the sun, its colours running into each
-      // other (many small overlapping points read as a smooth band), fading toward its feet
+      // the rainbow (render.js bow()): round the point opposite the sun, in the sky and in front of
+      // whatever is far off, fading in and out
+      S.bow = null;
       if (rainbowT > 0) {
-        const fade = Math.min(1, rainbowT / 12, (80 - rainbowT) / 8) * L.daylight * (1 - G.rain);
-        const sd = S.sunSky || L.sunSky, ax = norm([-sd[0], 0, -sd[2]]), side = [-ax[2], 0, ax[0]], D = 560;
-        const cols = [[.86, .4, .32], [.9, .64, .32], [.9, .85, .48], [.52, .74, .48], [.4, .56, .78], [.52, .44, .72]];
-        const N = 14, M = 240;
-        for (let k = 0; k < N; k++) {
-          const u = k / (N - 1) * (cols.length - 1), c0 = cols[Math.floor(u)], c1 = cols[Math.min(cols.length - 1, Math.floor(u) + 1)];
-          const edge = Math.sin(k / (N - 1) * Math.PI) * .6 + .4, col = mix3(c0, c1, u % 1), r = D * (.8 - k * .0075);
-          for (let i = 0; i <= M; i++) {
-            const t = i / M, a = .12 + t * (Math.PI - .24), x = Math.cos(a) * r, y = Math.sin(a) * r - D * .45;
-            if (y < -20) continue;
-            const feet = Math.min(1, Math.sin(t * Math.PI) * 2.2);
-            S.motes.push(cam[0] + ax[0] * D + side[0] * x, cam[1] + y, cam[2] + ax[2] * D + side[2] * x, ...mix3(S.horizon, col, .38 * fade * edge * feet), 3.2);
-          }
-        }
+        const fade = Math.min(1, rainbowT / 12, (80 - rainbowT) / 8) * L.daylight * (1 - G.rain), sd = S.sunSky || L.sunSky;
+        if (fade > .01) S.bow = [...norm([-sd[0], -sd[1], -sd[2]]), .2 * fade];
       }
       // night: the moon (drawn by the sky, render.js: lit toward the sun, by its phase), meteors, aurora
       S.moonK = 0; S.overcast = ov;

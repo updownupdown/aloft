@@ -35,7 +35,8 @@ web/3d/earth.js         the Earth under the world: coastDist, earthBiome, contin
 web/3d/earthdata.js     baked grids for earth.js (made by tools/earth/bake.py from Natural Earth; do not edit by hand)
 web/3d/render.js        WebGL2 renderer: sky, chunks, instanced trees and named shapes, hawk, water, points
 web/3d/clouds.js        clouds as soft volumes (lobes integrated along the view ray) and the valley mist (S.mists); Soft is the look (James, 10-23), ?clouds=poly the old polygons
-web/3d/look.js          Settings > Advanced > Look tests: the ideas on trial (A fluffy crowns, B grass near you, C soft distance, D painterly light) behind switches (R.look[id]; #defines via R.relook) and the Grain choice (GRAINS, R.grain); P shadows and T reflections are Settings > Graphics > Ultra (app.js); GRADE_GLSL and grain(). Flat far trees kept for good (10-24); smooth shading, land detail, render to texture and light shafts removed. Temporary: once James picks, keep the chosen without switches and delete the rest
+web/3d/look.js          the Ultra looks (P shadows, T reflections; R.look[id], #defines via R.relook; Settings > Graphics > Ultra, app.js); GRADE_GLSL and grain() (Paper grain, stronger on dense screens). The look tests are settled (10-24): flat far trees kept; smooth shading, land detail, ideas A-D, render to texture and light shafts removed
+web/3d/rain.js          the rain (S.rainU from sys/weather.js): fine drizzle placed by the GPU round the camera, veils far off in a downpour; rings on water are render.js waterAt, splashes weather.js
 web/3d/shapes.js        low-poly builders (builder, blob, prism, cone) and tree/ring/cloud meshes
 web/3d/hawk.js          the hawk mesh, rebuilt per frame from a pose
 web/3d/birds.js         other birds: Settings > Bird picks red-tail, osprey, barn owl or raven (sys/species.js, aloft.bird); ?bird=swift|heron|mallard tries the rest

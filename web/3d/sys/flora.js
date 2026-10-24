@@ -8,7 +8,7 @@ import { rollBiome } from '../biomes.js';
 import { smooth } from '../util.js';
 import { builder, blob, reseed, rnd } from '../shapes.js';
 
-export const FLORA = { cell: 8, near: 95, cache: 1600, meadow: 30 };
+export const FLORA = { cell: 8, near: 95, cache: 1600 };
 const TUFT_NAMES = ['tuft', 'tuft1', 'tuft2', 'tuft3'];
 
 const hex = h => [parseInt(h.slice(1, 3), 16) / 255, parseInt(h.slice(3, 5), 16) / 255, parseInt(h.slice(5, 7), 16) / 255];
@@ -26,20 +26,6 @@ function tuft([n, H, arch, sd]) {
     B.tri([x - w * sa, 0, z + w * ca], [x + w * sa, 0, z - w * ca], [m[0] + w * .6 * sa, m[1], m[2] - w * .6 * ca], col);
     B.tri([x - w * sa, 0, z + w * ca], [m[0] + w * .6 * sa, m[1], m[2] - w * .6 * ca], [m[0] - w * .6 * sa, m[1], m[2] + w * .6 * ca], col);
     B.tri([m[0] - w * .6 * sa, m[1], m[2] + w * .6 * ca], [m[0] + w * .6 * sa, m[1], m[2] - w * .6 * ca], t, col);
-  }
-  return B.out();
-}
-// B, grass near you (a look test, R.look.grass): a patch of meadow, thirty blades in a
-// metre and a half, laid down thickly close to the camera
-function meadow() {
-  reseed(61); const B = builder(), shades = [[.5, .64, .31], [.6, .69, .35], [.45, .58, .29], [.56, .63, .33], [.64, .66, .38]];
-  for (let i = 0; i < 30; i++) {
-    const a = rnd() * 6.283, r = Math.sqrt(rnd()) * .8, x = Math.cos(a) * r, z = Math.sin(a) * r;
-    const b = rnd() * 6.283, cb = Math.cos(b), sb = Math.sin(b), h = .28 + rnd() * .32, lean = (.1 + rnd() * .25) * h, w = .016 + rnd() * .014, col = shades[i % 5];
-    const m = [x + cb * lean * .35, h * .6, z + sb * lean * .35], t = [x + cb * lean, h, z + sb * lean];
-    B.tri([x - w * sb, 0, z + w * cb], [x + w * sb, 0, z - w * cb], [m[0] + w * .6 * sb, m[1], m[2] - w * .6 * cb], col);
-    B.tri([x - w * sb, 0, z + w * cb], [m[0] + w * .6 * sb, m[1], m[2] - w * .6 * cb], [m[0] - w * .6 * sb, m[1], m[2] + w * .6 * cb], col);
-    B.tri([m[0] - w * .6 * sb, m[1], m[2] + w * .6 * cb], [m[0] + w * .6 * sb, m[1], m[2] - w * .6 * cb], t, col);
   }
   return B.out();
 }
@@ -96,7 +82,7 @@ const GROUND = {
 };
 export function floraSystem(G) {
   const R = G.R;
-  TUFTS.forEach((t, i) => R.shape(i ? 'tuft' + i : 'tuft', tuft(t))); R.shape('scrub', scrub()); R.shape('barrel', barrel()); R.shape('stone', stone()); R.shape('reeds', reeds()); R.shape('meadow', meadow());
+  TUFTS.forEach((t, i) => R.shape(i ? 'tuft' + i : 'tuft', tuft(t))); R.shape('scrub', scrub()); R.shape('barrel', barrel()); R.shape('stone', stone()); R.shape('reeds', reeds());
   for (const k in PETAL) R.shape(k, flower(PETAL[k]));
   const cache = new Map();
   // what grows in one cell: [kind, x, y, z, scale, yaw, tint][]
@@ -122,26 +108,10 @@ export function floraSystem(G) {
       else if (f < .25 && !snowy) kind = r < .62 ? 'tuft' : r < .78 && !G.season?.winter ? ['flowerY', 'flowerW', 'flowerP'][(ih(cx, cz, 260) * 3) | 0] : r < .78 + .04 * scree ? 'stone' : null;
       if ((kind === 'tuft' || kind === 'scrub') && snowy) kind = null;
       if (kind) c.push([kind, x, y - .05, z, kind === 'stone' ? sc * (.6 + r) : kind === 'tuft' ? sc * (1 + ih(cx, cz, 260 + i) * 1.2) : sc, yaw, tint, gold]);
-      if (kind === 'tuft') { c.lush = (c.lush || 0) + 1; c.gold = (c.gold || 0) + gold; }
     }
     if (cache.size > FLORA.cache) cache.delete(cache.keys().next().value);
     cache.set(key, c);
     return c;
-  }
-  // (B) the meadow patches of a cell, where its tufts grow thickly: [x, y, z, yaw, tint][], made
-  // the first time they are wanted
-  function meadows(cx, cz, c) {
-    if (c.meadow) return c.meadow;
-    c.meadow = [];
-    const lush = (c.lush || 0) / 7, C = FLORA.cell;
-    if (lush < .15) return c.meadow;
-    for (let i = 0; i < 36; i++) {
-      if (ih(cx, cz, 300 + i) > lush * 1.6) continue;
-      const x = (cx + (i % 6 + ih(cx, cz, 420 + i)) / 6) * C, z = (cz + (Math.floor(i / 6) + ih(cx, cz, 460 + i)) / 6) * C, y = groundAt(x, z);
-      if (y < WATER + .4 || y > env.snowLine || groundNormal(x, z)[1] < .88 || forest(x, z) > .3) continue;   // (gentle ground only: a patch lies level)
-      c.meadow.push(x, y - .08, z, ih(cx, cz, 500 + i) * 6.283, ih(cx, cz, 540 + i));
-    }
-    return c.meadow;
   }
   G.on('season', () => cache.clear());   // flowers come and go with the winter
   return {
@@ -174,15 +144,6 @@ export function floraSystem(G) {
         if (dd > N * N) continue;
         if (dd > 2 * C * C && (mx * fx + mz * fz) / (Math.sqrt(dd) * fl) < cone) continue;   // off to the side or behind
         const far = dd > (N * .6) ** 2;
-        // (B) the meadow near you, growing in from nothing over its last few metres so it never pops
-        const MD = FLORA.meadow;
-        if (R.look?.grass && dd < (MD + C) ** 2) {
-          const c = cell(cx, cz), m = meadows(cx, cz, c), out = S.props.meadow ||= [], turn = c.gold > c.lush / 2 ? .9 : autumn * .6;
-          for (let i = 0; i < m.length; i += 5) {
-            const d = Math.hypot(m[i] - cam[0], m[i + 2] - cam[2]), g = 1 - smooth(MD - 8, MD, d);
-            if (g > 0) out.push(m[i], m[i + 1], m[i + 2], g * (.85 + m[i + 4] * .4), m[i + 3], m[i + 4], turn, 0);
-          }
-        }
         for (const [kind, x, y, z, sc, yaw, tint, gold] of cell(cx, cz)) {
           if (far && kind !== 'stone') continue;   // small things only close up
           const k = (g || sk || ws) && (kind === 'tuft' || kind.startsWith('flower')) ? stir(x, z) : 0;
