@@ -1,18 +1,16 @@
 // Wildlife: flocks of small birds (finches by day, a starling murmuration at dusk over open
-// land), deer at the woods' edge at dawn and dusk, herons fishing in the shallows, fish that
+// land), herons fishing in the shallows, fish that
 // rise and jump in lakes and the sea, wild hawks circling in the strongest thermals (a kettle),
 // and a companion hawk that joins you for a while (the thrush's gift).
 // Everything is placed by hash in cells; only what is near the hawk is simulated, and its
 // state is forgotten when the hawk leaves. Fish can be caught: skim low over one as it rises,
 // the same forgiving reach as for mice (a tucked dive reaches further).
-import { height, forest, WATER, ih, fbm, bands, thermalsNear, thermalCentre, env, blend } from '../world.js';
+import { height, forest, WATER, ih, fbm, bands, thermalsNear, thermalCentre, env } from '../world.js';
 import { smallBird, heronStanding, heronFlying, fish, soaringHawk, soaringHawkFar } from './faunashapes.js';
-import { frameOf } from './rig.js';
 import { angleTo } from '../util.js';
 
 export const FAUNA = {
   flockCell: 420, flockR: 380,          // flocks: one maybe per cell, simulated within flockR
-  deerCell: 260, deerR: 260,
   heronCell: 220, heronR: 240,
   fishCell: 40, fishR: 90,
   fish: .35, catchR: 1.6, catchDive: 1.6, catchH: 2.2,   // as food.js: fill, reach, extra reach diving, how low
@@ -26,7 +24,7 @@ export function faunaSystem(G) {
   R.shape('birdU', smallBird(true)); R.shape('birdD', smallBird(false));
   R.shape('heron', heronStanding()); R.shape('heronU', heronFlying(true)); R.shape('heronD', heronFlying(false));
   R.shape('fish', fish()); R.shape('soar', soaringHawk()); R.shape('soarFar', soaringHawkFar());
-  const flocks = new Map(), herds = new Map(), herons = new Map(), fishes = new Map();
+  const flocks = new Map(), herons = new Map(), fishes = new Map();
   let refreshT = 0, fishBoost = 0, companion = null, route = null;
   // the companion hawk for other systems: where it is, and fly(points, speed, done) sends it
   // along [x, y, z] points (it joins you first if it isn't with you) and calls done() at the last
@@ -40,12 +38,12 @@ export function faunaSystem(G) {
     },
     stop() { route = null; },
   };
-  G.wild = { fish: [], flocks, herds, herons };
+  G.wild = { fish: [], flocks, herons };
   const once = (id, title, msg, ic, how) => { if (!G.flags[id]) { G.flags[id] = 1; G.hud.quietly(how, title, msg, ic); } };
   const sight = (key, x, y, z, r) => G.sight?.(key, x, y, z, r);
   const low = () => b.state !== 'fly' || b.p[1] - Math.max(height(b.p[0], b.p[2]), WATER) < 22;
   const near = (x, z, r) => Math.hypot(x - b.p[0], z - b.p[2]) < r;
-  const tod = () => G.tod, storm = () => G.storm || 0, winter = () => G.season?.winter || 0;
+  const tod = () => G.tod, storm = () => G.storm || 0;
 
   // ---- what lives where (pure functions of the cell) ----------------------------------------
   function flockOf(gx, gz) {
@@ -56,15 +54,6 @@ export function faunaSystem(G) {
     const kind = dusk && open && ih(gx, gz, 102) < .6 + k.marsh * .4 ? 'starling' : tod() > .24 && tod() < .76 ? 'finch' : null;
     if (!kind || storm() > .6) return null;
     return { id: gx * 7717 + gz, kind, n: kind === 'starling' ? 46 : 9 + Math.floor(ih(gx, gz, 103) * 8), hx: x, hz: z };
-  }
-  function herdOf(gx, gz) {
-    if (ih(gx, gz, 111) > .5) return null;
-    const x = (gx + .2 + ih(gx, gz, 112) * .6) * FAUNA.deerCell, z = (gz + .2 + ih(gx, gz, 113) * .6) * FAUNA.deerCell;
-    const f = forest(x, z), y = height(x, z);
-    if (f < -.12 || f > .22 || y < 1.5 || y > 90) return null;    // the edge of the woods
-    const t = tod(); if (!((t > .2 && t < .36) || (t > .64 && t < .8)) || winter() > .8 || storm() > .5) return null;
-    const w = blend(x, z)[0]; if (w.cont === 'oceania' || w.cont === 'antarctica' || (w.cont === 'africa' && w.lat < 30)) return null;   // no deer there
-    return { id: gx * 6007 + gz, x, z, n: 2 + Math.floor(ih(gx, gz, 114) * 3), page: w.cont === 'n-america' || w.cont === 's-america' ? 'deer' : 'reddeer' };
   }
   // a heron wants shallow water by a shore
   function shallowNear(x, z, seed) {
@@ -97,10 +86,6 @@ export function faunaSystem(G) {
   function refresh() {
     cells(FAUNA.flockCell, FAUNA.flockR, flockOf, flocks, o => ({ ...o, cx: o.hx, cz: o.hz, cy: height(o.hx, o.hz) + 14, vx: 0, vz: 0, scare: 0, t: Math.random() * 100,
       birds: Array.from({ length: o.n }, (_, i) => ({ p: [o.hx, height(o.hx, o.hz) + 14, o.hz], v: [0, 0, 0], ph: ih(o.id, i, 104) * 6.28, o: [ih(o.id, i, 105) - .5, ih(o.id, i, 106) - .5, ih(o.id, i, 107) - .5] })) }));
-    cells(FAUNA.deerCell, FAUNA.deerR, herdOf, herds, o => ({ ...o, flee: 0, deer: Array.from({ length: o.n }, (_, i) => {
-      const x = o.x + (ih(o.id, i, 115) - .5) * 14, z = o.z + (ih(o.id, i, 116) - .5) * 14;
-      return { x, z, y: height(x, z), yaw: ih(o.id, i, 117) * 6.28, state: Math.random() < .6 ? 'graze' : 'stand', t: Math.random() * 4, s: 0, sp: 0 };
-    }) }));
     cells(FAUNA.heronCell, FAUNA.heronR, heronOf, herons, o => ({ ...o, y: WATER - .3, yaw: ih(o.id, 1, 123) * 6.28, state: 'stand', t: 0, to: null }));
   }
 
@@ -130,25 +115,6 @@ export function faunaSystem(G) {
       for (let k = 0; k < 3; k++) q.p[k] += q.v[k] * dt;
       q.p[1] = Math.max(q.p[1], Math.max(height(q.p[0], q.p[2]), WATER) + 1.5);
     }
-  }
-  function herdStep(Hd, dt) {
-    const hd = Math.hypot(Hd.x - b.p[0], Hd.z - b.p[2]);
-    if (b.state === 'fly' && hd < 40 && low() && Hd.flee <= 0) { Hd.flee = 4.5; G.audio.snort?.(); Hd.away = Math.atan2(Hd.z - b.p[2], Hd.x - b.p[0]); once('deer', 'Deer', 'Deer! They bound off for the trees when a shadow passes low.', 'guide'); }
-    Hd.flee -= dt;
-    // each deer grazes, takes a few steps, lifts its head at a hawk passing, and bounds off when one comes low
-    const wary = b.state === 'fly' && hd < 90 && b.p[1] - height(Hd.x, Hd.z) < 60;
-    for (const d of Hd.deer) {
-      const move = sp => { const nx = d.x + Math.cos(d.yaw) * sp * dt, nz = d.z + Math.sin(d.yaw) * sp * dt; if (height(nx, nz) > .5) { d.x = nx; d.z = nz; d.s = (d.s || 0) + sp * dt; d.sp = sp; } else d.yaw += 1; };
-      d.sp = 0; d.chew = (d.chew || 0) + dt;
-      if (Hd.flee > 0) { d.yaw += angleTo(d.yaw, Hd.away + Math.sin(d.x) * .4) * Math.min(1, dt * 4); move(9); d.state = 'run'; d.t = 1; }
-      else {
-        if (wary && d.state !== 'alert' && d.state !== 'run') { d.state = 'alert'; d.t = 2 + Math.random() * 3; }
-        if ((d.t -= dt) <= 0) { d.t = 2 + Math.random() * 5; const r = Math.random(); d.state = r < .6 ? 'graze' : r < .85 ? 'walk' : 'stand'; if (d.state === 'walk') d.yaw += (Math.random() - .5) * 1.5; }
-        if (d.state === 'walk') move(.9);
-      }
-      d.y = height(d.x, d.z);
-    }
-    Hd.x = Hd.deer[0].x; Hd.z = Hd.deer[0].z;
   }
   function heronStep(h, dt) {
     h.t += dt;
@@ -255,7 +221,6 @@ export function faunaSystem(G) {
         cells(FAUNA.fishCell, FAUNA.fishR, fishOfLive, fishes, o => ({ ...o, x: o.hx, z: o.hz, yaw: ih(o.id, 1, 134) * 6.28, up: 0, wait: 2 + Math.random() * 12, jump: -1 }));
       }
       for (const F of flocks.values()) flockStep(F, dt);
-      for (const Hd of herds.values()) herdStep(Hd, dt);
       for (const h of herons.values()) heronStep(h, dt);
       for (const f of fishes.values()) fishStep(f, dt);
       tryCatch();
@@ -291,12 +256,6 @@ export function faunaSystem(G) {
         }
         sight(F.kind, F.cx, F.cy, F.cz, F.kind === 'starling' ? 30 : 6);
       }
-      for (const Hd of herds.values()) {
-        if (!vis(Hd.x, Hd.z, 260)) continue;
-        const look = Hd.page || 'deer';
-        for (const d of Hd.deer) (S.props[frameOf(R, look, { state: d.state, sp: d.sp, s: d.s, t: d.chew })] ||= []).push(d.x, d.y, d.z, 1, d.yaw, .5, 0, 0);
-        sight(Hd.page || 'deer', Hd.x, Hd.deer[0].y + 1, Hd.z, 2);
-      }
       const hs = S.props.heron ||= [], hu = S.props.heronU ||= [], hdn = S.props.heronD ||= [];
       for (const h of herons.values()) {
         if (!vis(h.x, h.z, 260)) continue;
@@ -326,10 +285,10 @@ export function faunaSystem(G) {
       }
       if (companion) so.push(...companion.p, .85, companion.yaw, .9, 0, 0);
     },
-    // debug: __aloft3d.G.systems.fauna.go('deer' | 'heron' | 'fish' | 'flock' | 'kettle')
+    // debug: __aloft3d.G.systems.fauna.go('heron' | 'fish' | 'flock' | 'kettle')
     go(kind) {
-      const make = { deer: [herdOf, FAUNA.deerCell], heron: [heronOf, FAUNA.heronCell], fish: [fishOf, FAUNA.fishCell], flock: [flockOf, FAUNA.flockCell] }[kind];
-      if (kind === 'deer' || kind === 'flock') G.tod = kind === 'deer' ? .28 : .7;
+      const make = { heron: [heronOf, FAUNA.heronCell], fish: [fishOf, FAUNA.fishCell], flock: [flockOf, FAUNA.flockCell] }[kind];
+      if (kind === 'flock') G.tod = .7;
       let at = null;
       if (kind === 'kettle') { const t = thermalsNear(b.p[0], b.p[2], 3000).filter(t => t.w * env.thermal >= FAUNA.kettleW).sort((p, q) => Math.hypot(p.x - b.p[0], p.z - b.p[2]) - Math.hypot(q.x - b.p[0], q.z - b.p[2]))[0]; if (t) at = [t.x, t.z, 90]; }
       else for (let r = 0; r < 40 && !at; r++) for (let gz = -r; gz <= r && !at; gz++) for (let gx = -r; gx <= r && !at; gx++) {

@@ -5,14 +5,14 @@
 //   D4 in rain it hunches, fluffed up, and the rain patters on what it sits on (leaves, needles,
 //      a roof, a fence post, stone or the open ground)
 //   C3 wet (wingcraft.js b.wet) and in the sun, it spreads its wings to dry them (b.sunning)
-//   D1 the quiet hour: a minute untouched on a perch and the world comes closer: a deer steps out,
-//      a songbird lands on the next branch, a fox trots by below. A touch sends them off.
+//   D1 the quiet hour: a minute untouched on a perch and the world comes closer: a songbird
+//      lands on the next branch. A touch sends it off.
 //   D3 perched, tap an animal to watch it: the head and the view follow it, and after a while the
 //      field guide gains a line about how it lives
 //   D5 come back to a perch often and it becomes yours: marked on the map, worn pale, and you
 //      land facing the way you last looked from it
 // Animals to watch come from G.sight, which every system calls for what it draws (guide.js).
-import { height, WATER, forest, perchesOf, ih } from '../world.js';
+import { perchesOf, ih } from '../world.js';
 import { buildingsNear } from '../settle.js';
 import { fencesNear } from '../world.js';
 import { builder, blob, reseed } from '../shapes.js';
@@ -29,29 +29,15 @@ export const STILL = {
 // how each animal lives, learned by watching it (D3)
 const WATCH = {
   mouse: 'Watched: it stops every few steps to listen, then dashes along its runway.',
-  deer: 'Watched: one always has its head up while the others graze, and they take turns.',
   heron: 'Watched: it can stand a quarter of an hour without moving a feather, then strike in a blink.',
   fish: 'Watched: it rises where the insects fall, along the shade of the bank.',
-  fox: 'Watched: it stops dead, tilts its head to listen, then jumps high and pounces nose first.',
   squirrel: 'Watched: it buries a nut, pats the earth flat, then looks round to see who saw.',
-  crow: 'Watched: one sits up high as a lookout while the others feed below.',
   starling: 'Watched: each bird keeps to the seven nearest it, and the whole cloud turns as one.',
   kettlehawk: 'Watched: they circle tight in the strongest lift, then glide off south together.',
   redtail: 'Watched: it soars without a beat for minutes, reading the air as you do.',
 };
 const WATCH_ANY = 'Watched: you know its ways a little better for sitting still with it.';
 
-// a red fox, trotting: low and long, a brush of a tail, faces +x (as the deer)
-function foxShape() {
-  reseed(71); const B = builder(), red = [.78, .42, .2], dark = [.55, .28, .14], pale = [.95, .9, .82], black = [.15, .12, .1];
-  blob(B, 0, .32, 0, .16, red, pale, [1.9, .85, .75]);
-  blob(B, .34, .4, 0, .09, red, pale, [1.3, .85, .8]);
-  blob(B, .47, .37, 0, .04, red, pale, [1.6, .7, .7]);
-  for (const s of [.045, -.045]) B.tri([.33, .46, s], [.36, .47, s * 1.7], [.3, .58, s * 1.4], dark);
-  blob(B, -.38, .3, 0, .09, red, red, [2, .8, .8]); blob(B, -.56, .27, 0, .05, pale, pale, [1.2, .9, .9]);
-  for (const [x, z] of [[.18, .06], [.18, -.06], [-.16, .06], [-.16, -.06]]) { B.tri([x - .02, .26, z], [x + .02, .26, z], [x, 0, z], black); B.tri([x, .26, z - .02], [x, .26, z + .02], [x, 0, z], black); }
-  return B.out();
-}
 // a songbird sitting on a twig: round, with a tail tipped down, faces +x
 function perchedBird() {
   reseed(73); const B = builder(), back = [.55, .42, .3], breast = [.92, .62, .42];
@@ -66,8 +52,7 @@ function wornShape() { reseed(79); const B = builder(), c = [.78, .7, .58]; blob
 
 export function stillSystem(G) {
   const b = G.b, A = G.audio, H = G.hud;
-  G.R.shape('fox', foxShape()); G.R.shape('perchbird', perchedBird()); G.R.shape('worn', wornShape());
-  G.guide?.page('fox', 'Red fox', 'Hunts voles by ear in the long grass, leaping high to pounce on them.');
+  G.R.shape('perchbird', perchedBird()); G.R.shape('worn', wornShape());
   const idle = () => (performance.now() - (G.touchedAt || 0)) / 1000;
   const settled = () => (b.state === 'perch' || b.state === 'ground') && !(b.settle > 0) && !(b.eating > 0) && !b.asleep;
 
@@ -135,37 +120,19 @@ export function stillSystem(G) {
   const visitors = []; let visitT = 0, quietSaid = false;
   function viewYaw() { const f = G.R.viewInfo?.f; return f ? Math.atan2(f[0], -f[2]) : b.yaw; }
   function spawn() {
-    const vy = viewYaw(), kinds = [];
-    const night = (G.light?.night ?? 0) > .5;
-    if (!night) kinds.push('bird');
-    if (b.p[1] - height(b.p[0], b.p[2]) < 25) kinds.push('fox', 'fox');
-    if (forest(b.p[0], b.p[2]) > .05 && !night) kinds.push('deer', 'deer');
-    const kind = kinds[(Math.random() * kinds.length) | 0]; if (!kind) return;
-    if (kind === 'bird') {
-      const ps = b.tree ? perchesOf(b.tree).filter(p => !p.top && Math.hypot(p.x - b.p[0], p.y - b.p[1], p.z - b.p[2]) > 1.2) : [];
-      const p = ps[(Math.random() * ps.length) | 0]; if (!p) return;
-      const from = [p.x + Math.sin(vy + 1) * 25, p.y + 8, p.z - Math.cos(vy + 1) * 25];
-      const sp = G.species?.[(Math.random() * Math.min(8, G.species.length)) | 0];
-      visitors.push({ kind, sp: sp ? 'sp' + sp.id : 'visitor', p: from, to: [p.x, p.y + .02, p.z], t: 0, stay: 18 + Math.random() * 14, yaw: 0, state: 'in' });
-      return;
-    }
-    // on the ground in front of the view, out of the wood or across the field
-    for (let tries = 0; tries < 8; tries++) {
-      const a = vy + (Math.random() - .5) * 1.4, r = kind === 'deer' ? 28 + Math.random() * 18 : 14 + Math.random() * 14;
-      const x = b.p[0] + Math.sin(a) * r, z = b.p[2] - Math.cos(a) * r, y = height(x, z);
-      if (y < WATER + .3) continue;
-      const across = a + (Math.random() < .5 ? 1 : -1) * Math.PI / 2, len = kind === 'deer' ? 9 : 30;
-      const sx = x - Math.sin(across) * len / 2, sz = z + Math.cos(across) * len / 2, ex = x + Math.sin(across) * len / 2, ez = z - Math.cos(across) * len / 2;
-      if (height(ex, ez) < WATER + .3 || height(sx, sz) < WATER + .3) continue;
-      visitors.push({ kind, p: [sx, height(sx, sz), sz], to: [ex, height(ex, ez), ez], t: 0, stay: kind === 'deer' ? 40 : 20, pause: 0, state: 'in', yaw: 0 });
-      return;
-    }
+    // (a songbird, by day: deer and foxes came too, until the big animals went, James 10-24)
+    const vy = viewYaw();
+    if ((G.light?.night ?? 0) > .5) return;
+    const ps = b.tree ? perchesOf(b.tree).filter(p => !p.top && Math.hypot(p.x - b.p[0], p.y - b.p[1], p.z - b.p[2]) > 1.2) : [];
+    const p = ps[(Math.random() * ps.length) | 0]; if (!p) return;
+    const from = [p.x + Math.sin(vy + 1) * 25, p.y + 8, p.z - Math.cos(vy + 1) * 25];
+    const sp = G.species?.[(Math.random() * Math.min(8, G.species.length)) | 0];
+    visitors.push({ kind: 'bird', sp: sp ? 'sp' + sp.id : 'visitor', p: from, to: [p.x, p.y + .02, p.z], t: 0, stay: 18 + Math.random() * 14, yaw: 0, state: 'in' });
   }
   function startle() {
     for (const v of visitors) if (v.state !== 'off') {
       v.state = 'off'; v.t = 0;
-      if (v.kind === 'deer') A.snort?.();
-      if (v.kind === 'bird') A.chatter?.();
+      A.chatter?.();
     }
   }
   G.on('gesture', () => { if (visitors.some(v => v.state !== 'off')) startle(); });
@@ -179,23 +146,9 @@ export function stillSystem(G) {
     for (let i = visitors.length - 1; i >= 0; i--) {
       const v = visitors[i]; v.t += dt;
       const dx = v.to[0] - v.p[0], dz = v.to[2] - v.p[2], d = Math.hypot(dx, dz);
-      if (v.kind === 'bird') {
-        if (v.state === 'in') { const k = Math.min(1, dt * 1.6); for (let j = 0; j < 3; j++) v.p[j] += (v.to[j] - v.p[j]) * k; v.yaw = Math.atan2(dz, dx); if (d < .05) { v.state = 'sit'; v.t = 0; if (Math.random() < .7) A.peep?.(); } }
-        else if (v.state === 'sit') { if (v.t > v.stay) { v.state = 'off'; v.t = 0; } }
-        else { v.p[0] += Math.cos(v.yaw) * 9 * dt; v.p[2] += Math.sin(v.yaw) * 9 * dt; v.p[1] += 3 * dt; if (v.t > 4) visitors.splice(i, 1); }
-        continue;
-      }
-      const sp = v.state === 'off' ? (v.kind === 'deer' ? 7 : 6) : v.kind === 'deer' ? .45 : 1.6;
-      if (v.state === 'off') { const away = Math.atan2(v.p[2] - b.p[2], v.p[0] - b.p[0]); v.yaw += angleTo(v.yaw, away) * Math.min(1, dt * 5); if (v.t > 6) visitors.splice(i, 1); }
-      else {
-        // the fox stops halfway to listen, and pounces; the deer grazes as it drifts
-        if (v.kind === 'fox' && !v.paused && d < 16) { v.paused = 1; v.pause = 3; }
-        if (v.pause > 0) { v.pause -= dt; if (v.pause < .5 && v.pause > .2) v.hop = 1; }
-        v.yaw = Math.atan2(dz, dx);
-        if (d < .5 || v.t > v.stay) { v.state = 'off'; v.t = 0; continue; }
-      }
-      if (!(v.pause > 0)) { v.p[0] += Math.cos(v.yaw) * sp * dt; v.p[2] += Math.sin(v.yaw) * sp * dt; }
-      v.p[1] = height(v.p[0], v.p[2]);
+      if (v.state === 'in') { const k = Math.min(1, dt * 1.6); for (let j = 0; j < 3; j++) v.p[j] += (v.to[j] - v.p[j]) * k; v.yaw = Math.atan2(dz, dx); if (d < .05) { v.state = 'sit'; v.t = 0; if (Math.random() < .7) A.peep?.(); } }
+      else if (v.state === 'sit') { if (v.t > v.stay) { v.state = 'off'; v.t = 0; } }
+      else { v.p[0] += Math.cos(v.yaw) * 9 * dt; v.p[2] += Math.sin(v.yaw) * 9 * dt; v.p[1] += 3 * dt; if (v.t > 4) visitors.splice(i, 1); }
     }
   }
 
@@ -279,8 +232,8 @@ export function stillSystem(G) {
   G.dev?.add({ id: 'r8-preen', area: 'Ground and perch', round: 'R8 D2', title: 'Preening and small life on a perch: rouse, preen, stretch, look round (the head turns)', how: 'Perch and leave the phone 10 s: watch the hawk rouse, preen, stretch and turn its head.' });
   G.dev?.add({ id: 'r8-rain', area: 'Ground and perch', round: 'R8 D4', title: 'Sit out the rain: hunched and fluffed; rain patters differently on leaves, needles, roofs, posts, stone', how: 'Perch in rain on a broadleaf, a pine, a roof and a fence post, and listen.' });
   G.dev?.add({ id: 'r8-sun', area: 'Ground and perch', round: 'R8 C3', title: 'Sunning: wet, in the sun, the hawk spreads its wings to dry', how: 'After rain, perch in sunshine: wings open until dry (dries 6x faster).', go: () => { b.wet = .8; G.rain = 0; } });
-  G.dev?.add({ id: 'r8-quiet', area: 'Wildlife', round: 'R8 D1', title: 'The quiet hour: a minute untouched on a perch brings a deer, a songbird or a fox close', how: 'Perch and leave the phone a minute; any touch sends them off.' });
-  G.dev?.add({ id: 'r8-watch', area: 'Wildlife', round: 'R8 D3', title: 'Watch an animal: tap it from a perch; the head and view follow it; a field guide line', how: 'Perched, tap a deer, heron, mouse or bird and wait 6 s; Journal > Field guide.' });
+  G.dev?.add({ id: 'r8-quiet', area: 'Wildlife', round: 'R8 D1', title: 'The quiet hour: a minute untouched on a perch brings a songbird close', how: 'Perch and leave the phone a minute; any touch sends them off.' });
+  G.dev?.add({ id: 'r8-watch', area: 'Wildlife', round: 'R8 D3', title: 'Watch an animal: tap it from a perch; the head and view follow it; a field guide line', how: 'Perched, tap a heron, mouse or bird and wait 6 s; Journal > Field guide.' });
   G.dev?.add({ id: 'r8-fav', area: 'Ground and perch', round: 'R8 D5', title: 'A favourite perch: on the map, worn pale, and you land facing your view', how: 'Perch on the same branch 3 times for 2.5 minutes in all; Map shows it.' });
 
   return {
@@ -296,12 +249,7 @@ export function stillSystem(G) {
     },
     scene(S) {
       for (const v of visitors) {
-        if (v.kind === 'bird') { (S.props.perchbird ||= []).push(v.p[0], v.p[1], v.p[2], 1.3, v.yaw, .5, 0, 0); G.sight(v.sp, v.p[0], v.p[1], v.p[2], .2); continue; }
-        const hop = v.hop ? Math.max(0, Math.sin(Math.min(1, (v.hopT = (v.hopT || 0) + 1 / 60) / .4) * Math.PI)) * .5 : 0;
-        if (v.hopT > .4) { v.hop = 0; v.hopT = 0; }
-        if (v.kind === 'deer') (S.props[v.state === 'off' ? 'deer' : 'deerG'] ||= []).push(v.p[0], v.p[1], v.p[2], 1, v.yaw, .5, 0, 0);
-        else (S.props.fox ||= []).push(v.p[0], v.p[1] + hop, v.p[2], 1.2, v.yaw, .5, 0, 0);
-        G.sight(v.kind, v.p[0], v.p[1] + .5, v.p[2], v.kind === 'deer' ? 1.2 : .5);
+        (S.props.perchbird ||= []).push(v.p[0], v.p[1], v.p[2], 1.3, v.yaw, .5, 0, 0); G.sight(v.sp, v.p[0], v.p[1], v.p[2], .2);
       }
       for (const f of favs) if (f.fav && Math.hypot(f.x - S.cam[0], f.z - S.cam[2]) < 80) (S.props.worn ||= []).push(f.x, f.y + .01, f.z, 1, ih(f.x | 0, f.z | 0, 3) * 6, .5, 0, 0);
     },

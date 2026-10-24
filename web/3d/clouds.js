@@ -44,6 +44,10 @@ export const KINDS = {
   // a ring of mist (sys/rings.js, its radius the scale)
   ringv: { base: -9, sigma: .16, col: [1, 1, .98], under: [.92, .92, .94],
     lobes: Array.from({ length: 16 }, (_, i) => { const a = i / 16 * Math.PI * 2, w = .17 + .05 * Math.sin(i * 2.3); return [Math.cos(a), Math.sin(a), Math.sin(i * 1.7) * .05, w, w, w * .9]; }) },
+  // a dust devil (sys/landair.js, its height the scale): a twisting column of grit widening upward
+  // from a skirt of dust on the ground (the instance's yaw spins it)
+  devil: { base: -9, sigma: .09, col: [.9, .8, .64], under: [.74, .63, .5],
+    lobes: [[0, .03, 0, .17, .05, .17], ...Array.from({ length: 12 }, (_, i) => { const t = i / 11, a = i * 2.2, o = .02 + t * .05, r = .05 + t * .13; return [Math.cos(a) * o, .06 + t * .86, Math.sin(a) * o, r, .1 + t * .05, r]; })] },
 };
 const MAXL = 24;
 export const STYLES = ['poly', 'soft', 'facet', 'billow'];
@@ -51,11 +55,11 @@ export const STYLES = ['poly', 'soft', 'facet', 'billow'];
 const VS = `#version 300 es
 layout(location=0) in vec3 aPos; layout(location=4) in vec4 iA; layout(location=5) in vec4 iB;
 uniform mat4 uVP;
-out vec3 vPos; flat out vec4 vI; flat out vec3 vY;
+out vec3 vPos; flat out vec4 vI; flat out vec4 vY;
 void main() {
   float c = cos(iB.x), s = sin(iB.x);
   vec3 p = aPos * iA.w; p.xz = vec2(c * p.x - s * p.z, s * p.x + c * p.z);
-  vPos = p + iA.xyz; vI = iA; vY = vec3(c, s, iB.y);
+  vPos = p + iA.xyz; vI = iA; vY = vec4(c, s, iB.y, 1. - clamp(iB.w, 0., 1.));   // (iB.w, the 8th float: how faded, 0 none .. 1 gone)
   gl_Position = uVP * vec4(vPos, 1.);
 }`;
 const FS = `#version 300 es
@@ -67,7 +71,7 @@ ${GRADE_GLSL}
 uniform vec4 uK;   // lobes, base, sigma, the light's strength (0 at night .. 1)
 uniform vec4 uC[${MAXL}], uR[${MAXL}];
 uniform sampler3D uNoise;
-in vec3 vPos; flat in vec4 vI; flat in vec3 vY;
+in vec3 vPos; flat in vec4 vI; flat in vec4 vY;
 out vec4 frag;
 float h21(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
 void main() {
@@ -107,7 +111,7 @@ void main() {
   n = vec3(c * n.x - s * n.z, n.y, s * n.x + c * n.z);
   vec3 hit = uCam + rd * (tn * vI.w);
   float od = tau * vI.w * uK.z * (.7 + vY.z * .6);   // the optical depth, thicker for a denser tint
-  float alpha = 1. - exp(-od);
+  float alpha = (1. - exp(-od)) * vY.w;
   vec3 lp = lo + ld * tn;   // where the ray goes in, in the cloud's frame
   float nz = .5;
   if (uStyle > 1.5) {
@@ -222,7 +226,11 @@ export function createClouds(gl) {
     // (flip: drawn mirrored, Graphics: Ultra's reflections, so the boxes' inside is the other winding)
     draw(S, vp, props, style, flip = false) {
       const list = [];
-      for (const key in props) if (kinds[key]) { const d = props[key]; for (let i = 0; i < d.length; i += 8) list.push([key, i, (d[i] - S.cam[0]) ** 2 + (d[i + 1] - S.cam[1]) ** 2 + (d[i + 2] - S.cam[2]) ** 2]); }
+      // (a dust devil sorted by its middle: its origin is on the ground)
+      for (const key in props) if (kinds[key]) {
+        const d = props[key], mid = key === 'devil' ? .45 : 0;
+        for (let i = 0; i < d.length; i += 8) list.push([key, i, (d[i] - S.cam[0]) ** 2 + (d[i + 1] + d[i + 3] * mid - S.cam[1]) ** 2 + (d[i + 2] - S.cam[2]) ** 2]);
+      }
       if (!list.length) return 0;
       // farthest first, so nearer clouds lay over farther ones; runs of one kind go in one draw
       list.sort((a, b) => b[2] - a[2]);

@@ -1,6 +1,5 @@
-// Low-poly meshes for the small animals of the other lands (sys/critters.js; the four-legged
-// grazers are the rig's, sys/rig.js) and the other hunters
-// and pests in the air (sys/hunters.js). Facing +x, y up, real size at scale 1 (as
+// Low-poly meshes for the small animals of the other lands (sys/critters.js) and the other
+// hunters in the air (sys/hunters.js). Facing +x, y up, real size at scale 1 (as
 // faunashapes.js). Two-frame flappers are built as (up) and (down).
 import { builder, blob, tube, reseed } from '../shapes.js';
 
@@ -74,17 +73,6 @@ export function egret(pose = 'stand') {
   }
   return B.out();
 }
-// a seal hauled out: lying (k 0), head up (1), humping along (2: arched, 3: stretched)
-export function seal(k = 0) {
-  reseed(208); const B = builder(), g = [.5, .5, .5], g2 = [.42, .42, .44], dark = [.2, .2, .22];
-  const arch = k === 2 ? .12 : 0, long = k === 3 ? 1.12 : k === 2 ? .9 : 1, hy = k === 1 ? .48 : k === 3 ? .3 : .32;
-  blob(B, 0, .2 + arch, 0, .3, g, g2, [2 * long, .7 + arch, .9], 2);
-  blob(B, .58 * long, hy, 0, .14, g, g2, [1.2, 1, 1], 2);
-  blob(B, .7 * long, hy, 0, .05, dark, g2);
-  for (const z of [-1, 1]) B.tri([.3, .12, .2 * z], [.42, .12, .2 * z], [.36, k === 3 ? .02 : .05, .34 * z], g2);   // the fore flippers
-  B.tri([-.55, .15, -.02], [-.55, .15, .02], [-.78, .25, .12], g2); B.tri([-.55, .15, .02], [-.55, .15, -.02], [-.78, .25, -.12], g2);
-  return B.out();
-}
 // a red squirrel: bushy tail curled over its back
 export function squirrel(run) {
   reseed(209); const B = builder(), r = [.68, .36, .2], r2 = [.58, .3, .17], pale = [.9, .82, .7];
@@ -126,7 +114,6 @@ function flier(up, { body, wing, head, bill = [.85, .7, .3], span = 1, size = 1,
   }
   return B.out();
 }
-export const crow = up => { reseed(212); return flier(up, { body: [.1, .1, .12], wing: [.07, .07, .09], head: [.1, .1, .12], bill: [.08, .08, .09], size: 1.1 }); };
 export const eagle = up => { reseed(213); return flier(up, { body: [.25, .18, .12], wing: [.2, .14, .1], head: [.95, .94, .9], bill: [.95, .8, .2], size: 2.4, span: 1.15 }); };
 export const kestrel = up => { reseed(214); return flier(up, { body: [.66, .4, .24], wing: [.6, .36, .22], head: [.55, .55, .62], size: .85, span: .95, tail: 1.3 }); };
 // a broad-winged hawk soaring (round eight F1, the river of raptors): wings out flat, banded tail

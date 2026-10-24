@@ -137,7 +137,7 @@ export function foodSystem(G) {
     }
     return out;
   }
-  G.mouseCells = cellMice;   // sys/fields.js reads the homes for its signs and the fox
+  G.mouseCells = cellMice;   // sys/fields.js reads the homes for its signs
   function refresh() {
     const r = FOOD.near, c0 = Math.floor((b.p[0] - r) / FOOD.cell), c1 = Math.floor((b.p[0] + r) / FOOD.cell);
     const d0 = Math.floor((b.p[2] - r) / FOOD.cell), d1 = Math.floor((b.p[2] + r) / FOOD.cell), seen = new Set();

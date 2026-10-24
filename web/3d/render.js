@@ -27,7 +27,7 @@ const LOD = { soar: ['soarFar', 70] };
 // the shadow map's size in pixels and its reach round the hawk in metres (look.js P)
 const SHADOW_PX = 1024, SHADOW_R = 120;
 // what each instanced shape is (uClass in COMMON_FS): animals, buildings, stones
-const ANIMAL = /^(mouse|fox|squirrel|marmot|jack|seal|whale|fluke|turtle|crab|lizard|snake|heron|gull|crow|eagle|kestrel|raven|sb|soar|perchbird|sitter|fish|flyfish|hawk|chick|broadwing|goat|ibex|deer|reddeer|bison|wildebeest|muskox)/;
+const ANIMAL = /^(mouse|squirrel|marmot|jack|whale|fluke|turtle|crab|lizard|snake|heron|gull|eagle|kestrel|raven|sb|soar|perchbird|sitter|fish|flyfish|hawk|chick|broadwing)/;
 const BUILT = /^(ru_|wd_|lm_|fence_)/;
 const classOf = key => GRASSY.has(key) ? 3 : key === 'stone' ? 6 : BUILT.test(key) ? 2 : ANIMAL.test(key) ? 1 : 0;
 // instanced shapes that hoar frost whitens (the plants and stones; not the animals)

@@ -1,16 +1,15 @@
-// The other hunters and pests of the air. Crows mob you when you fly low by their woods,
-// until you climb away (C3). A bald eagle chases you while you carry a fish, and takes it if
+// The other hunters of the air. A bald eagle chases you while you carry a fish, and takes it if
 // it catches you, unless you get to a perch first (C3). Other hunters show you where food is
 // (C5): a kestrel hangs over a mouse in the meadow, gulls wheel and plunge over rising fish,
 // ravens circle over carrion on the open hills (land beside it for a meal).
-import { height, groundAt, forest, blend, ih, WATER } from '../world.js';
-import { crow, eagle, kestrel, gull, raven, carrion } from './critshapes.js';
+import { height, groundAt, blend, ih, WATER } from '../world.js';
+import { eagle, kestrel, gull, raven, carrion } from './critshapes.js';
 
 const CARRION_CELL = 600, CARRION_LANDS = { moor: .4, mountains: .3, alpine: .25, savanna: .4, badlands: .3, meadow: .12, steppe: .35, tundra: .25, maquis: .15 };
 
 export function huntersSystem(G) {
   const b = G.b, R = G.R, H = G.hud;
-  for (const [k, f] of Object.entries({ crow, eagle, kestrel, gull, raven })) { R.shape(k + 'U', f(true)); R.shape(k + 'D', f(false)); }
+  for (const [k, f] of Object.entries({ eagle, kestrel, gull, raven })) { R.shape(k + 'U', f(true)); R.shape(k + 'D', f(false)); }
   R.shape('carrion', carrion());
   G.guide?.page('eagle', 'Bald eagle', 'A fishing bird, but a pirate too: it would rather rob an osprey than catch its own.');
   G.guide?.page('wteagle', 'White-tailed eagle', 'The sea eagle of the northern coasts, broad as a barn door, and as happy to rob an osprey as to fish.');
@@ -25,15 +24,8 @@ export function huntersSystem(G) {
   G.guide?.page('gull', 'Herring gull', 'Where gulls wheel and plunge, the fish are near the surface.');
   G.guide?.page('raven', 'Common raven', 'Ravens circle over a carcass and call the wolves and eagles to open it.');
   const once = (id, title, msg, ic, how) => { if (!G.flags[id]) { G.flags[id] = 1; G.hud.quietly(how, title, msg, ic); } };
-  const caw = (d = 0) => { G.audio.tone?.({ f: 620, f2: 470, dur: .16, vol: .05, delay: d }); G.audio.tone?.({ f: 600, f2: 440, dur: .14, vol: .045, delay: d + .22 }); };
-  let mob = null, mobCool = 40, pirate = null, carryT = 0, eaten = {};
+  let pirate = null, carryT = 0, eaten = {};
 
-  function startMob() {
-    const a = b.yaw;
-    mob = { t: 0, crows: Array.from({ length: 4 }, (_, i) => ({ p: [b.p[0] + Math.sin(a) * 30 + (i - 1.5) * 4, b.p[1] + 3, b.p[2] - Math.cos(a) * 30], ph: i * 1.6, v: [0, 0, 0] })) };
-    caw(); caw(.5);
-    once('crows', 'Crows', 'Crows! They mob a hawk near their woods. Climb away and they give up.', 'climb', 'w');
-  }
   function carrionNear(r) {
     const out = [], x0 = b.p[0], z0 = b.p[2];
     for (let gz = Math.floor((z0 - r) / CARRION_CELL); gz <= Math.floor((z0 + r) / CARRION_CELL); gz++) for (let gx = Math.floor((x0 - r) / CARRION_CELL); gx <= Math.floor((x0 + r) / CARRION_CELL); gx++) {
@@ -49,22 +41,6 @@ export function huntersSystem(G) {
   return {
     id: 'hunters',
     update(dt) {
-      const ground = Math.max(height(b.p[0], b.p[2]), WATER), above = b.p[1] - ground, day = G.light.daylight > .5;
-      // crows: low over the woods by day
-      mobCool -= dt;
-      if (!mob && mobCool <= 0 && day && b.state === 'fly' && above < 35 && forest(b.p[0], b.p[2]) > .15 && Math.random() < dt * .03) startMob();
-      if (mob) {
-        mob.t += dt;
-        for (const c of mob.crows) {
-          // each dives at you from its own side, then swings round again
-          c.ph += dt * 1.7;
-          const t = [b.p[0] + Math.cos(c.ph) * 5, b.p[1] + 2 + Math.sin(c.ph * 1.3) * 2, b.p[2] + Math.sin(c.ph) * 5];
-          for (let i = 0; i < 3; i++) { c.v[i] += ((t[i] - c.p[i]) * 2.5 - c.v[i]) * Math.min(1, dt * 2.5); c.p[i] += c.v[i] * dt; }
-          if (Math.hypot(c.p[0] - b.p[0], c.p[1] - b.p[1], c.p[2] - b.p[2]) < 1.6 && Math.random() < dt * 2) { b.yaw += (Math.random() - .5) * .25; G.audio.feather?.(); }
-        }
-        if (Math.random() < dt * .7) caw();
-        if (above > 60 || mob.t > 30 || b.state !== 'fly') { mob = null; mobCool = 120; }
-      }
       // the eagle and your fish
       carryT = b.carry?.kind === 'fish' && b.state === 'fly' ? carryT + dt : 0;
       const who = !pirate && carryT > 4 ? eagleOf(blend(b.p[0], b.p[2])[0]) : null;
@@ -100,7 +76,6 @@ export function huntersSystem(G) {
     },
     scene(S) {
       const cam = S.cam, flap = k => Math.sin(G.t * k) > 0, push = (n, up, p, s, yaw) => (S.props[n + (up ? 'U' : 'D')] ||= []).push(p[0], p[1], p[2], s, yaw, .5, 0, 0);
-      if (mob) for (const c of mob.crows) push('crow', flap(14 + c.ph % 3), c.p, 1, Math.atan2(c.v[2], c.v[0]));
       if (pirate) push('eagle', flap(5), pirate.p, 1, pirate.yaw - Math.PI / 2);
       if (pirate && Math.hypot(pirate.p[0] - cam[0], pirate.p[2] - cam[2]) < 60) G.sight?.(pirate.page, ...pirate.p, 1.2);
       if (G.light.daylight < .5) return;
