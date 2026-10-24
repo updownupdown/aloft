@@ -800,23 +800,45 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .lgrp3 { margin: 0 0 10px; padding: 6px 14px 8px; border-radius: 18px; background: var(--plate); }
 .lgrp3 h3 { display: flex; align-items: center; gap: 8px; margin: 6px 0 2px; }
 .lgrp3 h3 small { margin-left: auto; font-weight: 600; color: var(--ink2); }
+/* a done chapter folds to its heading; the chevron turns when it is open */
+details.lgrp3 > summary { display: flex; align-items: center; gap: 8px; list-style: none; cursor: pointer; }
+details.lgrp3 > summary::-webkit-details-marker { display: none; }
+details.lgrp3 > summary h3 { flex: 1; }
+.lchev3 { display: flex; color: var(--ink2); transition: transform .2s; }
+.lchev3 svg { width: 18px; height: 18px; }
+details.lgrp3[open] .lchev3 { transform: rotate(180deg); }
+/* the keys, on a keyboard only (howto.js desk) */
+.keysh3 { margin: 12px 0 6px; font-size: 14px; }
+.keys3 { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 6px 14px; margin: 0 0 4px; }
+.keys3 span { display: flex; align-items: center; gap: 4px; font-size: 13px; color: var(--ink2); }
+.keys3 small { margin-left: 6px; font-size: 13px; }
+.keys3 kbd { min-width: 26px; padding: 3px 7px; border-radius: 7px; border: 1px solid var(--btnedge); border-bottom-width: 2px; background: var(--btn); font: inherit; font-size: 12px; font-weight: 700; color: var(--ink); text-align: center; }
+.keysnote3 { margin: 4px 0 10px; font-size: 12.5px; color: var(--ink2); }
 .lfeather3 { display: inline-flex; color: var(--clay); }
 .lfeather3 svg { width: 17px; height: 17px; }
 .lgrp3 .lnote3 button { margin-left: auto; }
-/* Tutorial > Overview: the payoff, then each chapter in order */
-.lpay3 { display: flex; gap: 12px; align-items: flex-start; margin: 2px 0 12px; padding: 12px 14px; border-radius: 18px; background: var(--plate); font-size: 14px; line-height: 1.45; }
-.lpay3 > svg { flex: none; width: 26px; height: 26px; color: var(--clay); }
-.lpay3 small { display: block; margin-top: 4px; font-weight: 700; color: var(--moss); }
+/* Tutorial > Overview: the feathers and the why, then each chapter in order */
+.lpay3 { display: flex; gap: 16px; align-items: center; margin: 2px 0 12px; padding: 14px 16px; border-radius: 18px; background: var(--plate); }
+.lnum3 { flex: none; display: flex; flex-direction: column; align-items: center; min-width: 64px; color: var(--clay); }
+.lnum3 svg { width: 24px; height: 24px; }
+.lnum3 b { font-size: 26px; line-height: 1.1; color: var(--ink); }
+.lnum3 small { font-size: 12px; color: var(--ink2); }
+.lwhy3 { flex: 1; display: flex; flex-direction: column; gap: 3px; font-size: 13.5px; line-height: 1.4; color: var(--ink2); }
+.lwhy3 > b { font-size: 15px; color: var(--ink); }
+.lbar3 { display: block; height: 6px; margin-top: 6px; border-radius: 3px; background: var(--rule); overflow: hidden; }
+.lbar3 i { display: block; height: 100%; border-radius: 3px; background: var(--moss); }
+.lwhy3 small { font-size: 12px; }
 .lover3 { list-style: none; margin: 0 0 8px; padding: 0; }
 .lover3 li { display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--rule); }
 .lover3 li:first-child { border-top: 0; }
-.lopen3 { flex: 1; display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 4px 2px; border: 0; background: none; font: inherit; font-size: 14px; color: var(--ink); text-align: left; cursor: pointer; }
+.lopen3 { flex: 1; display: flex; align-items: center; gap: 10px; min-height: 46px; padding: 4px 2px; border: 0; background: none; font: inherit; font-size: 14px; color: var(--ink); text-align: left; cursor: pointer; }
 .lopen3 small { margin-left: auto; color: var(--ink2); }
 .lover3 li.done .lopen3 b { color: var(--ink2); }
-.lopen3 > i { flex: none; display: flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid var(--btnedge); }
-.lopen3 > i.on { background: var(--moss); border-color: var(--moss); color: #fff; }
-.lopen3 > i svg { width: 13px; height: 13px; stroke-width: 2.8; }
-.lover3 li > button[data-r] { flex: none; min-height: 32px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--btnedge); background: var(--btn); font-size: 12.5px; font-weight: 600; cursor: pointer; }
+.lfeat3 { flex: none; display: flex; color: var(--ink2); opacity: .35; }
+.lfeat3.on { color: var(--clay); opacity: 1; }
+.lfeat3 svg { width: 20px; height: 20px; stroke-width: 2; }
+.lover3 li > button[data-r] { flex: none; width: 88px; min-height: 34px; padding: 0; border-radius: 999px; border: 1px solid var(--btnedge); background: var(--btn); color: var(--ink); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.lover3 li > button[data-r].main3 { border-color: var(--moss); background: var(--moss); color: #fff; }
 .how3.thumbs3 > svg { flex: none; width: 96px; height: 63px; }
 /* the lessons card, once after the first flight: what they are, the first, where to see them all */
 .lveil3 { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 16px; pointer-events: auto; background: rgba(20, 16, 12, .28); z-index: 5; }

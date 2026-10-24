@@ -21,6 +21,13 @@ const PIG = { water: '#4f7fa6', berry: '#a8483a', ochre: '#b8862f', leaf: '#6f8a
 // right, or the other way round), or none. The thumb moves as the mark says, over and over.
 // a mark's way on the screen ([x, y], y down) for the thumb on side s (1 left, -1 right): in is
 // toward the middle; a pair adds up, at a diagonal
+// a keyboard and a mouse, not a phone or tablet: only then are the keys shown (James, 2026-10-24)
+export const desk = () => matchMedia('(pointer: fine)').matches && !matchMedia('(any-pointer: coarse)').matches && !('ontouchstart' in window);
+// the keys, in step with input.js, menu.js and action.js: [keys, what they do]
+export const KEYS = [['W', 'S', 'Climb, dive'], ['A', 'D', 'Bank left, right'], ['Space', 'Flap'], ['Ctrl', 'Spread'], ['Shift', 'Fold'],
+  ['Shift', 'S', 'Stoop'], ['Z', 'X', 'Barrel roll'], ['T', 'Take off'], ['E', 'Eat, drink, sleep'], ['M', 'Map'], ['P', 'Menu']];
+export const keysHtml = () => `<div class="keys3">${KEYS.map(k => `<span>${k.slice(0, -1).map(x => `<kbd>${x}</kbd>`).join('')}<small>${k[k.length - 1]}</small></span>`).join('')}</div>
+  <p class="keysnote3">Arrow keys work as W A S D in flight; on the ground or a branch, Up and Down pick the other action. Esc closes the menu.</p>`;
 export function dir(m, s) {
   const D = { up: [0, -1], down: [0, 1], in: [s, 0], out: [-s, 0] }, parts = (m || '').split(' ');
   if (!parts.every(k => D[k])) return null;
@@ -125,8 +132,9 @@ export function howtoSystem(G) {
   const controls = P.controls;
   G.menu.tab('how').insertAdjacentHTML('beforeend', `<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>${HAWK}</defs></svg>`);
   add('controls', `<p><b>Your two thumbs are your wings.</b> Put one on each side of the screen; each becomes a stick where it lands.</p>
+    ${desk() ? `<h3 class="keysh3">On a keyboard</h3>${keysHtml()}` : ''}
     <div class="ctl3"><canvas aria-hidden="true"></canvas>${MOVES.map(([l, r, c, t, s, mode]) => `<figure>${thumbs(l, r, c)}<span class="pic" data-mode="${mode}"></span><figcaption><span>${t}</span><span>${s}</span></figcaption></figure>`).join('')}</div>
-    <p><small>Keyboard: W/S climb and dive, A/D bank, Shift fold (with S to stoop), Ctrl spread, Space flap, Z/X barrel roll; T take off, E eat, drink or sleep (Up/Down for the other action); P or Esc for this menu, M for the Map.</small></p>`);
+`);
   cards('food',
     card('mice', 'Hunting mice', 'Mice twitch the grass, thickest round old farms and barns; small white marks over the grass are one squeaking. Fold your wings and dive at it, then come in low: your feet reach for it, and the aim line turns red when you are lined up. A mouse that sees your shadow bolts for its burrow, so come in fast.'),
     card('perch', 'Eating', 'A catch stays in your feet until you tap Eat on the action button. On a branch it is a calmer meal and fills you more, or swipe the button to Leave it here for later. Fly home with it and it drops into your nest by itself.'),

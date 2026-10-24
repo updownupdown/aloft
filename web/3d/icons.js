@@ -64,6 +64,8 @@ export const ICONS = {
   slow: '<path d="M4.5 15.5c0-4.4 3.4-8 7.5-8s7.5 3.6 7.5 8zM7.7 15.5l1.8-4.4h5l1.8 4.4M9.5 11.1L12 7.5l2.5 3.6M7 15.5v2.5M17 15.5v2.5M4.5 15.5l-1.7 1.3"/><circle cx="20.8" cy="13.9" r="1.6"/>',
   // Done: Cross
   done: '<path d="M6 6l12 12M18 6L6 18"/>',
+  // Chevron: fold or unfold (the Tutorial's done chapters)
+  chevron: '<path d="M6 9l6 6 6-6"/>',
   // Done, ticked: a check (lessons, aims)
   check: '<path d="M5 12.5l4.5 4.5L19 7"/>',
   // Feather: a quill (feathers earned for aims and lessons)

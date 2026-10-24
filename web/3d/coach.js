@@ -3,10 +3,9 @@
 // keyboard, and a bar that fills while the move is held; ghost thumbs, big soft circles where the
 // thumbs rest on each side of the screen, doing the move too (hidden while a thumb is down); and
 // a Skip pill, top right, that asks which: this flight or every lesson.
-import { thumbs, dir } from './sys/howto.js';
+import { thumbs, dir, desk as fine } from './sys/howto.js';
 import { icon } from './icons.js';
 
-const fine = () => matchMedia('(pointer: fine)').matches && !('ontouchstart' in window);
 
 export function createCoach(ui) {
   ui.insertAdjacentHTML('beforeend', `<div class="coach3 hidden" role="status" aria-live="polite">
