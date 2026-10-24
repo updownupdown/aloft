@@ -24,7 +24,8 @@ export function createCamera(G) {
       C.yaw += angleTo(C.yaw, b.yaw) * Math.min(1, dt * 3.5);
       const fo = G.aim?.focus || 0;
       C.pitch += (b.gamma * (.45 + .4 * fo) - C.pitch) * Math.min(1, dt * 2.5);
-      const cp = C.pitch, d = [Math.sin(C.yaw) * Math.cos(cp), Math.sin(cp), -Math.cos(C.yaw) * Math.cos(cp)];
+      // looking round (b.lookYaw/lookPitch, a mouse or two fingers): the camera swings about the bird
+      const ly = C.yaw + (b.lookYaw || 0), cp = C.pitch + (b.lookPitch || 0) * .6, d = [Math.sin(ly) * Math.cos(cp), Math.sin(cp), -Math.cos(ly) * Math.cos(cp)];
       const tight = 1 - .2 * (b.under || 0);   // under the canopy the camera tucks in closer, clear of trunks
       const dist = (2.4 + Math.min(b.s, 40) * .03 + fo * .8) * tight, h = (1.35 + Math.min(b.s, 40) * .005 + fo * 1.2) * tight;
       want = [p[0] - d[0] * dist, p[1] - d[1] * dist + h, p[2] - d[2] * dist];

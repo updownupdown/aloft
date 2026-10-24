@@ -24,8 +24,8 @@ const PIG = { water: '#4f7fa6', berry: '#a8483a', ochre: '#b8862f', leaf: '#6f8a
 // a keyboard and a mouse, not a phone or tablet: only then are the keys shown (James, 2026-10-24)
 export const desk = () => matchMedia('(pointer: fine)').matches && !matchMedia('(any-pointer: coarse)').matches && !('ontouchstart' in window);
 // the keys, in step with input.js, menu.js and action.js: [keys, what they do]
-export const KEYS = [['W', 'S', 'Climb, dive'], ['A', 'D', 'Bank left, right'], ['Space', 'Flap'], ['Ctrl', 'Spread'], ['Shift', 'Fold'],
-  ['Shift', 'S', 'Stoop'], ['Z', 'X', 'Barrel roll'], ['T', 'Take off'], ['E', 'Eat, drink, sleep'], ['M', 'Map'], ['P', 'Menu']];
+export const KEYS = [['W', 'S', 'Climb, dive'], ['A', 'D', 'Bank left, right'], ['Space', 'Flap'], ['Q', 'Spread'], ['Shift', 'Fold'],
+  ['Shift', 'S', 'Stoop'], ['Z', 'X', 'Barrel roll'], ['Mouse', 'Look round'], ['T', 'Take off'], ['E', 'Eat, drink, sleep'], ['M', 'Map'], ['P', 'Menu']];
 export const keysHtml = () => `<div class="keys3">${KEYS.map(k => `<span>${k.slice(0, -1).map(x => `<kbd>${x}</kbd>`).join('')}<small>${k[k.length - 1]}</small></span>`).join('')}</div>
   <p class="keysnote3">Arrow keys work as W A S D in flight; on the ground or a branch, Up and Down pick the other action. Esc closes the menu.</p>`;
 export function dir(m, s) {
