@@ -127,6 +127,11 @@
   filter: drop-shadow(0 0 3px color-mix(in srgb, var(--note) 55%, transparent)); }
 .score3 svg { width: 100%; height: 100%; stroke: var(--note); fill: var(--note); display: block; }
 .score3 span.q { opacity: .45; filter: none; }
+/* each glyph's colour comes in two: light (--nl) for the black frames, dark (--nd) for Linen (F) */
+.sing3 .score3 span, .sing3 .mini3 i { --note: var(--nl); }
+.sing3.linen .score3 span, .sing3.linen .mini3 i { --note: var(--nd); }
+/* (E) a note hinted after two misses: its shape, dimmer, until you find it */
+.score3 span.hint { opacity: .6; filter: none; }
 /* the note being sung (by the bird teaching you) or due next (in your try) */
 .score3 span.at { background: rgba(255, 255, 255, .24); border-radius: 50%; opacity: 1; }
 .score3 span:is(.r-good, .r-ok, .r-meh, .r-wrong)::after { content: ''; position: absolute; inset: 0; border-radius: 50%; border: 1.5px solid var(--r); opacity: 0;
@@ -256,3 +261,55 @@
 .sgsay3.show { opacity: 1; transform: none; }
 .sing3:not(.on) .sgsay3 { left: 0; }
 .sing3.lefty.on .sgsay3 { left: 0; right: 72px; }
+
+/* G. Singers on the compass (the song tests): a small note mark for each bird singing near by, moss
+   for a song you know, amber for one that could teach you (the colour comes with the mark) */
+.compass3 .mk.song { width: 18px; height: 18px; margin-left: -9px; top: 7px; background: currentColor; }
+.compass3 .mk.song svg { width: 12px; height: 12px; }
+
+/* F. Sing in Linen (Settings > Advanced > Song tests): the song controls in the UI's own cream glass
+   and warm ink, the note pad as cream pills tinted with each note's colour. Everything else stays. */
+.sing3.linen { --blk: var(--glass); --blkedge: var(--edge); --dim: var(--ink2); --shadow: 0 4px 16px rgba(40, 30, 20, .16); }
+.sing3.linen button, .sing3.linen .songcard3, .sing3.linen .birds3, .sing3.linen .sgsay3 { color: var(--ink); }
+.sing3.linen .sgplate3 { background: var(--glass); border-color: var(--edge); color: var(--ink); }
+.sing3.linen .sgtog3 { color: var(--moss); }
+.sing3.linen .songcard3 { --mode: var(--ink); color: var(--ink); }
+.sing3.linen .songcard3[data-mode=learn] { --mode: #9a6a12; }
+.sing3.linen .songcard3[data-mode=imitate] { --mode: var(--moss); }
+.sing3.linen .sgstate3 { background: color-mix(in srgb, var(--mode) 13%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--mode) 38%, transparent); }
+.sing3.linen .sghead3 button { background: rgba(42, 36, 32, .08); }
+.sing3.linen .sgsong3 { color: var(--ink2) !important; }
+.sing3.linen .sgsong3.many::after { color: var(--ink); }
+.sing3.linen .score3 span.at { background: rgba(42, 36, 32, .12); }
+.sing3.linen .score3 span.r-good { --r: #3f8a4e; }
+.sing3.linen .score3 span.r-ok { --r: #3f78a8; }
+.sing3.linen .score3 span.r-meh { --r: #b0791f; }
+.sing3.linen .score3 span.r-wrong { --r: #c0533f; }
+.sing3.linen .sgrail3 button { --mode: var(--ink); }
+.sing3.linen .sgrail3 button.learn { --mode: #b0791f; }
+.sing3.linen .sgrail3 button.imitate { --mode: var(--moss); }
+.sing3.linen .sgrail3 button.teach::after { background: #b0791f; box-shadow: 0 0 0 2px var(--btn); }
+.sing3.linen .sgyou3, .sing3.linen .sgmore3 { background: rgba(42, 36, 32, .08) !important; color: var(--ink); }
+.sing3.linen .sgyou3 > svg { color: var(--ink); }
+.sing3.linen .sgyou3.on { box-shadow: inset 0 0 0 2px var(--ink); }
+.sing3.linen .notepad3 i { background: color-mix(in srgb, var(--note) 24%, var(--btn)); border-color: color-mix(in srgb, var(--note) 75%, #fff); }
+.sing3.linen .notepad3 i.down { filter: saturate(1.5) brightness(1.02); }
+.sing3.linen .notepad3 i::after { background: linear-gradient(transparent, rgba(255, 255, 255, .95), transparent); }
+.sing3.linen .notepad3 i:is(.k-l, .k-r)::after { background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .95), transparent); }
+.sing3.linen .notepad3 i.yes { --said: #3f8a4e; }
+.sing3.linen .notepad3 i.half { --said: #b0791f; }
+.sing3.linen .notepad3 i.no { --said: #c0533f; }
+.sing3.linen .birds3 { background: var(--glass2); }
+.sing3.linen .brow3 { background: rgba(42, 36, 32, .05); }
+.sing3.linen .brow3.on { border-color: rgba(42, 36, 32, .2); background: rgba(42, 36, 32, .09); }
+.sing3.linen .bsong3 { background: rgba(42, 36, 32, .07); }
+.sing3.linen .bsong3.on { background: var(--moss); color: #fff; }
+.sing3.linen .bsong3.on .mini3 svg { filter: brightness(1.6); }
+.sing3.linen .bsong3.q { border-color: rgba(42, 36, 32, .25); color: rgba(42, 36, 32, .45); }
+.sing3.linen .near3 { stroke: var(--moss); fill: var(--moss); }
+.sing3.linen .sgless3 { background: var(--btn); color: var(--ink); border-color: rgba(122, 112, 102, .4); }
+.sing3.linen .sgbar3 > button { background: rgba(42, 36, 32, .07); border-color: rgba(42, 36, 32, .12); }
+.sing3.linen .sgcall3 { background: var(--moss) !important; color: #fff !important; }
+.sing3.linen .sw3 { background: rgba(42, 36, 32, .2); }
+.sing3.linen .on > .sw3 { background: var(--moss); }
+.sing3.linen .cards3 p { color: var(--ink2); }
