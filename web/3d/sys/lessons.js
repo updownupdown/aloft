@@ -28,11 +28,7 @@ import { PAGES } from './howto.js';
 // all), ['flaps', n] (full flaps)
 const CUSHION = 22;   // m: below this the air lifts the bird gently, every step but Land
 const STEPS = [
-<<<<<<< Updated upstream
   ['off', 'Take off', 'Tap Take off, bottom right, to leave the branch.', 'T, or click Take off', '', '', 'fly'],
-=======
-  ['off', 'Take off', 'Tap Take off, bottom right, to leave the branch.', 'T', '', '', 'fly'],
->>>>>>> Stashed changes
   ['glide', 'Glide', 'Let go of both thumbs. Your wings hold you up.', 'let go of every key', '', '', ['hold', 2.5, c => !c.held]],
   ['flap', 'Flap', 'Tap both thumbs at the same moment.', 'Space', 'tap', 'tap', ['flaps', 3]],
   ['climb', 'Climb', 'Push both thumbs up.', 'W or Up', 'up', 'up', ['hold', 1.6, c => c.pitch > .45]],
