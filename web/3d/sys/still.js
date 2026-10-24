@@ -114,7 +114,7 @@ export function stillSystem(G) {
   }
 
   // ---- D4: rain on what you sit on ----------------------------------------------------------
-  let patT = 0, surf = 'open', surfAt = null;
+  let surf = 'open', surfAt = null;
   function surface() {
     if (b.state === 'ground') return 'open';
     if (b.tree) { const L = b.tree.look ?? b.tree.kind; return L === 1 || L === 3 ? 'needles' : L === 5 || L === 6 ? 'open' : 'leaves'; }
@@ -122,20 +122,13 @@ export function stillSystem(G) {
     if (fencesNear(b.p[0], b.p[2], 1.5).length) return 'post';
     return 'stone';
   }
-  const PATTER = {
-    leaves: () => A.burst?.({ f: 2600 + Math.random() * 1800, q: 3, dur: .035, vol: .045 }),
-    needles: () => A.burst?.({ f: 5200 + Math.random() * 1500, q: 2, dur: .02, vol: .025 }),
-    roof: () => { A.tone?.({ f: 1900 + Math.random() * 900, dur: .025, vol: .035 }); A.burst?.({ f: 6000, q: 2, dur: .015, vol: .02 }); },
-    post: () => A.tone?.({ f: 520 + Math.random() * 300, f2: 420, dur: .04, vol: .05, type: 'triangle' }),
-    stone: () => A.tone?.({ f: 2300 + Math.random() * 600, dur: .02, vol: .03 }),
-    open: () => A.burst?.({ f: 1100 + Math.random() * 400, q: 1, dur: .05, vol: .025 }),
-  };
-  function patter(dt) {
+  // (the drops themselves are two looping beds in audio.js, A.patter: one node per drop overloaded
+  // the audio on phones)
+  function patter() {
     const rain = G.rain || 0;
-    if (!settled() || rain < .15 || !G.settings?.sound) return;
+    if (!settled() || rain < .15 || !G.settings?.sound) { A.patter?.(0); return; }
     if (!surfAt || Math.hypot(surfAt[0] - b.p[0], surfAt[2] - b.p[2]) > .5) { surf = surface(); surfAt = [...b.p]; }
-    patT -= dt;
-    while (patT <= 0) { patT += .02 + Math.random() / (2 + rain * 14); PATTER[surf](); }
+    A.patter?.(rain, surf);
   }
 
   // ---- D1: the quiet hour ---------------------------------------------------------------------
@@ -297,7 +290,7 @@ export function stillSystem(G) {
       seen = seeing; seeing = [];
       watching(dt);
       pose(dt);
-      patter(dt);
+      patter();
       visit(dt);
       favourite(dt);
     },
