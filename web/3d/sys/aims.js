@@ -92,6 +92,12 @@ export function aimsSystem(G) {
   const landOf = (x, z) => { let best = null; for (const e of blend(x, z)) if (!best || e.w > best.w) best = e; return best?.name; };
   const seenAll = () => KEYS.every(k => A.seen[k]);
   // for the Map: the lands seen, of how many, and the feathers for aims kept
+  // Settings > Advanced > Dev mode: progress mocked at k (0, .25, .5 or 1; dev.js), then saved and reloaded
+  G.on('mock', k => {
+    const n = Math.round(k * KEYS.length), keep = KEYS.slice(0, n);
+    A.seen = Object.fromEntries(keep.map(q => [q, 1])); A.sights = Object.fromEntries(keep.filter((q, i) => i % 2 === 0 || k >= 1).map(q => [q, 1]));
+    A.feathers = Math.round(k * FEATHER.most); endure();
+  });
   G.collection = () => ({ lands: KEYS.filter(k => A.seen[k]).length, of: KEYS.length, sights: Object.keys(A.sights).length, feathers: A.feathers });
   let landT = 0;
   // a found landmark counts as its land's sight when it is the kind that land is known for

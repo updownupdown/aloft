@@ -128,19 +128,21 @@ export const ICONS = {
   travel: '<path d="M3 13.5l18-8-6.5 15-3-6.5zM11.5 14L21 5.5"/>',
   trash: '<path d="M4.5 7h15M10 4h4M6.5 7l1 12.5h9l1-12.5M10 10.5v6M14 10.5v6"/>',
 };
-// the playable birds as filled silhouettes, for Call (the bird you fly): seen from below in flight,
-// the owl perched and facing you
-const F = d => `<path fill="currentColor" stroke="none" d="${d}"/>`;
+// the playable birds as filled silhouettes, seen from below in flight, faceted like the game: Call
+// shows the bird you fly, and Settings > Your bird beside its name (James, 10-24: each its own shape).
+// Each is half an outline, from the top of the head round the wing to the tail's middle, mirrored
+const sym = h => { const L = h.map(([x, y]) => [24 - x, y]).reverse(); return `<path fill="currentColor" stroke="none" d="M${[...h, ...L].map(p => p.join(' ')).join('L')}z"/>`; };
 Object.assign(ICONS, {
-  // red-tail: broad wings, a short fanned tail
-  bird_hawk: F('M12 6.2c.9 0 1.5.7 1.6 1.6l.1 1.3c2.8-.9 5.8-.8 8.3.5-.5.9-1.4 1.5-2.4 1.8l-1.1.8-1.2.2-1 .6-3.7.6.4 1.4c1.5.3 2.5 1.2 2.7 2.6-1.1.7-2.4 1.1-3.7 1.1s-2.6-.4-3.7-1.1c.2-1.4 1.2-2.3 2.7-2.6l.4-1.4-3.7-.6-1-.6-1.2-.2-1.1-.8c-1-.3-1.9-.9-2.4-1.8 2.5-1.3 5.5-1.4 8.3-.5l.1-1.3c.1-.9.7-1.6 1.6-1.6z'),
-  // osprey: long wings crooked at the wrist, an M from below
-  bird_osprey: F('M12 7c.8 0 1.3.6 1.4 1.4l.1 1.3 3.2-1.9c1.8-1 3.8-1.2 5.8-.5-1.5.5-2.6 1.3-3.4 2.4l-.9 1.3-4.6 1.3-.2 1.4 1.1 3.8-2.5-.9-2.5.9 1.1-3.8-.2-1.4-4.6-1.3-.9-1.3C5.1 9.7 4 8.9 2.5 8.4c2-.7 4-.5 5.8.5l3.2 1.9.1-1.3C10.7 7.6 11.2 7 12 7z'),
-  // barn owl: perched, a heart-shaped face, two dark eyes
-  bird_owl: F('M12 3.5c3.4 0 5.8 2.3 5.8 5.6v4.6c0 3.9-2.6 6.8-5.8 6.8s-5.8-2.9-5.8-6.8V9.1c0-3.3 2.4-5.6 5.8-5.6z') + '<circle fill="#1d2b36" stroke="none" cx="9.9" cy="9.6" r="1.1"/><circle fill="#1d2b36" stroke="none" cx="14.1" cy="9.6" r="1.1"/><path stroke="#1d2b36" stroke-width="1.1" d="M8 7.4c1.6-.6 2.9-.2 4 1 1.1-1.2 2.4-1.6 4-1M12 11v1.4"/>',
-  // raven: fingered wings, a wedge-shaped tail
-  bird_albatross: F('M12 8.6c.7 0 1.2.5 1.3 1.2l.1.9 9.1-1c-.3.7-.9 1.1-1.6 1.2l-7.4 1.4-.2 1.1 1.4 2.9-2.7-.8-2.7.8 1.4-2.9-.2-1.1-7.4-1.4c-.7-.1-1.3-.5-1.6-1.2l9.1 1 .1-.9c.1-.7.6-1.2 1.3-1.2z'),
-  bird_raven: F('M12 6.5c.8 0 1.3.6 1.4 1.4l.1 1.2c3-.8 6-.5 8.5.9l-1 .4.6.6-1.2.2.3.7-1.6-.1-1.4.6-3.6.4-.3 1.5 2 3.5L12 19l-3.8-1.2 2-3.5-.3-1.5-3.6-.4-1.4-.6-1.6.1.3-.7-1.2-.2.6-.6-1-.4c2.5-1.4 5.5-1.7 8.5-.9l.1-1.2c.1-.8.6-1.4 1.4-1.4z'),
+  // red-tail: broad wings with fingered tips, a short fanned tail
+  bird_hawk: sym([[12, 5.6], [13.2, 6.1], [13.5, 8], [15.2, 8.4], [19.2, 8.2], [22.7, 9.5], [22.9, 10.4], [22, 10.5], [22.4, 11.2], [21.3, 11.3], [21.5, 12], [20.2, 12], [17.4, 12.8], [14.5, 13.3], [13.7, 14.3], [15.4, 17.2], [14.5, 18.7], [12, 19.3]]),
+  // osprey: long narrow wings crooked at the wrist, an M from below
+  bird_osprey: sym([[12, 6.2], [13, 6.7], [13.2, 8.5], [14.6, 9.1], [17.6, 7.4], [20.4, 7.8], [23.2, 10.2], [22.6, 10.9], [18.6, 10.6], [15.3, 12.6], [13.3, 13.3], [13.9, 16.9], [12, 17.3]]),
+  // barn owl: a big round head, broad rounded wings, a short tail
+  bird_owl: sym([[12, 5.4], [13.9, 6], [14.8, 7.7], [14.4, 9.3], [16.2, 9.1], [19.6, 8.9], [22.1, 10.1], [22.5, 11.4], [21.4, 12.4], [18.2, 13.1], [15.1, 13.7], [13.9, 14.7], [13.3, 16.6], [12, 16.9]]),
+  // raven: a heavy bill, fingered wings, a long wedge-shaped tail
+  bird_raven: sym([[12, 4.4], [12.7, 5.5], [13.3, 6.9], [13.4, 8.5], [15.1, 8.9], [19, 8.6], [22.6, 9.7], [22.9, 10.6], [21.9, 10.6], [22.3, 11.3], [21.2, 11.4], [21.4, 12.1], [20.1, 12], [17.3, 12.7], [14.5, 13.3], [13.5, 14.5], [15.1, 18.4], [12, 19.9]]),
+  // albatross: very long straight narrow wings, a small body
+  bird_albatross: sym([[12, 7.6], [12.9, 8.1], [13.1, 9.6], [17.2, 9.8], [23.6, 10.4], [23.7, 11.2], [17.2, 12], [13.4, 12.7], [13.1, 14.1], [12.9, 15.7], [12, 16]]),
 });
 export const birdKey = id => ICONS['bird_' + id] ? 'bird_' + id : 'bird_hawk';
 export const birdIcon = (id, cls = '') => icon(birdKey(id), cls);

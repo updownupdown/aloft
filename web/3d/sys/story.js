@@ -178,6 +178,9 @@ export function storySystem(G) {
     q('.keeps3').innerHTML = St.keepsakes.length ? `<h4>Keepsakes</h4><div>${St.keepsakes.map(k => `<span>${esc(KEEPSAKES[k] ?? k)}</span>`).join('')}</div>` : '';
   });
 
+  // Settings > Advanced > Dev mode: progress mocked at k (0, .25, .5 or 1; dev.js), then saved and reloaded
+  G.on('mock', k => { St.mate = k >= .5 ? { day: G.day, note: 'Met in a dev mock' } : null; St.tricks = Math.round(k * 12); St.health = Math.max(St.health, .4 + k * .6); });
+
   return {
     id: 'story',
     kin,

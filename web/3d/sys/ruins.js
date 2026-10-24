@@ -132,6 +132,8 @@ export function ruinsSystem(G) {
   R.shape('sea_rocklight', SS.rockLight());
   let wonders = [];
   St.wonders = {};
+  // Settings > Advanced > Dev mode: progress mocked at k (0, .25, .5 or 1; dev.js), then saved and reloaded
+  G.on('mock', k => { const W = Object.keys(WONDERS); St.wonders = Object.fromEntries(W.slice(0, Math.round(k * W.length)).map(q => [q, { day: G.day || 1 }])); });
   function seeWonders() {
     for (const W of wonders) if (!St.wonders[W.key] && Math.hypot(W.x - b.p[0], W.z - b.p[2]) < (W.key === 'greatwall' ? 900 : 260))
       St.wonders[W.key] = { day: G.day || 1 };

@@ -29,6 +29,8 @@ export function driftSystem(G) {
   const b = G.b, R = G.R, H = G.hud;
   R.shape('bergT', berg(false)); R.shape('bergP', berg(true)); R.shape('floe', floe()); R.shape('drift', driftwood()); R.shape('bottle', bottle());
   const found = new Set(G.store.get('bottles3d', [])), notes = G.store.get('bottleNotes3d', []);
+  // Settings > Advanced > Dev mode: progress mocked at k (0, .25, .5 or 1; dev.js), then saved and reloaded
+  G.on('mock', k => { notes.length = 0; for (let i = 0; i < Math.round(k * NOTES.length); i++) notes.push({ note: i, where: 'Found in a dev mock' }); G.store.set('bottleNotes3d', notes); });
   const once = (id, title, msg, ic, how) => { if (!G.flags[id]) { G.flags[id] = 1; G.hud.quietly(how, title, msg, ic); } };
   let list = { bergs: [], floes: [], woods: [], bottles: [] }, from = null;
 
@@ -99,7 +101,7 @@ export function driftSystem(G) {
   // Dev mode (Settings > Advanced) lists every note there is, the ones not yet found greyed
   const show = () => {
     const got = notes.map(n => `<li>“${esc(NOTES[n.note] || '')}”<br><small>${esc(n.where || '')}</small></li>`).join('');
-    const rest = G.store.get('devMode', false) ? NOTES.map((t, i) => notes.some(n => n.note === i) ? '' : `<li class="unfound3">“${esc(t)}”<br><small>Dev mode: not found yet</small></li>`).join('') : '';
+    const rest = !['off', false].includes(G.store.get('devMode', 'off')) ? NOTES.map((t, i) => notes.some(n => n.note === i) ? '' : `<li class="unfound3">“${esc(t)}”<br><small>Dev mode: not found yet</small></li>`).join('') : '';
     sec.body.innerHTML = got || rest ? `<ul class="bottles3">${got}${rest}</ul>` : '<p class="muted3">None yet. They drift on every ocean; skim low over one to pick it up.</p>';
   };
   show(); G.menu?.onOpen?.(show);

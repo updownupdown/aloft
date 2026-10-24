@@ -66,6 +66,20 @@ export function mapView(G, J) {
       if (dx * dx + dz * dz <= r * r) see(bit(ci + i, cj + j));
     }
   }
+  // Settings > Advanced > Dev mode: progress mocked at k (0, .25, .5 or 1; dev.js), then saved and reloaded
+  // the fog cleared over that share of the Earth, nearest the hawk first, with a wandering edge
+  G.on('mock', k => {
+    seen.fill(0); count = 0;
+    if (k >= 1) { for (let q = 0; q < FI * FJ; q++) see(q); return; }
+    if (!k) return reveal();
+    const hi = b.p[0] / CELL + FI / 2, hj = b.p[2] / CELL - FJ0, d = new Float32Array(FI * FJ);
+    for (let q = 0; q < d.length; q++) {
+      const j = Math.floor(q / FI), i = q - j * FI, di = Math.abs(i - hi), dx = Math.min(di, FI - di);
+      d[q] = Math.hypot(dx, j - hj) + 40 * (Math.sin(i * .043 + j * .021) + Math.sin(j * .057 - i * .018));
+    }
+    const at = d.slice().sort()[Math.floor(k * (d.length - 1))];
+    for (let q = 0; q < d.length; q++) if (d[q] <= at) see(q);
+  });
   const isSeen = (x, z) => has(Math.floor(x / CELL), Math.floor(z / CELL));
   // how much of the world has been seen, 0..1
   const explored = () => count / (FI * FJ);
@@ -75,7 +89,7 @@ export function mapView(G, J) {
   pane.classList.add('mappane3', 'flush3');
   pane.innerHTML = `<div class="mapbox3"><canvas></canvas><div class="mapsum3"></div><div class="mapday3"><div class="mapseason3"></div><small class="mapyear3"></small></div>
       <div class="mapbtn3"><button data-z="in" aria-label="Zoom in">${icon('zoomin')}</button><button data-z="out" aria-label="Zoom out">${icon('zoomout')}</button><button data-z="me" class="mapme3" aria-label="Centre on the hawk"><span></span>${icon('me')}</button></div>
-      <p class="maptip3">Tap the map to drop a pin.</p><div class="mapnote3 hidden"></div></div>`;
+      <div class="mapnote3 hidden"></div></div>`;
   const sum = pane.querySelector('.mapsum3'), box = pane.querySelector('.mapbox3'), cv = box.querySelector('canvas'), note = box.querySelector('.mapnote3');
   const hereEl = box.querySelector('.mapme3 span'), yearEl = box.querySelector('.mapyear3');
   // top right, the same day dial as in flight, and the season in more detail beneath it
@@ -110,9 +124,9 @@ export function mapView(G, J) {
   sum.addEventListener('click', e => { const b = e.target.closest('[data-go]'); if (b) G.menu.set(true, 'journal', b.dataset.go); });
   const tally = () => {
     const pct = explored() * 100, L = G.collection?.(), found = Object.keys(J.found || {}).length;
-    const row = (ic, n, of, word, go) => `<li${go ? ` data-go="${go}" role="button"` : ''}>${icon(ic)}<b>${n}<span>/${of}</span></b>${word}</li>`;
+    const row = (ic, n, of, word, go) => `<li${go ? ` data-go="${go}" role="button"` : ''}>${icon(ic)}<span>${word}</span><b>${n}<span>/${of}</span></b></li>`;
     sum.innerHTML = `<div class="far3"><span><i style="width:${Math.max(2, Math.round(pct))}%"></i></span><small>${pct < 1 ? pct.toFixed(2) : Math.round(pct)}% of the world explored</small></div>
-      <ul class="tally3">${L ? row('feather', L.feathers, FEATHER.most, L.feathers === 1 ? 'feather' : 'feathers') + row('lands', L.lands, L.of, 'biomes', 'lands') : ''}${row('landmarks', found, lmTotal || '…', found === 1 ? 'landmark' : 'landmarks', 'places')}</ul>`;
+      <ul class="tally3">${L ? row('feather', L.feathers, FEATHER.most, 'Feathers') + row('lands', L.lands, L.of, 'Biomes', 'lands') : ''}${row('landmarks', found, lmTotal || '…', 'Landmarks', 'places')}</ul>`;
   };
   G.on('menuTab', id => {
     open = id === 'map';
@@ -221,7 +235,7 @@ export function mapView(G, J) {
   const mark = (x, px, py, col, on) => { if (on) { x.fillStyle = 'rgba(255,255,255,.3)'; x.beginPath(); x.arc(px, py, 10, 0, 6.283); x.fill(); } const P = [[px, py - 6], [px + 5, py], [px, py + 6], [px - 5, py]]; poly(x, P, C(shade(col, .85))); poly(x, [P[0], P[2], P[3]], C(shade(col, 1.15))); x.strokeStyle = 'rgba(255,255,255,.8)'; x.lineWidth = 1; x.stroke(); };
   // ---- touch: drag to spin, flick to coast, pinch to zoom, tap to pin or pick ----
   const pts = new Map();
-  let pinch = 0, moved = 0, lastMove = 0;
+  let pinch = 0, moved = 0, lastMove = 0, lastTap = null;
   // main.js G.travelTo: shut the menu, fade to black, set down on the nearest perch (or the
   // ground or water) there, fade back in
   function teleport(x, z) {
@@ -252,8 +266,9 @@ export function mapView(G, J) {
     else if (sel.pin) {
       const c = pinCol(sel.pin);
       note.innerHTML = `<b>${esc(sel.pin.name || 'Your pin')}</b><small>Your pin. It shows on the compass when you are near.</small>
-        <span class="pins3"><button data-act="col" class="pcol3" style="--pc:${c}" aria-label="Pin colour">${icon('dropper')}</button>${go}<button data-act="rm">${icon('trash')}Remove</button></span>
-        ${swatch ? `<span class="swatch3">${PINS.map(k => `<button data-col="${k}" style="--pc:${k}"${k === c ? ' class="on"' : ''} aria-label="Colour"></button>`).join('')}</span>` : ''}`;
+        <button data-act="col" class="pcol3" style="--pc:${c}" aria-label="Pin colour">${icon('dropper')}</button>
+        <span class="pins3">${go}<button data-act="rm">${icon('trash')}Remove</button></span>
+        ${swatch ? `<div class="swatch3"><b>Pin colour</b><button data-act="shut" class="shut3" aria-label="Close">${icon('done')}</button><span>${PINS.map(k => `<button data-col="${k}" style="--pc:${k}"${k === c ? ' class="on"' : ''} aria-label="Colour"></button>`).join('')}</span></div>` : ''}`;
     } else note.innerHTML = `<b>${esc(sel.place.name)}</b>${sel.place.note ? `<small>${esc(sel.place.note)}</small>` : ''}<span class="pins3">${go}</span>`;
     note.insertAdjacentHTML('beforeend', '<small class="nogo3" hidden>Explore this area to fast-travel to it.</small>');
   }
@@ -265,6 +280,7 @@ export function mapView(G, J) {
       (J.pins ||= []).push(p); if (J.pins.length > 40) J.pins.shift();
       G.hud.did('pin'); G.emit('pin'); pick({ pin: p });
     } else if (act === 'col') { swatch = !swatch; card(); }
+    else if (act === 'shut') { swatch = false; card(); }
     else if (act === 'rm') { J.pins = J.pins.filter(q => q !== sel.pin); pick(null); }
     else if (act === 'go') {
       const t = sel.pin || sel.place;
@@ -298,6 +314,12 @@ export function mapView(G, J) {
     const p = pts.get(e.pointerId); pts.delete(e.pointerId); pinch = 0;
     if (!pts.size) { held = false; if (performance.now() - lastMove > 80) spin = [0, 0]; soon(); }
     if (!p || moved > 6 || pts.size) return;
+    // in Dev mode (Settings > Advanced) a double tap flies anywhere, explored or not
+    const now = performance.now(), dev = !['off', false].includes(G.store.get('devMode', 'off'));
+    if (dev && lastTap && now - lastTap.t < 350 && Math.hypot(p[0] - lastTap.p[0], p[1] - lastTap.p[1]) < 24) {
+      lastTap = null; const w = toWorld(p[0], p[1]); if (w) { pick(null); teleport(w[0], w[1]); } return;
+    }
+    lastTap = { t: now, p };
     // a tap: a pin or a place under it, else a passing pin there
     let best = null, bd = 22;
     for (const [pl, px, py] of shown) { const d = Math.hypot(px - p[0], (pl.pin ? py - 14 : py) - p[1]); if (d < bd) { bd = d; best = pl; } }

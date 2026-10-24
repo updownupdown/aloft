@@ -36,7 +36,6 @@ import { journeySystem } from './sys/journey.js';
 import { nestSystem } from './sys/nest.js';
 import { storySystem } from './sys/story.js';
 import { ruinsSystem } from './sys/ruins.js';
-import { photoSystem } from './sys/photo.js';
 import { howtoSystem } from './sys/howto.js';
 import { weatherSystem } from './sys/weather.js';
 import { faunaSystem } from './sys/fauna.js';
@@ -59,7 +58,6 @@ import { movesSystem } from './sys/moves.js';
 import { lifeSystem } from './sys/life.js';
 import { neighboursSystem } from './sys/neighbours.js';
 import { lessonsSystem } from './sys/lessons.js';
-import { ghostSystem } from './sys/ghost.js';
 import { fieldsSystem } from './sys/fields.js';
 import { skyDaysSystem } from './sys/skydays.js';
 import { raptorsSystem } from './sys/raptors.js';
@@ -77,7 +75,7 @@ import { nightSeaSystem } from './sys/nightsea.js';
 import { createLooks } from './look.js';
 
 const SYSTEMS = [speciesSystem, movesSystem, lifeSystem, clockSystem, weatherSystem, watersSystem, windsSystem, floraSystem, bushesSystem, airSystem, ringsSystem, foodSystem, aimSystem, sleepSystem, feelSystem, batterySystem, songsSystem, momentsSystem,
-  guideSystem, journeySystem, nestSystem, storySystem, ruinsSystem, photoSystem, howtoSystem, faunaSystem, neighboursSystem, landsSystem, seasonsSystem, glowSystem, landAirSystem, crittersSystem, huntersSystem, aimsSystem, ghostSystem,
+  guideSystem, journeySystem, nestSystem, storySystem, ruinsSystem, howtoSystem, faunaSystem, neighboursSystem, landsSystem, seasonsSystem, glowSystem, landAirSystem, crittersSystem, huntersSystem, aimsSystem,
   fieldsSystem, skyDaysSystem, raptorsSystem, wingcraftSystem, stillSystem, swellsSystem, berriesSystem, cuesSystem, windCuesSystem, polesSystem,
   sealifeSystem, driftSystem, islesSystem, skyRiversSystem, nightSeaSystem, lessonsSystem];
 
@@ -166,7 +164,7 @@ if (qs.has('fps')) G.settings.fpsCap = +qs.get('fps') || 60;
   // ---- flight events -------------------------------------------------------------------------
   const H = G.hud;
   // one button to take off, top centre, whenever the hawk is perched, on the ground or on the water
-  // (3d.css styles it with the rest of the UI; it hides with the menu and in photo mode)
+  // (3d.css styles it with the rest of the UI; it hides with the menu)
   ui.insertAdjacentHTML('beforeend', `<button class="takeoff3 gone" aria-label="Take off">Take off</button>`);
   const takeoffBtn = ui.querySelector('.takeoff3:not(.sleep3):not(.eat3)');
   const takeoff = e => { e.preventDefault(); e.stopPropagation(); audio.unlock?.(); b.wantOff = .6; };   // flight.js takes off as soon as it can

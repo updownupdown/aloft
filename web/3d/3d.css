@@ -23,7 +23,7 @@ button { font-family: inherit; color: inherit; }
 .hidden { display: none !important; }
 small { display: block; font-size: 12.5px; color: var(--ink2); }
 /* one pane of glass */
-.glass, #ui3 .takeoff3, .tipmore3, .photo3 {
+.glass, #ui3 .takeoff3, .tipmore3 {
   background: var(--glass); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); border: 1px solid var(--edge); box-shadow: var(--shadow); }
 
 /* top left: the menu button, the three slim meters beside it, the height ladder under it */
@@ -240,7 +240,7 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 }
 /* the menu hides every other piece of the HUD */
 #ui3.menu-open > :not(.veil3) { display: none !important; }
-#ui3.bare3 > :not(.photo3):not(.toast3) { display: none !important; }
+#ui3.bare3 > :not(.toast3) { display: none !important; }
 
 /* a plain card (no WebGL, goodbye) */
 .card3 { pointer-events: auto; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(560px, 92vw); max-height: 90vh; overflow: auto;
@@ -387,7 +387,18 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .stack3 .group3 .main3 em { display: none; }
 /* Today: your bird and how it is, the things to do now; the day's aims beside them */
 .today3 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; align-items: start; }
-.today3 .tcol3 { max-width: none; margin: 0; gap: 10px; }
+.today3 .tcol3, .tmain3 .stack3 { max-width: none; margin: 0; gap: 10px; }
+.tmain3 { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+/* the Tutorial box leads: the open chapter and the day's aim on a white plate */
+.ttut3 { padding: 12px 16px 6px; border-radius: 22px; background: var(--plate); box-shadow: var(--shadow); }
+.ttut3[hidden] { display: none; }
+.ttut3 > h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; font-size: 17px; font-weight: 700; }
+.ttut3 > h3 svg { width: 20px; height: 20px; color: var(--moss); }
+.ttut3 .aims3 > section { padding: 0; margin: 0 0 10px; border: 0; background: none; }
+.ttut3 .aims3 > section + section:not(.hidden) { padding-top: 8px; border-top: 1px solid var(--rule); }
+.tmore3:empty { display: none; }
+/* your bird, quieter, on the right */
+.today3 .now3 { background: rgba(255, 252, 245, .6) !important; box-shadow: none !important; border: 1px solid rgba(42, 36, 32, .06); }
 .now3 { padding: 12px 14px 12px !important; }
 .who3 { display: flex; align-items: center; gap: 10px; }
 .bic3 { flex: none; display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 50%; background: rgba(255, 252, 245, .8); color: var(--ink); }
@@ -413,47 +424,50 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .todo3 .btn:not(.main) { display: grid; grid-template-columns: 1fr auto; column-gap: 12px; row-gap: 1px; }
 .todo3 .btn:not(.main) em { grid-column: 1; margin: 0; text-align: left; font-size: 12.5px; }
 .todo3 .btn:not(.main)::after { grid-column: 2; grid-row: 1 / span 2; }
-.aims3 > section { padding: 4px 16px 12px; margin-bottom: 10px; border-radius: 20px; background: rgba(255, 252, 245, .7); border: 1px solid rgba(42, 36, 32, .06); }
+.aims3 > section { padding: 4px 16px 12px; margin-bottom: 0; border-radius: 20px; background: rgba(255, 252, 245, .7); border: 1px solid rgba(42, 36, 32, .06); }
 .aims3 > section > h3 { margin: 10px 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--ink2); }
 @media (max-width: 760px) { .today3 { grid-template-columns: minmax(0, 1fr); } }
 /* Settings > Messages: the hints after the rows */
 [data-moved=hints] { max-width: 720px; margin: 14px auto 0; }
-/* the bird card takes the column's full width: with room, its stats beside its traits */
-[data-group=bird] .birdcard3 .pic { aspect-ratio: 2.6 / 1; max-height: 40vh; }
-[data-group=bird] .birdmore3 { max-width: 560px; }
-@media (min-width: 900px) { [data-group=bird] .birdmore3 { grid-template-columns: 1fr 1fr; column-gap: 22px; } [data-group=bird] .birdmore3 .stats3 { grid-row: span 2; align-self: start; } }
-/* Your bird: one card, the bird flying through its poses; swipe it or tap a dot for another */
+/* Your bird: one card, the bird flying through its poses; under it, on the left, its silhouette (as
+   on Call), name, line and home over its stats; its traits beside them; arrows and Fly from its home below */
 .birdpick3 { display: flex; align-items: center; gap: 6px; margin: 4px 0; }
-.birdcard3 { position: relative; flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 0 0 4px; text-align: center; touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+.birdcard3 { position: relative; flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: stretch; gap: 1px; padding: 0 0 4px; touch-action: pan-y; user-select: none; -webkit-user-select: none; }
 .birdcard3 canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
-.birdcard3 .pic { display: block; width: 100%; aspect-ratio: 16 / 9; border-radius: 22px; margin-bottom: 8px;
+.birdcard3 .pic { display: block; width: 100%; aspect-ratio: 2.6 / 1; max-height: 40vh; border-radius: 22px; margin-bottom: 12px;
   background: radial-gradient(ellipse 60% 70% at 50% 62%, var(--skyglow), transparent 70%), linear-gradient(var(--skyhi), var(--skylo)); }
 .hear3 { position: absolute; top: 12px; right: 12px; z-index: 2; width: 34px; height: 34px; border: 0; border-radius: 50%; padding: 0; cursor: pointer;
   display: grid; place-items: center; background: rgba(255, 252, 245, .75); box-shadow: 0 1px 4px rgba(40, 30, 20, .14); }
 .hear3 svg { width: 19px; height: 19px; fill: var(--ink); stroke: var(--ink); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .hear3:active { transform: scale(.94); }
-.birdcard3 b { font-size: 16px; font-weight: 600; }
-.birdcard3 small { font-size: 12.5px; }
-.birdmore3 { display: grid; gap: 8px; width: 100%; max-width: 330px; margin-top: 8px; text-align: left; }
-.stats3 { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; align-items: center; font-size: 12.5px; }
+.birdmore3 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px 22px; width: 100%; padding: 0 6px; text-align: left; }
+@media (max-width: 700px) { .birdmore3 { grid-template-columns: minmax(0, 1fr); } }
+.bleft3 { display: grid; gap: 12px; align-content: start; }
+.bhead3 { display: flex; align-items: center; gap: 12px; }
+.bhead3 .nm3 b { font-size: 21px; font-weight: 700; line-height: 1.2; }
+.bhead3 .nm3 small { font-size: 13px; }
+.bhead3 .bh3 { color: var(--ink); font-weight: 500; }
+.bhead3 .bic3 { width: 52px; height: 52px; background: var(--plate); box-shadow: 0 1px 4px rgba(40, 30, 20, .12); }
+.bhead3 .bic3 svg { width: 36px; height: 36px; }
+.stats3 { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; align-items: center; font-size: 12.5px; max-width: 330px; }
 .pips3 { display: flex; gap: 3px; }
 .pips3 i { flex: 1; max-width: 26px; height: 6px; border-radius: 3px; background: rgba(42, 36, 32, .14); }
 .pips3 i.on { background: var(--pc, var(--ink)); }
 .stats3 .st3 { display: flex; align-items: center; gap: 6px; }
 .stats3 .st3 svg { width: 17px; height: 17px; flex: none; color: var(--pc); stroke-width: 2.2; }
-.traits3 { display: grid; gap: 4px; font-size: 12.5px; line-height: 1.35; }
+.traits3 { display: grid; gap: 5px; align-content: start; font-size: 12.5px; line-height: 1.35; }
 .traits3 > span { display: flex; align-items: flex-start; gap: 7px; }
 .traits3 > span::before { flex: none; display: grid; place-items: center; width: 18px; height: 18px; margin-top: -1px; border-radius: 50%; font-size: 15px; font-weight: 700; line-height: 1; color: #fff; }
 .traits3 .good::before { content: '+'; background: #4f8a45; }
 .traits3 .bad::before { content: '\2212'; background: #b4603f; }
 .traits3 .move::before { content: '\2605'; font-size: 11px; background: #b8862f; }
 .traits3 .goal::before { content: '\2192'; font-size: 12px; background: #4a6f8a; }
-.birdcard3 .home3 { margin-top: 10px; font: inherit; font-size: 13px; font-weight: 600; border: 0; border-radius: 999px; padding: 7px 14px; background: var(--moss); color: #fff; cursor: pointer; position: relative; z-index: 2; }
-.dots3 { display: flex; gap: 2px; margin-top: 4px; position: relative; z-index: 2; }
-.dots3 button { display: grid; place-items: center; width: 24px; height: 24px; padding: 0; border: 0; background: none; cursor: pointer; }
-.dots3 i { width: 7px; height: 7px; border-radius: 50%; background: rgba(42, 36, 32, .2); transition: width .2s; }
-.dots3 button.on i { width: 18px; border-radius: 4px; background: var(--ink); }
-/* Settings > Journey: your bird and the rows under it sit straight on the sheet, no plates */
+.bnav3 { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 14px; position: relative; z-index: 2; }
+.bnav3 [data-step] { display: grid; place-items: center; width: 40px; height: 40px; padding: 0; border: 1.5px solid var(--btnedge); border-radius: 50%; background: var(--btn); cursor: pointer; }
+.bnav3 [data-step] svg { width: 20px; height: 20px; fill: none; stroke: var(--ink); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.bnav3 [data-step]:active { transform: scale(.94); }
+.birdcard3 .home3 { font: inherit; font-size: 13.5px; font-weight: 600; border: 0; border-radius: 999px; min-height: 40px; padding: 0 18px; background: var(--moss); color: #fff; cursor: pointer; }
+/* Settings > Your bird: the card and the rows under it sit straight on the sheet, no plates */
 .stack3 .group3[data-group=bird] { padding: 0; background: none; border: 0; }
 [data-group=bird] > h3 { margin-left: 4px; }
 .card3 .btn.warn3 { color: var(--clay); }
@@ -559,7 +573,8 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .mapsum3 .tally3 li { align-items: center; gap: 8px; padding: 3px 6px; border-radius: 10px; font-size: 12.5px; }
 .mapsum3 .tally3 li[data-go] { cursor: pointer; } .mapsum3 .tally3 li[data-go]:active { background: rgba(244, 239, 230, .1); }
 .mapsum3 .tally3 svg { width: 17px; height: 17px; flex: none; fill: none; stroke: var(--pale2); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.mapsum3 .tally3 b { min-width: 44px; font-size: 14px; font-variant-numeric: tabular-nums; }
+.mapsum3 .tally3 li > span { flex: 1; }
+.mapsum3 .tally3 b { font-size: 14px; font-variant-numeric: tabular-nums; }
 .mapsum3 .tally3 b span { color: var(--pale2); }
 .mapsum3 .far3 { display: grid; gap: 4px; }
 .mapsum3 .far3 span { height: 5px; border-radius: 3px; background: rgba(244, 239, 230, .18); overflow: hidden; }
@@ -584,8 +599,6 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .pips3s { display: flex; gap: 3px; margin-top: 3px; }
 .pips3s i { flex: 1; height: 5px; border-radius: 3px; background: rgba(42, 36, 32, .13); }
 .pips3s i.on { background: var(--sc); }
-.maptip3 { position: absolute; left: 12px; bottom: 60px; margin: 0; max-width: calc(100% - 100px); font-size: 13px; font-weight: 600; color: #fff; filter: var(--halo); pointer-events: none; }
-.mapbox3:has(.mapnote3:not(.hidden)) .maptip3 { display: none; }
 .mapbtn3 { position: absolute; right: 12px; bottom: 12px; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
 /* where you are, on the button that centres on you: the name left of the mark */
 .mapbtn3 .mapme3 { width: auto; max-width: min(340px, 44vw); gap: 8px; padding: 0 10px 0 14px; border-radius: 24px; }
@@ -601,11 +614,17 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .pins3 button { min-height: 34px; padding: 0 12px 0 10px; display: flex; align-items: center; gap: 6px; border: 0; border-radius: 17px; background: rgba(42, 36, 32, .07); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
 .pins3 svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
 /* a pin's colour: a round swatch with a dropper; tapped, the twelve colours */
-.pins3 .pcol3 { width: 34px; padding: 0; justify-content: center; border-radius: 50%; background: var(--pc); color: #fff; box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .75); }
-.pins3 .pcol3 svg { filter: drop-shadow(0 0 1.5px rgba(0, 0, 0, .6)); }
-.swatch3 { display: grid; grid-template-columns: repeat(6, 28px); gap: 7px; margin-top: 9px; }
-.swatch3 button { width: 28px; height: 28px; padding: 0; border: 0; border-radius: 50%; background: var(--pc); cursor: pointer; box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .35); }
-.swatch3 button.on { box-shadow: 0 0 0 2px var(--pale); }
+/* a pin's colour: a ring at the card's top right with a dropper; tapped, a box of twelve above the card */
+.mapnote3 .pcol3 { position: absolute; top: 9px; right: 9px; display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 3px solid var(--pc); border-radius: 50%; background: rgba(244, 239, 230, .1); color: var(--pale); cursor: pointer; }
+.mapnote3 .pcol3 svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.mapnote3:has(.pcol3) > b, .mapnote3:has(.pcol3) > small:first-of-type { padding-right: 40px; }
+.swatch3 { position: absolute; left: 0; bottom: calc(100% + 8px); display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; padding: 10px 12px 12px 14px; border-radius: 14px; background: var(--dusk2); box-shadow: 0 2px 8px rgba(0, 0, 0, .25); }
+.swatch3 b { font-size: 13.5px !important; }
+.swatch3 > span { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(6, 30px); gap: 8px; }
+.swatch3 > span button { width: 30px; height: 30px; padding: 0; border: 0; border-radius: 50%; background: var(--pc); cursor: pointer; box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .3); }
+.swatch3 > span button.on { box-shadow: 0 0 0 2px var(--dusk2), 0 0 0 4px var(--pale); }
+.swatch3 .shut3 { display: grid; place-items: center; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 50%; background: rgba(244, 239, 230, .13); color: var(--pale); cursor: pointer; }
+.swatch3 .shut3 svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
 .mapnote3 .nogo3 { display: block; margin-top: 7px; color: var(--pale); font-weight: 600; }
 .mapnote3 .nogo3[hidden] { display: none; }
 
@@ -662,14 +681,6 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 @media (max-width: 620px) { .court3 li { grid-template-columns: 20px 80px minmax(0, 1fr) 70px; } .steps3 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .count3 { font-size: 12.5px; font-weight: 500; color: var(--ink2); margin-left: 8px; }
 
-/* photo mode: one bar at the bottom */
-.photo3 { pointer-events: auto; position: absolute; left: 50%; bottom: calc(14px + env(safe-area-inset-bottom)); transform: translateX(-50%); display: flex; gap: 8px; align-items: center;
-  padding: 6px 6px 6px 18px; border-radius: 26px; white-space: nowrap; background: var(--glass2); }
-.photo3 span { color: var(--ink2); font-size: 13px; font-weight: 500; }
-.photo3 button { font: inherit; font-size: 14px; font-weight: 600; min-height: 40px; padding: 0 16px; border-radius: 20px; border: 0; background: rgba(42, 36, 32, .08); cursor: pointer; }
-.photo3 button { display: inline-flex; align-items: center; gap: 7px; }
-.photo3 button svg { width: 18px; height: 18px; }
-.photo3 button.main3 { color: #fff; background: var(--moss); }
 @media (max-width: 620px) { .toast3, .hint3 { max-width: 86vw; } }
 /* Journal > Songs: a card for each songbird with its picture */
 .songs3 .pic { width: 72px; height: 54px; background: linear-gradient(#d3e3ec, #eef1ea); }
@@ -908,3 +919,4 @@ details.lgrp3[open] .lchev3 { transform: rotate(180deg); }
   font: 600 13px var(--text); color: var(--ink); cursor: pointer; }
 .tod3 button em { font-style: normal; font-weight: 500; color: var(--ink2); font-variant-numeric: tabular-nums; }
 .tod3 button:active { background: var(--mosstint); }
+

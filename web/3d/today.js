@@ -1,7 +1,8 @@
-// The menu's Today section: how am I, what now? On the left, your bird and how it is (food, water,
-// wings and health as slim bars, like the meters in flight), where it is and when, and the things to do now
-// (Photo mode, Share a ghost flight: G.menu.group('today')). On the right, the day's aim and your
-// life goal (journal sections placed before 10 land here: aims.js). Filled each time the menu opens.
+// The menu's Today section: what now, and how am I? On the left first, the Tutorial: the open lessons
+// chapter and the day's aim (journal sections before 7: lessons.js, aims.js), then quieter, your life
+// goal (7 on) and things to do (G.menu.group('today')). On the right, your bird and how it is (food,
+// water, wings and health as slim bars, like the meters in flight), where and when (James, 10-24).
+// Filled each time the menu opens.
 import { icon, birdIcon } from './icons.js';
 import { BIRD } from './hawk.js';
 import { BIRDS } from './birds.js';
@@ -23,23 +24,29 @@ const cap = t => t ? t[0].toUpperCase() + t.slice(1) : '';
 export function createToday(G, M) {
   const pane = M.tab('today', 'Today');
   pane.innerHTML = `<div class="today3">
+    <div class="tmain3">
+      <section class="ttut3"><h3>${icon('how')}Tutorial</h3><div class="aims3"></div></section>
+      <div class="aims3 tmore3"></div>
+      <div class="stack3"><section class="group3 todo3" data-group="today"></section></div>
+    </div>
     <div class="stack3 tcol3">
       <section class="group3 now3">
         <div class="who3"><span class="bic3"></span><span class="nm3"><b></b><small></small></span></div>
         <ul class="bars3">${BARS.map(([k, ic, t, c]) => `<li data-k="${k}" style="--bc:${c}"><span class="bi3">${icon(ic)}</span><span class="bt3">${t}</span><span class="bb3"><i></i><s></s></span><em></em></li>`).join('')}</ul>
         <div class="foot3"><small class="when3"></small><button class="chg3">Change bird</button></div>
       </section>
-      <section class="group3 todo3" data-group="today"></section>
     </div>
-    <div class="aims3"></div>
   </div>`;
   M.todo = pane.querySelector('.todo3');
-  M.aims = pane.querySelector('.aims3');
+  M.aims = pane.querySelector('.ttut3 .aims3'); M.later = pane.querySelector('.tmore3');
+  const tut = pane.querySelector('.ttut3');
   M.info('today', () => M.date());
   const who = pane.querySelector('.who3'), rows = Object.fromEntries([...pane.querySelectorAll('.bars3 li')].map(li => [li.dataset.k, li]));
   pane.querySelector('.chg3').addEventListener('click', () => M.set(true, 'play', 'journey'));
   M.onOpen(() => {
     const b = G.b;
+    // the Tutorial box shows while it holds a lesson or an aim (after the systems' own refresh)
+    setTimeout(() => { tut.hidden = ![...M.aims.children].some(s => !s.classList.contains('hidden') && s.textContent.trim()); });
     who.querySelector('.bic3').innerHTML = birdIcon(BIRD);
     who.querySelector('b').textContent = BIRD === 'hawk' ? 'Red-tailed hawk' : BIRDS[BIRD]?.name || BIRD;
     who.querySelector('small').textContent = cap(G.placeWhere?.() || '');

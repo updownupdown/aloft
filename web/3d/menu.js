@@ -6,8 +6,8 @@
 // G.menu.tab(id, title) (it returns the pane element), pages inside it with G.menu.page(tab, id,
 // title, order), and rows with G.menu.toggle() / button() / choice() (radio buttons) / range().
 // Settings rows (tab 'play') go to a page by their label (SECTION_OF), else by the group they name:
-// Sound, Picture, Controls, Messages, Journey, Advanced. The old Game section's rows went to Today
-// (Photo mode, ghost flights) and Settings > Journey (your bird, Lessons, Reset all game data).
+// Sounds, Graphics, Controls, Your bird, Advanced (James, 10-24: Messages went to the Journal, Reset
+// all game data to Advanced).
 // G.menu.onOpen(fn) refreshes a pane each time the menu opens; G.menu.subtitle(fn) gives the date line
 // at the top of Today.
 import { letter } from './letter.js';
@@ -15,6 +15,7 @@ import { store } from './util.js';
 import { icon } from './icons.js';
 import { createDev } from './dev.js';
 import { createToday } from './today.js';
+import { desk, keysHtml } from './sys/howto.js';
 
 // where each section sits, whichever system adds it first; others follow in the order added
 const ORDER = { today: 0, map: 1, journal: 2, how: 4, play: 5 };
@@ -23,28 +24,28 @@ const ICON_OF = { today: 'today', map: 'map', journal: 'journal', play: 'setting
 // older names: the Game section is Today now, the Guide's pages are in the Journal
 const ALIAS = { game: 'today', guide: 'journal' };
 // Settings, a page each (title, order)
-const PAGES = { audio: ['Sounds', 10], graphics: ['Graphics', 20], gameplay: ['Controls', 30], messages: ['Messages', 40], journey: ['Journey', 50], dev: ['Advanced', 60] };
+const PAGES = { audio: ['Sounds', 10], graphics: ['Graphics', 20], gameplay: ['Controls', 30], journey: ['Your bird', 50], dev: ['Advanced', 60] };
 // groups of rows: the page each sits on, its heading (none: the pill names it) and its place on the page;
 // 'today' is the row of things to do on Today
 const GROUPS = {
-  bird: ['journey', 'Your bird', 0], journey: ['journey', '', 1],
-  audio: ['audio', '', 0], graphics: ['graphics', '', 0], gameplay: ['gameplay', '', 0], messages: ['messages', '', 0], dev: ['dev', '', 0], looks: ['dev', 'Look tests', 1],
+  bird: ['journey', '', 0], journey: ['journey', '', 1],
+  audio: ['audio', '', 0], graphics: ['graphics', '', 0], gameplay: ['gameplay', '', 0], keys: ['gameplay', 'Keyboard', 5], dev: ['dev', '', 0], looks: ['dev', 'Look tests', 1],
 };
 // where each Settings row goes: by its label, else by the group it names (OLD names too), else Controls
 const SECTION_OF = {
   'Sound effects': 'audio', Music: 'audio', 'Music style': 'audio', 'Music volume': 'audio', 'Wind volume': 'audio', 'Rain volume': 'audio', 'Birds and effects': 'audio',
   Graphics: 'graphics', 'Ground detail': 'graphics', 'Frame rate': 'graphics', 'Battery use': 'graphics', 'Rest at 30 fps': 'graphics',
-  'Photo mode': 'today', 'Share a ghost flight': 'today', 'Reset all game data': 'journey',
+  'Reset all game data': 'dev',
   'Show frame rate': 'dev', 'Feature list': 'dev', Update: 'dev', 'Music lab': 'dev', 'Bird song lab': 'dev',
 };
 const OLD = { sound: 'audio', app: 'dev', switch: 'gameplay', play: 'journey' };
 // rows that keep a set order within their page, whichever system adds them first; the rest follow
 const ROW_ORDER = { Graphics: 1, 'Frame rate': 2, 'Rest at 30 fps': 3, 'Ground detail': 4, 'Battery use': 90,
-  'Sound effects': 1, 'Wind volume': 2, 'Rain volume': 2.5, 'Birds and effects': 3, Music: 4, 'Music style': 5, 'Music volume': 6, 'Photo mode': 1, 'Share a ghost flight': 2 };
+  'Reset all game data': 95, 'Sound effects': 1, 'Wind volume': 2, 'Rain volume': 2.5, 'Birds and effects': 3, Music: 4, 'Music style': 5, 'Music volume': 6 };
 // rows that sit under a switch, and are greyed out while it is off (by label)
 const UNDER = { 'Wind volume': 'Sound effects', 'Rain volume': 'Sound effects', 'Birds and effects': 'Sound effects', 'Music volume': 'Music', 'Music style': 'Music' };
-// pages that moved: Tutorial (once How to play) > Hints is Settings > Messages
-const MOVED = { 'how/hints': ['play', 'messages'] };
+// pages that moved: Tutorial (once How to play) > Hints, then Settings > Messages, is Journal > Messages
+const MOVED = { 'how/hints': ['journal', 'messages', 'Messages', 40], 'play/messages': ['journal', 'messages', 'Messages', 40] };
 // Journal pages that were folded into others (10-24: Songs, Places, Things, Nest)
 const PAGE_ALIAS = { 'journal/landmarks': 'places', 'journal/lands': 'places', 'journal/finds': 'things', 'journal/guide': 'things' };
 
@@ -107,7 +108,7 @@ export function createMenu(G, ui) {
     tab = ALIAS[tab] || tab;
     const moved = MOVED[`${tab}/${id}`];
     if (moved) {   // a page that lives inside another now: its own box at the foot of that page
-      const host = M.page(moved[0], moved[1], PAGES[moved[1]]?.[0] || title, PAGES[moved[1]]?.[1]);
+      const host = M.page(moved[0], moved[1], moved[2] || title, moved[3]);
       let box = host.querySelector(`:scope > [data-moved=${id}]`);
       if (!box) { box = document.createElement('div'); box.dataset.moved = id; host.append(box); }
       return box;
@@ -239,11 +240,12 @@ export function createMenu(G, ui) {
   });
   // P or Esc: the menu, on the section last open; M: the Map
   addEventListener('keydown', e => {
-    if (G.photo || e.repeat || e.target.closest?.('input, textarea')) return;
+    if (e.repeat || e.target.closest?.('input, textarea')) return;
     if (e.code === 'Escape' || e.code === 'KeyP') M.set(!M.open);
     else if (e.code === 'KeyM') { if (M.open && current === 'map') M.set(false); else M.set(true, 'map'); }
   });
   createToday(G, M);         // the Today section: your bird, how it is, where, and the day's aims (today.js)
+  if (desk()) M.group('keys').insertAdjacentHTML('beforeend', keysHtml());   // Settings > Controls > Keyboard, on desktop only (the keys: howto.js)
   G.dev = createDev(G, M);   // Settings > Advanced > Feature list (dev.js)
   G.dev.add({ id: 'menu-a', area: 'Menu and map', round: 10, title: 'The menu, tidied: Today, Map, Journal, Guide, Tutorial and Settings down the rail; each section’s pages in a column beside it',
     how: 'Open the menu: Today shows your bird, food, water, wings and health, and the day’s aims; Map shows the globe; Journal has Songs, Nest and family, Landmarks, Biomes, Things found and the Field guide; Settings has Sound, Graphics, Controls, Messages, Journey and Advanced.' });

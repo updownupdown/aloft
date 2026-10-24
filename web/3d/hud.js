@@ -46,7 +46,7 @@ export function createHud(G, ui, input) {
   const alt = q('.alt'), tape = q('.alt .tape'), altM = q('.alt .m'), altV = q('.alt .v'), altK = q('.alt .k');
   let vr = 0, lastY = null;   // the rise or sink, m/s, smoothed
   q('.corner3').prepend(q('.corner3 .dial'));
-  // off: the groups of tips and kinds of message turned off on Settings > Messages ('tip:food',
+  // off: the groups of tips and kinds of message turned off on Journal > Messages ('tip:food',
   // 'say:hint'); said: the last few lines of each kind, for that page
   const H = { off: store.get('hintsoff3d', {}), said: store.get('said3d', {}), tips: [], done: store.get('hints3d', {}), status: '', flight: null, counter: '', hidden: false };
   const bar = tipBar(G, ui, H);
@@ -177,7 +177,7 @@ export function createHud(G, ui, input) {
   H.resetTips = () => { H.done = {}; store.set('hints3d', {}); H.known = {}; store.set('known3d', {}); };
   H.fps = n => { q('.fps3').textContent = `${Math.round(n)} FPS`; };
   H.showFps = on => q('.fps3').classList.toggle('hidden', !on);
-  // photo mode hides the whole layer
+  // hide(true) hides the whole layer but the messages
   H.hide = on => { H.hidden = on; ui.classList.toggle('bare3', on); };
   hud.style.pointerEvents = 'auto';
 

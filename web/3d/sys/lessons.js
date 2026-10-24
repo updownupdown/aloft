@@ -83,7 +83,6 @@ const CHAPTERS = [
   { title: 'The wide world', page: 'world', icon: 'south', tasks: [
     { id: 'guide', text: 'Add a page to the field guide', say: 'Fly close by an animal you have not seen before: it gets a page in the Guide.', on: 'sighted' },
     { id: 'land', text: 'Fly over a new land', say: 'The Earth has many lands: forest, steppe, tundra, desert. Fly until you cross into a new one.', on: 'newLand' },
-    { id: 'photo', text: 'Take a picture', say: 'Open the menu: Today has Photo mode. Frame a picture and take it.', on: 'photo' },
   ] },
 ];
 const TASKS = CHAPTERS.flatMap((ch, i) => ch.tasks.map(t => ({ ...t, ch: i })));
@@ -323,6 +322,14 @@ export function lessonsSystem(G) {
     quiet: id => S.stage === 'flight' || (S.stage === 'learn' && TIP_LESSON[id] && !S.done[TIP_LESSON[id]]),
     replay: () => { G.menu.set(false); startFlight(); },
   };
+  // Settings > Advanced > Dev mode: progress mocked at k (0, .25, .5 or 1; dev.js), then saved and reloaded
+  // (lessons done in order; none: the first flight again)
+  G.on('mock', k => {
+    const n = Math.round(k * TASKS.length);
+    S.done = k ? { flight: 1 } : {}; for (const t of TASKS.slice(0, n)) S.done[t.id] = 1;
+    S.paid = k ? { flight: 1 } : {}; CHAPTERS.forEach((ch, i) => { if (ch.tasks.every(t => S.done[t.id])) S.paid[i] = 1; });
+    Object.assign(S, { stage: !k ? 'flight' : k >= 1 ? 'done' : 'learn', after: 'learn', intro: 1, replay: null, practice: null });
+  });
   const ease = () => S.stage === 'flight' || (S.stage === 'learn' && !SURVIVE.every(k => S.done[k])) ? .5 : 1;
 
   // ---- Today: the open chapter, its tasks ticked ----------------------------------------------
@@ -332,7 +339,6 @@ export function lessonsSystem(G) {
   const pg = Object.fromEntries(PAGES.map(([id, title, order]) => [id, G.menu.page('how', id, title, order)]));
   const box = {};
   for (const id in pg) { box[id] = document.createElement('div'); box[id].className = 'lchap3'; pg[id].prepend(box[id]); }
-  G.menu.button('play', { label: 'Tutorial', sub: 'learn to fly again, or replay any lesson', group: 'journey', onClick: () => G.menu.set(true, 'how', 'lessons') });
   const mark = on => `<i class="${on ? 'on' : ''}">${on ? icon('check') : ''}</i>`;
   const tick = t => mark(S.done[t.id]);
   const left = ch => ch.tasks.filter(q => !S.done[q.id]).length;
@@ -396,7 +402,7 @@ export function lessonsSystem(G) {
   for (const el of Object.values(box)) el.addEventListener('toggle', e => { const k = e.target.dataset?.k; if (k != null && e.target.dataset.d === '1') { if (e.target.open) opened.add(k); else opened.delete(k); } }, true);
 
   G.dev?.add({ id: 'lessons', area: 'Menu and story', round: 'Tutorial 10-23', title: 'Lessons: the first flight (HUD hidden, ghost thumbs, Skip), then a chain of lessons under Today; HUD pieces appear as they matter',
-    how: 'Reset all game data (Settings > Journey), or Tutorial > Flying > Fly the first flight again. Replay any chapter from the Overview; practise any lesson on its page.', go: () => G.lessons.replay() });
+    how: 'Reset all game data (Settings > Advanced), or Tutorial > Flying > Fly the first flight again. Replay any chapter from the Overview; practise any lesson on its page.', go: () => G.lessons.replay() });
 
   classes();
   return {
