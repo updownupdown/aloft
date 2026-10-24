@@ -67,6 +67,12 @@ export function step(b, c, dt, E) {
   b.sPrev = b.s; b.view = null;
   aimB = b; if ((b.aimPerchT = (b.aimPerchT || 0) - dt) <= 0) b.aimPerch = null;
 
+  // Controls lab (sys/ctllab.js, b.ctl): beat to climb. Thumbs up with the wings plain and the
+  // speed below the best glide, the hawk beats on its own every .45 s (a .7 flap, at its cost), so
+  // that pushing up keeps climbing instead of mushing at the stall
+  if (b.ctl?.beat && c.pitch > .5 && b.s < FLY.best - 1 && b.flare < .3 && b.tuck < .3 && b.stamina > .1 && !c.flap) {
+    if ((b.beatT = (b.beatT || 0) - dt) <= 0) { b.beatT = .45; c = { ...c, flap: { q: .7, side: 0, sync: .9 } }; }
+  } else b.beatT = 0;
   // flaps
   if (c.flap) {
     const weak = b.stamina < .08 ? .3 : 1, q = c.flap.q * weak * (1 - FLY.wetFlap * (b.wet || 0));
@@ -419,7 +425,9 @@ function ground(b, E) {
   }
   b.p[1] = floor;
   const gs = groundSpeed(b);
-  if (gs < FLY.landS && down < 6) {
+  // Controls lab (b.ctl.softLand): a plain glide (12 m/s, over landS) comes down as a landing
+  // that runs on, not a bump
+  if (gs < FLY.landS + (b.ctl?.softLand ? 2.5 : 0) && down < 6) {
     // with the wind behind, the hawk comes in fast and runs on a few steps; into it, it just stops
     const run = Math.max(0, gs - FLY.runS) * FLY.runOn, v = [f[0] * b.s + (b.wind?.[0] || 0), f[2] * b.s + (b.wind?.[1] || 0)], vl = Math.hypot(v[0], v[1]) || 1;
     b.state = 'ground'; b.settle = b.settleT = .3 + run * .08; b.from = null; b.landRun = run;

@@ -21,7 +21,8 @@ export function createCamera(G) {
     let look, want;
     if (b.state === 'fly') {
       // the camera swings after the hawk's heading rather than its position, so it never falls behind
-      C.yaw += angleTo(C.yaw, b.yaw) * Math.min(1, dt * 3.5);
+      // (Controls lab, G.ctl.lead: it looks a little into the turn, by the bank)
+      C.yaw += angleTo(C.yaw, b.yaw + (G.ctl?.lead ? b.roll * .4 : 0)) * Math.min(1, dt * 3.5);
       const fo = G.aim?.focus || 0;
       C.pitch += (b.gamma * (.45 + .4 * fo) - C.pitch) * Math.min(1, dt * 2.5);
       const cp = C.pitch, d = [Math.sin(C.yaw) * Math.cos(cp), Math.sin(cp), -Math.cos(C.yaw) * Math.cos(cp)];
