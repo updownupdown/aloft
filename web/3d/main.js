@@ -257,7 +257,6 @@ if (qs.has('fps')) G.settings.fpsCap = +qs.get('fps') || 60;
   G.settings.rest = store.get('rest3d', true);
   G.menu.toggle(play, { label: 'Rest at 30 fps', sub: 'perched or on the ground and left alone a few seconds: half the frames, less battery', get: () => G.settings.rest, set: v => { G.settings.rest = v; store.set('rest3d', v); } });
   G.menu.toggle(play, { label: 'Show frame rate', get: () => G.settings.fps, set: v => { G.settings.fps = v; store.set('fps3d', v); H.showFps(v); } });
-  G.menu.button(play, { label: 'Music lab', sub: 'shape the music: strings, piano, pace', href: 'musiclab.html', group: 'sound' });
   // one way to start over: every aloft. key goes (journey, journal, world seed, settings), as on the first
   // launch; three taps, each saying how many are left (James, 2026-10-24)
   const ASK = ['Reset all game data ', 'Tap twice more to erase everything ', 'Tap once more: this can’t be undone '];
