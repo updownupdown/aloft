@@ -32,7 +32,7 @@ const GROUPS = {
 };
 // where each Settings row goes: by its label, else by the group it names (OLD names too), else Controls
 const SECTION_OF = {
-  'Sound effects': 'audio', Music: 'audio', 'Music style': 'audio', 'Music volume': 'audio', 'Wind volume': 'audio', 'Birds and effects': 'audio',
+  'Sound effects': 'audio', Music: 'audio', 'Music style': 'audio', 'Music volume': 'audio', 'Wind volume': 'audio', 'Rain volume': 'audio', 'Birds and effects': 'audio',
   Graphics: 'graphics', 'Ground detail': 'graphics', 'Frame rate': 'graphics', 'Battery use': 'graphics', 'Rest at 30 fps': 'graphics',
   'Photo mode': 'today', 'Share a ghost flight': 'today', 'Reset all game data': 'journey',
   'Show frame rate': 'dev', 'Feature list': 'dev', Update: 'dev', 'Music lab': 'dev', 'Bird song lab': 'dev',
@@ -40,11 +40,13 @@ const SECTION_OF = {
 const OLD = { sound: 'audio', app: 'dev', switch: 'gameplay', play: 'journey' };
 // rows that keep a set order within their page, whichever system adds them first; the rest follow
 const ROW_ORDER = { Graphics: 1, 'Frame rate': 2, 'Rest at 30 fps': 3, 'Ground detail': 4, 'Battery use': 90,
-  'Sound effects': 1, 'Wind volume': 2, 'Birds and effects': 3, Music: 4, 'Music style': 5, 'Music volume': 6, 'Photo mode': 1, 'Share a ghost flight': 2 };
+  'Sound effects': 1, 'Wind volume': 2, 'Rain volume': 2.5, 'Birds and effects': 3, Music: 4, 'Music style': 5, 'Music volume': 6, 'Photo mode': 1, 'Share a ghost flight': 2 };
 // rows that sit under a switch, and are greyed out while it is off (by label)
-const UNDER = { 'Wind volume': 'Sound effects', 'Birds and effects': 'Sound effects', 'Music volume': 'Music', 'Music style': 'Music' };
+const UNDER = { 'Wind volume': 'Sound effects', 'Rain volume': 'Sound effects', 'Birds and effects': 'Sound effects', 'Music volume': 'Music', 'Music style': 'Music' };
 // pages that moved: Tutorial (once How to play) > Hints is Settings > Messages
 const MOVED = { 'how/hints': ['play', 'messages'] };
+// Journal pages that were folded into others (10-24: Songs, Places, Things, Nest)
+const PAGE_ALIAS = { 'journal/landmarks': 'places', 'journal/lands': 'places', 'journal/finds': 'things', 'journal/guide': 'things' };
 
 export function createMenu(G, ui) {
   ui.insertAdjacentHTML('beforeend', `
@@ -154,7 +156,8 @@ export function createMenu(G, ui) {
     el.dataset.row = ROW_ORDER[label] ?? 99;
     el.parentNode.insertBefore(el, [...el.parentNode.children].find(x => x.dataset.row && +x.dataset.row > +el.dataset.row) || null);
   };
-  const where = (tab, group, label) => tab !== 'play' && tab !== 'game' ? M.tab(tab) : M.group(SECTION_OF[label] || OLD[group] || group || 'gameplay');
+  // a volume slider nobody listed still belongs with the sounds (Rain volume once fell through to Controls)
+  const where = (tab, group, label) => tab !== 'play' && tab !== 'game' ? M.tab(tab) : M.group(SECTION_OF[label] || OLD[group] || group || (/volume$/i.test(label) ? 'audio' : 'gameplay'));
   M.toggle = (tab, { label, sub = '', get, set, group = 'switch' }) => {
     const act = 'a' + n++;
     where(tab, group, label).insertAdjacentHTML('beforeend', `<button data-act="${act}" class="sw" role="switch"><span>${label}${sub ? ` <small>${sub}</small>` : ''}</span><i></i></button>`);
@@ -215,6 +218,7 @@ export function createMenu(G, ui) {
   M.set = (on, tab, page) => {
     tab = ALIAS[tab] || tab;
     if (MOVED[`${tab}/${page}`]) [tab, page] = MOVED[`${tab}/${page}`];
+    page = PAGE_ALIAS[`${tab}/${page}`] || page;
     if (on && tab) current = tab;
     if (on && tab && page) pages[tab] = page;
     if (on === M.open) { if (on && tab) show(tab); return; }

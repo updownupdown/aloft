@@ -1,4 +1,4 @@
-// Settings > Dev tools > Feature list: a window that lists the small things added to the game, one
+// Settings > Advanced > Feature list: a window that lists the small things added to the game, one
 // line each with where to find it and how to try it, and a tick for each one tested (remembered on
 // this device). A second tab shows the frame cost from G.perf when the frame loop measures it.
 // Systems add their own features with G.dev?.add({ id, title, how, area, round, pr, go }) (go: an
@@ -13,15 +13,12 @@ export const AREAS = ['Flight', 'Ground and perch', 'World', 'Wildlife', 'Food a
 
 // [id, area, pr, title, how to try it]
 const SHIPPED = [
-  ['lefty', 'Settings and performance', 181, 'Left-handed layout', 'Settings > Gameplay > Left-handed: Take off and the note pad go left, Sing goes right.'],
+  ['lefty', 'Settings and performance', 181, 'Left-handed layout', 'Settings > Controls > Left-handed: Take off and the note pad go left, Sing goes right.'],
   ['mice-farms', 'Wildlife', 179, 'Mice gather round the old farms', 'Fly over a barn, farmyard or village: more mice than in open country.'],
-  ['ruins', 'World', 178, 'Abandoned farmsteads, villages, tracks and bridges', 'Explore: villages show in Journal > Landmarks; things people left glint near ruins.'],
+  ['ruins', 'World', 178, 'Abandoned farmsteads, villages, tracks and bridges', 'Explore: villages show in Journal > Places; things people left glint near ruins.'],
   ['drink-tap', 'Food and water', 177, 'Drink by tapping the water, puddles too', 'Land by water or a puddle after rain and tap the water.'],
-  ['season-sing', 'HUD', 176, 'Day count hides while the note pad is out', 'Perch, switch Sing on: the line under the dial goes.'],
-  ['valley-awvfts', 'Songs and music', 175, 'Valley in the manner of A Winged Victory for the Sullen', 'Turn Music on and listen for a few minutes; Settings > Dev tools > Music lab.'],
-  ['sing-switch', 'Songs and music', 175, 'Sing is a switch over the song card; notes ringed, fading 2 s after each', 'Perch, switch Sing on, play a few notes on the pad.'],
+  ['valley-awvfts', 'Songs and music', 175, 'Valley in the manner of A Winged Victory for the Sullen', 'Turn Music on and listen for a few minutes; Settings > Advanced > Music lab.'],
   ['dial-cw', 'HUD', 174, 'Day dial turns clockwise, bead in the gap, forecast on the left', 'Watch the dial top right through a morning.'],
-  ['hud-bead', 'HUD', 173, 'Bead top HUD: bubble meters, height ladder, compass under the message line', 'Fly: bubbles beside the menu button, ladder under it; a message hides the compass.'],
   ['call-hub', 'HUD', 173, 'Call sits in a cut-out at the day dial’s hub', 'Tap or hold the bird in the middle of the dial.'],
   ['gfx-choice', 'Settings and performance', 171, 'Graphics, Frame rate and Ground detail as choice buttons', 'Settings > Graphics: each pick says what it changes.'],
   ['water-painted', 'World', 170, 'Water: painted depths only', 'Fly over a lake: darker where deep, no wave noise.'],
@@ -30,7 +27,6 @@ const SHIPPED = [
   ['hint-settings', 'Menu and map', 167, 'Hint settings: a gear on tips and messages', 'Tap the sliders icon on any tip or message: Settings > Messages.'],
   ['song-tries', 'Songs and music', 165, 'Each try sings from the top; unknown songs as question marks', 'Learn a song: wrong notes are boxed; open the bird list.'],
   ['perch-glide-down', 'Ground and perch', 164, 'Perched, tap the ground to glide down to it', 'Perch in a tree, tap the grass below.'],
-  ['clouds-half', 'World', 163, 'Half see-through clouds', 'Fly into a cloud.'],
   ['sleep-perch', 'Ground and perch', 160, 'Sleep only on a perch', 'At night, perch: Sleep shows; on the ground it does not.'],
   ['actions-right', 'Ground and perch', 160, 'Take off and Sleep bottom right, left of the note pad', 'Perch, then switch Sing on: the buttons step left.'],
   ['battery', 'Settings and performance', 159, 'Battery use readings per setting', 'Play 10-20 min on battery, then Settings > Graphics > Battery use.'],
@@ -39,14 +35,13 @@ const SHIPPED = [
   ['look-up', 'Ground and perch', 150, 'Look up into the boughs from the ground or a perch', 'Perched, swipe down: the view tilts up, then eases back.'],
   ['song-touches', 'Songs and music', 152, 'Five touches on the note pad: swipes and taps', 'Sing: swipe up, down, left, right, or tap a row.'],
   ['icons', 'Menu and map', 146, 'James’s icons across the app', 'Open the menu and look at each section.'],
-  ['bird-stats', 'Birds', 148, 'Bird card stats in colour with icons', 'Game > Your bird.'],
+  ['bird-stats', 'Birds', 148, 'Bird card stats in colour with icons', 'Settings > Journey > Your bird.'],
   ['perch-only-lit', 'Ground and perch', 143, 'Land only on the highlighted perch', 'Fly slowly at a tree: the green ring is where you land.'],
   ['ground-cam', 'Ground and perch', 142, 'On the ground: face away, pinch zoom, tap to hop', 'Land in a field; pinch; tap a spot near by.'],
-  ['menu-columns', 'Menu and map', 141, 'Game and Settings as one column of sections', 'Open the menu: Game, then Settings.'],
   ['float-hover', 'Flight', 137, 'Float in to land and hover', 'Flare and push both thumbs up; at a stop, up and outward hovers.'],
   ['slope-takeoff', 'Ground and perch', 137, 'Take off on a slope turns toward open air', 'Land on a hillside, tap Take off.'],
   ['walls', 'World', 135, 'Uneven stone walls with fallen stones', 'Look for walls across fields and moors.'],
-  ['map-corners', 'Menu and map', 134, 'Map corners: dial, place, tallies; pins by colour', 'Menu > Map; hold to drop a pin.'],
+  ['map-corners', 'Menu and map', 134, 'Map corners: dial, place, tallies; pins by colour', 'Map: hold to drop a pin.'],
   ['rivers', 'World', 133, 'Winding rivers with foam and rapids; water rises after rain', 'Follow a river downhill; watch it after rain.'],
   ['ring-aim', 'Flight', 132, 'Rings: soft yellow aim when lined up', 'Line up on a ring of mist.'],
   ['far-terrain', 'World', 131, 'Finer ground, real far terrain', 'Climb high and look at the horizon.'],
@@ -59,21 +54,20 @@ const SHIPPED = [
   ['traces', 'World', 121, 'Barns, fire lookouts, wind pumps, sea stacks, fences', 'Explore the lands.'],
   ['flight-feel', 'Flight', 120, 'Ground effect, visible gusts, slipstream, under-canopy flying', 'Skim low over water; fly behind the wild hawk; fly under the trees.'],
   ['seasons-ground', 'World', 119, 'Real winter, spring and autumn on the ground', 'Play through a season change (8 days).'],
-  ['first-season', 'Journal and story', 118, 'A guided first season, ghost flights by link, your life in the Journal', 'New world: follow the companion’s lessons; Journal > Log.'],
   ['bird-goals', 'Birds', 117, 'Each bird’s own move and life goal', 'Fly as the osprey (plunge), owl (silent glide), raven (tumble), red-tail (kite).'],
   ['song-places', 'Songs and music', 116, 'Songs that open places; teach a young bird your song', 'Sing at a summit cairn, under arches, at redwoods, at falls.'],
   ['race', 'Journal and story', 113, 'Race the companion round a ring course', 'Wait for the companion to start a race; finish first for a mouse.'],
   ['new-singers', 'Songs and music', 112, 'Birds of the new lands, night singers, rock-wall echoes', 'Sing in the desert, the mountains, at night, by a cliff.'],
-  ['daily-aim', 'Journal and story', 111, 'A daily aim with feathers; the lands collection', 'Journal: today’s aim and the lands you have found.'],
-  ['share-cards', 'Journal and story', 109, 'Captioned share cards; screen stays awake; colour-blind aim', 'Photo mode, then share; Settings > Gameplay.'],
-  ['species', 'Birds', 74, 'Fly as the red-tail, osprey, barn owl or raven', 'Game > Your bird.'],
+  ['daily-aim', 'Journal and story', 111, 'A daily aim with feathers; the lands collection', 'Today: the day’s aim; Journal > Places: the biomes you have found.'],
+  ['share-cards', 'Journal and story', 109, 'Captioned share cards; screen stays awake; colour-blind aim', 'Photo mode, then share; Settings > Controls.'],
+  ['species', 'Birds', 74, 'Fly as the red-tail, osprey, barn owl, raven or albatross', 'Settings > Journey > Your bird: swipe the card.'],
   ['ring-courses', 'Flight', 93, 'Rings in climbing courses, new each day', 'Find a low ring; the next one glows a little higher.'],
   ['forecast', 'HUD', 93, 'Weather forecast on the day dial', 'Watch the band beside the dial before rain.'],
-  ['stamina-cap', 'Food and water', 95, 'Low food or water lowers max stamina', 'Let hunger fall below a third: the wings bubble shows a hatched cap.'],
+  ['stamina-cap', 'Food and water', 95, 'Low food or water lowers max stamina', 'Let hunger fall below a third: the wings bar shows a shaded cap.'],
   ['new-world', 'Settings and performance', 90, 'Reset all game data', 'Settings > Journey > Reset all game data (tap three times).'],
   ['biomes', 'World', 89, 'Biomes in patches, seeded worlds, 20 lands', 'Fly a few km in any direction; Journal > Biomes.'],
   ['yaw', 'Flight', 88, 'Both thumbs slid one way yaw', 'Slide both thumbs left together.'],
-  ['map-fly', 'Menu and map', 81, 'Map: double tap to fly there', 'Menu > Map, double tap a known place.'],
+  ['map-fly', 'Menu and map', 81, 'Map: double tap to fly there', 'Map: double tap a known place.'],
 ];
 
 export function createDev(G, M) {
@@ -83,7 +77,7 @@ export function createDev(G, M) {
     add(f) { if (!f?.id || list.some(x => x.id === f.id)) return; list.unshift({ area: 'World', ...f }); if (open) draw(); },
     list,
   };
-  let open = false, tab = 'list', area = '', todo = false, timer = 0;
+  let open = false, tab = 'list', area = '', todo = true, timer = 0;   // tested (confirmed) ones hide until asked for
   const el = document.createElement('div');
   el.className = 'dev3 hidden'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'Feature list');
   document.body.append(el);   // over the menu (the HUD layer hides while the menu is open)
@@ -93,7 +87,7 @@ export function createDev(G, M) {
     const shown = list.filter(f => (!area || f.area === area) && (!todo || !tested[f.id]));
     const done = list.filter(f => tested[f.id]).length;
     return `<div class="devbar3"><span>${done} of ${list.length} tested</span>
-      <button data-f="todo" class="${todo ? 'on' : ''}">Untested only</button></div>
+      <button data-f="todo" class="${todo ? '' : 'on'}">Show tested</button></div>
       <div class="devareas3"><button data-a="" class="${area ? '' : 'on'}">All</button>${AREAS.filter(a => list.some(f => f.area === a)).map(a => `<button data-a="${a}" class="${area === a ? 'on' : ''}">${a}</button>`).join('')}</div>
       <ul>${shown.map(f => `<li class="${tested[f.id] ? 'done3' : ''}"><button data-t="${esc(f.id)}" role="checkbox" aria-checked="${!!tested[f.id]}" aria-label="Tested"><i></i></button>
         <span><b>${esc(f.title)}</b><span>${esc(f.how)}</span></span><em>${esc(f.area)}${f.round ? ' · ' + esc(f.round) : ''}${f.pr ? ' · #' + f.pr : ''}${f.go ? `<button class="go3" data-go="${esc(f.id)}">Try it</button>` : ''}</em></li>`).join('') || '<li class="none3">Nothing here.</li>'}</ul>`;

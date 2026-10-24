@@ -453,9 +453,9 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .dots3 i { width: 7px; height: 7px; border-radius: 50%; background: rgba(42, 36, 32, .2); transition: width .2s; }
 .dots3 button.on i { width: 18px; border-radius: 4px; background: var(--ink); }
 /* Settings > Journey: your bird and the rows under it sit straight on the sheet, no plates */
-.stack3 .group3[data-group=bird], .stack3 .group3[data-group=journey] { padding: 0; background: none; border: 0; }
+.stack3 .group3[data-group=bird] { padding: 0; background: none; border: 0; }
 [data-group=bird] > h3 { margin-left: 4px; }
-.card3 .btn.warn3 { color: var(--clay); border-color: var(--clay); }
+.card3 .btn.warn3 { color: var(--clay); }
 
 /* How to play: the moves, each as the thumbs beside the hawk doing it */
 .how { margin: 6px 0 12px; padding-left: 18px; font-size: 14px; line-height: 1.55; }
@@ -617,7 +617,6 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .guide3 img { width: 100%; height: 100%; display: block; object-fit: cover; }
 .guide3 b { display: block; font-size: 15px; line-height: 1.2; }
 .guide3 small { display: block; font-size: 12.5px; line-height: 1.4; margin-top: 3px; }
-.guide3 .when3g { font-size: 11.5px; opacity: .8; }
 .gtodo3 { margin: 6px 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--ink2); }
 .gtodo3:empty { display: none; }
 .gnot3 { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 6px 10px; }
@@ -841,3 +840,24 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .batt3 li b { font-weight: 650; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .batt3 li small, .batt3 li b small { display: inline; font-size: 12px; font-weight: 500; color: var(--ink2); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .batt3 p { margin: 8px 0 0; font-size: 12.5px; color: var(--ink2); }
+
+/* Settings: one plate per group and flat rows inside it, split by thin rules (James, 10-24: no plates on plates) */
+.stack3 .group3 .btn, .stack3 .group3 .choice3, .stack3 .group3 .range3:not(.under3), .stack3 .group3 .batt3 {
+  margin: 0; padding-left: 0; padding-right: 2px; border: 0; border-bottom: 1px solid var(--rule); border-radius: 0; background: none; box-shadow: none; }
+.stack3 .group3 .btn:active { background: var(--mosstint); }
+.stack3 .group3 > :last-child { border-bottom: 0; }
+.stack3 .group3 .range3.under3 { padding-left: 18px; }
+/* Journal > Things and Places: each section its own soft card, its heading small caps above */
+.page3[data-page=things] > section, .page3[data-page=places] > section { margin: 0 0 12px; padding: 4px 16px 12px; border-radius: 20px; background: var(--plate); border: 1px solid var(--rule); }
+.page3[data-page=things] > section > h3, .page3[data-page=places] > section > h3 { margin: 12px 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--ink2); }
+.page3[data-page=things] > section:has(> div:empty) { display: none; }
+.gsec3 + .gsec3 { margin-top: 6px; }
+.gsec3 h3 { margin: 12px 0 8px; font-size: 15px; font-weight: 700; }
+.gsec3 .guide3 li { background: var(--btn); }
+.bottles3 { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 8px; }
+.bottles3 li { padding: 10px 14px; border-radius: 14px; background: var(--btn); font-size: 14px; line-height: 1.45; font-style: italic; }
+.bottles3 li small { font-style: normal; color: var(--ink2); }
+.bottles3 li.unfound3 { opacity: .55; }
+.stack3 .group3 .sw { padding-left: 0; padding-right: 2px; }
+.sgcont3 small, .gsec3 h3 small { display: inline; }
+.gleft3 { margin: 0 0 4px; font-size: 13.5px; color: var(--ink2); }

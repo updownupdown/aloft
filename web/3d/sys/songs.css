@@ -235,6 +235,19 @@
 .sgmodes3 dd { margin: 0; color: var(--ink2, #4c5d69); }
 /* Journal > Songs: a heading for each continent's birds */
 .sgcont3 { margin: 18px 0 8px; font-size: 15px; font-weight: 700; color: var(--ink, #2a2420); }
+.sgcont3 small, .gsec3 h3 small { margin-left: 6px; font-size: 12.5px; font-weight: 500; color: var(--ink2); font-variant-numeric: tabular-nums; }
+/* Journal > Songs, the top: what you know and the sort on one line, how singing works folded under it */
+.sgtop3 { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin: 2px 0 10px; }
+.sgtop3 .sub { margin: 0; font-size: 15px; color: var(--ink2); }
+.sgtop3 .sub b { color: var(--ink); font-weight: 650; font-variant-numeric: tabular-nums; }
+.sgtop3 .sub span { margin: 0 4px; opacity: .5; }
+.sgtop3 .gbar3 { margin: 0; }
+.sghow3 { margin: 0 0 8px; border-radius: 14px; background: var(--plate); border: 1px solid var(--rule); }
+.sghow3 summary { display: flex; align-items: center; gap: 8px; min-height: 42px; padding: 0 14px; font-size: 14px; font-weight: 600; cursor: pointer; list-style: none; }
+.sghow3 summary::-webkit-details-marker { display: none; }
+.sghow3 summary::after { content: ''; width: 7px; height: 7px; margin-left: auto; border: solid var(--ink2); border-width: 0 2px 2px 0; transform: rotate(45deg); transition: transform .2s; }
+.sghow3[open] summary::after { transform: rotate(-135deg); }
+.sghow3 .sgmodes3 { margin: 0; padding: 2px 14px 14px; }
 /* a line about the song, under the scores (H.songLine), in place of the message line */
 /* a song's result sits over the card, so the card never moves (James, 10-23) */
 .sgsay3 { position: absolute; left: 72px; right: 0; bottom: calc(100% + 6px); margin: 0; padding: 7px 12px; box-sizing: border-box; border: 1px solid var(--blkedge); border-radius: 16px;

@@ -147,12 +147,14 @@ export function ruinsSystem(G) {
     sec.body.querySelector('.j-relic').textContent = (St.trinkets.length || T.length)
       ? `Treasures: ${T.length} of ${all}. Trinkets: ${tr.length ? tr.join(', ') : 'none yet'}.${St.nest.length ? ` In your nest: ${St.nest.length} of them.` : ''}${St.kept.length ? ` ${St.kept.length} waiting to go in a nest.` : ''}`
       : 'Nobody lives in the old farms and villages now. Things they left still glint by the doorsteps and wells: land beside one to take it.';
-    wsec.body.innerHTML = `<p>${Object.keys(St.wonders).length} of ${Object.keys(WONDERS).length} found. People built them, long ago, where the old maps put them.</p><ul class="list3">` + Object.keys(WONDERS).map(k => St.wonders[k]
-      ? `<li>${esc(WONDERS[k][0])} <small>${esc(WONDERS[k][5])} Found on day ${St.wonders[k].day}.</small></li>` : '<li class="j-dim">?</li>').join('') + '</ul>';
+    // the wonders found, each with its line; the rest only counted (a list of question marks said nothing)
+    const W = Object.keys(WONDERS), got = W.filter(k => St.wonders[k]);
+    wsec.body.innerHTML = `<p>${got.length} of ${W.length} found. People built them, long ago, where the old maps put them.</p>`
+      + (got.length ? `<ul class="list3">${got.map(k => `<li>${esc(WONDERS[k][0])} <small>${esc(WONDERS[k][5])}</small></li>`).join('')}</ul>` : '');
     sec.body.querySelector('ul').innerHTML = T.map(k => `<li>${esc(M.TREASURES[k][0])} <small>${esc(M.TREASURES[k][2])} Found on day ${St.treasures[k].day}${St.treasures[k].place ? `, at ${esc(St.treasures[k].place)}` : ''}.</small></li>`).join('');
   });
 
-  // the feature list (Settings > Dev tools): each with a Try it that flies you there
+  // the feature list (Settings > Advanced): each with a Try it that flies you there
   const flyTo = (x, z, tx, tz, up = 30) => { b.state = 'fly'; b.p = [x, Math.max(height(x, z), 0) + up, z]; b.yaw = Math.atan2(tx - x, -(tz - z)); b.s = 12; b.gamma = 0; };
   const nearest = (L, f = o => o) => L.sort((p, q) => Math.hypot(f(p).x - b.p[0], f(p).z - b.p[2]) - Math.hypot(f(q).x - b.p[0], f(q).z - b.p[2]))[0];
   const toward = (o, back = 60, up = 30) => { const a = Math.atan2(o.z - b.p[2], o.x - b.p[0]); flyTo(o.x - Math.cos(a) * back, o.z - Math.sin(a) * back, o.x, o.z, up); };
@@ -165,7 +167,7 @@ export function ruinsSystem(G) {
       go: () => { const S = nearest(settlementsNear(b.p[0], b.p[2], 9000, false).filter(S => S.kind === 'drowned')); if (S) toward(S, 70, 30); } },
     { id: 'r8-chimes', title: 'Wind chimes on a few porches', how: 'Land by a cottage door with a chime: it rings in gusts, in the Valley’s key.', round: 'R8 B4',
       go: () => { const bd = nearest(settlementsNear(b.p[0], b.p[2], 4000, false).flatMap(S => S.build.filter(chimeAt))); if (bd) { const c = chimeAt(bd); toward({ x: c[0], z: c[2] }, 35, 10); } } },
-    { id: 'wonders', title: 'Wonders where they stood on Earth', how: 'Find the Eiffel Tower, the Great Wall, the Statue of Liberty and more; Journal > Wonders lists them.', round: 'Earth',
+    { id: 'wonders', title: 'Wonders where they stood on Earth', how: 'Find the Eiffel Tower, the Great Wall, the Statue of Liberty and more; Journal > Places lists them.', round: 'Earth',
       go: () => { const L = Object.keys(WONDERS).map(k => wondersNear(b.p[0], b.p[2], 1e5).find(W => W.key === k)).filter(Boolean), W = nearest(L); if (W) toward(W, 260, 70); } },
     { id: 'regional-ruins', title: 'Ruins built the way each region built', how: 'Whitewashed crofts in Scotland and Ireland, log cabins in the north, stilt houses in swamps, mud brick in dry lands, clapboard in America.', round: 'Earth',
       go: () => { const S = nearest(settlementsNear(b.p[0], b.p[2], 6000, false).filter(S => S.style && S.style !== 'stone')); if (S) toward(S, 80, 25); } },

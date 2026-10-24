@@ -49,7 +49,7 @@ export function mapView(G, J) {
   pane.classList.add('mappane3', 'flush3');
   pane.innerHTML = `<div class="mapbox3"><canvas></canvas><div class="mapsum3"></div><div class="mapday3"><div class="mapseason3"></div></div>
       <div class="mapbtn3"><button data-z="in" aria-label="Zoom in">${icon('zoomin')}</button><button data-z="out" aria-label="Zoom out">${icon('zoomout')}</button><button data-z="me" aria-label="Centre on the hawk">${icon('me')}</button></div>
-      <div class="mapgo3"><button data-go="landmarks">${icon('landmarks')}<span>Landmarks</span><b></b></button><button data-go="lands">${icon('lands')}<span>Biomes</span><b></b></button></div>
+      <div class="mapgo3"><button data-go="places">${icon('landmarks')}<span>Landmarks</span><b></b></button><button data-go="lands">${icon('lands')}<span>Biomes</span><b></b></button></div>
       <p class="maptip3">Hold the map to drop a pin.</p><div class="mapnote3 hidden"></div></div>`;
   const sum = pane.querySelector('.mapsum3'), box = pane.querySelector('.mapbox3'), cv = box.querySelector('canvas'), note = box.querySelector('.mapnote3');
   // top right, the same day dial as in flight, and the season in more detail beneath it
@@ -96,7 +96,7 @@ export function mapView(G, J) {
     sum.innerHTML = `<p class="here3">${esc(cap(where))}</p>
       <div class="far3"><span><i style="width:${Math.max(2, pct)}%"></i></span><small>${pct < 1 ? (explored() * 100).toFixed(2) : pct}% of the world known</small></div>
       <ul class="tally3"><li><b>${J.year || 1}</b>${J.year > 1 ? 'years' : 'year'}</li>${L ? `<li><b>${L.feathers}</b>${L.feathers === 1 ? 'feather' : 'feathers'}</li>` : ''}${J.pins?.length ? `<li><b>${J.pins.length}</b>${J.pins.length === 1 ? 'pin' : 'pins'}</li>` : ''}</ul>`;
-    go.querySelector('[data-go=landmarks] b').textContent = found;
+    go.querySelector('[data-go=places] b').textContent = found;
     go.querySelector('[data-go=lands] b').textContent = L ? `${L.lands}/${L.of}` : '';
     go.querySelector('[data-go=lands]').hidden = !L;
     requestAnimationFrame(() => {

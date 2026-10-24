@@ -138,23 +138,21 @@ export function songsSystem(G) {
   const songCount = () => learnable.reduce((a, sp) => a + knownSongs(sp).length, 0);
   const songTotal = learnable.reduce((a, sp) => a + sp.songs.length, 0);
   const PLAY = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/></svg>';
-  // round eight, in Settings > Dev tools > Feature list
+  // round eight, in Settings > Advanced > Feature list
   const PR = 188;
   for (const f of [
-    { id: 'valley-felt', title: 'Valley again: a felted piano, richer chords, a drone', how: 'Music on; listen a few minutes. Settings > Dev tools > Music lab shapes it.' },
+    { id: 'valley-felt', title: 'Valley again: a felted piano, richer chords, a drone', how: 'Music on; listen a few minutes. Settings > Advanced > Music lab shapes it.' },
     { id: 'alarm-calls', title: 'Alarm calls run ahead of you', how: 'Fly 15-70 m over trees with songbirds: thin seet calls run on ahead and mice freeze. Skim low and they stay quiet.' },
     { id: 'mimic', title: 'Mimics: the starling (and the mockingbird down south)', how: 'Perch near a starling in meadows or by lakes: it sings snatches of other songs; an unknown song\'s opening fills in on its card.' },
     { id: 'more-songs', round: 9, pr: 191, title: 'Several songs per bird; Journal > Songs plays the ones you know', how: 'Perch by songbirds of one kind in different trees: each sings one of its kind\'s songs. The birds\' list (tap the song card) shows each bird\'s songs; tap one to imitate it. Journal > Songs: play buttons, question marks for songs to find.' },
     { id: 'slow-teacher', round: 10, pr: 234, title: 'Miss a fast song and the bird you learn from sings it slower each time, down to half speed after 5 misses', how: 'Learn a wren or a chaffinch and get a note wrong a few times: it sings slower each time.' },
     { id: 'song-says', round: 10, pr: 226, title: 'A song\'s result shows over the card, so the card does not move; Journal > Songs shows each song\'s notes; Dev mode refreshes the songbook at once', how: 'Sing a song to a bird: the answer shows above the card. Turn on Dev mode in Settings, then open Journal > Songs: every song plays and shows its notes.' },
     { id: 'tap-songs', round: 10, pr: 219, title: 'Fast or long songs are copied with taps alone; slow, short ones keep their swipes', how: 'Learn a Wren, Chaffinch or Skylark (fast): the card shows dots, and any touch on the right row counts. A Cuckoo or Hoopoe still wants its swipes.' },
-    { id: 'earth-songbirds', round: 10, pr: 216, title: 'Each continent its own songbirds: 86 real singers, at least two in every land, no dialects', how: 'Fly to Europe, Africa, Asia, South America or Oceania and perch in a wood: robins and blackbirds in Europe, bulbuls and robin-chats in Africa, kookaburras and tui in Oceania. Settings > Dev tools > Dev mode, then Journal > Songs: every bird, by continent.' },
+    { id: 'earth-songbirds', round: 10, pr: 216, title: 'Each continent its own songbirds: 86 real singers, at least two in every land, no dialects', how: 'Fly to Europe, Africa, Asia, South America or Oceania and perch in a wood: robins and blackbirds in Europe, bulbuls and robin-chats in Africa, kookaburras and tui in Oceania. Settings > Advanced > Dev mode, then Journal > Songs: every bird, by continent.' },
     { id: 'sing-three', round: 9, pr: 211, title: 'At most three birds sing at once; no piano under your notes; your own bird on the rail sings as yourself', how: 'Perch in a busy wood and listen: never more than three songs overlap. Tap Sing, then your own bird at the top of the rail: Free song, even beside a bird that could teach you.' },
-    { id: 'learn-near', round: 9, pr: 203, title: 'Learn from any bird near by; tap its logo to choose it; Dev mode unlocks every song in the Journal', how: 'Perch within about 45 m of a songbird whose song you do not know (amber dot on the rail), or tap its logo: Learning, notes light up, the card fills in from the first note. Settings > Dev tools > Dev mode, then Journal > Songs: play every song. The states are explained at the top of Journal > Songs.' },
+    { id: 'learn-near', round: 9, pr: 203, title: 'Learn from any bird near by; tap its logo to choose it; Dev mode unlocks every song in the Journal', how: 'Perch within about 45 m of a songbird whose song you do not know (amber dot on the rail), or tap its logo: Learning, notes light up, the card fills in from the first note. Settings > Advanced > Dev mode, then Journal > Songs: play every song. The states are explained at the top of Journal > Songs.' },
     { id: 'sing-rail2', round: 9, pr: 197, title: 'Sing rail round two: you on top, birds by name, every bird at the bottom; the card comes out from under it', how: 'Perch among songbirds and tap Sing: the rail runs from under the menu button, your bird first, then the birds near by A to Z (picking one keeps the order), the list button always at the bottom. The card tucks under the rail; the You row keeps its height.' },
-    { id: 'sing-rail', round: 9, pr: 196, title: 'Sing rail: the birds near by down the side, theirs over yours on the card', how: 'Perch among songbirds and tap Sing: their logos run down the left (an amber dot on one that could teach you, your own bird at the bottom); tap one to learn from or imitate it. The card shows its score and, under it, what you sang, ringed by how it went. Tap the song name for the next song you know.' },
     { id: 'bird-logos', round: 9, pr: 195, title: 'Song card in one: bird, Learning or Imitating, every bird, close; each songbird a little logo', how: 'Perch by a songbird and tap Sing: the top says who and what, the bottom shows its logo, the song name and notes. While it teaches, its logo pops up in each row it sings, with a ring.' },
-    { id: 'sing-modes', round: 9, pr: 194, title: 'Sing plate: the mode (learning, imitating, free), a bird that teaches and waits', how: 'Perch beside a songbird you do not know and tap the notes button: it sings, each note lighting its row; sing back, it stops to listen, and tries again when you stop. Wrong notes show on the rows (green, amber, red). Tap the card: a row a bird, Nearby, Sing as yourself, Call.' },
     { id: 'dawn-start', title: 'Start the dawn chorus with your call', how: 'Perch before first light and hold Call: the chorus spreads out from your tree. Try it sets the clock to just before dawn.', go: () => { G.tod = .16; } },
   ]) G.dev?.add({ area: 'Songs and music', round: 8, pr: PR, ...f });
 
@@ -561,12 +559,12 @@ export function songsSystem(G) {
   // Journal > Songs, a section a continent (each bird under the first it lives on)
   const CONTS = [['n-america', 'North America'], ['s-america', 'South America'], ['europe', 'Europe'], ['africa', 'Africa'], ['asia', 'Asia'], ['oceania', 'Oceania']];
   // what Sing is doing, and what starts each, at the top of Journal > Songs
-  const MODES = `<dl class="sgmodes3">
+  const MODES = `<details class="sghow3"><summary>How singing works</summary><dl class="sgmodes3">
     <dt class="learn">Learning</dt><dd>Perch within about 45 m of a songbird singing a song you do not know (an amber dot on its logo in the rail), or tap its logo, and tap Sing. Each note it sings lights its row on the pad and its place on the card: copy it with the same swipe or tap. Fast or long songs are copied with taps alone. Every note you get right shows on the card, the first note first, then the next; sing the whole song right to learn it. It stops to listen while you sing and sings again when you stop.</dd>
     <dt class="imitate">Imitating</dt><dd>Tap the logo of a bird whose song you know (or pick a song from the list). Sing it and a bird of that kind near by answers with a gift. Tap the song's name for the next song you know of that bird.</dd>
     <dt>Voice only</dt><dd>A bird you have heard but whose song you do not know, with none of its kind singing near: you sing in its voice, with no song to copy yet.</dd>
     <dt>Free song</dt><dd>Your own bird, at the top of the rail: sing anything you like.</dd>
-    <dt>Learned, Answered</dt><dd>For a moment after you learn a song, or a bird answers yours.</dd></dl>`;
+    <dt>Learned, Answered</dt><dd>For a moment after you learn a song, or a bird answers yours.</dd></dl></details>`;
   // (after the core's own tabs, which main.js adds once the systems are made)
   queueMicrotask(songsTab);
   function songsTab() {
@@ -593,11 +591,19 @@ export function songsSystem(G) {
         }).join('');
         return `<li class="${k} seen"><div class="pic">${pic}</div><div><b>${sp.name}</b><small>${what}</small></div><ol class="sglist3">${rows}</ol></li>`;
       };
-      book.innerHTML = `<p class="sub">${songCount()} of ${songTotal} songs known, from ${G.learned.size} of ${learnable.length} birds. Each continent has its own birds, and each bird sings one of its kind's songs.${dev ? ' Dev mode is on: every song can be played here.' : ''}</p>${MODES}${CONTS.map(([c, title]) => `<h3 class="sgcont3">${title}</h3><ul class="guide3 songs3">${SPECIES.filter(sp => sp.cont[0] === c).map(card).join('')}</ul>`).join('')}`;
+      // the top: what you know, how to sort (the birds of this continent, or every continent in turn),
+      // and how singing works, folded away; then the songbirds; then the other birds the field guide keeps
+      const here = continentAt(b.p[0], b.p[2]), near = sort === 'near' && here;
+      const groups = near ? [[here, `Near here: ${CONTS.find(c => c[0] === here)?.[1] || 'this land'}`, sp => sp.cont.includes(here)]] : CONTS.map(([c, t]) => [c, t, sp => sp.cont[0] === c]);
+      book.innerHTML = `<div class="sgtop3"><p class="sub"><b>${songCount()}</b> of ${songTotal} songs <span>·</span> <b>${G.learned.size}</b> of ${learnable.length} songbirds${dev ? ' <span>·</span> Dev mode: every song plays' : ''}</p>
+        <div class="gbar3"><button data-sort="near" class="${sort === 'near' ? 'on' : ''}">Near here</button><button data-sort="cont" class="${sort !== 'near' ? 'on' : ''}">By continent</button></div></div>${MODES}`
+        + groups.map(([, title, f]) => { const L = SPECIES.filter(f); return `<h3 class="sgcont3">${title} <small>${L.filter(sp => G.learned.has(sp.id)).length} of ${L.length}</small></h3><ul class="guide3 songs3">${L.map(card).join('')}</ul>`; }).join('')
+        + (G.guide?.cards ? G.guide.cards('bird', 'Other birds') : '');
     }
     // a known song played from the book, in its bird's voice (the version you know best)
-    let playing = 0;
+    let playing = 0, sort = store.get('songSort', 'near');
     book.addEventListener('click', e => {
+      const so = e.target.closest('[data-sort]'); if (so) { sort = so.dataset.sort; store.set('songSort', sort); fill(); return; }
       const btn = e.target.closest('[data-play]'); if (!btn) return;
       const [id, k] = btn.dataset.play.split('.').map(Number), t = versionOf(SPECIES[id], k) || (store.get('devMode', false) && songN(SPECIES[id], k)); if (!t) return;
       A.unlock(); clearTimeout(playing);

@@ -1,4 +1,4 @@
-// Frame cost: where each frame's milliseconds go, smoothed, for Settings > Dev tools > Frame cost
+// Frame cost: where each frame's milliseconds go, smoothed, for Settings > Advanced > Frame cost
 // (dev.js draws G.perf). The main thread's work is timed per system and per core step with
 // performance.now(). The GPU's is timed per render pass when the browser offers timer queries
 // (EXT_disjoint_timer_query_webgl2); without them, "Measure the GPU" (P.deep) waits for the GPU

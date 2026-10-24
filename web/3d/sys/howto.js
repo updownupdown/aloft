@@ -158,7 +158,7 @@ export function howtoSystem(G) {
     card(['ccw', 'ccw'], 'Barrel roll', 'Left thumb down and right up, then turn both a full circle anticlockwise together. Tricks like this help win a mate.'));
   cards('world',
     card('lands', 'Lands', 'Forest, steppe, tundra, desert, rainforest: the Earth has many lands, each with its own trees and birds. Journal > Biomes fills in as you cross them.'),
-    card('guide', 'The field guide', 'Fly close by an animal you have not met and it gets a page in Journal > Field guide.'),
+    card('guide', 'The field guide', 'Fly close by an animal you have not met and it is noted in the Journal: birds under Songs, animals under Things.'),
     card('keepsake', 'Pictures', 'Photo mode (Today, in the menu) holds the world still: frame a picture, then share or save it.'));
   hintsPage(G);
   // the hawks of the Flying page fly only while it shows

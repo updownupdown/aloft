@@ -2,18 +2,18 @@
 // when the menu opens; the place says which section and page it is on (James, 2026-10-23):
 //   before 10   Today (aims 5 the day's aim, 7 your life)
 //   10-29       not shown (the old Log: daily records were too much)
-//   30-41       Journal > Nest and family (nest 30, story 40)
-//   42          Journal > Things found (things people left, bottles)
-//   43-59       Journal > Landmarks (wonders 43, landmarks 50), but 45 is Journal > Biomes (the collection)
-//   60 on       Journal > Field guide (the Guide folded into the Journal, James 2026-10-23)
-// Songs have their own page, Journal > Songs (page('songs')). The Map has no pages: the globe fills it.
+//   30-41       Journal > Nest (nest 30, story 40)
+//   42          Journal > Things (things people left, bottles)
+//   43-59       Journal > Places (wonders 43, biomes 45, landmarks 50)
+//   60 on       Journal > Things too (the field guide's animals and water life)
+// Songs have their own page, Journal > Songs (page('songs')), with the field guide's other birds.
+// The Journal is Songs, Places, Things, Nest (James, 2026-10-24). The Map has no pages: the globe fills it.
 const PAGES = {
-  songs: ['journal', 'Songs', 5], family: ['journal', 'Nest and family', 8], landmarks: ['journal', 'Landmarks', 10], lands: ['journal', 'Biomes', 20],
-  finds: ['journal', 'Things found', 40], guide: ['journal', 'Field guide', 60],
+  songs: ['journal', 'Songs', 5], places: ['journal', 'Places', 10], things: ['journal', 'Things', 20], family: ['journal', 'Nest', 30],
 };
-const pageOf = o => o < 10 ? 'today' : o < 30 ? null : o < 42 ? 'family' : o < 43 ? 'finds' : o === 45 ? 'lands' : o < 60 ? 'landmarks' : 'guide';
+const pageOf = o => o < 10 ? 'today' : o < 30 ? null : o < 42 ? 'family' : o < 43 ? 'things' : o < 60 ? 'places' : 'things';
 // a section's heading where the page already says it
-const RETITLE = { Today: 'Today’s aim', Landmarks: 'Places found' };
+const RETITLE = { Today: 'Today’s aim' };
 
 export function journal(G) {
   if (G.journal) return G.journal;
