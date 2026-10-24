@@ -28,7 +28,7 @@ const PAGES = { audio: ['Sounds', 10], graphics: ['Graphics', 20], gameplay: ['C
 // 'today' is the row of things to do on Today
 const GROUPS = {
   bird: ['journey', 'Your bird', 0], journey: ['journey', '', 1],
-  audio: ['audio', '', 0], graphics: ['graphics', '', 0], gameplay: ['gameplay', '', 0], messages: ['messages', '', 0], dev: ['dev', '', 0],
+  audio: ['audio', '', 0], graphics: ['graphics', '', 0], gameplay: ['gameplay', '', 0], messages: ['messages', '', 0], dev: ['dev', '', 0], looks: ['dev', 'Look tests', 1],
 };
 // where each Settings row goes: by its label, else by the group it names (OLD names too), else Controls
 const SECTION_OF = {
