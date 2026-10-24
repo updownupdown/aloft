@@ -29,7 +29,7 @@ const SCENES = {
     const start = A.b.state, title = () => document.querySelector('.coach3 .ct3')?.textContent || '';
     const until = async (f, s) => { for (let i = 0; i < s * 10; i++) { if (f()) return true; await wait(.1); } return false; };
     const down = c => dispatchEvent(new KeyboardEvent('keydown', { code: c })), up = c => dispatchEvent(new KeyboardEvent('keyup', { code: c }));
-    const KEYS = { Climb: ['KeyW'], Dive: ['KeyS'], 'Turn left': ['KeyA'], 'Turn right': ['KeyD'], Soar: ['KeyE'], 'Fast glide': ['KeyQ'], Land: ['KeyE', 'KeyS'] };
+    const KEYS = { Climb: ['KeyW'], Dive: ['KeyS'], 'Turn left': ['KeyA'], 'Turn right': ['KeyD'], Soar: ['KeyQ'], 'Fast glide': ['ShiftLeft'], Land: ['KeyQ', 'KeyS'] };
     const seen = [];
     for (let n = 0; n < 40 && L.flying; n++) {
       const t = title(); seen.push(t);
