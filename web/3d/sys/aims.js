@@ -8,6 +8,7 @@ import * as W from '../world.js';
 import { BIOMES, blend } from '../biomes.js';
 import { facets } from '../facet.js';
 import { journal, esc } from '../journal.js';
+import { icon } from '../icons.js';
 import { FOOD } from './food.js';
 
 // the aims: a line for the Journal and the toast, and what does it (an event and a test)
@@ -29,6 +30,7 @@ const AIMS = {
   far: { text: 'Fly two kilometres from where you were at dawn.', on: 'far', lesson: 1 },
 };
 const HIGH = 250;
+export const FEATHER = { per: .03, most: 20 };   // each feather makes the wings last 3% longer, up to 20 feathers
 
 export function aimsSystem(G) {
   const b = G.b;
@@ -45,10 +47,19 @@ export function aimsSystem(G) {
   for (const ev of new Set(Object.values(AIMS).map(a => a.on))) G.on(ev, e => {
     const a = AIMS[A.aim]; if (!a || A.done || a.on !== ev || (a.ok && !a.ok(e))) return;
     if (++A.count < (a.n || 1)) return;
-    A.done = true; A.feathers++;
-    G.hud.tally(`Aim done: feather ${A.feathers}`, 'keepsake');
-    G.audio.ring?.();
+    A.done = true; G.feather('Aim done');
   });
+  // feathers: one for each day's aim kept and one for each chapter of the lessons (sys/lessons.js);
+  // each makes the wings last longer (b.endure divides what flaps and hovering cost, flight.js)
+  const endure = () => { b.endure = 1 + FEATHER.per * Math.min(A.feathers, FEATHER.most); };
+  G.wingBonus = () => Math.round((b.endure - 1) * 100);
+  G.feathers = () => A.feathers;
+  G.feather = why => {
+    A.feathers++; endure();
+    G.hud.tally(`${why}: a feather. Wings +${G.wingBonus()}%`, 'feather');
+    G.audio.ring?.();
+  };
+  endure();
   // a thermal ride high above the ground: held for a moment and a half; and a few things other
   // systems don't announce (a drink, a night's sleep, two kilometres since dawn)
   let highT = 0, high = false, drank = 0, asleep = false, farFrom = null;
@@ -101,7 +112,7 @@ export function aimsSystem(G) {
     const a = AIMS[A.aim];
     today.el.classList.toggle('hidden', !!G.lessons?.learning);
     today.body.innerHTML = a ? `<p class="aim3 ${A.done ? 'done' : ''}"><i></i><span>${esc(a.text)}</span>${a.n && !A.done ? ` <small>${A.count} of ${a.n}</small>` : ''}</p>
-      <p class="feathers3">${A.feathers ? `Feathers for aims kept: ${A.feathers}` : 'Each day brings one aim. It is only an offer.'}</p>` : '';
+      <p class="feathers3">${icon('feather')}<span>${A.done ? 'Done: a feather earned.' : 'Do it for a feather.'} Each feather makes your wings last longer: ${A.feathers ? `${A.feathers} so far, wings +${G.wingBonus()}%` : 'none yet'}.</span></p>` : '';
     const L = G.life;
     life.el.classList.toggle('hidden', !L);
     if (L) life.body.innerHTML = `<p class="life3t">${esc(L.title)}${L.done ? ' <small>Done.</small>' : ''}</p><ul class="life3">${L.steps.map(s => `<li class="${s.done ? 'done' : ''}"><i></i><span>${esc(s.text)}</span>${s.need > 1 ? ` <small>${Math.min(s.n, s.need)} of ${s.need}</small>` : ''}</li>`).join('')}</ul>`;
@@ -141,6 +152,6 @@ export function aimsSystem(G) {
       if (!up) { high = false; highT = 0; } else if (!high && (highT += dt) > 1.5) { high = true; G.emit('high'); }
     },
     save: () => A,
-    load(o) { Object.assign(A, o); },
+    load(o) { Object.assign(A, o); endure(); },
   };
 }

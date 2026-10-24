@@ -1,10 +1,16 @@
-// How to play, in five pages (the fifth, Hints, is hints.js): Controls (each move as the thumbs doing it beside the hawk doing it,
-// both moving), Food, water and rest, The air, and The journey (small animated scenes beside the
-// words). Keep the moves in step with input.js and flight.js. The scenes are SVG, moved by the
+// The Tutorial section of the menu (James, 2026-10-24): an Overview (sys/lessons.js), then one page
+// per chapter of the lessons, in their order (PAGES): Flying (each move as the thumbs doing it beside
+// the hawk doing it, both moving), Food, Water and rest, Rising air, Finding your way, Songs, A home,
+// Flying well and The wide world. Each page opens with its lessons, ticked (lessons.js fills
+// .lchap3), then cards: small animated scenes beside the words. Keep the moves in step with input.js and flight.js. The scenes are SVG, moved by the
 // .how3 keyframes in 3d.css; the hawks in Controls are the bird lab's renderer (birdlab.js), drawn
 // only while that page shows.
 import { startLab } from '../birdlab.js';
 import { hintsPage } from '../hints.js';
+
+// the Tutorial's pages after the Overview, in the lessons' order: [page id, title, order]
+export const PAGES = [['controls', 'Flying', 10], ['food', 'Food', 20], ['water', 'Water and rest', 30], ['air', 'Rising air', 40],
+  ['way', 'Finding your way', 50], ['songs', 'Songs', 60], ['home', 'A home', 70], ['well', 'Flying well', 80], ['world', 'The wide world', 90]];
 
 const INK = '#2a2420';
 const PIG = { water: '#4f7fa6', berry: '#a8483a', ochre: '#b8862f', leaf: '#6f8a4a', indigo: '#4f6f9e', stone: '#8a7a6a' };
@@ -96,35 +102,66 @@ const SCENES = {
     <ellipse class="egg3" cx="96" cy="59" rx="2.2" ry="2.8" fill="#eef0e6" stroke="#b8b09c" stroke-width=".5"/>${hawk('h twig3', 30, 74, 18, 60)}`,
   mate: `${sky('#d6e4ee')}${hills(68)}${hawk('h mateA3', 70, 36, 24, 0)}${hawk('h mateB3', 96, 44, 20, 0)}`,
   keepsake: `${sky()}${hills(56)}<polygon class="glint3" points="100,72 103,66 106,72 103,78" fill="#fff4c2" stroke="#d9a33a" stroke-width=".8"/>${hawk('h keep3', 30, 20, 22, 130)}`,
+  night: `<rect width="160" height="90" fill="#2f3a56"/><polygon points="0,0 160,0 0,50" fill="#3a4766"/><circle cx="130" cy="18" r="7" fill="#f4efdc"/><circle cx="127" cy="16" r="6" fill="#3a4766"/>
+    <g fill="#f4efdc"><circle cx="30" cy="14" r=".9"/><circle cx="52" cy="26" r=".7"/><circle cx="76" cy="10" r="1"/><circle cx="98" cy="30" r=".7"/><circle cx="18" cy="34" r=".7"/></g>
+    <polygon points="0,66 30,58 58,64 92,56 124,63 160,57 160,90 0,90" fill="#4c5b52"/>${tree(108, 84, 1.25).replace(/#7f9a4e/g, '#55684a').replace(/#6f8a42/g, '#4a5c40')}${hawk('h perch3', 20, 22, 22, 100)}`,
+  map: `<rect width="160" height="90" fill="#dfe9ee"/><polygon points="14,20 52,12 70,30 58,52 30,58 12,40" fill="#b6c99a"/><polygon points="88,30 128,22 148,44 130,74 96,70 84,50" fill="#c9cf9a"/>
+    <path class="route3" d="M40 34q24 -10 40 6t44 12" fill="none" stroke="#2a2420" stroke-width="1.4"/><g transform="translate(124 50)"><path d="M0 0c-5 -6 -7 -9 -7 -12a7 7 0 0 1 14 0c0 3 -2 6 -7 12z" fill="#a8492e"/><circle cy="-12" r="2.6" fill="#fff"/></g>`,
+  song: `${sky('#d6e4ee')}${hills(70)}${tree(70, 90, 1.7)}<g fill="#7a6a52"><ellipse cx="82" cy="52" rx="4" ry="3"/><circle cx="85" cy="50" r="2"/></g>
+    <g class="motes3" fill="none" stroke="#4f6f9e" stroke-width="1.4" stroke-linecap="round"><path d="M96 46v-10l6 -2v10"/><circle cx="94.5" cy="46" r="1.6" fill="#4f6f9e"/><circle cx="100.5" cy="44" r="1.6" fill="#4f6f9e"/></g>${hawk('h circle3', 120, 30, 20, 0)}`,
+  lands: `<rect width="160" height="90" fill="#e4ebef"/><polygon points="0,40 54,34 54,90 0,90" fill="#6f8a42"/><polygon points="54,34 108,38 108,90 54,90" fill="#c9cf9a"/><polygon points="108,38 160,32 160,90 108,90" fill="#e3c99a"/>
+    <g fill="#55703a"><polygon points="10,52 16,40 22,52"/><polygon points="26,60 32,46 38,60"/><polygon points="14,74 20,62 26,74"/></g><g fill="#c2a06a"><polygon points="118,60 134,50 150,60"/></g>${hawk('h ring3', 10, 20, 22, 90)}`,
+  guide: `${sky()}${hills(56)}<polygon points="40,74 120,70 150,76 130,86 52,86" fill="#5f8fb6"/><g class="motes3"><polygon points="86,66 96,62 100,66 96,70" fill="#c9d3d8"/><polygon points="86,66 82,63 82,69" fill="#aab6bc"/></g>${hawk('h perch3', 20, 22, 22, 100)}`,
 };
 const scene = id => `<svg class="scene3 sc-${id}" viewBox="0 0 160 90" aria-hidden="true">${SCENES[id]}</svg>`;
-const card = (id, title, text) => `<figure class="how3">${scene(id)}<figcaption><b>${title}</b><span>${text}</span></figcaption></figure>`;
+// a card: a scene, or the thumbs doing a move ([left, right]), beside the words
+const card = (id, title, text) => Array.isArray(id) ? `<figure class="how3 thumbs3">${thumbs(id[0], id[1], PIG.berry)}<figcaption><b>${title}</b><span>${text}</span></figcaption></figure>` : `<figure class="how3">${scene(id)}<figcaption><b>${title}</b><span>${text}</span></figcaption></figure>`;
 
 export function howtoSystem(G) {
-  const P = (id, title, order) => G.menu.page('how', id, title, order);
-  const controls = P('controls', 'Controls', 10), food = P('food', 'Food, water and rest', 20), air = P('air', 'The air', 30), trip = P('journey', 'The journey', 40);
+  const P = {}; for (const [id, title, order] of PAGES) P[id] = G.menu.page('how', id, title, order);
+  // the lessons (lessons.js) go above the cards, so add after whatever is there
+  const add = (id, html) => P[id].insertAdjacentHTML('beforeend', html);
+  const cards = (id, ...list) => add(id, `<div class="hows3">${list.join('')}</div>`);
+  const controls = P.controls;
   G.menu.tab('how').insertAdjacentHTML('beforeend', `<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>${HAWK}</defs></svg>`);
-  controls.innerHTML = `<p><b>Your two thumbs are your wings.</b> Put one on each side of the screen; each becomes a stick where it lands.</p>
+  add('controls', `<p><b>Your two thumbs are your wings.</b> Put one on each side of the screen; each becomes a stick where it lands.</p>
     <div class="ctl3"><canvas aria-hidden="true"></canvas>${MOVES.map(([l, r, c, t, s, mode]) => `<figure>${thumbs(l, r, c)}<span class="pic" data-mode="${mode}"></span><figcaption><span>${t}</span><span>${s}</span></figcaption></figure>`).join('')}</div>
-    <p><small>Keyboard: W/S climb and dive, A/D bank, Shift fold (with S to stoop), E spread, Space flap, Z/X barrel roll, P or Esc for this menu.</small></p>`;
-  food.innerHTML = `<div class="hows3">
-    ${card('mice', 'Mice', 'Mice twitch the grass, thickest round old farms and barns; small white marks over the grass are one squeaking. Dive at one and come in low: your feet reach for it, and the aim line turns red when you are lined up. Tap Eat (bottom right) to eat it, or carry it off: on a branch it is a calmer meal, and at your nest it drops in. In late summer and autumn, perch on a bush in fruit and Eat picks a beakful of berries.')}
-    ${card('drink', 'Drink', 'Tap the water to drink: at its edge, floating on it, or a puddle after rain. The sea is salt; on islands, drink from the rain pools in the rock. Food lasts about twenty minutes, water nearly half an hour. When a bar runs low it warms and breathes, and your wings no longer fill all the way.')}
-    ${card('perch', 'Perch, rest and sleep', 'Fly slowly into a tree’s crown where a branch shows a green ring and you settle on it. Trunks are hard. Perched, tap another green ring to hop across, or the ground to glide down to it. Take off is bottom right; at night Sleep sits beside it, and the night passes under the stars with your wings full by morning. The ground is too exposed to sleep on.')}
-  </div>`;
-  air.innerHTML = `<div class="hows3">
-    ${card('thermal', 'Thermals', 'Leaves spiralling under a cloud mark rising air. Fly in, spread your wings wide and tip one a little lower to circle in it. Red chevrons by your height show the lift: steer toward where they grow.')}
-    ${card('slope', 'Slopes', 'Wind blowing up a slope lifts you too. Fly along the windward side of a ridge.')}
-    ${card('ring', 'Rings', 'Fly through the rings of cloud for a burst of speed.')}
-  </div>`;
-  trip.innerHTML = `<div class="hows3">
-    ${card('south', 'The whole Earth', 'The world is a small Earth: every continent, the oceans narrowed so they can be crossed, the ice at either end. Fly east or west long enough and you come round to where you began. The day turns on the dial, top right, with the date; the season is the place’s own, so the north has summer while the south has winter. The Map shows where you have been; the Journal keeps the countries and landmarks you find.')}
-    ${card('nest', 'A nest', 'Twigs lie under some broadleaf trees. Land beside one to pick it up, then perch on a branch to start a nest. Five twigs and there is an egg; when it hatches, bring it food: land at the nest with a catch in your feet and it drops in. Five meals and your chick fledges.')}
-    ${card('mate', 'A mate', 'Keep well fed and watered and your hawk grows healthy: after its first year its tail turns deep red. In spring a hawk may come to look you over. A red tail, keepsakes, songs and acrobatics (a full stoop, a wingover) win it as your mate.')}
-    ${card('keepsake', 'Keepsakes and pictures', 'Rare keepsakes glint in the grass: land beside one to keep it. Animals seen up close get a page in the field guide. Photo mode (Today, in this menu) holds the world still for a picture to share or save.')}
-  </div>`;
+    <p><small>Keyboard: W/S climb and dive, A/D bank, Shift fold (with S to stoop), E spread, Space flap, Z/X barrel roll, P or Esc for this menu.</small></p>`);
+  cards('food',
+    card('mice', 'Hunting mice', 'Mice twitch the grass, thickest round old farms and barns; small white marks over the grass are one squeaking. Fold your wings and dive at it, then come in low: your feet reach for it, and the aim line turns red when you are lined up. A mouse that sees your shadow bolts for its burrow, so come in fast.'),
+    card('perch', 'Eating', 'A catch stays in your feet until you tap Eat on the action button. On a branch it is a calmer meal and fills you more, or swipe the button to Leave it here for later. Fly home with it and it drops into your nest by itself.'),
+    card('guide', 'Fish, worms and berries', 'Skim low over water and snatch a fish near the surface. After rain, worms come up on the wet ground. From late summer, perch on a bush in fruit and Eat picks a beakful of berries.'));
+  cards('water',
+    card('drink', 'Drinking', 'Tap the water to drink: at its edge, floating on it, or a puddle after rain. The sea is salt; on islands, drink from the rain pools in the rock.'),
+    card('perch', 'Perching', 'Fly slowly into a tree’s crown and brake (thumbs out and down) where a branch shows a green ring: you settle on it. Trunks are hard. Perched, tap another green ring to hop across, or the ground to glide down. Bushes are perches too.'),
+    card('night', 'Sleep', 'At night, on a branch at least a couple of metres up, the action button offers Sleep. The night passes under the stars and you wake at first light, rested. The ground and low bushes are too exposed to sleep on.'),
+    card('mice', 'Your bars', 'Food lasts about twenty minutes, water nearly half an hour; Today, in the menu, shows both. When one runs low its bar warms and breathes, and your wings no longer fill all the way.'));
+  cards('air',
+    card('thermal', 'Thermals', 'Leaves spiralling up under a cloud mark warm rising air. Fly in, spread your wings wide (thumbs out) and tip one a little lower to circle inside it. Red chevrons by your height show the lift: steer toward where they grow.'),
+    card('slope', 'Ridges', 'Wind blowing up a slope lifts you too. Fly along the windward side of a ridge, close to the top, and ride it without a beat.'),
+    card('ring', 'Rings of mist', 'Fly through a ring for a burst of speed. Rings come in courses: follow one to the next.'),
+    card('thermal', 'Resting your wings', 'Flapping and hovering tire your wings; gliding rests them, and rising air rests them faster. Feathers make them last longer (see the Overview).'));
+  cards('way',
+    card('map', 'The Map and pins', 'The Map, in the menu, is a globe of where you have been; the rest is still in cloud. Tap a place to pin it: pins and landmarks you have found show on the compass, top middle.'),
+    card('south', 'The whole Earth', 'The world is a small Earth: every continent, the oceans narrowed so they can be crossed, the ice at either end. Fly east or west long enough and you come round to where you began. The season is the place’s own, so the north has summer while the south has winter; the dial, top right, shows the time of day and the date.'));
+  cards('songs',
+    card('song', 'Learning a song', 'Songbirds sing from the trees. Perch near one and tap the notes button, bottom left: copy each note it sings, and the song is yours. Journal > Songs keeps every song you know.'),
+    card('song', 'Singing back and calling', 'Perched near a bird whose song you know, sing it: it answers, and some bring gifts. Hold Call, in the day dial, top right, to call out: the longer you hold, the louder.'));
+  cards('home',
+    card('nest', 'A nest', 'Twigs lie under some broadleaf trees. Land beside one to pick it up, then perch on a branch to start a nest. Five twigs and there is an egg; when it hatches, bring it food: land at the nest with a catch in your feet and it drops in. Five meals and your chick fledges.'),
+    card('keepsake', 'Keepsakes', 'Now and then something glints in the grass: land beside it to keep it for your nest.'),
+    card('mate', 'A mate', 'Keep well fed and watered and your bird grows healthy: a hawk’s tail turns deep red after its first year. In spring a bird of your kind may come to look you over: a healthy bird, keepsakes, songs and tricks win it as your mate.'));
+  cards('well',
+    card(['in down', 'in down'], 'Stoop', 'Fold your wings and dive: the fastest way down, and the way to a mouse.'),
+    card(['in up', 'in up'], 'Zoom', 'Out of a stoop, thumbs in and up: a swept climb that keeps its speed.'),
+    card(['out up', 'out up'], 'Hover', 'Slow right down, then thumbs out and up: you hang on beating wings. It tires them fast.'),
+    card(['ccw', 'ccw'], 'Barrel roll', 'Left thumb down and right up, then turn both a full circle anticlockwise together. Tricks like this help win a mate.'));
+  cards('world',
+    card('lands', 'Lands', 'Forest, steppe, tundra, desert, rainforest: the Earth has many lands, each with its own trees and birds. Journal > Biomes fills in as you cross them.'),
+    card('guide', 'The field guide', 'Fly close by an animal you have not met and it gets a page in Journal > Field guide.'),
+    card('keepsake', 'Pictures', 'Photo mode (Today, in the menu) holds the world still: frame a picture, then share or save it.'));
   hintsPage(G);
-  // the hawks of the controls page fly only while it shows
+  // the hawks of the Flying page fly only while it shows
   let shown = false, tab = '';
   const look = () => { shown = G.menu.open && tab === 'how' && !controls.classList.contains('hidden'); };
   G.on('menuTab', id => { tab = id; look(); }); G.on('menuPage', look); G.on('resume', () => { shown = false; });

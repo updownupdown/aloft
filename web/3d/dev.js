@@ -27,7 +27,7 @@ const SHIPPED = [
   ['water-painted', 'World', 170, 'Water: painted depths only', 'Fly over a lake: darker where deep, no wave noise.'],
   ['mice-dig', 'Wildlife', 169, 'Mice dig down out of reach; squeak marks', 'Dive at a mouse slowly: it may vanish into its hole.'],
   ['aurora', 'World', 168, 'Northern lights', 'Fly far north at night, or sing at a summit cairn.'],
-  ['hint-settings', 'Menu and map', 167, 'Hint settings: a gear on tips and messages', 'Tap the sliders icon on any tip or message: How to play > Hints.'],
+  ['hint-settings', 'Menu and map', 167, 'Hint settings: a gear on tips and messages', 'Tap the sliders icon on any tip or message: Settings > Messages.'],
   ['song-tries', 'Songs and music', 165, 'Each try sings from the top; unknown songs as question marks', 'Learn a song: wrong notes are boxed; open the bird list.'],
   ['perch-glide-down', 'Ground and perch', 164, 'Perched, tap the ground to glide down to it', 'Perch in a tree, tap the grass below.'],
   ['clouds-half', 'World', 163, 'Half see-through clouds', 'Fly into a cloud.'],

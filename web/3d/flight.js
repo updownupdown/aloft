@@ -71,7 +71,7 @@ export function step(b, c, dt, E) {
   if (c.flap) {
     const weak = b.stamina < .08 ? .3 : 1, q = c.flap.q * weak * (1 - FLY.wetFlap * (b.wet || 0));
     // two wings together tire you less: a perfectly paired tap costs about half a ragged one
-    b.stamina = Math.max(0, b.stamina - FLY.flapCost * (c.flap.side ? .6 : 1.2 - .6 * (c.flap.sync ?? 0)));
+    b.stamina = Math.max(0, b.stamina - FLY.flapCost * (c.flap.side ? .6 : 1.2 - .6 * (c.flap.sync ?? 0)) / (b.endure ?? 1));   // feathers (sys/aims.js) make them last
     const stall = stallness(b);
     b.s = Math.min(FLY.maxS, b.s + FLY.flapS * q * (.35 + .65 * (1 - b.flare)));
     b.vy += (FLY.flapUp + FLY.flapHover * b.flare + 1.6 * stall) * q;
@@ -170,7 +170,7 @@ function hover(b, c, dt, E) {
   if (b.hover < .05) { b.hoverT = 0; return; }
   const h = b.hover;
   if (b.stamina > .02) {
-    b.stamina = Math.max(0, b.stamina - FLY.hoverCost * h * dt);
+    b.stamina = Math.max(0, b.stamina - FLY.hoverCost * h * dt / (b.endure ?? 1));
     b.s += (.6 - b.s) * Math.min(1, dt * 2) * h;   // a slow creep forward
     b.gamma += (.05 - b.gamma) * Math.min(1, dt * 4) * h;
     b.vy += (g * stallness(b) * .85 - b.vy * 3 - (b.lift > 0 ? b.lift * .6 : 0)) * dt * h;   // beats hold the height
@@ -235,7 +235,7 @@ function still(b, c, dt, E) {
     b.state = 'fly'; b.perch = null; b.tree = null; b.view = null; b.goTo = null; b.lookYaw = b.lookPitch = 0;
     b.s = 8; b.gamma = .35; b.vy = wet ? 3.5 : 4.5;
     if (wet) b.p[1] = WATER + .5;   // clear of the surface, or the first frame would settle back onto it b.flapL = b.flapR = 0; b.ampL = b.ampR = 1;
-    b.stamina = Math.max(0, b.stamina - FLY.flapCost);
+    b.stamina = Math.max(0, b.stamina - FLY.flapCost / (b.endure ?? 1));
     E.flap(1, 0); E.takeoff();
   }
 }

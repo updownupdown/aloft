@@ -41,9 +41,9 @@ web/3d/hawk.js          the hawk mesh, rebuilt per frame from a pose
 web/3d/birds.js         other birds: Settings > Bird picks red-tail, osprey, barn owl or raven (sys/species.js, aloft.bird); ?bird=swift|heron|mallard tries the rest
 web/3d/sky.js           clock (G.tod, G.day, G.season) and light (G.light)
 web/3d/hud.js           G.hud: meter() (slim bars that breathe when low), tip()/did(), say(msg, { kind, secs, icon }) / toast(msg, secs, kind): the message line top centre above the compass, kinds in SAY (event, song, tutorial, hint, warn, reply; quiet: name, glint, tally), paced by PACE (one line per 45 s); reply(), name(), glint(), tally(), quietly(); flight/status, hide(), thumb pads
-web/3d/quiet.js        the quiet levels of the message line: name(title, icon) thin titles with an icon under the compass, glint() tap-to-read icons beside it (kept in How to play > Things learned), tally() counts (small words and an icon in the name's place, below it when both show); pick a level by the quiet messages study (Say only for what must be known now)
+web/3d/quiet.js        the quiet levels of the message line: name(title, icon) thin titles with an icon under the compass, glint() tap-to-read icons beside it (stacked: the newest, three dots when more; hidden but the dots under a tip or message), tally() counts (small words and an icon in the name's place, below it when both show); pick a level by the quiet messages study (Say only for what must be known now)
 web/3d/compass.js       the linear compass, top middle (N/E/S/W, nest, the way south or home, landmarks found)
-web/3d/menu.js          G.menu (style A, 2026-10-23): a pale sheet in three columns: the rail (logo, Quit, sections Today, Map, Journal (with Songs and the Field guide), How to play ('how'), Settings ('play'), Resume), the section's pages, the page; tab(), page(), group() (Settings pages: Sounds, Graphics, Controls, Messages, Journey, Advanced; 'today' = Today's actions), toggle(), button({ group, main }), choice(), range(), info(), onOpen(), subtitle(), set(on, tab, page); ORDER/TOOLS/PAGES/GROUPS/SECTION_OF
+web/3d/menu.js          G.menu (style A, 2026-10-23): a pale sheet in three columns: the rail (logo, Quit, sections Today, Map, Journal (with Songs and the Field guide), Tutorial ('how'), Settings ('play'), Resume), the section's pages, the page; tab(), page(), group() (Settings pages: Sounds, Graphics, Controls, Messages, Journey, Advanced; 'today' = Today's actions), toggle(), button({ group, main }), choice(), range(), info(), onOpen(), subtitle(), set(on, tab, page); ORDER/TOOLS/PAGES/GROUPS/SECTION_OF
 web/3d/today.js         the Today section: your bird, food/water/wings/health bars, where; the day's aims (journal sections before 10)
 web/3d/letter.js        the menu's frame (frosted glass, .glass3 in 3d.css); swap it to restyle
 web/3d/facet.js         low-poly helpers (map land) (PIG colours, poly, facets, gem, chamfer, hardShadow, lit)
@@ -51,10 +51,10 @@ web/3d/icons.js         every UI icon (James's picks, 2026-10-21): ICONS and ico
 web/3d/logo.js          Aloft's mark, a hawk over the hills (menu title, app icons via tools/icon.html)
 web/3d/globe.js         the Map tab's globe (the whole tab, no pages): one WebGL shader, land (+ roughness for ridges) and fog textures baked from earth.js, day and night from the sun; project()/unproject() for markers
 web/3d/dial.js          the day dial, top right (bead marks now; hub cut-out holds Call)
-web/3d/tips.js          tips as a short line and an icon (SHORT, keyed by tip id; TIP_GROUPS), swipe to dismiss, i to pause and read more, gear to Hints
-web/3d/hints.js         How to play > Hints: every tip and message kind with on/off switches (G.hud.off), Show the tips again
+web/3d/tips.js          tips as a short line and an icon (SHORT, keyed by tip id; TIP_GROUPS), swipe to dismiss, tap to pause and read more, gear to Settings > Messages
+web/3d/hints.js         Settings > Messages (once How to play > Hints): every tip and message kind with on/off switches (G.hud.off), Show the tips again
 web/3d/dev.js           Settings > Dev tools > Copy debug link (?dbg=: place, time, weather; paste to Claude), Feature list: every small feature, how to try it, a tick when tested; Frame cost from G.perf. Add yours: G.dev?.add({ id, title, how, area, round, pr, go })
-web/3d/journal.js       journal(G).section(order, title) routes by order: <10 Today, 15 How to play > Things learned, other 10-29 hidden (no Log), 30-41 Journal > Nest and family, 42 Things found, 43-59 Journal > Landmarks (45 Lands), 60+ Journal > Field guide; .page('songs') is Journal > Songs. shot.js: project(), afterDraw(), portraits
+web/3d/journal.js       journal(G).section(order, title) routes by order: <10 Today, 10-29 hidden (no Log), 30-41 Journal > Nest and family, 42 Things found, 43-59 Journal > Landmarks (45 Lands), 60+ Journal > Field guide; .page('songs') is Journal > Songs. shot.js: project(), afterDraw(), portraits
 web/3d/pics.js          still pictures of the game's own meshes (songbirdPic(sp, px)), cached data URLs
 web/3d/app.js           Update, Graphics, Haptics, Quiet meters and Quit rows; wake lock; asks for full screen on each touch while not full screen
 web/3d/coach.js        the lessons' coach: a card with the thumbs doing the move, ghost thumbs on screen, the Skip pill
@@ -67,10 +67,10 @@ web/3d/sys/*.js         systems: air (thermal clouds/motes), rings, food (hunger
                         guide (field guide: G.sight(key,x,y,z,r), G.guide.page()), journey (countries and
                         landmarks found, route, years turning with your own spring), map (the Map tab: a globe to spin and zoom, fog of war, tap a place; only one-of-a-kind places get marks), nest (twigs, egg, chick),
                         story (health -> G.tailRed, keepsakes, tricks, courtship, mate and fledglings),
-                        photo (photo mode: take a picture, share or save it), howto (How to play and the controls map)
+                        photo (photo mode: take a picture, share or save it), howto (the Tutorial's pages, one per lessons chapter in their order (PAGES), with cards; Flying holds the controls map)
                         songs (songbirds, learning and imitating songs, dialects, mimics, alarm calls, gifts, Call), moments (music that notices),
-                        aims (a daily aim and feathers, the lands collection, racing the companion),
-                        lessons (the tutorial: the first flight with the HUD hidden and coach.js's ghost thumbs, then the lessons card once and a chain of quiet lessons under Today; How to play > Lessons), ghost (ghost flights by link), poles (the ice edges: pale air, aurora, the pole wall; fly through it to cross to the opposite longitude),
+                        aims (a daily aim and feathers (G.feather: each makes the wings last 3% longer, b.endure, up to 20), the lands collection, racing the companion),
+                        lessons (the tutorial: the first flight with the HUD hidden and coach.js's ghost thumbs, then the lessons card once and a chain of quiet lessons under Today; Tutorial > Overview lists the chapters with Replay; a feather for the first flight and each chapter, once), ghost (ghost flights by link), poles (the ice edges: pale air, aurora, the pole wall; fly through it to cross to the opposite longitude),
                         sealife (whales to ride, fish boils, flying fish, turtles), drift (icebergs, sea ice, driftwood, bottles; perches via world.js env.solids),
                         isles (rain pools, seabirds, a sight per archipelago; the sea is salt, food.js), skyrivers (G.skyWind), nightsea (pole star / Southern Cross, plankton)
 ```

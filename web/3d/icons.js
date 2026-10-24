@@ -18,7 +18,7 @@ export const ICONS = {
   game: '<path d="M2 9.5c3.5-.3 6.5 1.6 8.6 4.6L12 15l1.4-.9c2.1-3 5.1-4.9 8.6-4.6"/>',
   // Settings: Sliders
   settings: '<path d="M4 8h5M13 8h7M4 16h10M18 16h2"/><circle cx="11" cy="8" r="2"/><circle cx="16" cy="16" r="2"/>',
-  // How to play: Question
+  // Tutorial (once How to play): Question
   how: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.6 2.6 0 1 1 3.6 2.4c-.7.3-1.1.9-1.1 1.6v.6"/><circle fill="currentColor" stroke="none" cx="12" cy="16.8" r="1"/>',
   // Today: the sun over the horizon (2026-10-23)
   today: '<path d="M3 17.5h18M6.5 17.5a5.5 5.5 0 0 1 11 0M12 5v2.5M5.3 8.8l1.7 1.7M18.7 8.8L17 10.5M8.5 20.5h7"/>',
@@ -64,6 +64,10 @@ export const ICONS = {
   slow: '<path d="M4.5 15.5c0-4.4 3.4-8 7.5-8s7.5 3.6 7.5 8zM7.7 15.5l1.8-4.4h5l1.8 4.4M9.5 11.1L12 7.5l2.5 3.6M7 15.5v2.5M17 15.5v2.5M4.5 15.5l-1.7 1.3"/><circle cx="20.8" cy="13.9" r="1.6"/>',
   // Done: Cross
   done: '<path d="M6 6l12 12M18 6L6 18"/>',
+  // Done, ticked: a check (lessons, aims)
+  check: '<path d="M5 12.5l4.5 4.5L19 7"/>',
+  // Feather: a quill (feathers earned for aims and lessons)
+  feather: '<path d="M19.5 4C12 4.5 7 9.5 6 17l-2 3M6 17c4.5-.3 8.5-2.6 10.8-7M9.2 13.3l5.3-.6"/>',
   // Take picture: Camera
   snap: '<path d="M4 8h3l1.5-2.5h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.5"/>',
   // Zoom in: Plus
