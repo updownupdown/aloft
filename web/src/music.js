@@ -13,9 +13,8 @@
 // - a slow rise and fall over minutes; everything dark, wavering a little as on tape, in a warm
 //   room (the piano drier and closer than the strings). Now and then the piano plays a phrase of
 //   a song you learned, and a few moments of a flight get a soft answer (M.moment).
-// The music lab (musiclab.html) tunes the numbers; what is kept there is saved under
-// aloft.musicTune2 (new with this Valley, so a tune kept for the old one does not carry over)
-// and the game plays it.
+// The numbers are VALLEY_TUNE; a tune kept from the old music lab (removed 10-24, James: the
+// music is right as it is) under aloft.musicTune2 still plays.
 const ROOT = 220; // A3: semitones below are relative to it
 const LANE = [12, 14, 16, 19, 21]; // a learned song's staff lines, an octave above the root
 
