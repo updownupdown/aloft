@@ -22,6 +22,16 @@ import { GRADE_GLSL } from './look.js';
 export const KINDS = {
   cloud: { base: -.06, sigma: .085, col: [.98, .97, .95], under: [.8, .81, .85],
     lobes: [[0, .35, 0, .65, .55, .65], ...[1, 2, 3, 4, 5, 6].map(i => { const a = i / 7 * Math.PI * 2; return [Math.cos(a) * .55, .1, Math.sin(a) * .55 * .7, .5 + (i % 3) * .06, .45, .5 + (i % 2) * .08]; })] },
+  // more kinds of fair-weather cloud (sys/air.js picks one per cloud): a wide flat raft, a tall
+  // heaped tower, and a scatter of small puffs
+  cloudW: { base: -.04, sigma: .07, col: [.98, .97, .95], under: [.8, .81, .85],
+    lobes: Array.from({ length: 11 }, (_, i) => { const a = i * 2.4, r = i ? .35 + (i % 4) * .3 : 0; return [Math.cos(a) * r * 1.3, .08 + (i % 3) * .05, Math.sin(a) * r * .75, .5 + (i % 3) * .07, .22 + (i % 2) * .06, .45 + (i % 4) * .05]; }) },
+  cloudT: { base: -.06, sigma: .09, col: [.99, .98, .96], under: [.76, .77, .82],
+    lobes: [...Array.from({ length: 5 }, (_, i) => { const a = i / 5 * Math.PI * 2; return [Math.cos(a) * .5, .15, Math.sin(a) * .5, .5, .4, .5]; }),
+      ...Array.from({ length: 3 }, (_, i) => { const a = i / 3 * Math.PI * 2 + .5; return [Math.cos(a) * .28 + .05, .75, Math.sin(a) * .28, .42, .42, .42]; }),
+      [.1, 1.25, -.05, .36, .38, .36], [-.12, 1.3, .1, .3, .32, .3], [.05, 1.7, 0, .27, .26, .27]] },
+  cloudP: { base: -.06, sigma: .085, col: [.98, .97, .95], under: [.82, .83, .86],
+    lobes: Array.from({ length: 6 }, (_, i) => { const a = i * 2.1 + .4, r = i ? .55 + (i % 3) * .35 : 0; return [Math.cos(a) * r, .12 + (i % 2) * .08, Math.sin(a) * r * .8, .3 + (i % 3) * .05, .26, .3 + (i % 2) * .05]; }) },
   storm: { base: -.05, sigma: .06, col: [.78, .78, .8], under: [.36, .37, .42],
     lobes: [
       ...Array.from({ length: 9 }, (_, i) => { const a = i / 9 * Math.PI * 2, r = i ? .6 : 0; return [Math.cos(a) * r, .15, Math.sin(a) * r, .5, .3, .5]; }),
@@ -223,7 +233,12 @@ export function createClouds(gl) {
     // depth to stop at, look.js Q)
     draw(S, vp, props, style, flip = false, post = null) {
       const list = [];
-      for (const key in props) if (kinds[key]) { const d = props[key]; for (let i = 0; i < d.length; i += 8) list.push([key, i, (d[i] - S.cam[0]) ** 2 + (d[i + 1] - S.cam[1]) ** 2 + (d[i + 2] - S.cam[2]) ** 2]); }
+      // (sorted by each one's middle: a rain shaft's origin is on the ground, and sorting it by that
+      // swapped it in front of and behind the cloud above it as you flew, so it flashed)
+      for (const key in props) if (kinds[key]) {
+        const d = props[key], mid = key === 'shaft' ? .45 : 0;
+        for (let i = 0; i < d.length; i += 8) list.push([key, i, (d[i] - S.cam[0]) ** 2 + (d[i + 1] + d[i + 3] * mid - S.cam[1]) ** 2 + (d[i + 2] - S.cam[2]) ** 2]);
+      }
       if (!list.length) return 0;
       // farthest first, so nearer clouds lay over farther ones; runs of one kind go in one draw
       list.sort((a, b) => b[2] - a[2]);

@@ -35,7 +35,7 @@ web/3d/earth.js         the Earth under the world: coastDist, earthBiome, contin
 web/3d/earthdata.js     baked grids for earth.js (made by tools/earth/bake.py from Natural Earth; do not edit by hand)
 web/3d/render.js        WebGL2 renderer: sky, chunks, instanced trees and named shapes, hawk, water, points
 web/3d/clouds.js        clouds as soft volumes (lobes integrated along the view ray) and the valley mist (S.mists); Soft is the look (James, 10-23), ?clouds=poly the old polygons
-web/3d/look.js          Settings > Advanced > Look tests: the graphics-study ideas still on trial (O-V) behind switches, each with its cost (R.look[id]; #defines via R.relook, smooth bake via env.look); GRADE_GLSL. A-N and R are kept with no switch (10-23). Temporary: once James picks, keep the chosen without switches and delete the rest
+web/3d/look.js          Settings > Advanced > Look tests: the graphics-study ideas still on trial (O, Q, S, U, V; P shadows and T reflections are Settings > Graphics > Ultra, app.js) behind switches, each with its cost (R.look[id]; #defines via R.relook, smooth bake via env.look); GRADE_GLSL. A-N and R are kept with no switch (10-23). Temporary: once James picks, keep the chosen without switches and delete the rest
 web/3d/shapes.js        low-poly builders (builder, blob, prism, cone) and tree/ring/cloud meshes
 web/3d/hawk.js          the hawk mesh, rebuilt per frame from a pose
 web/3d/birds.js         other birds: Settings > Bird picks red-tail, osprey, barn owl or raven (sys/species.js, aloft.bird); ?bird=swift|heron|mallard tries the rest
@@ -53,7 +53,7 @@ web/3d/globe.js         the Map tab's globe (the whole tab, no pages): one WebGL
 web/3d/dial.js          the day dial, top right (bead marks now; hub cut-out holds Call)
 web/3d/tips.js          tips as a short line and an icon (SHORT, keyed by tip id; TIP_GROUPS), swipe to dismiss, i to pause and read more, gear to Hints
 web/3d/hints.js         How to play > Hints: every tip and message kind with on/off switches (G.hud.off), Show the tips again
-web/3d/dev.js           Settings > Dev tools > Feature list: every small feature, how to try it, a tick when tested; Frame cost from G.perf. Add yours: G.dev?.add({ id, title, how, area, round, pr, go })
+web/3d/dev.js           Settings > Dev tools > Copy debug link (?dbg=: place, time, weather; paste to Claude), Feature list: every small feature, how to try it, a tick when tested; Frame cost from G.perf. Add yours: G.dev?.add({ id, title, how, area, round, pr, go })
 web/3d/journal.js       journal(G).section(order, title) routes by order: <10 Today, 15 How to play > Things learned, other 10-29 hidden (no Log), 30-41 Journal > Nest and family, 42 Things found, 43-59 Journal > Landmarks (45 Lands), 60+ Journal > Field guide; .page('songs') is Journal > Songs. shot.js: project(), afterDraw(), portraits
 web/3d/pics.js          still pictures of the game's own meshes (songbirdPic(sp, px)), cached data URLs
 web/3d/app.js           Update, Graphics, Haptics, Quiet meters and Quit rows; wake lock; asks for full screen on each touch while not full screen
@@ -80,7 +80,8 @@ A system is `(G) => ({ id, update?(dt, c), scene?(S), save?(), load?(o) })`, add
 main.js. It adds instanced shapes with `G.R.shape(name, tris)` and pushes 8 floats per instance to
 `S.props[name]` (x, y, z, scale, yaw, tint, turn, phase), points to `S.motes` (x, y, z, r, g, b, size),
 particles with `G.part()`, and talks on the bus (`G.on`, `G.emit`). Saves go under `aloft.save3d`
-(per system). 3D coordinates: x east, z south, **y up**, metres, water at y = 0. The world is a rough Earth
+(per system). 3D coordinates: x east, z south, **y up**, metres, water at y = 0. render.js draws relative to R.O, a
+point by the camera (uO, uModel relative to it), since float32 at tens of km shook edges. The world is a rough Earth
 96 x 61 km (earth.js EARTH): x wraps at +-48 km (main.js moves the bird and emits `wrap`, dx; keep
 positions you hold in step), the poles are the north and south edges, and each place's season comes
 from its latitude (`G.season` is the bird's own; `G.date` the calendar). Debug:
