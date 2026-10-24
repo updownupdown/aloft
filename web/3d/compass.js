@@ -7,7 +7,7 @@ import { icon } from './icons.js';
 const SPAN = Math.PI * .55;          // from the middle to either edge
 const POINTS = [['N', 0], ['NE', 45], ['E', 90], ['SE', 135], ['S', 180], ['SW', 225], ['W', 270], ['NW', 315]];
 // each mark's icon (icons.js)
-const MARK = { nest: 'nest', south: 'south', home: 'home', ghost: 'ghost', pin: 'pin', place: 'landmarks' };
+const MARK = { nest: 'nest', south: 'south', home: 'home', pin: 'pin', place: 'landmarks' };
 
 export function createCompass(G, ui) {
   ui.insertAdjacentHTML('beforeend', `<div class="compass3" aria-hidden="true"><div class="strip"></div><i class="mid"></i></div>`);
@@ -27,7 +27,6 @@ export function createCompass(G, ui) {
     if (G.home && Math.hypot(G.home[0] - x, G.home[1] - z) < 5000 && Math.hypot(G.home[0] - x, G.home[1] - z) > 300) out.push(['home', G.home[0], G.home[1], 'Where you began']);
     const found = Object.values(J?.found || {}).map(l => [l, Math.hypot(l.x - x, l.z - z)]).filter(([, d]) => d > 60 && d < 3000).sort((a, c) => a[1] - c[1]).slice(0, 3);
     for (const [l] of found) out.push(['place', l.x, l.z, l.name]);
-    if (G.ghost) out.push(['ghost', G.ghost.x, G.ghost.z, 'The ghost flight']);
     // your own pins, the two nearest within 4 km, each in its colour
     const pins = (J?.pins || []).map(p => [p, Math.hypot(p.x - x, p.z - z)]).filter(([, d]) => d > 40 && d < 4000).sort((a, c) => a[1] - c[1]).slice(0, 2);
     for (const [p] of pins) out.push(['pin', p.x, p.z, p.name || 'Your pin', pinCol(p)]);

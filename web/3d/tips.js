@@ -1,6 +1,6 @@
 // Tips, as a few words and an icon at the top of the screen. Swipe one away and it never comes
 // back; touch its i to pause and read the whole of it, with a way into the Tutorial; its gear opens
-// Settings > Messages (hints.js), where each group of tips can be turned off. Systems still
+// Journal > Messages (hints.js), where each group of tips can be turned off. Systems still
 // write their tips in full with G.hud.tip(id, when, text); the short line and the icon for each are
 // here, keyed by id (a tip not listed shows its full text with a plain dot).
 import { icon } from './icons.js';

@@ -10,7 +10,7 @@ import { FOOD } from './food.js';
 import { FAUNA } from './fauna.js';
 import { SWELL } from './swells.js';
 import { GOALS } from './life.js';
-import { icon } from '../icons.js';
+import { icon, birdIcon } from '../icons.js';
 
 export const CHOICES = ['hawk', 'osprey', 'owl', 'raven', 'albatross'];
 const HAWK_FLY = { ...FLY }, HAWK_FOOD = { catchR: FOOD.catchR }, HAWK_FAUNA = { catchR: FAUNA.catchR, catchDive: FAUNA.catchDive, catchH: FAUNA.catchH }, BASE_SWELL = { gain: SWELL.gain, lose: SWELL.lose, top: SWELL.top, elsewhere: SWELL.elsewhere };
@@ -54,30 +54,33 @@ export function speciesSystem(G) {
     G.store.set('bird', BIRD);
   }
   // Settings > Your bird: one card, the bird hovering on the breeze, a button to hear its call (the bird lab's renderer,
-  // drawn only while Settings shows); swipe it, or tap a dot, for another bird
+  // drawn only while Settings shows); under it, its silhouette (the one on Call), name, line and home over its
+  // stats, its traits beside them; swipe it, or the arrows, for another bird (James, 10-24)
   // one colour per stat, so the same stat reads the same across birds
   const STAT_COL = { Speed: '#d0703a', Glide: '#3f88c5', Agility: '#8a5cc6', Hover: '#2e9c86', Stamina: '#c99a1e' };
   const STAT_ICON = { Speed: 'speed', Glide: 'glide', Agility: 'agility', Hover: 'hoverstat', Stamina: 'staminastat' };
   const MOVE = { hawk: 'Kites: flare into the wind to hang still', osprey: 'Plunges: dive into water for deep fish', owl: 'Silent glide: mice don’t hear it', raven: 'Tumbles: flick a bank twice the same way', albatross: 'Dynamic soaring: weave over the swells, up into the wind, down with it' };
   const HOME = { hawk: 'a forest edge by the Finger Lakes', osprey: 'a Scottish loch', owl: 'the Loire farmland', raven: 'a Norwegian fjord', albatross: 'Taiaroa Head, New Zealand' };
   const BLURB = { hawk: 'Soars on thermals, stoops on mice', osprey: 'Long wings, plunges for fish', owl: 'Soft and slow, sees in the dark', raven: 'Agile, rolls and tumbles', albatross: 'Three metres of wing, at home on the open sea' };
+  const statsOf = id => stats(id).map(([k, v]) => `<span class="st3" style="--pc:${STAT_COL[k]}">${icon(STAT_ICON[k])}${k}</span><span class="pips3" style="--pc:${STAT_COL[k]}" aria-label="${v} of 5">${[1, 2, 3, 4, 5].map(n => `<i${n <= v ? ' class="on"' : ''}></i>`).join('')}</span>`).join('');
   const traits = id => {
     const a = ABILITY[id];
-    return `<span class="stats3">${stats(id).map(([k, v]) => `<span class="st3" style="--pc:${STAT_COL[k]}">${icon(STAT_ICON[k])}${k}</span><span class="pips3" style="--pc:${STAT_COL[k]}" aria-label="${v} of 5">${[1, 2, 3, 4, 5].map(n => `<i${n <= v ? ' class="on"' : ''}></i>`).join('')}</span>`).join('')}</span>`
-      + (a ? `<span class="traits3">${a.good.map(t => `<span class="good">${t}</span>`).join('')}${a.bad.map(t => `<span class="bad">${t}</span>`).join('')}</span>` : '')
-      + (MOVE[id] ? `<span class="traits3"><span class="move">${MOVE[id]}</span><span class="goal">Life goal: ${GOALS[id].title.toLowerCase()}</span></span>` : '');
+    return (a ? a.good.map(t => `<span class="good">${t}</span>`).join('') + a.bad.map(t => `<span class="bad">${t}</span>`).join('') : '')
+      + (MOVE[id] ? `<span class="move">${MOVE[id]}</span><span class="goal">Life goal: ${GOALS[id].title.toLowerCase()}</span>` : '');
   };
+  const chev = d => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${d}"/></svg>`;
   const box = G.menu.group('bird');
   box.insertAdjacentHTML('beforeend', `<div class="birdpick3">
-    <div class="birdcard3"><canvas aria-hidden="true"></canvas><span class="pic"></span><button class="hear3" aria-label="Hear its call"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12" fill="none"/></svg></button><b></b><small></small><span class="birdmore3"></span><button class="home3"></button><span class="dots3">${CHOICES.map((c, k) => `<button data-to="${k}" aria-label="${nameOf(c)}"><i></i></button>`).join('')}</span></div></div>${tried ? `<p><small>Flying as ${nameOf(tried).toLowerCase()} for now, a study bird from the link.</small></p>` : ''}`);
-  const card = box.querySelector('.birdcard3'), pic = card.querySelector('.pic'), dots = [...card.querySelectorAll('.dots3 button')];
+    <div class="birdcard3"><canvas aria-hidden="true"></canvas><span class="pic"></span><button class="hear3" aria-label="Hear its call"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12" fill="none"/></svg></button>
+      <div class="birdmore3"><div class="bleft3"><div class="bhead3"><span class="bic3"></span><span class="nm3"><b></b><small class="bl3"></small><small class="bh3"></small></span></div><span class="stats3"></span></div><span class="traits3"></span></div>
+      <div class="bnav3"><button data-step="-1" aria-label="The bird before">${chev('M15 5l-7 7 7 7')}</button><button class="home3"></button><button data-step="1" aria-label="The next bird">${chev('M9 5l7 7-7 7')}</button></div></div></div>${tried ? `<p><small>Flying as ${nameOf(tried).toLowerCase()} for now, a study bird from the link.</small></p>` : ''}`);
+  const card = box.querySelector('.birdcard3'), pic = card.querySelector('.pic'), q = s => card.querySelector(s);
   const show = () => {
-    const id = tried || BIRD, i = CHOICES.indexOf(BIRD);
-    pic.dataset.bird = id; card.querySelector('b').textContent = nameOf(id); card.querySelector('small').textContent = tried ? 'A study bird' : BLURB[id] || '';
-    card.querySelector('.birdmore3').innerHTML = traits(id);
-    card.querySelector('.home3').textContent = `Fly from its home: ${HOME[id] || 'its own country'}`;
-    card.querySelector('.home3').hidden = !!tried;
-    dots.forEach((d, k) => d.classList.toggle('on', k === i));
+    const id = tried || BIRD;
+    pic.dataset.bird = id; q('.bic3').innerHTML = birdIcon(id); q('.nm3 b').textContent = nameOf(id); q('.bl3').textContent = tried ? 'A study bird' : BLURB[id] || '';
+    q('.bh3').textContent = HOME[id] ? `Home: ${HOME[id]}` : ''; q('.bh3').hidden = !HOME[id];
+    q('.stats3').innerHTML = statsOf(id); q('.traits3').innerHTML = traits(id);
+    q('.home3').textContent = 'Fly from its home'; q('.home3').hidden = !!tried;
   };
   show();
   box.addEventListener('click', e => {
@@ -87,7 +90,7 @@ export function speciesSystem(G) {
       G.menu.set(false); G.hud.reply(`You fly from ${HOME[BIRD]}.`, 4); return;
     }
     if (e.target.closest('.hear3')) { G.audio.unlock?.(); G.audio.call?.(tried || BIRD); return; }
-    const d = e.target.closest('[data-to]'); if (d && !tried) pick(CHOICES[+d.dataset.to]);
+    const d = e.target.closest('[data-step]'); if (d) step(+d.dataset.step);
   });
   const pick = id => { use(id); G.store.set('bird', BIRD); show(); };
   const step = n => { if (!tried) pick(CHOICES[(CHOICES.indexOf(BIRD) + n + CHOICES.length) % CHOICES.length]); };
@@ -101,7 +104,7 @@ export function speciesSystem(G) {
   });
   card.addEventListener('pointercancel', () => { sx = null; });
   G.dev?.add({ id: 'albatross', area: 'Birds', round: 'Earth', pr: 215, title: 'Royal albatross: a seabird to fly, from Taiaroa Head',
-    how: 'Settings > Journey > Your bird: the albatross, then Fly from its home. Skim low over the sea in S-turns across the wind to soar without flapping.',
+    how: 'Settings > Your bird: the albatross, then Fly from its home. Skim low over the sea in S-turns across the wind to soar without flapping.',
     go: () => { use('albatross'); G.store.set('bird', BIRD); show(); card.querySelector('.home3').click(); } });
   let shown = false;
   G.on('menuTab', () => { shown = false; }); G.on('menuPage', (tab, id) => { shown = tab === 'play' && id === 'journey'; });

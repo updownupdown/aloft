@@ -3,7 +3,7 @@
 // keep part of each for it, and carry it home. Five meals and it fledges and flies with you.
 // Last year's nest tree is remembered, and a few twigs there start this year's. A nest built on
 // year after year grows deeper (a layer of old sticks under it for each year) and keeps its trinkets.
-import { height, treesNear, ih } from '../world.js';
+import { height, treesNear, perchesOf, ih } from '../world.js';
 import { builder, blob, reseed } from '../shapes.js';
 import { DAY } from '../sky.js';
 import { journal } from '../journal.js';
@@ -104,6 +104,15 @@ export function nestSystem(G) {
     }
   }
 
+  // Settings > Advanced > Dev mode: progress mocked at k (0, .25, .5 or 1; dev.js), then saved and reloaded
+  // (a quarter: a nest begun in the nearest tree; a half: finished, an egg in it; all: a chick fledged)
+  G.on('mock', k => {
+    G.nest = null; old = null; G.carry = null;
+    const t = k && treesNear(b.p[0], b.p[2], 400).sort((p, q) => Math.hypot(p.x - b.p[0], p.z - b.p[2]) - Math.hypot(q.x - b.p[0], q.z - b.p[2]))[0], p = t && perchesOf(t).find(q => !q.top);
+    if (!p) return;
+    G.nest = { x: p.x, y: p.y, z: p.z, twigs: k >= .5 ? NEST_TWIGS : 3, fed: 0, years: 1, place: G.placeName?.(p.x, p.z) || 'the woods' };
+    if (k >= 1) G.nest.fledged = true; else if (k >= .5) G.nest.eggAt = G.clock;
+  });
   // the year turns: the nest becomes last year's, waiting to be built on
   G.on('newYear', () => { if (G.nest) { old = { x: G.nest.x, y: G.nest.y, z: G.nest.z, place: G.nest.place, years: G.nest.years || 1 }; G.nest = null; } if (old) G.hud.glint('Your old nest', 'Your old nest tree still stands; a few twigs there start this year’s nest.', 5); });
   G.on('newDay', () => { taken = new Set(); });

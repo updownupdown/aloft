@@ -36,6 +36,14 @@ export function guideSystem(G) {
   for (const [k, [n, t]] of Object.entries(NOTES)) page(k, n, t);
   G.guide = { page, seen: key => !!seen[key], name: key => pages.get(key)?.name || key, note: key => pages.get(key)?.note || '' };
 
+  // Settings > Advanced > Dev mode: progress mocked at k (0, .25, .5 or 1; dev.js), then saved and reloaded
+  // (no portraits: the cards show their name and note)
+  G.on('mock', k => {
+    const keys = [...pages.keys()], n = Math.round(k * keys.length);
+    for (const q of Object.keys(seen)) delete seen[q];
+    for (const q of keys.slice(0, n)) seen[q] = { src: '' };
+    G.store.set('guide3d', seen);
+  });
   G.sight = (key, x, y, z, r = .5) => {
     if (seen[key] || want.has(key) || G.paused || !lastS) return;
     const c = document.getElementById('game3'), W = c.width, H = c.height;

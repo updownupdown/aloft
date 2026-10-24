@@ -24,7 +24,7 @@ const SHIPPED = [
   ['water-painted', 'World', 170, 'Water: painted depths only', 'Fly over a lake: darker where deep, no wave noise.'],
   ['mice-dig', 'Wildlife', 169, 'Mice dig down out of reach; squeak marks', 'Dive at a mouse slowly: it may vanish into its hole.'],
   ['aurora', 'World', 168, 'Northern lights', 'Fly far north at night, or sing at a summit cairn.'],
-  ['hint-settings', 'Menu and map', 167, 'Hint settings: a gear on tips and messages', 'Tap the sliders icon on any tip or message: Settings > Messages.'],
+  ['hint-settings', 'Menu and map', 167, 'Hint settings: a gear on tips and messages', 'Tap the sliders icon on any tip or message: Journal > Messages.'],
   ['song-tries', 'Songs and music', 165, 'Each try sings from the top; unknown songs as question marks', 'Learn a song: wrong notes are boxed; open the bird list.'],
   ['perch-glide-down', 'Ground and perch', 164, 'Perched, tap the ground to glide down to it', 'Perch in a tree, tap the grass below.'],
   ['sleep-perch', 'Ground and perch', 160, 'Sleep only on a perch', 'At night, perch: Sleep shows; on the ground it does not.'],
@@ -35,7 +35,7 @@ const SHIPPED = [
   ['look-up', 'Ground and perch', 150, 'Look up into the boughs from the ground or a perch', 'Perched, swipe down: the view tilts up, then eases back.'],
   ['song-touches', 'Songs and music', 152, 'Five touches on the note pad: swipes and taps', 'Sing: swipe up, down, left, right, or tap a row.'],
   ['icons', 'Menu and map', 146, 'James’s icons across the app', 'Open the menu and look at each section.'],
-  ['bird-stats', 'Birds', 148, 'Bird card stats in colour with icons', 'Settings > Journey > Your bird.'],
+  ['bird-stats', 'Birds', 148, 'Bird card stats in colour with icons', 'Settings > Your bird.'],
   ['perch-only-lit', 'Ground and perch', 143, 'Land only on the highlighted perch', 'Fly slowly at a tree: the green ring is where you land.'],
   ['ground-cam', 'Ground and perch', 142, 'On the ground: face away, pinch zoom, tap to hop', 'Land in a field; pinch; tap a spot near by.'],
   ['float-hover', 'Flight', 137, 'Float in to land and hover', 'Flare and push both thumbs up; at a stop, up and outward hovers.'],
@@ -59,12 +59,11 @@ const SHIPPED = [
   ['race', 'Journal and story', 113, 'Race the companion round a ring course', 'Wait for the companion to start a race; finish first for a mouse.'],
   ['new-singers', 'Songs and music', 112, 'Birds of the new lands, night singers, rock-wall echoes', 'Sing in the desert, the mountains, at night, by a cliff.'],
   ['daily-aim', 'Journal and story', 111, 'A daily aim with feathers; the lands collection', 'Today: the day’s aim; Journal > Places: the biomes you have found.'],
-  ['share-cards', 'Journal and story', 109, 'Captioned share cards; screen stays awake; colour-blind aim', 'Photo mode, then share; Settings > Controls.'],
-  ['species', 'Birds', 74, 'Fly as the red-tail, osprey, barn owl, raven or albatross', 'Settings > Journey > Your bird: swipe the card.'],
+  ['species', 'Birds', 74, 'Fly as the red-tail, osprey, barn owl, raven or albatross', 'Settings > Your bird: swipe the card.'],
   ['ring-courses', 'Flight', 93, 'Rings in climbing courses, new each day', 'Find a low ring; the next one glows a little higher.'],
   ['forecast', 'HUD', 93, 'Weather forecast on the day dial', 'Watch the band beside the dial before rain.'],
   ['stamina-cap', 'Food and water', 95, 'Low food or water lowers max stamina', 'Let hunger fall below a third: the wings bar shows a shaded cap.'],
-  ['new-world', 'Settings and performance', 90, 'Reset all game data', 'Settings > Journey > Reset all game data (tap three times).'],
+  ['new-world', 'Settings and performance', 90, 'Reset all game data', 'Settings > Advanced > Reset all game data (tap three times).'],
   ['biomes', 'World', 89, 'Biomes in patches, seeded worlds, 20 lands', 'Fly a few km in any direction; Journal > Biomes.'],
   ['yaw', 'Flight', 88, 'Both thumbs slid one way yaw', 'Slide both thumbs left together.'],
   ['map-pins', 'Menu and map', 282, 'Map pins: tap to drop, + Add pin, 12 colours, Fast-travel where explored', 'Map: tap anywhere, then a pin or a landmark.'],
@@ -145,6 +144,16 @@ export function createDev(G, M) {
   } });
   // Time of day: jump to where each part of the day starts or ends (sky.js period(): night past
   // 0.8, dawn from 0.2, day from 0.33, dusk from 0.68), for testing the light; the menu closes to show it
+  // Dev mode: progress mocked at a level, each system's own share of it (G.on('mock', k): fog,
+  // landmarks, countries, biomes, feathers, lessons, field guide, songs, wonders, bottles, nest and
+  // mate), then saved and the page reloaded. Off keeps the progress as it is; bottles not found show
+  const LEVELS = [['off', 'Off'], ['0', '0%'], ['25', '25%'], ['50', '50%'], ['100', '100%']];
+  M.choice('play', { label: 'Dev mode', group: 'dev', options: LEVELS, sub: () => 'mock how far the game has come (replaces your progress)',
+    get: () => { const v = G.store.get('devMode', 'off'); return LEVELS.some(([k]) => k === v) ? v : 'off'; },
+    set: v => {
+      G.store.set('devMode', v); if (v === 'off') return;
+      G.menu.set(false); G.emit('mock', +v / 100); G.persist(); G.resetting = true; location.reload();
+    } });
   const SPANS = [['Dawn', .2, .33], ['Day', .33, .68], ['Dusk', .68, .8], ['Night', .8, .2]];
   const clock = t => { const m = Math.round(t * 24 * 60) % 1440; return `${String(m / 60 | 0).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`; };
   const tbox = document.createElement('div'); tbox.className = 'tod3';

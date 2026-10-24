@@ -79,6 +79,12 @@ export function songsSystem(G) {
   G.dialects = new Set(store.get('songsKnown', [...G.learned].map(id => songKey(SPECIES[id]))));
   G.heard = new Set(store.get('heard', []));
   G.species = SPECIES;
+  // Settings > Advanced > Dev mode: progress mocked at k (0, .25, .5 or 1; dev.js), then saved and reloaded
+  G.on('mock', k => {
+    const some = SPECIES.slice(0, Math.round(k * SPECIES.length));
+    G.learned = new Set(some.map(sp => sp.id)); G.dialects = new Set(some.flatMap(sp => k >= 1 ? sp.songs.map(g => songKey(sp, g.k)) : [songKey(sp)])); G.heard = new Set(G.learned);
+    store.set('learned', [...G.learned]); store.set('songsKnown', [...G.dialects]); store.set('heard', [...G.heard]);
+  });
   G.gifts = {};
   const songLog = store.get('songlog', {});
   let placeK = 0, placeSent = 0;
@@ -577,11 +583,10 @@ export function songsSystem(G) {
     function fill() {
       // a card for each songbird: its picture, its name, what its songs give, and each of its songs:
       // those you know with a play button and their words; the rest as question marks. By continent.
-      const dev = store.get('devMode', false);
       const card = sp => {
-        const k = dev || G.learned.has(sp.id) ? 'learned' : G.heard.has(sp.id) ? 'heard' : 'unknown';
+        const k = G.learned.has(sp.id) ? 'learned' : G.heard.has(sp.id) ? 'heard' : 'unknown';
         const pic = `<img alt="" src="${songbirdPic(sp, 128)}">`;
-        const n = sp.songs.length, ks = dev ? sp.songs.map(g => g.k) : knownSongs(sp);
+        const n = sp.songs.length, ks = knownSongs(sp);
         if (k === 'unknown') return `<li class="unknown"><div class="pic">${pic}</div><div><b>Not yet heard</b><small>${sp.hint}.${n > 1 && !sp.mimic ? ` ${n} songs to find.` : ''}</small></div></li>`;
         if (sp.mimic) return `<li class="heard seen"><div class="pic">${pic}</div><div><b>${sp.name}</b><small>A mimic: no song of its own, only pieces of the songs around it. Listen to one for the openings of songs you do not know. ${sp.hint}.</small></div></li>`;
         const gift = GIFT_TEXT[sp.powerKey] || sp.power, what = k === 'learned' ? `${gift[0].toUpperCase()}${gift.slice(1)}. ${songLog[sp.id] || (G.learned.has(sp.id) ? 'Learned.' : 'Dev mode: not learned yet.')}` : `Heard, not yet learned. ${sp.hint}.`;
@@ -595,7 +600,7 @@ export function songsSystem(G) {
       // and how singing works, folded away; then the songbirds; then the other birds the field guide keeps
       const here = continentAt(b.p[0], b.p[2]), near = sort === 'near' && here;
       const groups = near ? [[here, `Near here: ${CONTS.find(c => c[0] === here)?.[1] || 'this land'}`, sp => sp.cont.includes(here)]] : CONTS.map(([c, t]) => [c, t, sp => sp.cont[0] === c]);
-      book.innerHTML = `<div class="sgtop3"><p class="sub"><b>${songCount()}</b> of ${songTotal} songs <span>·</span> <b>${G.learned.size}</b> of ${learnable.length} songbirds${dev ? ' <span>·</span> Dev mode: every song plays' : ''}</p>
+      book.innerHTML = `<div class="sgtop3"><p class="sub"><b>${songCount()}</b> of ${songTotal} songs <span>·</span> <b>${G.learned.size}</b> of ${learnable.length} songbirds</p>
         <div class="gbar3"><button data-sort="near" class="${sort === 'near' ? 'on' : ''}">Near here</button><button data-sort="cont" class="${sort !== 'near' ? 'on' : ''}">By continent</button></div></div>${MODES}`
         + groups.map(([, title, f]) => { const L = SPECIES.filter(f); return `<h3 class="sgcont3">${title} <small>${L.filter(sp => G.learned.has(sp.id)).length} of ${L.length}</small></h3><ul class="guide3 songs3">${L.map(card).join('')}</ul>`; }).join('')
         + (G.guide?.cards ? G.guide.cards('bird', 'Other birds') : '');
@@ -605,14 +610,13 @@ export function songsSystem(G) {
     book.addEventListener('click', e => {
       const so = e.target.closest('[data-sort]'); if (so) { sort = so.dataset.sort; store.set('songSort', sort); fill(); return; }
       const btn = e.target.closest('[data-play]'); if (!btn) return;
-      const [id, k] = btn.dataset.play.split('.').map(Number), t = versionOf(SPECIES[id], k) || (store.get('devMode', false) && songN(SPECIES[id], k)); if (!t) return;
+      const [id, k] = btn.dataset.play.split('.').map(Number), t = versionOf(SPECIES[id], k); if (!t) return;
       A.unlock(); clearTimeout(playing);
       for (const el of book.querySelectorAll('.sgplay3.on')) el.classList.remove('on');
       btn.classList.add('on');
       t.notes.forEach((n, i) => setTimeout(() => A.note(n, t.voice, .16, t.kinds[i]), 100 + i * t.gap * 1000));
       playing = setTimeout(() => btn.classList.remove('on'), 300 + t.notes.length * t.gap * 1000);
     });
-    G.menu.toggle('play', { label: 'Dev mode', sub: 'every song unlocked in Journal > Songs, to listen to them all', group: 'dev', get: () => store.get('devMode', false), set: v => { store.set('devMode', v); fill(); } });
     G.menu.toggle('play', { label: 'Left-handed', sub: 'note pad and Take off on the left, Sing on the right', get: lefty, set: v => store.set('lefty', v) });
   }
 

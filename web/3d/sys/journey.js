@@ -4,7 +4,7 @@
 // flown over. A year turns with your own spring (the seasons follow the latitude, so a bird that
 // crosses the equator meets spring early or late); the tropics, with no spring, count 32 days.
 import * as W from '../world.js';
-import { YEAR_DAYS } from '../earth.js';
+import { YEAR_DAYS, REGIONS, EARTH } from '../earth.js';
 import { journal, esc } from '../journal.js';
 import { mapView } from './map.js';
 import { hourName } from '../dial.js';
@@ -29,6 +29,14 @@ export function journeySystem(G) {
   G.hud.tip('wander', () => b.state === 'fly' && G.t > 90 && Object.keys(J.regions).length < 2, 'The whole Earth is yours to wander: each country has its own birds and sights, and the Map shows where you have been. The world wraps round: fly on past the far sea and you come back to where you began.');
   let findT = 0, regionAt = '', regionT = 0;
   const map = mapView(G, J);
+  // Settings > Advanced > Dev mode: progress mocked at k (0, .25, .5 or 1; dev.js), then saved and reloaded
+  // (landmarks and countries, nearest first: the whole Earth's list takes a few seconds)
+  G.on('mock', k => {
+    const all = W.landmarksNear(0, EARTH.Z0 + EARTH.H / 2, 5e4).sort((p, q) => Math.hypot(p.x - b.p[0], p.z - b.p[2]) - Math.hypot(q.x - b.p[0], q.z - b.p[2]));
+    J.found = Object.fromEntries(all.slice(0, Math.round(k * all.length)).map(l => [l.id, { name: l.name, x: Math.round(l.x), z: Math.round(l.z), note: 'Found in a dev mock.' }]));
+    J.regions = Object.fromEntries(REGIONS.slice(0, Math.round(k * REGIONS.length)).map(r => [r[0], { name: r[1], day: G.day, date: '' }]));
+    J.year = 1 + Math.round(k * 3);
+  });
   G.on('ringLoop', () => { J.loops = (J.loops || 0) + 1; });
   G.on('wrap', () => { J.box = [b.p[0], b.p[2], b.p[0], b.p[2]]; });
 
