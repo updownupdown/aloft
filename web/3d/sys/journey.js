@@ -43,9 +43,13 @@ export function journeySystem(G) {
     if (r.length > ROUTE_MAX) J.route = [...r.slice(0, ROUTE_MAX / 2).filter((_, i) => i % 2 === 0), ...r.slice(ROUTE_MAX / 2)];
   }
 
+  // the landmarks worth finding (world.js isNotable); the others, scenery, still count once as their
+  // land's sight for the biomes collection (aims.js, 'sight' events)
+  const passed = new Set();
   function landmarks() {
     for (const l of W.landmarksNear?.(b.p[0], b.p[2], FIND_R + 400) || []) {
-      if (J.found[l.id] || Math.hypot(l.x - b.p[0], l.z - b.p[2]) > FIND_R + (l.r || 0)) continue;
+      if (J.found[l.id] || passed.has(l.id) || Math.hypot(l.x - b.p[0], l.z - b.p[2]) > FIND_R + (l.r || 0)) continue;
+      if (!W.isNotable(l)) { passed.add(l.id); G.emit('sight', l); continue; }
       J.found[l.id] = { name: l.name, x: Math.round(l.x), z: Math.round(l.z), note: `Found on ${G.date?.text || `day ${G.day}`}, in ${G.season.name}, in ${inSentence(placeName(l.x, l.z))}.` };
       G.hud.name(l.name, 'landmarks'); G.audio.learned?.();
       G.emit('landmark', l);

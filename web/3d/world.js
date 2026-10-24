@@ -750,6 +750,32 @@ export function landmarksNear(x, z, r) {
   return out;
 }
 
+// The landmarks worth finding (the Journal's Places, the Map's tally, the compass): every wonder
+// and fire mountain, and over the rest of the Earth at most one in each NOTABLE cell, the most
+// remarkable near the cell's anchor (falls and arches before lighthouses and stacks, before towers
+// and old oaks). The rest stay in the world as scenery, not finds (James 10-24: under 100 in all,
+// spread evenly; with the islands' sights and the two ice edges about 90).
+export const NOTABLE = { cell: 10000, r: 3000 };
+const RANK = { wonder: 9, volcano: 9, falls: 7, arch: 7, drowned: 6, lighthouse: 5, stack: 5, viaduct: 4, summit: 4, tower: 3, station: 3, lookout: 2, oak: 2, willow: 2, stones: 2, cairn: 1, derelict: 1, village: 1 };
+const notableCache = new Map();
+function notableIn(gx, gz) {
+  const key = gx + ',' + gz; if (notableCache.has(key)) return notableCache.get(key);
+  const C = NOTABLE.cell, ax = (gx + .3 + ih(gx, gz, 191) * .4) * C, az = (gz + .3 + ih(gx, gz, 192) * .4) * C;
+  let best = null, bs = -1;
+  for (const l of landmarksNear(ax, az, NOTABLE.r)) {
+    if (l.kind === 'sight' || Math.floor(l.x / C) !== gx || Math.floor(l.z / C) !== gz) continue;
+    const sc = (RANK[l.summit ? 'summit' : l.kind] || 1) * 1e5 - Math.hypot(l.x - ax, l.z - az);
+    if (sc > bs) { bs = sc; best = l.id; }
+  }
+  notableCache.set(key, best);
+  return best;
+}
+export function isNotable(l) {
+  if (l.kind === 'wonder' || l.kind === 'volcano') return true;
+  if (l.kind === 'sight') return false;
+  return notableIn(Math.floor(l.x / NOTABLE.cell), Math.floor(l.z / NOTABLE.cell)) === l.id;
+}
+
 // Fence lines and dry-stone walls across the open farmland, maybe one run per 170 m cell:
 // a rusted wire fence on posts (red-tails love fence posts) or a low wall of stacked stones.
 // { id, kind: 'fence' | 'wall', posts: [[x, y, z, h], ...] } with a post every STEP metres along
