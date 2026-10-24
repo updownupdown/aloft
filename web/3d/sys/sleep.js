@@ -8,7 +8,7 @@
 import { period, light, DAY } from '../sky.js';
 import { height, WATER, bushesNear } from '../world.js';
 
-const ROOST = 2.5;   // metres above the ground or water a perch must be to sleep on
+const ROOST = 1.5;   // metres above the ground or water a perch must be to sleep on
 
 // seconds: fading out and turning up, the stars turning, coming back; how fast they turn for a whole
 // night left (radians a second: three eighths of the old 60x night's 45 degrees a second)
