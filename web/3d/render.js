@@ -23,7 +23,6 @@ const SEA_D = (() => { const l = Math.hypot(WIND[0], WIND[2]); return [WIND[0] /
 const DECAL = new Set(['puddle', 'ice', 'pool', 'litter', 'petals']);
 const GRASSY = new Set(['tuft', 'tuft1', 'tuft2', 'tuft3', 'flowerY', 'flowerW', 'flowerP', 'reeds', 'hay']);
 const LOD = { soar: ['soarFar', 70] };
-// the shadow map's size in pixels and its reach round the hawk in metres (look.js P)
 // what each instanced shape is (uClass in COMMON_FS): animals, buildings, stones
 const ANIMAL = /^(mouse|squirrel|marmot|jack|whale|fluke|turtle|crab|lizard|snake|heron|gull|eagle|kestrel|raven|sb|soar|perchbird|sitter|fish|flyfish|hawk|chick|broadwing)/;
 const BUILT = /^(ru_|wd_|lm_|fence_)/;
@@ -155,13 +154,17 @@ vec4 waterAt(vec3 P, float depth) {
   float cap = step(h21(i * 1.7 + c1 * 9. + floor(uTime * .5)), wind * .1) * smoothstep(.8, 1.8, crest) * near;
   float foam = max(1. - smoothstep(.04, .2, depth), cap * .8);
 #ifdef L_FOAM
-  // C (look test, made larger 10-24 so it shows; dial back as needed): soft foam lapping at the
-  // shore, a wide broken band that runs in and out
-  { float lap = .5 + .5 * sin(uTime * 1.2 + vn(P.xz / 11.) * 6.2832);
-    float br = vn(P.xz * 1.2 + uTime * .15) * .6 + vn(P.xz * 3.3 - uTime * .25) * .4;
-    foam = max((1. - smoothstep(.02, .45 + .9 * lap, depth)) * smoothstep(.22, .5, br) * (1. - smoothstep(250., 700., dist)), cap * .8); }
+  // C (look test; James 10-24: make it unmissable, dial back later): a white band of foam at the
+  // shore whose edge washes in and out, broken at its fringe, and a second thin line of surf
+  // further out following it in
+  { float lap = .5 + .5 * sin(uTime * 1.1 + vn(P.xz / 14.) * 6.2832);
+    float br = vn(P.xz * .9 + uTime * .12) * .6 + vn(P.xz * 2.6 - uTime * .2) * .4;
+    float edge = .2 + .45 * lap, fade = 1. - smoothstep(400., 1200., dist);
+    float band = (1. - smoothstep(edge * (.3 + .5 * br), edge, depth)) * mix(.75, 1., smoothstep(.3, .7, br));
+    float line = exp(-pow((depth - edge - .3 + .15 * lap) / .06, 2.)) * smoothstep(.3, .6, br);
+    foam = max(max(band, line * .85) * fade, cap * .8); }
 #endif
-  return vec4(mix(c, vec3(.95) * lit, foam * .8), mix(.3, 1., smoothstep(0., 3.5, depth)));
+  return vec4(mix(c, vec3(.97) * lit, min(1., foam)), max(mix(.3, 1., smoothstep(0., 3.5, depth)), foam));
 }
 // hoar frost (sys/skydays.js S.frost: amount, the melt line, where it is measured from): white
 // where the line hasn't passed; it goes first from ground facing the sun and nearer the sun's side
@@ -219,9 +222,11 @@ vec3 haze(vec3 c, vec3 p) {
   vec3 o = over > 0. ? aerial(mist(c, p), p) : c;
   o = over < 1. ? mix(mist(aerial(c, p), p), o, over) : o;
   // far ridges in layered blues (James kept it, 10-24), a little cooler and paler with each
-  // distance, as in an ink-wash painting, by day
+  // distance, as in an ink-wash painting, by day; only on land standing up out of the water, and
+  // not where the haze has already swallowed it (James 10-24: a blue band along a hazy sea)
   { float dd = length(p - uCam), l = dot(o, vec3(.3, .55, .15));
-    o = mix(o, vec3(l) * vec3(.84, .93, 1.1) + uFogCol * .12, smoothstep(300., 1500., dd) * .625 * smoothstep(.05, .3, uSun.y)); }
+    float k = smoothstep(300., 1500., dd) * .5 * smoothstep(.05, .3, uSun.y) * smoothstep(uWater + 5., uWater + 60., p.y) * exp(-pow(dd * uFogDen * .7, 1.6));
+    o = mix(o, vec3(l) * vec3(.84, .93, 1.1) + uFogCol * .12, k); }
   // the rainbow hangs in the rain in front of what is far off
   return uBow.w > 0. ? o + bow(normalize(p - uCam)) * smoothstep(80., 450., length(p - uCam)) : o;
 }
@@ -341,14 +346,18 @@ void main() {
 const INST_VS = `#version 300 es
 layout(location=0) in vec3 aPos; layout(location=1) in vec3 aNrm; layout(location=2) in vec3 aCol; layout(location=3) in vec3 aColB;
 layout(location=4) in vec4 iA; layout(location=5) in vec4 iB;
-uniform mat4 uVP; uniform float uTime, uSway, uSnowLine; uniform vec3 uAutumn, uO; uniform vec2 uWindD;
+uniform mat4 uVP; uniform float uTime, uSway, uSnowLine; uniform vec3 uAutumn, uO, uTreeP; uniform vec2 uWindD; uniform vec4 uTreeD;
 
 out vec3 vPos, vNrm, vCol, vColB; out float vLeaf, vFade, vGone, vLy; out vec4 vCrown;
 void main() {
   vLy = aPos.y * iA.w;
-  // trees carry their detail fade in the phase's fraction (render.js updateTrees): tenths are
-  // how far from near to far (vFade), hundredths how far dissolved at the edge of the view (vGone)
+  // trees fade between their meshes by their distance from the hawk, worked out here each frame
+  // so it is smooth (uTreeD: near to far mesh from .x to .y metres, into the flat picture from .z
+  // to .w; render.js updateTrees); the phase's hundredths say how far one is dissolved at the edge
+  // of the view (vGone)
   float fr = fract(iB.w); vFade = floor(fr * 10.) / 9.; vGone = floor(fract(fr * 10.) * 10.) / 9.;
+  if (uTreeD.y > 0.) { float d = length(iA.xz - uTreeP.xz);
+    vFade = smoothstep(uTreeD.x, uTreeD.y, d); vGone = max(vGone, smoothstep(uTreeD.z, uTreeD.w, d)); }
   float c = cos(iB.x), s = sin(iB.x);
   float leafy = step(aCol.r * 1.05, aCol.g);
   vec3 p = aPos * iA.w;
@@ -517,10 +526,11 @@ void main() { float a = 1.; if (uLine < .5) a = 1. - smoothstep(.12, .5, length(
 // a far tree as a picture of its near mesh, turned to face the camera
 const IMP_VS = `#version 300 es
 layout(location=0) in vec3 aPos; layout(location=4) in vec4 iA; layout(location=5) in vec4 iB;
-uniform mat4 uVP; uniform vec3 uCam, uO; uniform vec4 uCell; uniform vec2 uSize;
+uniform mat4 uVP; uniform vec3 uCam, uO, uTreeP; uniform vec4 uCell, uTreeD; uniform vec2 uSize;
 out vec3 vPos, vNrm, vCol, vColB; out float vLeaf, vFade, vGone, vLy; out vec4 vCrown; out vec2 vUV; out float vTint, vTurn;
 void main() {
-  float fr = fract(iB.w); vFade = floor(fr * 10.) / 9.; vGone = floor(fract(fr * 10.) * 10.) / 9.;
+  // (as the trees fade, INST_VS: this one comes in as the far mesh goes)
+  vFade = 1.; vGone = max(floor(fract(fract(iB.w) * 10.) * 10.) / 9., 1. - smoothstep(uTreeD.z, uTreeD.w, length(iA.xz - uTreeP.xz)));
   vec2 f = normalize(uCam.xz - iA.xz + 1e-4); vec3 right = vec3(f.y, 0., -f.x);
   vec3 rel = (iA.xyz - uO) + right * aPos.x * uSize.x * iA.w + vec3(0., aPos.y * uSize.y * iA.w, 0.);
   vPos = rel + uO;
@@ -785,10 +795,12 @@ export function createRenderer(gl) {
   // view turns; the list round the hawk is fetched again only after it moves
   // Trees change detail across a band (TREE_BAND metres round R.nearTrees) drawn twice, the near
   // mesh dissolving into the far one on a dither, and dissolve in at full size over the last
-  // TREE_EDGE metres of the view (never scaled, so nothing seems to grow), so none pops; the buckets are redone every few metres to keep it smooth.
+  // TREE_EDGE metres of the view (never scaled, so nothing seems to grow), so none pops.
   // Past R.flatTrees (main.js treeGfx: nearer on Low, farthest on Ultra) the far mesh dissolves the
-  // same way, over TREE_BAND * 1.5, into a flat picture of the tree
-  const TREE_BAND = 26, TREE_EDGE = 45;
+  // same way, over TREE_BAND * 2.4, into a flat picture of the tree. How far along each fade a tree
+  // is, is worked out per frame in the shaders (uTreeD, James 10-24: the changes were sudden); the
+  // buckets here, redone every few metres, hold each tree a little past its bands (TREE_SLACK)
+  const TREE_BAND = 40, TREE_EDGE = 45, TREE_SLACK = 6;
   let treeFrom = null, treeAt = null, treeAll = [], treeYaw = 0, treeSteep = false;
   function updateTrees(p, season) {
     const v = R.viewInfo, tv = Math.min(R.treeView, (R.fogView || 1e9) * .85);
@@ -801,7 +813,8 @@ export function createRenderer(gl) {
     if (moved) { treeFrom = [p[0], 0, p[2], season.key, season.bare, tv]; treeAll = treesNear(p[0], p[2], tv + 22); }
     treeAt = [p[0], p[2]]; treeYaw = yaw; treeSteep = steep;
     const lo = R.nearTrees - TREE_BAND / 2, hi = R.nearTrees + TREE_BAND / 2;
-    const flo = R.flatTrees - TREE_BAND * .75, fhi = R.flatTrees + TREE_BAND * .75;
+    const flo = Math.max(hi, R.flatTrees - TREE_BAND * 1.2), fhi = R.flatTrees + TREE_BAND * 1.2;
+    R.treeD = [lo, hi, flo, fhi];
     const buckets = kinds.map(() => [[], [], []]);
     const fx = Math.sin(yaw), fz = -Math.cos(yaw), cone = v && !steep ? Math.cos(Math.min(Math.PI, Math.atan(Math.tan(v.fov / 2) * v.aspect) + .75)) : -2;
     const cx = v ? v.cam[0] : p[0], cz = v ? v.cam[2] : p[2];
@@ -811,13 +824,12 @@ export function createRenderer(gl) {
       const dx = t.x - cx, dz = t.z - cz, dc = Math.hypot(dx, dz);
       if (dc > 40 && (dx * fx + dz * fz) / dc < cone) continue;   // well off to the side or behind
       const k = t.look ?? t.kind, turn = season.bare && kinds[k].autumn >= .5 ? 2 : season.autumn * (.5 + t.tint) * kinds[k].autumn;   // 2: bare
-      const f = Math.round(Math.min(1, Math.max(0, (d - lo) / (hi - lo))) * 9), g = Math.round(Math.min(1, Math.max(0, (d - tv + TREE_EDGE) / TREE_EDGE)) * 9);
-      const fl = Math.round(Math.min(1, Math.max(0, (d - flo) / (fhi - flo))) * 9), id = Math.floor(Math.abs(t.id)) % 97;
-      // (the hundredths: how far dissolved, at the view's edge or into the flat picture)
-      const ph = id + f * .1 + Math.max(g, fl) * .01 + .005;
-      if (f < 9) buckets[k][0].push(t.x, t.y, t.z, t.s, t.yaw, t.tint, turn, ph);
-      if (f > 0 && fl < 9) buckets[k][1].push(t.x, t.y, t.z, t.s, t.yaw, t.tint, turn, ph);
-      if (fl > 0) buckets[k][2].push(t.x, t.y, t.z, t.s, t.yaw, t.tint, turn, id + .9 + Math.max(g, 9 - fl) * .01 + .005);
+      const g = Math.round(Math.min(1, Math.max(0, (d - tv + TREE_EDGE) / TREE_EDGE)) * 9), id = Math.floor(Math.abs(t.id)) % 97;
+      // (the hundredths: how far dissolved at the view's edge)
+      const ph = id + g * .01 + .005, sl = TREE_SLACK;
+      if (d < hi + sl) buckets[k][0].push(t.x, t.y, t.z, t.s, t.yaw, t.tint, turn, ph);
+      if (d > lo - sl && d < fhi + sl) buckets[k][1].push(t.x, t.y, t.z, t.s, t.yaw, t.tint, turn, ph);
+      if (d > flo - sl) buckets[k][2].push(t.x, t.y, t.z, t.s, t.yaw, t.tint, turn, ph);
       drawn++;
     }
     R.stats.trees = drawn;
@@ -848,7 +860,7 @@ export function createRenderer(gl) {
     if (u.uRefl) { gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, R.reflOn ? refl.tex : blank()); gl.uniform1i(u.uRefl, 2); gl.activeTexture(gl.TEXTURE0); }
   }
   // the cloud shadows as 8 vec4s (unused ones radius 0)
-  const SHADE = new Float32Array(32), NOFROST = [0, 0, 0, 0], NOBOW = [0, 1, 0, 0], NOMIST = [0, 0, 8, 0], ONE3 = [1, 1, 1];
+  const SHADE = new Float32Array(32), NOFROST = [0, 0, 0, 0], NOBOW = [0, 1, 0, 0], NOMIST = [0, 0, 8, 0], ONE3 = [1, 1, 1], NOTREED = [0, 0, 0, 0];
   // (a shadow map matrix that puts everything off the map, so nothing is shadowed)
   function shadeC(S) {
     SHADE.fill(0);
@@ -1035,14 +1047,16 @@ export function createRenderer(gl) {
     gl.useProgram(inst.p); setLight(inst, S); gl.uniform1f(inst.u.uClip, clip);
     gl.uniformMatrix4fv(inst.u.uVP, false, vp); gl.uniform1f(inst.u.uTime, S.time); gl.uniform3fv(inst.u.uAutumn, S.autumnCol); gl.uniform1f(inst.u.uSnowLine, S.snowLine ?? 999);
     gl.uniform1f(inst.u.uSway, .012 + S.wind * .02); gl.uniform2fv(inst.u.uWindD, SEA_D); gl.uniform1f(inst.u.uDither, 1);
+    const treeD = R.treeD || [0, 1, 1e5, 1e5 + 1]; gl.uniform4fv(inst.u.uTreeD, treeD); gl.uniform3fv(inst.u.uTreeP, S.hawk.p);
     for (const k of kinds) for (const m of [k.near, k.far]) {
       if (!m.icount) continue;
       gl.uniform1f(inst.u.uFade, m === k.near ? 1 : 2);
       gl.bindVertexArray(m.vao); gl.drawArraysInstanced(gl.TRIANGLES, 0, m.count, m.icount); S_.tris += m.count / 3 * m.icount;
     }
-    gl.uniform1f(inst.u.uDither, 0); gl.uniform1f(inst.u.uSway, 0); gl.uniform1f(inst.u.uFade, 0);
+    gl.uniform1f(inst.u.uDither, 0); gl.uniform1f(inst.u.uSway, 0); gl.uniform1f(inst.u.uFade, 0); gl.uniform4fv(inst.u.uTreeD, NOTREED);
     {
       gl.useProgram(impP.p); setLight(impP, S); gl.uniform1f(impP.u.uClip, clip);
+      gl.uniform4fv(impP.u.uTreeD, treeD); gl.uniform3fv(impP.u.uTreeP, S.hawk.p);
       gl.uniformMatrix4fv(impP.u.uVP, false, vp); gl.uniform3fv(impP.u.uAutumn, S.autumnCol); gl.uniform1f(impP.u.uSnowLine, S.snowLine ?? 999); gl.uniform1f(impP.u.uFade, 2);
       gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, imps.tex); gl.uniform1i(impP.u.uAtlas, 1); gl.activeTexture(gl.TEXTURE0);
       kinds.forEach((k, i) => {
@@ -1187,9 +1201,11 @@ export function createRenderer(gl) {
 
   // a soft dark patch on the ground under the hawk, fading with height: the cue for landing
   function shadowVerts(S) {
-    const p = S.hawk.p, g = Math.max(height(p[0], p[2]), 0), above = p[1] - g;
-    if (above > 45 || above < -1) return null;
-    const a = .19 * (1 - above / 45), n = g > 0 ? normalAt(p[0], p[2]) : [0, 1, 0];
+    // over shallow water the patch lies on the bottom you see through it (James 10-24: on the
+    // surface it seemed to float off from the bird), fading out as the water deepens
+    const p = S.hawk.p, gh = height(p[0], p[2]), deep = Math.max(0, -gh), g = deep < 3.5 ? gh : 0, above = p[1] - g;
+    if (above > 45 || above < -1 || deep > 3.5) return null;
+    const a = .19 * (1 - above / 45) * (1 - deep / 3.5), n = normalAt(p[0], p[2]);
     const out = [], N = 10, rad = .55 + above * .01;
     const tx = [n[1], -n[0], 0], tl = Math.hypot(...tx) || 1; tx[0] /= tl; tx[1] /= tl;
     const tz = [n[1] * tx[2] - n[2] * tx[1], n[2] * tx[0] - n[0] * tx[2], n[0] * tx[1] - n[1] * tx[0]];
