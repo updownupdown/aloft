@@ -53,7 +53,7 @@ export function blob(B, cx, cy, cz, r, col, col2, sc = [1, .85, 1], lv = 1) {
   const key = v => v.map(x => x.toFixed(3)).join();
   const pt = v => { const k = key(v); if (!cache.has(k)) { const j = 1 - jit / 2 + rnd() * jit; cache.set(k, [cx + v[0] * r * j * sc[0], cy + v[1] * r * j * sc[1], cz + v[2] * r * j * sc[2]]); } return cache.get(k); };
   for (let l = 0; l < lv; l++) F = F.flatMap(([a, b, c]) => { const ab = mid(a, b), bc = mid(b, c), ca = mid(c, a); return [[a, ab, ca], [ab, b, bc], [ca, bc, c], [ab, bc, ca]]; });
-  for (const [p, q, s] of F) B.tri(pt(p), pt(s), pt(q), rnd() < .5 ? col : col2, (rnd() - .5) * .12);
+  for (const [p, q, s] of F) B.tri(pt(p), pt(q), pt(s), rnd() < .5 ? col : col2, (rnd() - .5) * .12);   // (wound outward, so K (look.js) can leave the far side undrawn)
 }
 
 export function broadleaf() {
@@ -78,7 +78,7 @@ function limb(B, o, y, l, r, leaf, leaf2, bark = PAL.bark) {
   for (let i = 0; i < 6; i++) {
     const a = i / 6 * Math.PI * 2, b = (i + 1) / 6 * Math.PI * 2;
     const p = (t, ang) => { const u = t * l, w = Math.cos(ang) * r * (1 - t * .5); return [u * c - w * s, y - .04 + t * .06 + Math.sin(ang) * r * (1 - t * .5), u * s + w * c]; };
-    B.tri(p(0, a), p(1, b), p(1, a), bark); B.tri(p(0, a), p(0, b), p(1, b), bark);
+    B.tri(p(0, a), p(1, a), p(1, b), bark); B.tri(p(0, a), p(1, b), p(0, b), bark);   // (outward, as blob())
   }
   if (leaf) blob(B, l * 1.05 * c, y + .06, l * 1.05 * s, .07, leaf, leaf2);
 }
