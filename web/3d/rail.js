@@ -8,7 +8,7 @@
 //   railShade(x, z): ballast for the ground's colour; railNear(x, z): metres to a line (<= 40)
 //   railsNear(x, z, r): { cells } for drawing and solids (sys/ruins.js, world.js solidsNear)
 import { baseHeight } from './world.js';
-import { ih, fbm } from './noise.js';
+import { ih, fbm, smooth } from './noise.js';
 import { continentAt, earthBiome } from './earth.js';
 
 export const RAIL_CELL = 3200, STEP = 20, BED = 3.5, REACH = 32;
@@ -56,10 +56,25 @@ function cell(i, j) {
       if (e - k < 30 && k > 0 && e <= n) for (let q = k; q < e; q++) ok[q] = false;
       k = e;
     }
+    // a hillside steeper than the cutting's sides can meet (the ground beside the line, out at the
+    // cutting's reach, far above the bed) goes into a tunnel too: cut there, it was a sheer wall
+    // where the cutting ended (James saw them in the Rockies, 2026-10-24)
+    // (and a hillside falling away below the bed further than a bank can reach goes on arches)
+    const side = k => {
+      const a = P[Math.max(0, k - 1)], b = P[Math.min(n, k + 1)], ex = b.x - a.x, ez = b.z - a.z, l = Math.hypot(ex, ez) || 1, r = REACH * .6;
+      const u = baseHeight(P[k].x - ez / l * r, P[k].z + ex / l * r), v = baseHeight(P[k].x + ez / l * r, P[k].z - ex / l * r);
+      return [Math.max(u, v), Math.min(u, v)];
+    };
+    const reach = REACH * .6 - BED;   // what the cutting's sides (1.1) and the bank's (.7) meet by the time they ease out
     for (let k = 0; k <= n; k++) {
       const p = P[k], d = p.g - p.h;
       p.mode = !ok[k] ? null : p.h < WATER + 1 || d > 12 ? 'via' : d < -26 ? 'tunnel' : 'grade';
+      if (p.mode !== 'grade') continue;
+      const [hi, lo] = side(k);
+      if (hi - p.g > reach * 1.1) p.mode = 'tunnel'; else if (p.g - lo > reach * .7 + 1) p.mode = 'via';
     }
+    // no lone 20 m of grade between arches or tunnels
+    for (let k = 1; k < n; k++) if (P[k].mode === 'grade' && P[k - 1].mode && P[k - 1].mode !== 'grade' && P[k + 1].mode && P[k + 1].mode !== 'grade') P[k].mode = P[k - 1].mode;
     R = { i, j, P, chunks: [], vias: [], portals: [], station: null, cars: [], lms: [] };
     const inside = k => P[k].x >= i * C - 40 && P[k].x <= (i + 1) * C + 40;
     for (let k = 0; k < n; k++) {
@@ -116,12 +131,13 @@ const VIA_NAMES = ['The Long Viaduct', 'The Swift Arches', 'The Stone Viaduct', 
 // the ground with the line's bed in it: level within BED of the line, the sides cut back (in a
 // cutting) or built out (on an embankment) to meet the land; nothing under a viaduct
 let li = NaN, lj = NaN;
-function nearest(x, z) {
+function nearest(x, z, gradeOnly = false) {
   const i = Math.floor(x / C), j = Math.floor(z / C);
   if (i !== li || j !== lj) { li = i; lj = j; cell(i, j); }
   const L = buckets.get(Math.floor(x / B64) * 100003 + Math.floor(z / B64)); if (!L) return null;
   let best = null, bd = REACH;
   for (const s of L) {
+    if (gradeOnly && !s[6]) continue;
     const ex = s[3] - s[0], ez = s[4] - s[1], l2 = ex * ex + ez * ez, t = Math.max(0, Math.min(1, ((x - s[0]) * ex + (z - s[1]) * ez) / l2));
     const d = Math.hypot(x - s[0] - ex * t, z - s[1] - ez * t);
     if (d < bd) { bd = d; best = { d, g: s[2] + (s[5] - s[2]) * t, grade: s[6] }; }
@@ -129,10 +145,13 @@ function nearest(x, z) {
   return best;
 }
 export function railCut(x, z, h) {
-  const n = nearest(x, z); if (!n || !n.grade) return h;
+  // (the nearest piece of grade, not of viaduct: beside a viaduct's end the bank stopped dead
+  // where the viaduct became the nearer, in a straight wall the height of the bank)
+  const n = nearest(x, z, true); if (!n) return h;
   if (n.d < BED) return n.g;
-  const k = n.d - BED;
-  return Math.min(Math.max(h, n.g - k * .7), n.g + k * 1.1);
+  const k = n.d - BED, cut = Math.min(Math.max(h, n.g - k * .7), n.g + k * 1.1);
+  // eased back to the land over the outer part of its reach, never a step where it ends
+  return cut + (h - cut) * smooth(REACH * .6, REACH, n.d);
 }
 // ballast on the bed (0..1), for the ground's colour
 export function railShade(x, z, w = 2.6) { const n = nearest(x, z); return n && n.grade && n.d < w ? 1 - n.d / w * .6 : 0; }
