@@ -28,7 +28,11 @@ import { PAGES } from './howto.js';
 // all), ['flaps', n] (full flaps)
 const CUSHION = 22;   // m: below this the air lifts the bird gently, every step but Land
 const STEPS = [
+<<<<<<< Updated upstream
   ['off', 'Take off', 'Tap Take off, bottom right, to leave the branch.', 'T, or click Take off', '', '', 'fly'],
+=======
+  ['off', 'Take off', 'Tap Take off, bottom right, to leave the branch.', 'T', '', '', 'fly'],
+>>>>>>> Stashed changes
   ['glide', 'Glide', 'Let go of both thumbs. Your wings hold you up.', 'let go of every key', '', '', ['hold', 2.5, c => !c.held]],
   ['flap', 'Flap', 'Tap both thumbs at the same moment.', 'Space', 'tap', 'tap', ['flaps', 3]],
   ['climb', 'Climb', 'Push both thumbs up.', 'W or Up', 'up', 'up', ['hold', 1.6, c => c.pitch > .45]],
@@ -202,7 +206,7 @@ export function lessonsSystem(G) {
     }
     // down on the ground mid-lesson: take off again first
     if (b.state !== 'fly' && id !== 'off' && id !== 'land') {
-      coach.show({ small: 'First', title: 'Take off again', line: 'Tap Take off, bottom right.', keys: 'click Take off', l: '', r: '', progress: null, big: true });
+      coach.show({ small: 'First', title: 'Take off again', line: 'Tap Take off, bottom right.', keys: 'T', l: '', r: '', progress: null, big: true });
       coach.ghosts(false); return;
     }
     // a soft cushion of air under the bird till the last step, so nobody keeps landing mid-lesson
@@ -338,6 +342,9 @@ export function lessonsSystem(G) {
   const left = ch => ch.tasks.filter(q => !S.done[q.id]).length;
   const feather = k => S.paid[k] ? `<span class="lfeather3" title="Feather earned">${icon('feather')}</span>` : '';
   const live = () => S.stage === 'learn' || !!S.practice || S.replay != null;
+  // a chapter's lessons fold away once all done, a chevron to open them (James, 2026-10-24); kept open if opened
+  const opened = new Set();
+  const fold = (key, done, head, body) => `<details class="lgrp3" data-k="${key}" data-d="${done ? 1 : 0}"${!done || opened.has(String(key)) ? ' open' : ''}><summary>${head}${done ? `<span class="lchev3">${icon('chevron')}</span>` : ''}</summary>${body}</details>`;
   function paint() {
     const on = live();
     today.el.classList.toggle('hidden', !on);
@@ -351,20 +358,22 @@ export function lessonsSystem(G) {
     // the Overview: the payoff, then every chapter in order with its progress and Replay
     const done = TASKS.filter(t => S.done[t.id]).length + (S.done.flight ? 1 : 0), all = TASKS.length + 1;
     const nf = G.feathers?.() || 0;
-    const row = (i, id, title, d, of, k) => `<li class="${d === of ? 'done' : ''}"><button class="lopen3" data-p="${id}">${mark(d === of)}<b>${i}. ${esc(title)}</b><small>${d === of ? 'Done' : `${d} of ${of}`}</small>${feather(k)}</button><button data-r="${k}">${d === of ? 'Replay' : k === 'flight' ? 'Fly it' : 'Start'}</button></li>`;
-    over.innerHTML = `<div class="lpay3">${icon('feather')}<span><b>Learn Aloft one chapter at a time.</b> The first flight and each chapter you finish earns a feather; so does each day’s aim, under Today. Every feather makes your wings last longer.
-        <small>${nf ? `${nf} feather${nf > 1 ? 's' : ''}: wings +${G.wingBonus?.() || 0}%` : 'No feathers yet'} · ${done} of ${all} lessons done</small></span></div>
+    // a chapter: a feather for its mark (filled once done: each chapter earns one), Start (moss) or Replay (pale)
+    const row = (i, id, title, d, of, k) => `<li class="${d === of ? 'done' : ''}"><button class="lopen3" data-p="${id}"><i class="lfeat3${d === of ? ' on' : ''}">${icon('feather')}</i><b>${i}. ${esc(title)}</b><small>${d === of ? 'Done' : `${d} of ${of}`}</small></button><button data-r="${k}"${d === of ? '' : ' class="main3"'}>${d === of ? 'Replay' : 'Start'}</button></li>`;
+    over.innerHTML = `<div class="lpay3"><span class="lnum3">${icon('feather')}<b>${nf}</b><small>${nf === 1 ? 'feather' : 'feathers'}</small></span>
+        <span class="lwhy3"><b>Each chapter earns a feather</b><span>Feathers make your wings last longer${nf ? `: now +${G.wingBonus?.() || 0}%` : ''}. Today’s aim earns them too.</span>
+        <i class="lbar3"><i style="width:${Math.round(done / all * 100)}%"></i></i><small>${done} of ${all} lessons done</small></span></div>
       <ul class="lover3">${row(1, 'controls', 'Flying', S.done.flight ? 1 : 0, 1, 'flight')}${CHAPTERS.map((ch, i) => row(i + 2, ch.page, ch.title, ch.tasks.length - left(ch), ch.tasks.length, i)).join('')}</ul>
       <div class="lbtns3">${S.stage === 'learn' ? '<button data-l="skip">Skip the lessons</button>' : ''}<button data-l="over">Start all the lessons over</button></div>
       <p class="lnote3">Replay clears a chapter’s ticks and plays its lessons again. Feathers come only the first time.</p>`;
     // each chapter's page: its lessons, ticked, with Practise
-    box.controls.innerHTML = `<section class="lgrp3"><h3>${icon('flap')}1. The first flight${feather('flight')}<small>${S.done.flight ? 'Done' : 'Not yet'}</small></h3>
-      <ul class="lessons3">${STEPS.map(st => `<li class="${S.done.flight ? 'done' : ''}">${mark(S.done.flight)}<span>${esc(st[1])}</span></li>`).join('')}</ul>
-      <p class="lnote3">Ten moves, one at a time, with the thumbs shown on screen. <button data-l="flight">Fly the first flight ${S.done.flight ? 'again' : ''}</button></p></section>`;
+    box.controls.innerHTML = fold('flight', !!S.done.flight, `<h3>${icon('flap')}1. The first flight${feather('flight')}<small>${S.done.flight ? 'Done' : 'Not yet'}</small></h3>`,
+      `<ul class="lessons3">${STEPS.map(st => `<li class="${S.done.flight ? 'done' : ''}">${mark(S.done.flight)}<span>${esc(st[1])}</span></li>`).join('')}</ul>
+      <p class="lnote3">Ten moves, one at a time, with the thumbs shown on screen. <button data-l="flight">Fly the first flight ${S.done.flight ? 'again' : ''}</button></p>`);
     CHAPTERS.forEach((ch, i) => {
-      box[ch.page].innerHTML = `<section class="lgrp3"><h3>${icon(ch.icon)}${i + 2}. ${esc(ch.title)}${feather(i)}<small>${ch.tasks.length - left(ch)} of ${ch.tasks.length}</small></h3>
-        <ul class="lessons3">${ch.tasks.map(q => `<li class="${S.done[q.id] ? 'done' : ''}">${tick(q)}<span>${esc(q.text)}</span><button data-t="${q.id}">Practise</button></li>`).join('')}</ul>
-        <p class="lnote3">${S.paid[i] ? 'Feather earned.' : 'Finish the chapter for a feather.'} <button data-r="${i}">${left(ch) === ch.tasks.length ? 'Start the chapter' : 'Replay the chapter'}</button></p></section>`;
+      box[ch.page].innerHTML = fold(i, !left(ch), `<h3>${icon(ch.icon)}${i + 2}. ${esc(ch.title)}${feather(i)}<small>${left(ch) ? `${ch.tasks.length - left(ch)} of ${ch.tasks.length}` : 'Done'}</small></h3>`,
+        `<ul class="lessons3">${ch.tasks.map(q => `<li class="${S.done[q.id] ? 'done' : ''}">${tick(q)}<span>${esc(q.text)}</span><button data-t="${q.id}">Practise</button></li>`).join('')}</ul>
+        <p class="lnote3">${S.paid[i] ? 'Feather earned.' : 'Finish the chapter for a feather.'} <button data-r="${i}">${left(ch) === ch.tasks.length ? 'Start the chapter' : 'Replay the chapter'}</button></p>`);
     });
   }
   G.menu.onOpen(paint);
@@ -388,6 +397,7 @@ export function lessonsSystem(G) {
     if (t) { S.practice = t.id; cur = null; openT = .5; G.menu.set(false); }
   };
   for (const el of [over, today.body, ...Object.values(box)]) el.addEventListener('click', act);
+  for (const el of Object.values(box)) el.addEventListener('toggle', e => { const k = e.target.dataset?.k; if (k != null && e.target.dataset.d === '1') { if (e.target.open) opened.add(k); else opened.delete(k); } }, true);
 
   G.dev?.add({ id: 'lessons', area: 'Menu and story', round: 'Tutorial 10-23', title: 'Lessons: the first flight (HUD hidden, ghost thumbs, Skip), then a chain of lessons under Today; HUD pieces appear as they matter',
     how: 'Reset all game data (Settings > Journey), or Tutorial > Flying > Fly the first flight again. Replay any chapter from the Overview; practise any lesson on its page.', go: () => G.lessons.replay() });
