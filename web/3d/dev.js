@@ -50,7 +50,7 @@ const SHIPPED = [
   ['rivers', 'World', 133, 'Winding rivers with foam and rapids; water rises after rain', 'Follow a river downhill; watch it after rain.'],
   ['ring-aim', 'Flight', 132, 'Rings: soft yellow aim when lined up', 'Line up on a ring of mist.'],
   ['far-terrain', 'World', 131, 'Finer ground, real far terrain', 'Climb high and look at the horizon.'],
-  ['wildlife-lands', 'Wildlife', 128, 'Squirrels, crows, the eagle, hunters that show food, monarchs and dragonflies', 'Watch other hunters stoop: there is food there.'],
+  ['wildlife-lands', 'Wildlife', 128, 'Squirrels, the eagle, hunters that show food, monarchs and dragonflies', 'Watch other hunters stoop: there is food there.'],
   ['ground-worker', 'Settings and performance', 127, 'Ground built off the main thread; auto quality', 'Fly fast: no stutter as ground loads; Graphics on Auto.'],
   ['land-air', 'World', 126, 'Land air, night glow, far horizon, grass waves', 'Fly at dusk over different lands; watch the grass in wind.'],
   ['catch-pins', 'Menu and map', 125, 'Catches left on branches show as brown pins', 'Cache a catch on a branch, then open the Map.'],

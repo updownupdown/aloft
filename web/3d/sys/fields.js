@@ -1,10 +1,10 @@
-// Hunting with your head (round eight A1, A3, A4, A5): clues that tell you where the food is.
+// Hunting with your head (round eight A1, A3, A5): clues that tell you where the food is.
 // A1 signs to read from the air: a mouse's track across fresh snow to its hole. (Vole runways and
 // the hares' grazed rings were removed: James found the pale lines and circles confusing.)
 // A3 the hay meadows (each farm's paddock) through the year: short and open in early spring,
 // tall by midsummer (a still mouse in it can't be made out), laid flat by a storm, mown in
-// autumn with bales left lying. A4 a fox mousing the field edges at dusk and dawn: where it
-// pounces there are voles, and now and then it flushes one into the open for you. A5 wary
+// autumn with bales left lying. (A4, a fox mousing the field edges, went with the big animals,
+// James 10-24.) A5 wary
 // fields: let a few mice get away in one meadow and the rest there stay on edge all day.
 // Reads the mice from food.js (G.mouseCells, the live ones in G.systems.food.mice); gives it
 // G.grassCover and G.wary.
@@ -13,9 +13,8 @@ import { settlementsNear } from '../settle.js';
 import { builder, reseed } from '../shapes.js';
 import { clamp, smooth } from '../util.js';
 import { DAY } from '../sky.js';
-import { foxPounce, frameOf } from './rig.js';
 
-export const FIELDS = { signs: 130, signsHigh: 260, meadow: 300, misses: 3, fox: 280, foxSpeed: 2.3 };
+export const FIELDS = { signs: 130, signsHigh: 260, meadow: 300, misses: 3, farms: 480 };
 // each farm's paddock in its own frame (settle.js layout: u along the farm, w across)
 const PADDOCK = { u0: -20, u1: 18, w0: -66, w1: -38 };
 
@@ -45,12 +44,10 @@ function baleShape() {
 export function fieldsSystem(G) {
   const b = G.b, R = G.R, H = G.hud;
   R.shape('hay', hayShape(false)); R.shape('hayLaid', hayShape(true)); R.shape('bale', baleShape());
-  R.shape('foxP', foxPounce());   // the fox: the rig's frames (rig.js frameOf), and its pounce
-  G.guide?.page('fox', 'Red fox', 'Hunts voles by ear: it stands stock still, head cocked, then leaps high and comes down on them with its forepaws.');
   const once = (id, title, msg, ic, how) => { if (!G.flags[id]) { G.flags[id] = 1; G.hud.quietly(how, title, msg, ic); } };
 
   // ---- A3 the hay meadows ----
-  const farms = () => settlementsNear(b.p[0], b.p[2], FIELDS.fox + 200, false).filter(S => S.kind === 'farm');
+  const farms = () => settlementsNear(b.p[0], b.p[2], FIELDS.farms, false).filter(S => S.kind === 'farm');
   const frame = S => { const c = Math.cos(S.yaw), s = Math.sin(S.yaw); return { c, s, at: (u, w) => [S.x + c * u - s * w, S.z + s * u + c * w], uw: (x, z) => [c * (x - S.x) + s * (z - S.z), -s * (x - S.x) + c * (z - S.z)] }; };
   let laid = 0, laidYaw = 0;
   // how tall the hay stands (0..1) and whether it is mown, by the season and the day in it
@@ -81,65 +78,6 @@ export function fieldsSystem(G) {
   });
   G.on('newDay', () => { misses.clear(); wary.clear(); });
 
-  // ---- A4 the fox ----
-  let fox = null, foxT = 0;
-  const mice = () => G.systems.food?.mice;
-  function mouseHomesNear(x, z, r) {
-    const C = 48, out = [];
-    if (!G.mouseCells) return out;
-    for (let cz = Math.floor((z - r) / C); cz <= Math.floor((z + r) / C); cz++) for (let cx = Math.floor((x - r) / C); cx <= Math.floor((x + r) / C); cx++)
-      for (const m of G.mouseCells(cx, cz)) if (Math.hypot(m.hx - x, m.hz - z) < r) out.push(m);
-    return out;
-  }
-  function spawnFox() {
-    const fs = farms().filter(S => Math.hypot(S.x - b.p[0], S.z - b.p[2]) < FIELDS.fox);
-    if (!fs.length) return;
-    const S = fs[Math.floor(ih(G.day, Math.round(G.tod * 3), 601) * fs.length)], F = frame(S);
-    // its round: just outside the paddock fence, corner to corner
-    const pad = 2, cs = [[PADDOCK.u0 - pad, PADDOCK.w1 + pad], [PADDOCK.u1 + pad, PADDOCK.w1 + pad], [PADDOCK.u1 + pad, PADDOCK.w0 - pad], [PADDOCK.u0 - pad, PADDOCK.w0 - pad]].map(([u, w]) => F.at(u, w));
-    const [x, z] = cs[0];
-    fox = { S, cs, leg: 0, x, z, y: groundAt(x, z), yaw: 0, mode: 'trot', t: 6 + Math.random() * 6, from: null, to: null, pounces: 0 };
-  }
-  function foxStep(dt) {
-    const f = fox, hd = Math.hypot(f.x - b.p[0], f.z - b.p[2]);
-    // the hawk landing near sends it off at a run, and it doesn't come back tonight
-    if (f.mode !== 'flee' && b.state !== 'fly' && hd < 16) { f.mode = 'flee'; f.yaw = Math.atan2(f.z - b.p[2], f.x - b.p[0]); f.t = 8; }
-    const go = sp => {
-      const nx = f.x + Math.cos(f.yaw) * sp * dt, nz = f.z + Math.sin(f.yaw) * sp * dt;
-      if (height(nx, nz) > .8) { f.x = nx; f.z = nz; f.s = (f.s || 0) + sp * dt; f.sp = sp; } else f.yaw += 1.5;
-      f.y = groundAt(f.x, f.z);
-    };
-    if (f.mode === 'flee') { go(7); if ((f.t -= dt) <= 0) fox = null; return; }
-    if (f.mode === 'pounce') {
-      f.t += dt / 1.1; const k = Math.min(1, f.t);
-      f.x = f.from[0] + (f.to[0] - f.from[0]) * k; f.z = f.from[1] + (f.to[1] - f.from[1]) * k;
-      f.y = groundAt(f.x, f.z) + Math.sin(k * Math.PI) * 1.3;
-      if (k >= 1) {
-        f.mode = 'trot'; f.t = 7 + Math.random() * 8; f.pounces++;
-        for (let i = 0; i < 10; i++) { const a = i / 10 * 6.283; G.part([f.x, f.y + .2, f.z], [Math.cos(a) * 1.6, 1 + Math.random(), Math.sin(a) * 1.6], .7, [.6, .66, .36], .09); }
-        // a vole close by bolts out across the open: your chance
-        const M = mice(); let best = null, bd = 7;
-        if (M) for (const m of M.values()) { const d = Math.hypot(m.x - f.x, m.z - f.z); if (d < bd && !(m.hidden > 0) && !(m.dig > 0)) { bd = d; best = m; } }
-        if (best && Math.random() < .7) { best.flee = 2.6; best.freeze = 0; best.bolt = false; best.seen = 3; best.yaw = Math.atan2(best.x - f.x, -(best.z - f.z)); }
-        if (hd < 140) once('fox', 'Fox', 'A fox, mousing along the field edge. Where it pounces there are voles, and sometimes it flushes one into the open.', 'guide');
-      }
-      return;
-    }
-    if (f.mode === 'listen') {
-      if ((f.t -= dt) <= 0) { f.mode = 'pounce'; f.t = 0; f.from = [f.x, f.z]; }
-      return;
-    }
-    // trotting the field edge; now and then it stops, listening toward a vole's home, then leaps
-    const [tx, tz] = f.cs[(f.leg + 1) % 4];
-    f.yaw = Math.atan2(tz - f.z, tx - f.x); go(FIELDS.foxSpeed);
-    if (Math.hypot(tx - f.x, tz - f.z) < 1) f.leg = (f.leg + 1) % 4;
-    if ((f.t -= dt) <= 0) {
-      const homes = mouseHomesNear(f.x, f.z, 9);
-      const h = homes[0], a = h ? Math.atan2(h.hz - f.z, h.hx - f.x) : f.yaw + (Math.random() - .5) * 2, r = h ? Math.min(3.5, Math.hypot(h.hz - f.z, h.hx - f.x)) : 2.5;
-      f.yaw = a; f.to = [f.x + Math.cos(a) * r, f.z + Math.sin(a) * r]; f.mode = 'listen'; f.t = 1.4 + Math.random();
-    }
-  }
-
   // ---- A1 signs ----
   const paths = new Map();   // mouse id -> its snow track (fixed by hash)
   function pathsOf(m) {
@@ -164,8 +102,6 @@ export function fieldsSystem(G) {
     how: 'Fly 20 to 120 m over open grass near a farm: in snow a track leads to a mouse hole.', go: () => toFarm(60) });
   G.dev?.add({ id: 'r8-hay', title: 'Hay meadows through the year', area: 'Food and water', round: 'R8 A3',
     how: "Each farm's paddock: short in spring, tall in summer (still mice hide in it), laid flat after a storm, mown with bales in autumn.", go: () => toFarm(30) });
-  G.dev?.add({ id: 'r8-fox', title: 'A fox mousing at dusk', area: 'Wildlife', round: 'R8 A4',
-    how: 'At dusk or dawn near a farm, a fox trots the paddock edge and pounces where voles are; it can flush one for you.', go: () => { G.tod = .66; toFarm(35); fox = null; foxT = 0; } });
   G.dev?.add({ id: 'r8-wary', title: 'Wary fields', area: 'Food and water', round: 'R8 A5',
     how: 'Let three mice get away in one meadow and the rest there freeze and dive much sooner, until the next day.', go: () => { wary.add(meadowKey(b.p[0], b.p[2])); waryDay = G.day; H.reply('This meadow is wary now (dev).', 2); } });
   function toFarm(up) {
@@ -177,17 +113,13 @@ export function fieldsSystem(G) {
 
   return {
     id: 'fields',
-    dbg: () => ({ fox, near: near.length, laid, hay: hay() }),
+    dbg: () => ({ near: near.length, laid, hay: hay() }),
     update(dt) {
       if (!nearAt || Math.hypot(b.p[0] - nearAt[0], b.p[2] - nearAt[1]) > 40) { near = farms(); nearAt = [b.p[0], b.p[2]]; }
       // a storm lays the standing hay flat; it lifts again over a day or so
       const H0 = hay();
       if ((G.storm || 0) > .6 && !H0.mown && H0.h > .5) { laid = Math.min(1, laid + dt * .5); laidYaw = Math.atan2(.25, 1); }
       else laid = Math.max(0, laid - dt / (DAY * 1.3));
-      // the fox: out at dusk and dawn near a farm, not in rain
-      const dusk = (G.tod > .64 && G.tod < .8) || (G.tod > .2 && G.tod < .29);
-      if (fox) { foxStep(dt); if (fox && (!dusk || Math.hypot(fox.x - b.p[0], fox.z - b.p[2]) > FIELDS.fox + 120)) fox = null; }
-      else if (dusk && (G.rain || 0) < .3 && (foxT -= dt) <= 0) { foxT = 20; spawnFox(); }
       if (b.state === 'fly' && near.some(S => inPaddock(S, b.p[0], b.p[2])) && H0.h > .6 && !H0.mown && laid < .4) once('hay', 'Tall hay', 'Tall hay: a mouse keeping still in it is hidden. Wait for one to move or squeak, or hunt where the grass is short.', 'prey');
       if (laid > .6) once('hayLaid', 'Hay laid flat', 'The storm has laid the hay flat: the mice in it have nowhere to hide for a while.', 'prey');
     },
@@ -210,12 +142,6 @@ export function fieldsSystem(G) {
           const [x, z] = F.at(PADDOCK.u0 + 5 + ih(i, F0.x | 0, 622) * 28, PADDOCK.w0 + 5 + ih(i, F0.z | 0, 623) * 18);
           (S.props.bale ||= []).push(x, groundAt(x, z) - .05, z, 1, ih(i, 3, 624) * 6.283, .5, 0, 0);
         }
-      }
-      // the fox
-      if (fox && Math.hypot(fox.x - cam[0], fox.z - cam[2]) < 260) {
-        const fr = fox.mode === 'pounce' ? 'foxP' : frameOf(R, 'fox', { state: fox.mode === 'listen' ? 'alert' : null, sp: fox.mode === 'listen' ? 0 : fox.sp, s: fox.s });
-        (S.props[fr] ||= []).push(fox.x, fox.y, fox.z, 1.25, fox.yaw, .5, 0, 0);
-        if (Math.hypot(fox.x - cam[0], fox.z - cam[2]) < 70) G.sight?.('fox', fox.x, fox.y + .4, fox.z, .5);
       }
       // A1 signs: read best from the air, not too high
       if (above > FIELDS.signsHigh) return;

@@ -11,12 +11,9 @@ import { continentAt } from '../earth.js';
 
 const NOTES = {
   mouse: ['Meadow vole', 'A red-tail’s favourite meal: it runs in hidden tunnels through the grass.'],
-  deer: ['White-tailed deer', 'Grazes the forest edge at dawn and dusk, and flags its white tail as it bolts.'],
-  reddeer: ['Red deer', 'Grazes the forest edge at dawn and dusk; in autumn the stags roar across the valleys.'],
   heron: ['Great blue heron', 'Stands still in the shallows for minutes at a time, then spears a fish in one strike.'],
   squirrel: ['Eastern gray squirrel', 'Buries nuts all autumn; the ones it never digs up grow into oaks.'],
   fish: ['Pumpkinseed sunfish', 'Rises to snap insects off the surface on calm evenings.'],
-  crow: ['American crow', 'Crows gang up to chase hawks away from their trees, calling the whole neighbourhood in.'],
   starling: ['European starling', 'At dusk thousands wheel together in one cloud, a murmuration, before they roost.'],
   kettlehawk: ['Broad-winged hawk', 'Migrates in great kettles of hundreds, riding one thermal after another all the way to South America.'],
   redtail: ['Red-tailed hawk', 'Your own kind: the brick-red tail comes with the first full year.'],

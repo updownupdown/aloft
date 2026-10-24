@@ -1,5 +1,6 @@
-// Each land's own air: dust devils spinning up the thermals of the dry lands (a thermal you can
-// see), steam venting from the fire mountain's flanks (its lift is world.js's volcano column),
+// Each land's own air: a dust devil spinning up a thermal of the dry lands (a thermal you can
+// see: ride into it and climb; one at a time, gathering out of the dust and thinning away, and soft,
+// a volume like the clouds, clouds.js 'devil'; James 10-24), steam venting from the fire mountain's flanks (its lift is world.js's volcano column),
 // sea fog rolling up the fjords and coasts on the morning, and a heat shimmer over the salt
 // flats at midday. Near the hawk only.
 import { height, thermalsNear, thermalCentre, landmarksNear, blend, ih, coastDist } from '../world.js';
@@ -7,10 +8,14 @@ import { mix3, smooth } from '../util.js';
 import { builder, reseed } from '../shapes.js';
 
 const DEVIL_LANDS = { badlands: 1, savanna: .8, desert: .9, canyon: .5, saltflat: .7, steppe: .6 };
+// the one dust devil: how far from you it may start (m), how long it lasts and fades in and out (s),
+// the rest between one and the next (s)
+export const DEVIL = { near: 120, far: 420, gone: 750, life: [45, 90], fadeIn: 8, fadeOut: 10, rest: [25, 70] };
 const FOG_LANDS = { fjord: 1, coast: .7 };
 
-// a dust devil: a funnel of grit, sparse twisted facets widening upward (unit height)
-function devil() {
+// a dust devil as polygons (the fallback, Settings > Graphics > Clouds: Polygons): a funnel of
+// grit, sparse twisted facets widening upward (unit height)
+function devilMesh() {
   reseed(91); const B = builder(), c1 = [.78, .66, .5], c2 = [.7, .58, .44];
   for (let i = 0; i < 110; i++) {
     const t = i / 110, y = t, a = i * 2.39996 + t * 9, r = .06 + t * t * .42, w = .035 + t * .06;
@@ -23,12 +28,40 @@ const dayHash = (G, k) => ih(G.day | 0, k, 701);
 
 export function landAirSystem(G) {
   const b = G.b;
-  G.R.shape('devil', devil());
+  G.R.shape('devil', devilMesh());
   let land = 'meadow', landT = 0, vents = [];
   const dryOf = new Map();   // thermal id -> how dry its land is
+  const dryAt = t => { let d = dryOf.get(t.id); if (d === undefined) { d = DEVIL_LANDS[blend(t.x, t.z)[0].name] || 0; dryOf.set(t.id, d); if (dryOf.size > 500) dryOf.clear(); } return d; };
+  let devil = null, devilT = 10;   // { t: the thermal, age, life, a: how there it is, h: its height }
+  const clear = () => G.light.daylight > .5 && !(G.rain > .1);
+  function devils(dt) {
+    if (devil) {
+      const d = devil, far = Math.hypot(d.x - b.p[0], d.z - b.p[2]) > DEVIL.gone;
+      d.age += dt;
+      const want = d.age < d.life && clear() && !far ? 1 : 0;
+      d.a = want ? Math.min(1, d.a + dt / DEVIL.fadeIn) : Math.max(0, d.a - dt / DEVIL.fadeOut);
+      if (!want && d.a <= 0) { devil = null; devilT = DEVIL.rest[0] + Math.random() * (DEVIL.rest[1] - DEVIL.rest[0]); }
+      return;
+    }
+    if ((devilT -= dt) > 0) return;
+    devilT = 5;
+    if (!clear()) return;
+    const ts = thermalsNear(b.p[0], b.p[2], DEVIL.far).filter(t => {
+      if (t.volcano) return false;
+      const d = Math.hypot(t.x - b.p[0], t.z - b.p[2]);
+      return d > DEVIL.near && d < DEVIL.far && Math.random() < dryAt(t) * .6;
+    });
+    const t = ts[Math.floor(Math.random() * ts.length)]; if (!t) return;
+    devil = { t, x: t.x, z: t.z, age: 0, a: 0, life: DEVIL.life[0] + Math.random() * (DEVIL.life[1] - DEVIL.life[0]), h: 26 + ih(t.id, 1, 705) * 30 };
+  }
+  G.dev?.add({ id: 'devil', title: 'A dust devil: one at a time, soft, fading in and out', area: 'World',
+    how: 'Hot clear days in the dry lands (badlands, desert, savanna, steppe): a spinning column of dust marks a thermal; fly into it to climb.',
+    go: () => { G.tod = .5; G.rain = 0; devil = null; devilT = 0; } });
   return {
     id: 'landair',
+    devil: () => devil, devilNow() { devil = null; devilT = 0; },   // (debug)
     update(dt) {
+      devils(dt);
       if ((landT -= dt) <= 0) {
         landT = 2; land = blend(b.p[0], b.p[2])[0].name;
         const v = landmarksNear(b.p[0], b.p[2], 900).find(l => l.kind === 'volcano');
@@ -39,17 +72,14 @@ export function landAirSystem(G) {
     },
     scene(S) {
       const cam = S.cam, L = G.light;
-      // dust devils: on hot clear days, a spinning funnel low on some of the dry lands' thermals
-      if (L.daylight > .5 && !(G.rain > .1)) {
-        const P = S.props.devil ||= [];
-        for (const t of thermalsNear(cam[0], cam[2], 450)) {
-          if (t.volcano) continue;
-          let dry = dryOf.get(t.id); if (dry === undefined) { dry = DEVIL_LANDS[blend(t.x, t.z)[0].name] || 0; dryOf.set(t.id, dry); if (dryOf.size > 500) dryOf.clear(); }
-          if (ih(t.id, 0, 704) > dry * .6) continue;
-          const [x, z] = thermalCentre(t, 10), g = Math.max(height(x, z), 0), wob = Math.sin(G.t * .4 + t.id) * 6;
-          const h = 26 + ih(t.id, 1, 705) * 30;
-          P.push(x + wob, g - .5, z + Math.cos(G.t * .3 + t.id) * 6, h, G.t * 4 + t.id, .5, 0, 0);
-        }
+      // the dust devil: on a hot clear day, a spinning column low on a dry land's thermal,
+      // wandering with it
+      if (devil && devil.a > 0) {
+        const d = devil, t = d.t, [cx, cz] = thermalCentre(t, 10), x = cx + Math.sin(G.t * .4 + t.id) * 6, z = cz + Math.cos(G.t * .3 + t.id) * 6;
+        d.x = x; d.z = z;
+        const g = Math.max(height(x, z), 0), a = d.a * d.a * (3 - 2 * d.a), soft = G.R.cloudStyle !== 'poly';
+        // (soft: it thickens out of the air; polygons: it grows up out of the ground)
+        (S.props.devil ||= []).push(x, g - .5, z, soft ? d.h * (.85 + .15 * a) : d.h * a, G.t * 2.2 + t.id, .5, 0, soft ? 1 - a : 0);
       }
       // sea fog rolling in over the water of the fjords and coasts, mornings on some days
       // (along the shore only: out on the open sea it read as grey lumps on the water)

@@ -3,25 +3,23 @@
 // when you stoop), lizards on the rocks (they dart for a crack), marmots on the peaks (a whistle,
 // and they're gone), crabs on the mangrove and sea shores, and squirrels, on the ground or
 // off a branch (a squirrel taken from a branch rides in your feet: eat it on a perch).
-// Bigger neighbours to watch: mountain goats on the steeps, bison on the savanna, egrets in the
-// mangroves, seals hauled out on the fjords' rocks. Placed by hash in cells near the hawk;
+// Egrets wade the mangroves and marshes. (The big animals, goats, bison, seals and the rest, were
+// taken out: James 10-24, only what a hawk can eat.) Placed by hash in cells near the hawk;
 // prey shows to the aim (G.prey) and is eaten through food.js (G.systems.food.take()).
 import { height, groundAt, groundNormal, blend, treesNear, perchesOf, ih, WATER, fencesNear } from '../world.js';
 import { bridgesNear } from '../settle.js';
-import { jackrabbit, lizard, marmot, crab, egret, seal, squirrel, monarch, dragonfly, snake } from './critshapes.js';
-import { frameOf } from './rig.js';
-import { angleTo } from '../util.js';
+import { jackrabbit, lizard, marmot, crab, egret, squirrel, monarch, dragonfly, snake } from './critshapes.js';
 
 export const CRIT = { cell: 90, near: 240, catchR: 1.6, catchDive: 1.6, catchH: 2.2 };
 // what lives where: [kind, chance per cell, how many]
 const LIVES = {
   desert: [['jackrabbit', .45, 1], ['lizard', .4, 1]], badlands: [['jackrabbit', .45, 1], ['lizard', .35, 1]], canyon: [['lizard', .45, 1]],
-  savanna: [['jackrabbit', .35, 1], ['bison', .22, 6]], saltflat: [['jackrabbit', .15, 1]], moor: [['bison', .06, 4]],
-  alpine: [['marmot', .45, 2], ['goat', .3, 3]], mountains: [['marmot', .35, 2], ['goat', .25, 2]], cliffs: [['goat', .3, 3]],
-  swamp: [['crab', .6, 3], ['egret', .5, 2]], marsh: [['egret', .35, 2]], coast: [['crab', .3, 2], ['seal', .2, 3]], fjord: [['seal', .4, 4]],
+  savanna: [['jackrabbit', .35, 1]], saltflat: [['jackrabbit', .15, 1]],
+  alpine: [['marmot', .45, 2]], mountains: [['marmot', .35, 2]],
+  swamp: [['crab', .6, 3], ['egret', .5, 2]], marsh: [['egret', .35, 2]], coast: [['crab', .3, 2]],
   forest: [['squirrel', .5, 2]], birch: [['squirrel', .45, 2]], lakeland: [['squirrel', .3, 1]], redwood: [['squirrel', .5, 2]],
   taiga: [['squirrel', .4, 2]], rainforest: [['squirrel', .4, 2], ['lizard', .3, 1]], maquis: [['lizard', .4, 1], ['jackrabbit', .2, 1]],
-  steppe: [['jackrabbit', .3, 1], ['bison', .12, 6]], tundra: [['marmot', .2, 2], ['bison', .05, 5]], ice: [['seal', .12, 3]],
+  steppe: [['jackrabbit', .3, 1]], tundra: [['marmot', .2, 2]],
 };
 // prey: how much it fills (food, water), its name; and how fast it runs
 // who each animal is on each continent (they share the meshes and the ways): [guide key (LOCAL_PAGES),
@@ -29,27 +27,19 @@ const LIVES = {
 const NA = 'n-america', SA = 's-america', EU = 'europe', AF = 'africa', AS = 'asia', OC = 'oceania';
 const LOCAL = {
   jackrabbit: (c, lat) => c === NA ? ['jackrabbit'] : c === AF || (c === AS && lat < 34) ? ['capehare', 'a hare'] : c === EU || c === AS || c === SA ? ['hare', 'a hare'] : null,
-  bison: (c, lat, land) => land === 'tundra' ? (c === NA || c === AS || c === EU ? ['muskox', ''] : null)
-    : c === NA ? ['bison'] : c === AF && land === 'savanna' ? ['wildebeest', ''] : null,
-  goat: c => c === NA ? ['goat'] : c === EU || c === AS || c === AF ? ['ibex', ''] : null,
   marmot: c => c === NA ? ['marmot'] : c === EU || c === AS ? ['amarmot', 'a marmot'] : null,
   lizard: c => c === NA ? ['lizard'] : c === EU ? ['walllizard', 'a lizard'] : c === AF || c === AS ? ['agama', 'a lizard'] : c === OC ? ['dragon', 'a lizard'] : c === SA ? ['iguana', 'an iguana'] : null,
   squirrel: c => c === NA ? ['squirrel'] : c === EU || c === AS ? ['redsquirrel', 'a squirrel'] : c === AF ? ['bushsquirrel', 'a squirrel'] : c === SA ? ['redtailsquirrel', 'a squirrel'] : null,
-  seal: (c, lat) => lat < 0 ? ['furseal', ''] : ['seal'],
   crab: (c, lat, land) => land === 'swamp' || Math.abs(lat) < 30 ? ['crab'] : ['shorecrab', 'a crab'],
 };
 const LOCAL_PAGES = {
   capehare: ['Cape hare', 'A hare of the dry lands from the Cape to the Sahara, with long ears that shed the heat.'],
   hare: ['Brown hare', 'Lies flat in a scrape in the open all day, then runs, jinking, at the last moment.'],
-  muskox: ['Muskox', 'An ice-age ox in a coat of long hair; the herd stands in a ring, horns out, against wolves.'],
-  wildebeest: ['Blue wildebeest', 'Gnus, a million of them, follow the rains round the Serengeti every year.'],
-  ibex: ['Ibex', 'A wild goat of the high crags, its horns ridged like a ladder; it stands where nothing else can.'],
   amarmot: ['Alpine marmot', 'Whistles from its burrow mouth when an eagle passes over the alpine meadow.'],
   walllizard: ['Wall lizard', 'Suns itself on old stone walls and vanishes into a crack in a blink.'],
   agama: ['Rainbow agama', 'The male basks on the rocks in orange and blue, nodding his head at rivals.'],
   dragon: ['Bearded dragon', 'Puffs out its spiny beard and gapes when it is threatened.'],
   iguana: ['Green iguana', 'Basks along the branches over the rivers and drops into the water at a shadow.'],
-  furseal: ['Fur seal', 'A sea lion of the southern oceans, hauled out in colonies on the rocks.'],
   redsquirrel: ['Red squirrel', 'Tufted ears and a red coat; it strips pine cones to the core for the seeds.'],
   bushsquirrel: ['Bush squirrel', 'A small squirrel of the African woodland, scolding from the branches at any hawk.'],
   redtailsquirrel: ['Red-tailed squirrel', 'Runs the branches of the South American forest, cracking palm nuts with its teeth.'],
@@ -57,8 +47,7 @@ const LOCAL_PAGES = {
 };
 const PREY = { jackrabbit: [.32, .06, 'a jackrabbit', 7.5], lizard: [.14, .04, 'a lizard', 4], marmot: [.3, .06, 'a marmot', 5], crab: [.12, .1, 'a crab', 2.2], squirrel: [.22, .05, 'a squirrel', 5.5], snake: [.2, .05, 'a grass snake', 0] };
 const SPOT = {   // where in its cell an animal will stand: ground height and slope
-  crab: (h, n) => h > -.15 && h < .9, seal: (h, n) => h > .1 && h < 1.6, egret: h => h < -.05 && h > -.5,
-  goat: (h, n) => h > 4 && n < .8 && n > .45, lizard: (h, n) => h > 1, bison: (h, n) => h > 2 && n > .9,
+  crab: (h, n) => h > -.15 && h < .9, egret: h => h < -.05 && h > -.5, lizard: (h, n) => h > 1,
 };
 
 export function crittersSystem(G) {
@@ -66,7 +55,6 @@ export function crittersSystem(G) {
   R.shape('jack', jackrabbit(false)); R.shape('jackR', jackrabbit(true)); R.shape('lizard', lizard());
   R.shape('marmot', marmot(true)); R.shape('marmotR', marmot(false)); R.shape('crab', crab());
   for (const k of ['stand', 'step', 'stab']) R.shape('egret_' + k, egret(k));
-  for (let k = 0; k < 4; k++) R.shape('seal' + k, seal(k));
   R.shape('squirrel', squirrel(false)); R.shape('squirrelR', squirrel(true));
   R.shape('snake', snake(false)); R.shape('snakeS', snake(true));
   R.shape('monarchU', monarch(true)); R.shape('monarchD', monarch(false)); R.shape('dragonfly', dragonfly());
@@ -75,10 +63,7 @@ export function crittersSystem(G) {
     lizard: ['Side-blotched lizard', 'Basks on warm rock all morning and darts for a crack the moment a shadow crosses it.'],
     marmot: ['Hoary marmot', 'Its shrill whistle warns the whole slope; the old trappers called it the whistler.'],
     crab: ['Mangrove tree crab', 'Scuttles sideways over the roots and drops into the water when anything comes near.'],
-    goat: ['Mountain goat', 'Climbs ledges no hunter can follow, on hooves with soft grippy pads.'],
-    bison: ['American bison', 'The heaviest animal of the plains, and still quick enough to outrun a horse.'],
     egret: ['Great egret', 'Wades the shallows on black legs and spears fish with a yellow bill.'],
-    seal: ['Harbour seal', 'Hauls out on the rocks at low tide to rest and warm up, and slips in at the first alarm.'],
     monarch: ['Monarch butterfly', 'Each autumn millions fly thousands of miles south to the same few mountain forests.'],
     snake: ['Grass snake', 'Basks on warm stone through the afternoon and pours itself into the nearest crack at a shadow. Red-tails take snakes as readily as mice.'],
     dragonfly: ['Common green darner', 'Hunts other insects on the wing, catching nearly every one it chases.'],
@@ -157,7 +142,7 @@ export function crittersSystem(G) {
   // ---- behaviour ----
   const step = (o, sp, dt) => {
     const nx = o.x + Math.cos(o.yaw) * sp * dt, nz = o.z + Math.sin(o.yaw) * sp * dt, h = height(nx, nz);
-    const ok = o.kind === 'crab' ? h < 1.2 : o.kind === 'goat' ? h > 3 : h > .6;
+    const ok = o.kind === 'crab' ? h < 1.2 : h > .6;
     if (ok) { o.x = nx; o.z = nz; o.s = (o.s || 0) + sp * dt; o.sp = sp; } else o.yaw += 2.2;
     o.y = o.kind === 'egret' ? WATER - .25 : groundAt(o.x, o.z);
   };
@@ -195,11 +180,11 @@ export function crittersSystem(G) {
       if (o.kind === 'marmot') { G.audio.tone?.({ f: 2900, f2: 2500, dur: .3, vol: .05 }); o.hide = 1.2; }
       if (o.kind === 'lizard') o.hide = 1;
       if (o.kind === 'snake') { o.hide = .7; once('snake', 'Grass snake', 'A grass snake, basking on the warm stone: it pours into the cracks at your shadow. Come in fast and low.', 'prey'); }
-      if (o.kind === 'crab' || o.kind === 'seal') o.hide = 1.5;
+      if (o.kind === 'crab') o.hide = 1.5;
       if (o.kind === 'egret') o.hide = .6;
       if (o.kind === 'squirrel' && !o.climb) { G.audio.tone?.({ f: 3400, f2: 2800, dur: .08, vol: .04 }); G.audio.tone?.({ f: 3400, f2: 2800, dur: .08, vol: .04, delay: .12 }); }
     }
-    if (o.hide !== undefined && o.flee > 0) { if ((o.hide -= dt) <= 0) { o.hidden = o.kind === 'seal' ? 30 : o.kind === 'snake' ? 45 : 8; o.hide = undefined; if (o.kind === 'egret') G.part([o.x, .8, o.z], [0, 3, 0], .8, [.95, .95, .93], .3); return; } }
+    if (o.hide !== undefined && o.flee > 0) { if ((o.hide -= dt) <= 0) { o.hidden = o.kind === 'snake' ? 45 : 8; o.hide = undefined; if (o.kind === 'egret') G.part([o.x, .8, o.z], [0, 3, 0], .8, [.95, .95, .93], .3); return; } }
     const away = Math.atan2(o.z - b.p[2], o.x - b.p[0]);
     switch (o.kind) {
       case 'squirrel': squirrelStep(o, dt); break;
@@ -212,32 +197,12 @@ export function crittersSystem(G) {
         if (o.flee > 0) { o.yaw = o.kind === 'crab' ? away + Math.PI / 2 : away; step(o, PREY[o.kind][3], dt); }
         else if ((o.go -= dt) > 0) step(o, PREY[o.kind][3] * .3, dt); else if (Math.random() < dt * .3) { o.go = .5; o.yaw += (Math.random() - .5) * 2.5; }
         break;
-      case 'goat': case 'bison': grazerStep(o, dt, hd, above, away); break;
-      case 'seal':
-        o.sp = 0;
-        if (o.flee > 0) { o.yaw += angleTo(o.yaw, away) * Math.min(1, dt * 3); step(o, 1.1, dt); o.state = 'hump'; }
-        else if ((o.go -= dt) <= 0) { o.go = 3 + Math.random() * 6; o.state = Math.random() < .3 ? 'look' : 'lie'; }
-        break;
       case 'egret':
         o.sp = 0;
         if ((o.go -= dt) <= 0) { const r = Math.random(); o.state = r < .35 ? 'wade' : r < .55 ? 'stab' : 'stand'; o.go = o.state === 'stab' ? .5 : 1.5 + Math.random() * 3; if (o.state === 'wade') o.yaw += (Math.random() - .5) * 1.2; }
         if (o.state === 'wade') { o.s = (o.s || 0) + dt; const nx = o.x + Math.cos(o.yaw) * .3 * dt, nz = o.z + Math.sin(o.yaw) * .3 * dt, h = height(nx, nz); if (h < -.05 && h > -.5) { o.x = nx; o.z = nz; } else o.yaw += 2; }
         break;
     }
-  }
-  // the grazers (goats and ibex, bison, wildebeest, muskox): they graze, wander a few steps, lift
-  // their heads at a hawk coming low, and run from one that stoops at them
-  function grazerStep(o, dt, hd, above, away) {
-    const run = o.kind === 'goat' ? 3.2 : 5.5;
-    if (o.flee > 0 && hd < 30 && above < 12) { o.state = 'run'; o.yaw += angleTo(o.yaw, away) * Math.min(1, dt * 3); step(o, run, dt); o.go = 2; return; }
-    o.sp = 0;
-    if (b.state === 'fly' && hd < 55 && above < 35 && o.state !== 'alert' && o.state !== 'run') { o.state = 'alert'; o.go = 2 + Math.random() * 2; }
-    if ((o.go -= dt) <= 0) {
-      const r = Math.random();
-      o.state = r < .55 ? 'graze' : r < .85 ? 'walk' : 'stand'; o.go = 2 + Math.random() * 5;
-      if (o.state === 'walk') o.yaw += Math.hypot(o.x - o.hx, o.z - o.hz) > 25 ? angleTo(o.yaw, Math.atan2(o.hz - o.z, o.hx - o.x)) : (Math.random() - .5) * 2;
-    }
-    if (o.state === 'walk') step(o, o.kind === 'goat' ? .55 : .8, dt);
   }
   function tryCatch() {
     if (b.state !== 'fly' || b.carry) return;   // (feet full)
@@ -295,14 +260,11 @@ export function crittersSystem(G) {
       for (const o of live.values()) {
         if (o.hidden > 0 || Math.abs(o.x - cam[0]) > 200 || Math.abs(o.z - cam[2]) > 200) continue;
         const run = o.flee > 0 || o.go > 0;
-        const look = o.kind === 'goat' || o.kind === 'bison' ? o.page : null;
-        const shape = look ? frameOf(R, look, { state: o.state, sp: o.sp, s: o.s, t: o.t })
-          : o.kind === 'seal' ? 'seal' + (o.state === 'hump' ? 2 + (Math.floor((o.s || 0) / .35) & 1) : o.state === 'look' ? 1 : 0)
-          : o.kind === 'egret' ? 'egret_' + (o.state === 'stab' ? 'stab' : o.state === 'wade' && (Math.floor(o.s * 1.5) & 1) ? 'step' : 'stand')
+        const shape = o.kind === 'egret' ? 'egret_' + (o.state === 'stab' ? 'stab' : o.state === 'wade' && (Math.floor(o.s * 1.5) & 1) ? 'step' : 'stand')
           : { jackrabbit: run ? 'jackR' : 'jack', marmot: run ? 'marmotR' : 'marmot', squirrel: run || o.climb ? 'squirrelR' : 'squirrel', snake: o.flee > 0 ? 'snakeS' : 'snake' }[o.kind] || o.kind;
         const hop = o.kind === 'jackrabbit' && run ? Math.abs(Math.sin(G.t * 9 + o.t)) * .35 : 0;
         (S.props[shape] ||= []).push(o.x, o.y + hop, o.z, o.kind === 'snake' ? 1.7 : 1, o.yaw, .5, 0, 0);   // a snake a little large, to read from the air
-        if (Math.abs(o.x - cam[0]) < 60 && Math.abs(o.z - cam[2]) < 60) G.sight?.(o.page || o.kind, o.x, o.y + .3, o.z, { bison: 1.5, goat: .8, seal: .7, egret: .6 }[o.kind] || .3);
+        if (Math.abs(o.x - cam[0]) < 60 && Math.abs(o.z - cam[2]) < 60) G.sight?.(o.page || o.kind, o.x, o.y + .3, o.z, o.kind === 'egret' ? .6 : .3);
       }
       insects(S);
     },
