@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <title>Aloft</title>
 <meta name="description" content="A zen flight game. Ride thermals as a hawk over hills, lakes and woods.">
-<meta name="theme-color" content="#eef2f4">
+<meta name="theme-color" content="#9dc0dc">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -15,13 +15,22 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="preload" href="fonts/figtree.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="3d/3d.css">
+<style>
+  /* the boot cover: the splash's sky colour and the mark, no words, until the first frame is drawn */
+  #boot { position: fixed; inset: 0; z-index: 9; display: grid; place-items: center; background: #9dc0dc; transition: opacity .6s ease; }
+  #boot img { width: min(28vmin, 160px); aspect-ratio: 1; border-radius: 22%; box-shadow: 0 6px 24px rgba(40, 60, 80, .18); }
+  #boot.gone { opacity: 0; pointer-events: none; }
+</style>
 </head>
 <body>
+<div id="boot" aria-hidden="true"><img src="icons/icon-192.png" alt=""></div>
 <canvas id="game3" aria-label="Aloft"></canvas>
 <div id="ui3"></div>
 <script type="module">
   import { start } from './3d/main.js';
   start(document.getElementById('game3'), document.getElementById('ui3'));
+  const boot = document.getElementById('boot');
+  requestAnimationFrame(() => requestAnimationFrame(() => { boot.classList.add('gone'); setTimeout(() => boot.remove(), 700); }));
   if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js');
 </script>
 </body>
