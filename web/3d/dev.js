@@ -143,7 +143,22 @@ export function createDev(G, M) {
     const u = new URL(location.href); u.search = ''; u.searchParams.set('dbg', btoa(JSON.stringify(snap()))); if (BIRD !== 'hawk') u.searchParams.set('bird', BIRD);
     try { await navigator.clipboard.writeText(u.href); el.firstChild.textContent = 'Copied: paste it to Claude '; } catch { prompt('Debug link', u.href); }
   } });
+  // Time of day: jump to where each part of the day starts or ends (sky.js period(): night past
+  // 0.8, dawn from 0.2, day from 0.33, dusk from 0.68), for testing the light; the menu closes to show it
+  const SPANS = [['Dawn', .2, .33], ['Day', .33, .68], ['Dusk', .68, .8], ['Night', .8, .2]];
+  const clock = t => { const m = Math.round(t * 24 * 60) % 1440; return `${String(m / 60 | 0).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`; };
+  const tbox = document.createElement('div'); tbox.className = 'tod3';
+  M.button('play', { label: 'Time of day', group: 'dev' }).replaceWith(tbox);
+  tbox.innerHTML = `<b>Time of day</b><small>Jump to where each part of the day starts or ends</small><div>${SPANS.map(([n, a, z]) =>
+    `<span>${n}</span><button data-tod="${a}">Start <em>${clock(a)}</em></button><button data-tod="${z}">End <em>${clock(z)}</em></button>`).join('')}</div>`;
+  tbox.addEventListener('click', e => {
+    const t = e.target.closest('[data-tod]'); if (!t) return;
+    // a jump forward past midnight is a new day (an end before its start, like the night's)
+    const to = +t.dataset.tod; if (to < G.tod - .5) { G.day++; G.emit?.('newDay', G.day); }
+    G.tod = to; G.menu.set(false);
+  });
   const dq = new URLSearchParams(location.search).get('dbg');
+
   if (dq) try {
     const o = JSON.parse(atob(dq));
     setTimeout(() => {
