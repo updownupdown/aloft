@@ -9,18 +9,18 @@ import { store } from './util.js';
 
 export const LOOKS = [
   { id: 'reflect', letter: 'T', def: 'L_REFLECT', ultra: true, label: 'Mirror reflections' },
-  { id: 'foam', letter: 'C', def: 'L_FOAM', label: 'Shore foam', sub: 'soft broken foam lapping in and out along lake shores and coasts, made wide to be seen (it can be dialled back). Cost: under 0.1 ms (two noise reads a near water pixel)' },
+  { id: 'foam', letter: 'C', def: 'L_FOAM', on: true, key: 'foam2', label: 'Shore foam', sub: 'soft broken foam lapping in and out along lake shores and coasts, on unless switched off, made bold to be seen (it can be dialled back). Cost: under 0.1 ms (two noise reads a near water pixel)' },
 ];
 
 export function createLooks(G, R) {
   const q = new URLSearchParams(location.search).get('look'), forced = q ? new Set(q.split(',')) : null;
   R.look = {};
   const ultra = () => G.gfx?.preset === 'ultra';
-  for (const L of LOOKS) R.look[L.id] = forced ? forced.has('all') || forced.has(L.id) || forced.has(L.letter) : L.ultra ? ultra() : !!store.get('look.' + L.id, false);
+  for (const L of LOOKS) R.look[L.id] = forced ? forced.has('all') || forced.has(L.id) || forced.has(L.letter) : L.ultra ? ultra() : !!store.get('look.' + (L.key || L.id), L.on ?? false);
   R.relook?.();
   const set = (id, v) => {
     if (R.look[id] === v) return;
-    R.look[id] = v; if (!forced && !LOOKS.find(L => L.id === id).ultra) store.set('look.' + id, v);
+    const L = LOOKS.find(l => l.id === id); R.look[id] = v; if (!forced && !L.ultra) store.set('look.' + (L.key || id), v);
     R.relook?.(); G.emit('look', R.look);
   };
   G.on('gfx', () => { if (!forced) set('reflect', ultra()); });
