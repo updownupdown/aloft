@@ -30,7 +30,7 @@ export function createAudio() {
     // three volumes (Settings > Audio): birds and effects (A.master, where most sounds go), the
     // wind (wind and the stoop whistle) and the music (music.js plays into A.musicBus)
     const bus = k => { const g = ctx.createGain(); g.gain.value = A.level(k); g.connect(A.out); return g; };
-    A.master = bus('fx'); A.windBus = bus('wind'); A.musicBus = bus('music');
+    A.master = bus('fx'); A.windBus = bus('wind'); A.musicBus = bus('music'); A.rainBus = bus('rain');
     // (made a little long and its tail faded into its head, so the wind, rain and water loops
     // have no seam: the low rumble jumped where the loop came round, a thump every 2 s that the
     // wind made loud in the mountains)
@@ -39,7 +39,7 @@ export function createAudio() {
     noiseBuf = ctx.createBuffer(1, n, ctx.sampleRate);
     const d = noiseBuf.getChannelData(0); d.set(raw.subarray(0, n));
     for (let i = 0; i < fade; i++) { const k = i / fade; d[i] = raw[i] * Math.sqrt(k) + raw[n + i] * Math.sqrt(1 - k); }
-    A.wind = loop('lowpass', 420, .7, A.windBus); A.rain = loop('highpass', 2500, .3);
+    A.wind = loop('lowpass', 420, .7, A.windBus); A.rain = loop('highpass', 2500, .3, A.rainBus);
     // the stoop whistle: air over the wings near top speed
     A.whistle = loop('bandpass', 2600, 9, A.windBus);
     // water tumbling near a waterfall
@@ -55,7 +55,7 @@ export function createAudio() {
       }
       return buf;
     };
-    const pf = ctx.createBiquadFilter(); pf.type = 'bandpass'; pf.frequency.value = 2600; pf.Q.value = 1.5; pf.connect(A.master);
+    const pf = ctx.createBiquadFilter(); pf.type = 'bandpass'; pf.frequency.value = 2600; pf.Q.value = 1.5; pf.connect(A.rainBus);
     A.drops = { fl: pf, beds: [drops(2.1, 26), drops(2.9, 70)].map(buf => {
       const src = ctx.createBufferSource(); src.buffer = buf; src.loop = true;
       const g = ctx.createGain(); g.gain.value = 0; src.connect(g).connect(pf); src.start(); return g;
@@ -65,12 +65,14 @@ export function createAudio() {
   const SURF = { leaves: [3200, 2.5, 1], needles: [5800, 2, .6], open: [1600, 1, .7], roof: [2400, 1.2, 1.2], post: [700, 2, 1.1], stone: [2800, 1.8, .7] };
   let pat = 0, patSurf = 'open';
   A.patter = (amount, surf = 'open') => { pat = amount; patSurf = SURF[surf] ? surf : 'open'; };
-  // volumes 0..1 (the wind's 1 is its old level: the default sits 30% under it)
-  A.vol = { music: 1, wind: .7, fx: 1 };
-  // a bus's gain: its volume, or nothing for the wind and effects while Sound effects is off (the
-  // music has its own switch, music.js)
-  A.level = k => k === 'music' || A.on ? A.vol[k] : 0;
-  const busOf = k => ({ music: A.musicBus, wind: A.windBus, fx: A.master }[k]);
+  // volumes 0..1. The wind's slider is half scale (James, 10-24: the old 25% was right, so that is
+  // now 50%, the default); the rain (its hiss and the patter on the perch) has its own
+  A.vol = { music: 1, wind: .5, rain: 1, fx: 1 };
+  const SCALE = { wind: .5 };
+  // a bus's gain: its volume, or nothing for the wind, rain and effects while Sound effects is off
+  // (the music has its own switch, music.js)
+  A.level = k => k === 'music' || A.on ? A.vol[k] * (SCALE[k] ?? 1) : 0;
+  const busOf = k => ({ music: A.musicBus, wind: A.windBus, rain: A.rainBus, fx: A.master }[k]);
   A.setVol = (k, v) => {
     A.vol[k] = v;
     const g = busOf(k);
@@ -96,7 +98,7 @@ export function createAudio() {
   A.suspend = () => { if (A.ctx && A.ctx.state === 'running') A.ctx.suspend(); };
   A.resume = () => { if (A.ctx && A.ctx.state !== 'running' && !document.hidden) A.ctx.resume(); };
   // Sound effects on or off: the wind and the effects (birds, calls, wings); not the music
-  A.setOn = on => { A.on = on; for (const k of ['wind', 'fx']) busOf(k)?.gain.setTargetAtTime(A.level(k), A.ctx.currentTime, .05); };
+  A.setOn = on => { A.on = on; for (const k of ['wind', 'rain', 'fx']) busOf(k)?.gain.setTargetAtTime(A.level(k), A.ctx.currentTime, .05); };
   // continuous beds, called every frame. `scene` says where the hawk is: the biome, whether a
   // waterfall or a night pond is near, so the wind sighs in pines, surges over the cliffs,
   // water babbles and frogs call. Height mixes it: low down the streams, frogs and insects
