@@ -15,6 +15,7 @@
 // amount along the view ray integrated exactly; and over the sky where the camera is in it.
 import { program, mesh } from './gl.js';
 import { GRADE_GLSL } from './look.js';
+const NO_GRAIN = [1, .075, 1, 0];
 
 // lobes [x, y, z, rx, ry, rz] in each shape's own units (the instance scales and yaws it), laid
 // as the polygon shapes' blobs are (shapes.js cloud, weather.js storm and puff, faunashapes.js
@@ -241,7 +242,7 @@ export function createClouds(gl) {
       gl.uniform1f(u.uTime, S.time); gl.uniform1f(u.uStyle, STYLES.indexOf(style) - 1);
       gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_3D, tex); gl.uniform1i(u.uNoise, 0);
       if (u.uGradeT) gl.uniform3fv(u.uGradeT, S.gradeT || [1, 1, 1]);
-      if (u.uGrain) gl.uniform2fv(u.uGrain, S.grain || [1, .075]);
+      if (u.uGrain) gl.uniform4fv(u.uGrain, S.grain || NO_GRAIN);
       if (u.uFlash) gl.uniform4fv(u.uFlash, S.flash || [0, 0, 0, 0]);
       // the inside of each box: its far faces, tested against the land's depth
       gl.enable(gl.CULL_FACE); gl.cullFace(flip ? gl.FRONT : gl.BACK);   // (box() winds its faces inward)
@@ -271,7 +272,7 @@ export function createClouds(gl) {
       gl.useProgram(mistP.p);
       gl.uniformMatrix4fv(mistP.u.uInvVP, false, inv); gl.uniform3fv(mistP.u.uCam, S.cam); gl.uniform3fv(mistP.u.uMistCol, S.mistCol); gl.uniform4fv(mistP.u.uMist, M);
       if (mistP.u.uGradeT) gl.uniform3fv(mistP.u.uGradeT, S.gradeT || [1, 1, 1]);
-      if (mistP.u.uGrain) gl.uniform2fv(mistP.u.uGrain, S.grain || [1, .075]);
+      if (mistP.u.uGrain) gl.uniform4fv(mistP.u.uGrain, S.grain || NO_GRAIN);
       gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA); gl.depthMask(false); gl.depthFunc(gl.LEQUAL);
       gl.bindVertexArray(tri.vao); gl.drawArrays(gl.TRIANGLES, 0, 3);
       gl.depthMask(true); gl.disable(gl.BLEND); gl.depthFunc(gl.LESS);
