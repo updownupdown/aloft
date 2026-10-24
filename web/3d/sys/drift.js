@@ -96,7 +96,12 @@ export function driftSystem(G) {
 
   // ---- bottles -----------------------------------------------------------------------------
   const sec = journal(G).section(42, 'Messages in bottles');
-  const show = () => { sec.body.innerHTML = notes.length ? `<ul class="bottles3">${notes.map(n => `<li>“${esc(NOTES[n.note] || '')}”<br><small>${esc(n.where || '')}</small></li>`).join('')}</ul>` : '<p class="muted3">None yet. They drift on every ocean; skim low over one to pick it up.</p>'; };
+  // Dev mode (Settings > Advanced) lists every note there is, the ones not yet found greyed
+  const show = () => {
+    const got = notes.map(n => `<li>“${esc(NOTES[n.note] || '')}”<br><small>${esc(n.where || '')}</small></li>`).join('');
+    const rest = G.store.get('devMode', false) ? NOTES.map((t, i) => notes.some(n => n.note === i) ? '' : `<li class="unfound3">“${esc(t)}”<br><small>Dev mode: not found yet</small></li>`).join('') : '';
+    sec.body.innerHTML = got || rest ? `<ul class="bottles3">${got}${rest}</ul>` : '<p class="muted3">None yet. They drift on every ocean; skim low over one to pick it up.</p>';
+  };
   show(); G.menu?.onOpen?.(show);
   function pick(o) {
     found.add(o.id); G.store.set('bottles3d', [...found]);

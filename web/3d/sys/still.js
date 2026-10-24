@@ -233,7 +233,7 @@ export function stillSystem(G) {
   G.dev?.add({ id: 'r8-rain', area: 'Ground and perch', round: 'R8 D4', title: 'Sit out the rain: hunched and fluffed; rain patters differently on leaves, needles, roofs, posts, stone', how: 'Perch in rain on a broadleaf, a pine, a roof and a fence post, and listen.' });
   G.dev?.add({ id: 'r8-sun', area: 'Ground and perch', round: 'R8 C3', title: 'Sunning: wet, in the sun, the hawk spreads its wings to dry', how: 'After rain, perch in sunshine: wings open until dry (dries 6x faster).', go: () => { b.wet = .8; G.rain = 0; } });
   G.dev?.add({ id: 'r8-quiet', area: 'Wildlife', round: 'R8 D1', title: 'The quiet hour: a minute untouched on a perch brings a songbird close', how: 'Perch and leave the phone a minute; any touch sends them off.' });
-  G.dev?.add({ id: 'r8-watch', area: 'Wildlife', round: 'R8 D3', title: 'Watch an animal: tap it from a perch; the head and view follow it; a field guide line', how: 'Perched, tap a heron, mouse or bird and wait 6 s; Journal > Field guide.' });
+  G.dev?.add({ id: 'r8-watch', area: 'Wildlife', round: 'R8 D3', title: 'Watch an animal: tap it from a perch; the head and view follow it; a field guide line', how: 'Perched, tap a heron, mouse or bird and wait 6 s; Journal > Things.' });
   G.dev?.add({ id: 'r8-fav', area: 'Ground and perch', round: 'R8 D5', title: 'A favourite perch: on the map, worn pale, and you land facing your view', how: 'Perch on the same branch 3 times for 2.5 minutes in all; Map shows it.' });
 
   return {

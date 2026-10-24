@@ -104,7 +104,7 @@ export function aimsSystem(G) {
 
   // ---- the Journal: the day's aim on the Log, the lands on their own page --------------------
   const today = journal(G).section(5, 'Today');
-  const lands = journal(G).section(45);
+  const lands = journal(G).section(45, 'Biomes');
   // the chosen bird's life goal (sys/life.js G.life), as a checklist with counts
   const life = journal(G).section(7, 'Your life');
   const tile = {};
