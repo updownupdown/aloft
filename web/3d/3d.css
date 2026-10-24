@@ -169,20 +169,21 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
   color: #fff; font-size: 14.5px; font-weight: 600; line-height: 1.35; text-align: left; text-shadow: 0 1px 2px rgba(0, 0, 0, .35);
   background: rgba(16, 24, 32, .38); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); box-shadow: none;
   opacity: 0; pointer-events: none; transition: opacity .5s, transform .35s; }
-.toast3.show { opacity: 1; }
+.toast3.show { opacity: 1; pointer-events: auto; touch-action: none; user-select: none; }   /* swipe it away (hud.js) */
+.toast3.drag { transition: none; }
 #ui3:has(.toast3.show) .hint3 { top: calc(var(--msgh, 44px) + 14px + env(safe-area-inset-top)); }
 .compass3 { transition: opacity .5s; }
 #ui3:has(.toast3.show) .compass3, #ui3:has(.hint3.show) .compass3 { opacity: 0; }
 .toast3 .ic3, .hint3 .ic3 { flex: none; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; background: none; }
 .toast3 .ic3 svg, .hint3 .ic3 svg { width: 22px; height: 22px; stroke-width: 2.1; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .3)); }
 .hint3 .ic3 { color: #9fe39a; }
-/* a tip swipes away, and its i pauses to say more */
+/* a tip swipes away; tapped, it pauses to say more */
 .hint3 { padding-right: 6px; touch-action: none; user-select: none; }
 .hint3.show { opacity: 1; pointer-events: auto; }
 .hint3.drag { transition: none; }
 .hint3 .tx3 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hint3 { cursor: pointer; }
-/* the gear (sliders, no plate): How to play > Hints */
+/* the gear (sliders, no plate): Settings > Messages */
 .toast3 .set3, .hint3 .set3 { flex: none; width: 28px; height: 28px; margin: -2px -8px -2px 0; border: 0; padding: 0; cursor: pointer;
   display: flex; align-items: center; justify-content: center; background: none; color: rgba(255, 255, 255, .72); }
 .hint3 .set3 { margin: 0; }

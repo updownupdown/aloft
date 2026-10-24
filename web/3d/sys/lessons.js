@@ -250,7 +250,7 @@ export function lessonsSystem(G) {
     // quietly: a few words, and a glint to tap for the whole of it
     const ch = CHAPTERS[t.ch];
     H.tally(`Lesson: ${t.text}`, ch.icon);
-    H.glint(`Lesson: ${t.text}`, t.say, ch.icon);
+    H.glint(`Lesson: ${t.text}`, t.say, ch.icon, true);   // the tutorial is not held back by the pace (hud.js)
     coachT = t.move ? 8 : 0;
   }
   function complete(t, quiet) {
