@@ -12,7 +12,7 @@ export function ringsSystem(G) {
   const b = G.b, got = new Map();   // ring id -> G.clock time collected
   G.rings = 0;
   let run = null;   // the loop being flown: { circuit, n, k, count, t }
-  const live = r => { const t = got.get(r.id); return t === undefined || G.clock - t > DAY; };
+  const live = G.ringLive = r => { const t = got.get(r.id); return t === undefined || G.clock - t > DAY; };
   G.hud.tip('ring', () => b.state === 'fly' && ringsNear(b.p[0], b.p[2], 60).some(r => live(r) && Math.hypot(r.x - b.p[0], r.y - b.p[1], r.z - b.p[2]) < 60), 'A faint ring of mist: fly through it for a burst of speed. The next ring of its course glows, a little higher.');
   return {
     id: 'rings',
