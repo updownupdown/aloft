@@ -32,7 +32,7 @@ export function journeySystem(G) {
   // Settings > Advanced > Dev mode: progress mocked at k (0, .25, .5 or 1; dev.js), then saved and reloaded
   // (landmarks and countries, nearest first: the whole Earth's list takes a few seconds)
   G.on('mock', k => {
-    const all = W.landmarksNear(0, EARTH.Z0 + EARTH.H / 2, 5e4).sort((p, q) => Math.hypot(p.x - b.p[0], p.z - b.p[2]) - Math.hypot(q.x - b.p[0], q.z - b.p[2]));
+    const all = W.landmarksNear(0, EARTH.Z0 + EARTH.H / 2, 5e4).filter(W.isNotable).sort((p, q) => Math.hypot(p.x - b.p[0], p.z - b.p[2]) - Math.hypot(q.x - b.p[0], q.z - b.p[2]));
     J.found = Object.fromEntries(all.slice(0, Math.round(k * all.length)).map(l => [l.id, { name: l.name, x: Math.round(l.x), z: Math.round(l.z), note: 'Found in a dev mock.' }]));
     J.regions = Object.fromEntries(REGIONS.slice(0, Math.round(k * REGIONS.length)).map(r => [r[0], { name: r[1], day: G.day, date: '' }]));
     J.year = 1 + Math.round(k * 3);
