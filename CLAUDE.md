@@ -49,7 +49,7 @@ web/3d/today.js         the Today section: on the left the Tutorial box (lessons
 web/3d/letter.js        the menu's frame (frosted glass, .glass3 in 3d.css); swap it to restyle
 web/3d/facet.js         low-poly helpers (map land) (PIG colours, poly, facets, gem, chamfer, hardShadow, lit)
 web/3d/icons.js         every UI icon (James's picks, 2026-10-21): ICONS and icon(key) -> a 24x24 SVG in currentColor
-web/3d/logo.js          Aloft's mark: a pine shaped like an A, a red-tail across it as the crossbar (menu title, splash, app icons via tools/icon.html). Never use it as the A when writing Aloft
+web/3d/logo.js          the game's mark: a red-tail from above, wings level, over hazy faceted hills (menu title, splash, app icons via tools/icon.html); a head's width between each wingtip and the edge
 web/3d/globe.js         the Map tab's globe (the whole tab, no pages): one WebGL shader, land (+ roughness for ridges) and fog textures baked from earth.js, day and night from the sun; project()/unproject() for markers
 web/3d/dial.js          the day dial, top right (bead marks now; hub cut-out holds Call)
 web/3d/tips.js          tips as a short line and an icon (SHORT, keyed by tip id; TIP_GROUPS), swipe to dismiss, tap to pause and read more, gear to Settings > Messages
