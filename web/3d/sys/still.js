@@ -208,6 +208,7 @@ export function stillSystem(G) {
   const favs = G.store.get('favPerch3d', []);   // { x, y, z, n: visits, s: seconds, yaw, fav }
   let here = null, wasState = b.state;
   const near = p => favs.find(f => Math.hypot(f.x - p.x, f.y - p.y, f.z - p.z) < .6);
+  G.favHere = () => (b.state === 'perch' && here?.fav ? here : null);   // sys/quests.js: a favourite perch can be your ledge
   function favourite(dt) {
     if (b.state === 'perch' && wasState !== 'perch' && b.perch) {
       here = near(b.perch);

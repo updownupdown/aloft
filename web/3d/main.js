@@ -75,12 +75,14 @@ import { nightSeaSystem } from './sys/nightsea.js';
 import { hiddenSystem } from './sys/hidden.js';
 import { natureSystem } from './sys/nature.js';
 import { cavesSystem } from './sys/caves.js';
+import { growthSystem } from './sys/growth.js';
+import { questsSystem } from './sys/quests.js';
 import { createLooks } from './look.js';
 
 const SYSTEMS = [speciesSystem, movesSystem, lifeSystem, clockSystem, weatherSystem, watersSystem, windsSystem, floraSystem, bushesSystem, airSystem, ringsSystem, foodSystem, findwaterSystem, aimSystem, sleepSystem, feelSystem, batterySystem, songsSystem, momentsSystem,
   guideSystem, journeySystem, storySystem, ruinsSystem, howtoSystem, faunaSystem, neighboursSystem, landsSystem, seasonsSystem, glowSystem, landAirSystem, crittersSystem, huntersSystem, aimsSystem,
   fieldsSystem, skyDaysSystem, raptorsSystem, wingcraftSystem, stillSystem, swellsSystem, berriesSystem, cuesSystem, windCuesSystem, polesSystem,
-  sealifeSystem, driftSystem, islesSystem, skyRiversSystem, nightSeaSystem, lessonsSystem, hiddenSystem, natureSystem, cavesSystem];
+  sealifeSystem, driftSystem, islesSystem, skyRiversSystem, nightSeaSystem, lessonsSystem, hiddenSystem, natureSystem, cavesSystem, growthSystem, questsSystem];
 
 // Where each bird first flies, in its own land (earth.js toXZ: latitude, longitude): the
 // red-tail at a forest edge in the Finger Lakes, the osprey over a Scottish loch, the barn owl in
@@ -423,7 +425,7 @@ if (qs.has('fps')) G.settings.fpsCap = +qs.get('fps') || 60;
     music.hold(false); music.update(dt, { night: L.night, storm: G.storm || 0, learned: G.learned || new Set(), species: G.species || [], speed: b.s * 4, wind: G.windK ?? .3, height: above * 2 });
     pf.lap('Core', 'sound, music');
 
-    glowT -= dt; setWings(b.stamina, glowT > 0 ? glow : '', b.maxStamina ?? 1);
+    glowT -= dt; setWings(b.stamina, glowT > 0 ? glow : '', b.maxStamina ?? 1, b.over || 0);
     H.flight = b.state === 'fly' ? { m: above.toFixed(0), kmh: (b.s * 3.6).toFixed(0), lift: b.ride ? 'ride' : b.lift > .8 ? 'rise' : '', up: b.lift > .8 ? Math.min(3, Math.ceil(b.lift / 2)) : 0 } : null;
     H.height = above.toFixed(0);
     H.status = b.state === 'fly' ? '' : b.eating > 0 ? 'eating' : b.state === 'perch' ? 'perched' : b.state === 'swim' ? 'on the water' : 'on the ground';

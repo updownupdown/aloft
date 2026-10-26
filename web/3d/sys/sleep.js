@@ -39,6 +39,7 @@ export function sleepSystem(G) {
     if (!e) { const left = ahead(tDark); if (left > 0 && left < .7) G.systems.clock.update(left * DAY); }   // what is left of the dark passes at once, still under the veil
     woke = true; early = e; upT = 0; from = G.tod; span = e || ahead(tWake) > .5 ? 0 : ahead(tWake); b.skyView = false; veil.classList.remove('on');
     if (!early) b.stamina = b.maxStamina ?? 1;
+    G.emit('wake', e);   // sys/growth.js: a strong morning
   };
   const up = () => { sleeping = b.asleep = woke = false; spin = 0; if (bared) { H.hide(false); bared = false; } };
   // a perch safe to sleep on: high enough, and not on top of a bush

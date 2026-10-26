@@ -1,15 +1,11 @@
-// The long arc of a hawk's year: health built up by eating, drinking and flying well (it shows in
-// how red the tail is), keepsakes glinting in the grass, and acrobatics. Nothing here ever
-// punishes: low meters only slow the health down.
-// The mate, the nest and the young were removed (James, 2026-10-26: the gameplay wasn't great);
-// health is kept for a mechanic of its own later. Other birds of your own kind (the neighbours,
+// Keepsakes glinting in the grass, and acrobatics. (Health, and the tail it reddens, moved to
+// sys/growth.js, per bird, 2026-10-26.)
+// The mate, the nest and the young were removed (James, 2026-10-26: the gameplay wasn't great). Other birds of your own kind (the neighbours,
 // neighbours.js) are drawn with the shapes built here from the hawk's own mesh.
 import { height, ih } from '../world.js';
 import { buildHawk, BIRD } from '../hawk.js';
 import { builder, blob, reseed } from '../shapes.js';
-import { lerp } from '../util.js';
-
-export const HEALTH_START = .35;
+export { HEALTH_START } from './growth.js';
 export const KEEPSAKES = ['blue jay feather', 'snail shell', 'smooth white pebble', 'curl of birch bark', 'robin’s eggshell', 'tuft of thistledown', 'acorn cap', 'heron feather'];
 const KC = 420;   // one keepsake maybe in each cell this many metres across
 // the neighbours are always your own kind, whichever bird you fly now (Settings > Bird):
@@ -39,25 +35,12 @@ function keepsakeShape() {
 
 export function storySystem(G) {
   const b = G.b;
-  const St = { health: HEALTH_START, flapQ: .6, keepsakes: [], kept: new Set(), tricks: 0 };
+  const St = { keepsakes: [], kept: new Set(), tricks: 0 };
   G.story = St;
   // the neighbours are your own species: rebuilt when Settings > Bird changes
   const ownKind = () => ['hawkGlide', 'hawkUp', 'hawkDown'].forEach((k, i) => G.R.shape(k, hawkShape([{}, { flapL: 1, flapR: 1, handL: -.3, handR: -.3 }, { flapL: -.7, flapR: -.7, handL: .4, handR: .4 }][i])));
   ownKind(); G.on('bird', ownKind);
   G.R.shape('keepsake', keepsakeShape());
-  const adult = () => (G.journey?.year || 1) > 1 || G.day > 16;
-
-  // ---- health ------------------------------------------------------------------------------
-  // well fed and watered, health climbs over about a quarter of an hour of play (faster with
-  // clean wingbeats); with a meter run low it drifts back down, slowly, never below .15
-  G.on('flap', q => { St.flapQ = lerp(St.flapQ, typeof q === 'number' ? q : b.stamina > .35 ? .8 : .4, .08); });
-  function health(dt) {
-    const fed = G.thirst > .5 && G.hunger > .5, low = G.thirst < .2 || G.hunger < .2;
-    if (fed) St.health = Math.min(1, St.health + dt / 900 * (.55 + .45 * St.flapQ) * (G.warmT > 0 ? 2 : 1));
-    else if (low && !((G.ease ?? 1) < 1)) St.health = Math.max(.15, St.health - dt / 2400);
-    // a young hawk's tail is barred brown; it moults red after the first migration, deeper with health
-    G.tailRed = adult() ? .55 + .45 * St.health : St.health * .35;
-  }
   // ---- keepsakes: rare things in the grass, glinting -----------------------------------------
   function keepsakesNear(x, z, r) {
     const out = [];
@@ -85,12 +68,11 @@ export function storySystem(G) {
   G.on('trick', () => { St.tricks++; });
 
   // Settings > Advanced > Dev mode: progress mocked at k (0, .25, .5 or 1; dev.js), then saved and reloaded
-  G.on('mock', k => { St.tricks = Math.round(k * 12); St.health = Math.max(St.health, .4 + k * .6); });
+  G.on('mock', k => { St.tricks = Math.round(k * 12); });
 
   return {
     id: 'story',
-    update(dt) {
-      health(dt);
+    update() {
       // glints over keepsakes, to be seen from the air
       if (Math.random() < .3) for (const k of keepsakesNear(b.p[0], b.p[2], 90)) G.part([k.x + (Math.random() - .5) * .3, k.y + .2, k.z + (Math.random() - .5) * .3], [0, .6, 0], .6, [1, .95, .75], .08);
     },
@@ -98,7 +80,7 @@ export function storySystem(G) {
       const d = S.props.keepsake ||= [];
       for (const k of keepsakesNear(S.cam[0], S.cam[2], 140)) d.push(k.x, k.y, k.z, 1.4, ih(k.x | 0, 1, 5) * 6, .5, 0, 0);
     },
-    save: () => ({ health: +St.health.toFixed(3), keepsakes: St.keepsakes, kept: [...St.kept], tricks: St.tricks }),
-    load(o) { St.health = o.health ?? HEALTH_START; St.keepsakes = o.keepsakes || []; St.kept = new Set(o.kept || []); St.tricks = o.tricks || 0; },
+    save: () => ({ keepsakes: St.keepsakes, kept: [...St.kept], tricks: St.tricks }),
+    load(o) { if (o.health != null) G.oldHealth = o.health; St.keepsakes = o.keepsakes || []; St.kept = new Set(o.kept || []); St.tricks = o.tricks || 0; },
   };
 }

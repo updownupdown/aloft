@@ -15,7 +15,7 @@
 import { icon } from './icons.js';
 
 const PAGES = {
-  songs: ['journal', 'Songs', 5], places: ['journal', 'Places', 10], things: ['journal', 'Things', 20],
+  quests: ['journal', 'Quests', 2], songs: ['journal', 'Songs', 5], places: ['journal', 'Places', 10], things: ['journal', 'Things', 20],
 };
 const pageOf = o => o < 10 ? 'today' : o < 42 ? null : o < 43 ? 'things' : o < 60 ? 'places' : 'things';
 // a section's heading where the page already says it

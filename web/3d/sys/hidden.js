@@ -205,6 +205,8 @@ export function hiddenSystem(G) {
   };
   const go = kind => () => { on = true; store.set('hidden', true); const p = nearest(kind); if (!p) { G.hud.say('None within reach of here.', { kind: 'warn', secs: 3 }); return; } G.travelTo(p.perch?.x ?? p.x + 6, p.perch?.z ?? p.z); };
   // lands.js asks how far out a fall's curtain hangs; the dev tools and tests reach the rest
+  // sys/quests.js: a hidden place you have found, perched on, can be your ledge
+  G.hiddenHere = () => b.state === 'perch' ? near.find(p => p.perch && St.found[p.id] && Math.hypot(p.perch.x - b.p[0], p.perch.z - b.p[2]) < 1.6 && Math.abs(p.perch.y - b.p[1]) < 1.5) || null : null;
   G.hidden = { find: found, get on() { return on; }, curtain: l => (on && ledgeOf(l) ? CURTAIN : 0), go: kind => go(kind)(), nearest, placeOf, ledgeOf, inShelter, local, found: () => St.found, debug: () => ({ near: near.map(p => p.id), inside: inside?.id, on }) };
   G.dev?.add({ id: 'hidden-ledge', title: 'Hidden places: a ledge behind the falls', area: 'World', round: 'study', how: 'Settings > Advanced > Hidden places on. Where a fall drops over a sheer face, its curtain hangs clear of the rock and a ledge waits behind it: fly through the water to land there (spray as you pass), roost there at night. Try it puts you on the nearest one.', go: go('ledge') });
   G.dev?.add({ id: 'hidden-shelter', title: 'Hidden places: shelters in the ridges', area: 'World', round: 'study', how: 'A roof of rock over a dry floor, high on a steep face in the mountain lands, its mouth downhill: a boulder inside to perch and roost on, walls you bump. Try it puts you on the nearest one.', go: go('shelter') });

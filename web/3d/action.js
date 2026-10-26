@@ -3,8 +3,9 @@
 // it here with a catch on a branch), and a swipe up or down on it turns to the other when
 // both fit, shown as dots. Keys: T takes off, E runs the action shown (or the first that isn't Take
 // off), Up/Down turn to the other. Each action comes from the system that owns it (G.actions: takeoff in
-// main.js, sleep in sys/sleep.js) as { run(), when() }. Settings can turn it off for the separate
-// buttons.
+// main.js, sleep in sys/sleep.js) as { run(), when() }; one not in ACTS names itself with label and
+// icon (a string or a function: sys/quests.js, Make this your ledge). Settings can turn it off for
+// the separate buttons.
 import { icon } from './icons.js';
 
 const ACTS = {
@@ -15,7 +16,7 @@ const ACTS = {
   sleep: ['Sleep', 'sleep'],
   takeoff: ['Take off', 'takeoff'],
 };
-const ORDER = ['eat', 'berries', 'drink', 'sleep', 'takeoff', 'leave'];   // the first that fits is shown first
+const ORDER = ['eat', 'berries', 'drink', 'sleep', 'takeoff', 'leave'];   // the first that fits is shown first (then the others' own, in the order added)
 
 export function actionButton(G, ui) {
   ui.insertAdjacentHTML('beforeend', `<button class="act3 gone" aria-label=""><i class="ic"></i><span></span><i class="dots"></i></button>`);
@@ -24,7 +25,8 @@ export function actionButton(G, ui) {
   G.menu.toggle('play', { label: 'One action button', sub: 'Take off and Sleep in one; swipe it for the other', get: () => G.settings.oneAction, set: v => { G.settings.oneAction = v; G.store.set('oneAction3d', v); refresh(); } });
   let shown = null, pick = 0, key = '', y0 = null, swiped = false;
 
-  function fits() { return ORDER.filter(id => G.actions?.[id]?.when?.()); }
+  function fits() { return [...ORDER, ...Object.keys(G.actions || {}).filter(id => !ORDER.includes(id))].filter(id => G.actions?.[id]?.when?.()); }
+  const named = id => { const a = G.actions[id], v = f => typeof f === 'function' ? f() : f; return ACTS[id] || [v(a.label) || id, v(a.icon) || 'keepsake']; };
   function refresh() {
     const on = G.settings.oneAction;
     ui.classList.toggle('act3on', on);
@@ -34,8 +36,8 @@ export function actionButton(G, ui) {
     shown = list[pick % Math.max(1, list.length)] || null;
     btn.classList.toggle('gone', !shown);
     if (!shown) return;
-    const [name, ik] = ACTS[shown];
-    if (label.textContent !== name) { label.textContent = name; ic.innerHTML = icon(ik); btn.setAttribute('aria-label', name); btn.dataset.act = shown; }
+    const [name, ik] = named(shown);
+    if (label.textContent !== name || btn.dataset.act !== shown) { label.textContent = name; ic.innerHTML = icon(ik); btn.setAttribute('aria-label', name); btn.dataset.act = shown; }
     dots.innerHTML = list.length > 1 ? list.map((id, i) => `<b class="${i === pick % list.length ? 'on' : ''}"></b>`).join('') : '';
   }
   // a tap runs it; a swipe up or down turns to the next that fits

@@ -88,17 +88,19 @@ export function createHud(G, ui, input) {
   // no message gets in the way)
   H.meter = (id, { label, colour, low = .2 }) => {
     const col = COL_OF[id] || (colour.match(/#[0-9a-f]{6}/gi) || ['#8a7a6a']).pop();
-    meters.insertAdjacentHTML('beforeend', `<span class="m3" data-m="${id}" title="${label}" style="--m:${col}">${icon(ICON_OF[id] || id)}<span class="bar"><i></i><b></b></span><span class="nm">${label[0].toUpperCase() + label.slice(1)}</span></span>`);
-    const el = meters.lastElementChild, fill = el.querySelector('.bar i'), cap = el.querySelector('.bar b'), m = { v: 1, low };
+    meters.insertAdjacentHTML('beforeend', `<span class="m3" data-m="${id}" title="${label}" style="--m:${col}">${icon(ICON_OF[id] || id)}<span class="bar"><i></i><b></b></span><u class="ov3"></u><span class="nm">${label[0].toUpperCase() + label.slice(1)}</span></span>`);
+    const el = meters.lastElementChild, fill = el.querySelector('.bar i'), cap = el.querySelector('.bar b'), ov = el.querySelector('.ov3'), m = { v: 1, low };
     all.push(m);
     let key = '';
     // glow: a colour for a soft halo round the bar (say, how clean the last wing beat was), or none;
     // max: how far the bar can fill just now (stamina held down by hunger and thirst), the rest
-    // of the bar shaded off behind a small white mark
-    return (v, glow = '', max = 1) => {
+    // of the bar shaded off behind a small white mark; over: past full (sys/growth.js, a strong
+    // morning), a gold tip beyond the bar's end
+    return (v, glow = '', max = 1, over = 0) => {
       max = Math.max(0, Math.min(1, max)); v = Math.max(0, Math.min(max, v)); m.v = v;
-      const lo = v < low, k = `${Math.round(v * 100)},${lo},${glow},${Math.round(max * 100)}`;
+      const lo = v < low, k = `${Math.round(v * 100)},${lo},${glow},${Math.round(max * 100)},${Math.round(over * 100)}`;
       if (k === key) return; key = k;
+      ov.style.width = `${(Math.min(.3, over) * 56).toFixed(1)}px`; el.classList.toggle('over', over > .005);
       fill.style.transform = `scaleX(${v.toFixed(3)})`;
       cap.style.width = `${((1 - max) * 100).toFixed(1)}%`; el.classList.toggle('capped', max < .99);
       el.classList.toggle('glow', !!glow); if (glow) el.style.setProperty('--glow', glow);
