@@ -1,7 +1,7 @@
 // The neighbours: a resident pair of your own kind (a red-tail pair for the hawk) holds one valley a little way from home. They circle
 // over it by day; come in low and they rise, call and see you off, harrying you (a little
 // stamina) until you leave or climb high over. Their valley shows on the Map. One spring in a
-// while it comes free: the pair is gone and the valley is yours if you want it.
+// while it comes free: the pair is gone and the valley is quiet.
 import { height, WATER, ih } from '../world.js';
 import { PIG } from '../facet.js';
 import { BIRD } from '../hawk.js';
@@ -50,7 +50,7 @@ export function neighboursSystem(G) {
   G.on('newYear', y => {
     if (st.free || ih(y || 1, 5, 613) > N.freeChance) return;
     st.free = true; st.freeYear = y || 1;
-    H.toast('The neighbours’ valley stands empty this spring. The pair has gone, and it is yours if you want it.', 7);
+    H.toast('The neighbours’ valley stands empty this spring. The pair has gone, and you may fly there in peace.', 7);
   });
 
   function fly(dt) {
@@ -79,7 +79,7 @@ export function neighboursSystem(G) {
     update(dt) { if (!st.free) fly(dt); else chase = 0; },
     scene(S) {
       if (st.free) return;
-      // drawn with your mate's shapes (story.js), so they are always your own kind
+      // drawn with your own kind's shapes (story.js), so they are always your own kind
       for (const h of pair) {
         if (Math.hypot(h.p[0] - S.cam[0], h.p[2] - S.cam[2]) > 1500) continue;
         const beat = Math.sin(G.t * 1.3 + h.phase) > .85, ph = (G.t * 7 + h.phase) % 2;

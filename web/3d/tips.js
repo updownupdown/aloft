@@ -21,8 +21,6 @@ const SHORT = {
   ride: ['spiral', 'Rising air: spread wide and circle'],
   ring: ['ring', 'Fly through the ring'],
   wander: ['compass', 'The whole Earth is yours to wander'],
-  twig: ['twig', 'A twig: land beside it'],
-  nestbranch: ['twig', 'Perch on a branch to build'],
   keepsake: ['spark', 'Something glints: land by it'],
   relic: ['spark', 'Something people left: land by it'],
   song: ['note', 'Copy the songbird'],
@@ -47,13 +45,13 @@ export const TIP_GROUPS = [
   ['ground', 'Perched and on the ground', 'takeoff', ['hop', 'ground', 'sleep']],
   ['food', 'Food and water', 'prey', ['hunt', 'drink', 'worms', 'berries', 'carry']],
   ['songs', 'Songs and calls', 'songs', ['song', 'imitate', 'call']],
-  ['journey', 'Journey and nest', 'south', ['wander', 'twig', 'nestbranch', 'keepsake', 'relic', 'island', 'stars']],
+  ['journey', 'Journey', 'south', ['wander', 'keepsake', 'relic', 'island', 'stars']],
   ['other', 'Other', 'how', []],
 ];
 export const tipGroup = id => (TIP_GROUPS.find(g => g[3].includes(id)) || TIP_GROUPS.at(-1))[0];
 // each tip's icon (icons.js), by the names SHORT uses
 export const ICON = { glide: 'glide', up: 'flap', bank: 'turn', updown: 'climb', tuck: 'stoop', flare: 'flare', aim: 'aim', mouse: 'prey', drop: 'thirst', spiral: 'thermal',
-  ring: 'ring', compass: 'south', twig: 'twig', spark: 'keepsake', note: 'songs', call: 'call' };
+  ring: 'ring', compass: 'south', spark: 'keepsake', note: 'songs', call: 'call' };
 
 export { SHORT };
 

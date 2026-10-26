@@ -159,13 +159,12 @@ export function mapView(G, J) {
   }
   const at = (x, z) => { const [la, lo] = latLon(x, z); return globe.project(V, V.w, V.h, la, lo); };
 
-  // what can be tapped: home, the nest, the landmarks found. A landmark is "unique" (a mark and
+  // what can be tapped: home, the landmarks found. A landmark is "unique" (a mark and
   // its name always) unless several share its name or it is a whole land's sight (the dunes, the
   // salt pan): those are only named when close, and only once in a stretch of map
   const SIGHTS = new Set(['The Singing Dunes', 'The Golden Sea', 'The Stone Forest', 'The Hundred Towers', 'The White Pan', 'The Salt Mirror', 'The Painted Hills', 'The Striped Hills']);
   function places() {
     const out = G.home ? [{ x: G.home[0], z: G.home[1], name: 'Where you began', note: 'Your first flight started here.', col: PIG.wood, rank: 1 }] : [];
-    if (G.nest) out.push({ x: G.nest.x, z: G.nest.z, name: 'Your nest', note: G.nest.chick || (G.nest.eggAt !== undefined && !G.nest.fledged) ? 'Someone is waiting for you here.' : 'A nest of twigs, in a tree.', col: PIG.bark, rank: 0 });
     const names = {};
     for (const l of Object.values(J.found)) names[l.name] = (names[l.name] || 0) + 1;
     for (const l of Object.values(J.found)) out.push({ x: l.x, z: l.z, name: l.name, note: l.note, col: PIG.ring, rank: SIGHTS.has(l.name) ? 4 : names[l.name] > 1 ? 3 : 2, plain: SIGHTS.has(l.name) || names[l.name] > 1 });

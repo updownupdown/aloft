@@ -3,7 +3,7 @@
 // shown by the coach (coach.js: a card with the thumbs, and ghost thumbs on the screen), each step
 // waiting until it is done; hunger, thirst, tiredness and the clock hold still meanwhile, and Skip
 // leaves it. Then the lessons: a chain of small tasks in chapters (food, water and rest, rising air,
-// finding your way, songs, a home, flying well, the wide world), each opening as soon as the last
+// finding your way, songs, flying well, the wide world), each opening as soon as the last
 // is done, listed under Today. The whole HUD is back after the first flight, and one card, once,
 // says what the lessons are, which comes first and where to see them all (James, 2026-10-23: loud
 // once, quiet after); each lesson then opens with a small line and a glint to read it by, the
@@ -70,11 +70,6 @@ const CHAPTERS = [
     { id: 'sing', text: 'Sing a song back to its bird', say: 'Perched near a songbird you have learned, sing its song: it answers, and some bring gifts.', on: 'song' },
     { id: 'call', text: 'Call out', say: 'Hold Call, top right, to call out: the longer you hold, the louder.', on: 'call' },
   ] },
-  { title: 'A home', page: 'home', icon: 'nest', tasks: [
-    { id: 'twig', text: 'Pick up a twig', say: 'Twigs lie under some broadleaf trees. Land beside one to pick it up.', poll: () => G0.carry === 'twig' || !!G0.nest },
-    { id: 'nest', text: 'Start a nest', say: 'With a twig in your beak, perch on a branch and tap Build here: your nest begins there.', poll: () => !!G0.nest },
-    { id: 'keepsake', text: 'Find a keepsake', say: 'Now and then something glints in the grass. Land beside it to keep it for your nest.', on: 'keepsake' },
-  ] },
   { title: 'Flying well', page: 'well', icon: 'agility', tasks: [
     { id: 'zoom', text: 'Zoom up out of a dive', say: 'Dive to pick up speed, then thumbs in and up: a swept climb that keeps its speed.', poll: zoomed, move: ['in up', 'in up', 'Zoom', 'Fast, then thumbs in and up: a climb that keeps its speed.'] },
     { id: 'hover', text: 'Hover', say: 'Slow right down, then thumbs out and up: you hang on beating wings. It tires them fast.', poll: hovered, move: ['out up', 'out up', 'Hover', 'Slow, then thumbs out and up: hang on beating wings.'] },
@@ -89,8 +84,7 @@ const TASKS = CHAPTERS.flatMap((ch, i) => ch.tasks.map(t => ({ ...t, ch: i })));
 const SURVIVE = ['mouse', 'eat', 'drink', 'sleep'];   // till these are done: G.ease
 // tips that wait for a lesson ('flight': the first flight)
 const TIP_LESSON = { flap: 'flight', bank: 'flight', climb: 'flight', flare: 'flight', tuck: 'mouse', aim: 'mouse', hunt: 'mouse', carry: 'eat',
-  drink: 'drink', hop: 'hop', sleep: 'sleep', ride: 'ride', ring: 'rings', wander: 'far', song: 'learn', imitate: 'sing', call: 'call',
-  twig: 'twig', nestbranch: 'nest', keepsake: 'keepsake' };
+  drink: 'drink', hop: 'hop', sleep: 'sleep', ride: 'ride', ring: 'rings', wander: 'far', song: 'learn', imitate: 'sing', call: 'call' };
 
 // where the companion flies for a task: [x, y, z] points from where the bird is
 function thermal(b) {
@@ -228,7 +222,7 @@ export function lessonsSystem(G) {
     const t = first(); if (!t) return;
     S.intro = 1; G.paused = true;
     card.innerHTML = `<h2>${icon('how')}Lessons</h2>
-      <p>You can fly${S.paid.flight ? ', and that earned your first feather: each feather makes your wings last longer' : ''}. Now a few small lessons teach the rest, one at a time: eating, drinking and rest first, then rising air, finding your way, songs, a nest and more. Finish a chapter for another feather.</p>
+      <p>You can fly${S.paid.flight ? ', and that earned your first feather: each feather makes your wings last longer' : ''}. Now a few small lessons teach the rest, one at a time: eating, drinking and rest first, then rising air, finding your way, songs and more. Finish a chapter for another feather.</p>
       <div class="lfirst3">${icon(CHAPTERS[t.ch].icon)}<span><small>First</small><b>${esc(t.text)}</b><span>${esc(t.say)}</span></span></div>
       <p>The open lesson stays as a thin line under the compass. All of them, ticked as you go, are in the menu: the next under <b>Today</b>, and all of them under <b>Lessons</b>. Nothing is required: fly as you like.</p>
       <div class="lbtns3"><button data-i="go" class="main3">Start</button><button data-i="all">See all lessons</button><button data-i="skip">No lessons, thanks</button></div>`;
