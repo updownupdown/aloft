@@ -70,11 +70,12 @@ void main() {
 }`;
 const FS = `#version 300 es
 precision highp float; precision highp sampler3D;
-uniform vec3 uCam, uSun, uSunCol, uSkyAmb, uGndAmb, uFogCol, uCol, uUnder;
+${GRADE_GLSL}
+uniform vec3 uCam, uSun; uniform LP vec3 uSunCol, uSkyAmb, uGndAmb, uFogCol, uCol, uUnder;
 uniform float uFogDen, uTime, uStyle;
 uniform vec4 uFlash;   // lightning inside the clouds: where, how bright
-${GRADE_GLSL}
 uniform vec4 uK;   // lobes, base, sigma, the light's strength (0 at night .. 1)
+uniform float uKeep;   // how many of the lobes (biggest first) are big ones (L)
 uniform vec4 uC[${MAXL}], uR[${MAXL}];
 uniform sampler3D uNoise;
 in vec3 vPos; flat in vec4 vI; flat in vec4 vY;
@@ -93,6 +94,12 @@ void main() {
   if (tB <= tA) discard;
   float tau = 0., tn = 1e9, wsum = 0., tw = 0.; vec3 n = vec3(0.);
   int N = int(uK.x);
+#ifdef L_CLOUDLOD
+  // L: far off, a cloud's small lobes (the lobes come biggest first) fade out, a few pixels each,
+  // and past that are not worked out at all
+  float lodW = 1. - smoothstep(20., 36., length(vI.xyz - uCam) / vI.w);
+  if (lodW <= 0.) N = min(N, int(uKeep));
+#endif
   for (int i = 0; i < ${MAXL}; i++) {
     if (i >= N) break;
     vec3 iv = uR[i].xyz, q = (lo - uC[i].xyz) * iv, e = ld * iv;
@@ -103,6 +110,9 @@ void main() {
     if (t2 <= t1) continue;
     // the integral of 1 - |q + e t|² from t1 to t2
     float I = -(cc * (t2 - t1) + b * (t2 * t2 - t1 * t1) + a * (t2 * t2 * t2 - t1 * t1 * t1) / 3.);
+#ifdef L_CLOUDLOD
+    if (i >= int(uKeep)) I *= lodW;
+#endif
     tau += I;
     // the lobe's outward normal where the ray goes in; the nearer lobes show
     vec3 nl = (fromBelow && t1 <= tA + 1e-4) ? vec3(0., -1., 0.) : normalize((q + e * t1) * iv);
@@ -135,12 +145,12 @@ void main() {
   float d = dot(n, uSun), wrap = max((d + .45) / 1.45, 0.);
   if (facets) wrap = floor(wrap * 4. + .5) / 4.;
   float low = smoothstep(uK.y + .55, uK.y, lp.y);
-  vec3 col = mix(uCol, uUnder, low * .65 + (1. - exp(-od * .35)) * .2);
+  LP vec3 col = mix(uCol, uUnder, low * .65 + (1. - exp(-od * .35)) * .2);
   // (light scatters about inside a cloud, so even its shaded side and base take much of the
   // sun, and the sky's light from every side; inside one it is an even bright grey)
   float inside = step(tA, 1e-4) * step(tn, 1e-4);
   wrap = mix(wrap, .55, inside);
-  vec3 lit = col * (uSkyAmb * 1.1 + uGndAmb * .15 + uSunCol * (.4 + .6 * wrap));
+  LP vec3 lit = col * (uSkyAmb * 1.1 + uGndAmb * .15 + uSunCol * (.4 + .6 * wrap));
   // at sunrise and sunset the clouds' undersides lit warm from below the horizon (James kept it, 10-24)
   { float gold = smoothstep(.3, .04, uSun.y) * smoothstep(-.12, -.01, uSun.y);
     lit += uSunCol * vec3(1., .6, .36) * gold * (.45 * low + .3 * max(-n.y, 0.)) * (.4 + .6 * uK.w); }
@@ -228,8 +238,10 @@ export function createClouds(gl) {
   const kinds = {};
   for (const [k, K] of Object.entries(KINDS)) {
     const C = new Float32Array(MAXL * 4), Rr = new Float32Array(MAXL * 4);
-    K.lobes.forEach(([x, y, z, a, b, c], i) => { C.set([x, y, z, 0], i * 4); Rr.set([1 / a, 1 / b, 1 / c, 0], i * 4); });
-    kinds[k] = { K, C, Rr, m: mesh(gl, box(K.lobes, K.base), LAYOUT, { instLayout: ILAYOUT }) };
+    // the lobes biggest first, so L can leave off the small ones far away (the sum is the same in any order)
+    const lobes = [...K.lobes].sort((a, b) => b[3] * b[4] * b[5] - a[3] * a[4] * a[5]);
+    lobes.forEach(([x, y, z, a, b, c], i) => { C.set([x, y, z, 0], i * 4); Rr.set([1 / a, 1 / b, 1 / c, 0], i * 4); });
+    kinds[k] = { K, C, Rr, keep: Math.ceil(lobes.length / 2), m: mesh(gl, box(K.lobes, K.base), LAYOUT, { instLayout: ILAYOUT }) };
   }
   let sorted = new Float32Array(1024);
   const CL = {
@@ -273,8 +285,8 @@ export function createClouds(gl) {
         const n = (j - i) * 8; if (sorted.length < n) sorted = new Float32Array(n * 2);
         const d = props[key];
         for (let q = i; q < j; q++) sorted.set(d.subarray ? d.subarray(list[q][1], list[q][1] + 8) : d.slice(list[q][1], list[q][1] + 8), (q - i) * 8);
-        const { K, C, Rr, m } = kinds[key];
-        gl.uniform4fv(u.uC, C); gl.uniform4fv(u.uR, Rr); gl.uniform4f(u.uK, K.lobes.length, K.base, K.sigma, day);
+        const { K, C, Rr, m, keep } = kinds[key];
+        gl.uniform4fv(u.uC, C); if (u.uKeep) gl.uniform1f(u.uKeep, keep); gl.uniform4fv(u.uR, Rr); gl.uniform4f(u.uK, K.lobes.length, K.base, K.sigma, day);
         gl.uniform3fv(u.uCol, K.col.map((v, k) => v * (.55 + .45 * tint[k]))); gl.uniform3fv(u.uUnder, K.under.map((v, k) => v * (.55 + .45 * tint[k])));
         gl.bindBuffer(gl.ARRAY_BUFFER, m.ibuf); gl.bufferData(gl.ARRAY_BUFFER, sorted.subarray(0, n), gl.DYNAMIC_DRAW);
         gl.bindVertexArray(m.vao); gl.drawArraysInstanced(gl.TRIANGLES, 0, m.count, j - i); tris += m.count / 3 * (j - i);
