@@ -29,7 +29,6 @@ const AIMS = {
   far: { text: 'Fly two kilometres from where you were at dawn.', on: 'far', lesson: 1 },
 };
 const HIGH = 250;
-export const FEATHER = { per: .03, most: 20 };   // each feather makes the wings last 3% longer, up to 20 feathers
 
 export function aimsSystem(G) {
   const b = G.b;
@@ -50,17 +49,8 @@ export function aimsSystem(G) {
     if (++A.count < (a.n || 1)) return;
     A.done = true; G.feather('Aim done'); G.hud.nextDone?.('aim');
   });
-  // feathers: one for each day's aim kept and one for each chapter of the lessons (sys/lessons.js);
-  // each makes the wings last longer (b.endure divides what flaps and hovering cost, flight.js)
-  const endure = () => { b.endure = 1 + FEATHER.per * Math.min(A.feathers, FEATHER.most); };
-  G.wingBonus = () => Math.round((b.endure - 1) * 100);
-  G.feathers = () => A.feathers;
-  G.feather = why => {
-    A.feathers++; endure();
-    G.hud.tally(`${why}: a feather. Wings +${G.wingBonus()}%`, 'feather');
-    G.audio.ring?.();
-  };
-  endure();
+  // feathers (one for each day's aim kept, one for each chapter of the lessons) are your bird's own:
+  // sys/growth.js G.feather
   // a thermal ride high above the ground: held for a moment and a half; and a few things other
   // systems don't announce (a drink, a night's sleep, two kilometres since dawn)
   let highT = 0, high = false, drank = 0, asleep = false, farFrom = null;
@@ -97,9 +87,8 @@ export function aimsSystem(G) {
   G.on('mock', k => {
     const n = Math.round(k * KEYS.length), keep = KEYS.slice(0, n);
     A.seen = Object.fromEntries(keep.map(q => [q, 1])); A.sights = Object.fromEntries(keep.filter((q, i) => i % 2 === 0 || k >= 1).map(q => [q, 1]));
-    A.feathers = Math.round(k * FEATHER.most); endure();
   });
-  G.collection = () => ({ lands: KEYS.filter(k => A.seen[k]).length, of: KEYS.length, sights: Object.keys(A.sights).length, feathers: A.feathers });
+  G.collection = () => ({ lands: KEYS.filter(k => A.seen[k]).length, of: KEYS.length, sights: Object.keys(A.sights).length, feathers: G.feathers?.() || 0 });
   let landT = 0;
   // a found landmark counts as its land's sight when it is the kind that land is known for
   const sightOf = l => {
@@ -112,7 +101,7 @@ export function aimsSystem(G) {
   const today = journal(G).section(5, 'Today');
   const lands = journal(G).section(45, 'Lands');
   // the chosen bird's life goal (sys/life.js G.life), as a checklist with counts
-  const life = journal(G).section(7, 'Your life');
+  const life = journal(G).section(8, 'Your life');
   const tile = {};
   G.menu.onOpen(() => {
     const a = AIMS[A.aim];
@@ -159,6 +148,6 @@ export function aimsSystem(G) {
       if (!up) { high = false; highT = 0; } else if (!high && (highT += dt) > 1.5) { high = true; G.emit('high'); }
     },
     save: () => A,
-    load(o) { Object.assign(A, o); endure(); },
+    load(o) { Object.assign(A, o); if (A.feathers) { G.oldFeathers = A.feathers; delete A.feathers; } },
   };
 }

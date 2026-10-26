@@ -66,7 +66,8 @@ export function speciesSystem(G) {
   const traits = id => {
     const a = ABILITY[id];
     return (a ? a.good.map(t => `<span class="good">${t}</span>`).join('') + a.bad.map(t => `<span class="bad">${t}</span>`).join('') : '')
-      + (MOVE[id] ? `<span class="move">${MOVE[id]}</span><span class="goal">Life goal: ${GOALS[id].title.toLowerCase()}</span>` : '');
+      + (MOVE[id] ? `<span class="move">${MOVE[id]}</span><span class="goal">Life goal: ${GOALS[id].title.toLowerCase()}</span>` : '')
+      + (MOVE[id] ? `<span class="goal">${G.growth?.prime(id) ? 'In its prime: every strength grown' : `Grown ${Math.round((G.growth?.grown(id) || 0) * 100)}%: its own feathers, moults and gifts (Today > Strength)`}</span>` : '');
   };
   const chev = d => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${d}"/></svg>`;
   const box = G.menu.group('bird');
@@ -82,7 +83,7 @@ export function speciesSystem(G) {
     q('.stats3').innerHTML = statsOf(id); q('.traits3').innerHTML = traits(id);
     q('.home3').textContent = 'Fly from its home'; q('.home3').hidden = !!tried;
   };
-  show();
+  show(); G.menu.onOpen(show);
   box.addEventListener('click', e => {
     if (e.target.closest('.home3')) {   // start over in this bird's own land (main.js STARTS)
       const [x, z] = G.startOf(BIRD), b = G.b;

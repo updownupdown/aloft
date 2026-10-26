@@ -40,7 +40,7 @@ export function createQuiet(G, ui, H) {
   const nextEl = q('.next3'), nextTx = nextEl.querySelector('.nt3'), nextSub = nextEl.querySelector('.ns3');
   let names = [], nameT = 0, tallyT = 0, glints = [], open = null;
   // the next step: a slot for the lesson and one for the aim (the lesson shows first); rest: swiped away till take-off
-  const slots = { lesson: null, aim: null };
+  const slots = { lesson: null, quest: null, aim: null };   // (quest: the one you follow, sys/quests.js)
   let nextKey = '', doneT = 0, rest = false;
 
   const Q = {
@@ -94,7 +94,7 @@ export function createQuiet(G, ui, H) {
       if ((tallyT -= dt) <= 0) tallyEl.classList.remove('show');
       // the next step: the open lesson, else the aim; a done one fades after its tick
       if (doneT > 0 && (doneT -= dt) <= 0) for (const w in slots) if (slots[w]?.done) slots[w] = null;
-      const s = slots.lesson || slots.aim, on = !!s && !rest && !H.off['say:next'];
+      const s = slots.lesson || slots.quest || slots.aim, on = !!s && !rest && !H.off['say:next'];
       const k = on ? `${s.text}|${s.sub}|${s.done ? 1 : 0}` : '';
       if (k !== nextKey) {
         nextKey = k;

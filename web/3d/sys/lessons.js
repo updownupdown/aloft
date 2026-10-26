@@ -372,7 +372,7 @@ export function lessonsSystem(G) {
     // a chapter: a feather for its mark (filled once done: each chapter earns one), Start (moss) or Replay (pale)
     const row = (i, id, title, d, of, k) => `<li class="${d === of ? 'done' : ''}"><button class="lopen3" data-p="${id}"><i class="lfeat3${d === of ? ' on' : ''}">${icon('feather')}</i><b>${i}. ${esc(title)}</b><small>${d === of ? 'Done' : `${d} of ${of}`}</small></button><button data-r="${k}"${d === of ? '' : ' class="main3"'}>${d === of ? 'Replay' : 'Start'}</button></li>`;
     over.innerHTML = `<div class="lpay3"><span class="lnum3">${icon('feather')}<b>${nf}</b><small>${nf === 1 ? 'feather' : 'feathers'}</small></span>
-        <span class="lwhy3"><b>Each chapter earns a feather</b><span>Feathers make your wings last longer${nf ? `: now +${G.wingBonus?.() || 0}%` : ''}. Today’s aim earns them too.</span>
+        <span class="lwhy3"><b>Each chapter earns a feather</b><span>Feathers make your bird’s stamina last longer${nf ? `: now +${G.wingBonus?.() || 0}%` : ''}. Today’s aim earns them too.</span>
         <i class="lbar3"><i style="width:${Math.round(done / all * 100)}%"></i></i><small>${done} of ${all} lessons done</small></span></div>
       <ul class="lover3">${row(1, 'controls', 'Flying', S.done.flight ? 1 : 0, 1, 'flight')}${CHAPTERS.map((ch, i) => row(i + 2, ch.page, ch.title, ch.tasks.length - left(ch), ch.tasks.length, i)).join('')}</ul>
       <div class="lbtns3">${S.stage === 'learn' ? '<button data-l="skip">Skip the lessons</button>' : ''}<button data-l="over">Start all the lessons over</button></div>

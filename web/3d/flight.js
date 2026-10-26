@@ -81,8 +81,8 @@ export function step(b, c, dt, E) {
     // two wings together tire you less: a perfectly paired tap costs about half a ragged one
     b.stamina = Math.max(0, b.stamina - FLY.flapCost * (c.flap.side ? .6 : 1.2 - .6 * (c.flap.sync ?? 0)) / (b.endure ?? 1));   // feathers (sys/aims.js) make them last
     const stall = stallness(b);
-    b.s = Math.min(FLY.maxS, b.s + FLY.flapS * q * (.35 + .65 * (1 - b.flare)));
-    b.vy += (FLY.flapUp + FLY.flapHover * b.flare + 1.6 * stall) * q;
+    b.s = Math.min(FLY.maxS * (b.speedK ?? 1), b.s + FLY.flapS * (b.climbK ?? 1) * q * (.35 + .65 * (1 - b.flare)));
+    b.vy += (FLY.flapUp * (b.climbK ?? 1) + FLY.flapHover * b.flare + 1.6 * stall) * q;   // climbK, speedK: your bird's growth (sys/growth.js)
     if (c.flap.side) b.yaw += -c.flap.side * .12;      // one wing leading pushes you round
     // a bird never beats one wing alone: the other follows, more lightly
     b.flapL = b.flapR = 0;
@@ -106,7 +106,7 @@ export function step(b, c, dt, E) {
   gT = Math.max(-1.35, Math.min(.8, gT));
   b.gamma += (gT - b.gamma) * Math.min(1, dt * (1.1 + b.s * .1));
   b.s += (-g * Math.sin(b.gamma) - cdW * b.s * b.s) * dt;
-  b.s = Math.max(0, Math.min(FLY.maxS, b.s));
+  b.s = Math.max(0, Math.min(FLY.maxS * (b.speedK ?? 1), b.s));
 
   // bank and turn; soaring (wings spread) in a thermal, the rising air under the outer wing eases the
   // hawk a little toward the core: you steer the circle, it only helps you keep it

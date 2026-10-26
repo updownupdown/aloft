@@ -50,7 +50,7 @@ export function createToday(G, M) {
     setTimeout(() => { next.hidden = ![...M.aims.children].some(s => !s.classList.contains('hidden') && s.textContent.trim()); });
     // the feathers so far (sys/aims.js): each makes the wings last longer
     const nf = G.feathers?.() || 0;
-    feat.textContent = nf ? `${nf} ${nf === 1 ? 'feather' : 'feathers'}: wings last ${G.wingBonus?.() || 0}% longer. Lessons and the day’s aim earn them.` : 'No feathers yet. Each lesson chapter and each day’s aim earns one, and each makes your wings last longer.';
+    feat.textContent = nf ? `${nf} ${nf === 1 ? 'feather' : 'feathers'} for this bird: stamina +${Math.round(Math.min(nf, 20) * 3)}%. Lessons and the day’s aim earn them.` : 'No feathers yet for this bird. Each lesson chapter and each day’s aim earns one, and each makes its stamina last longer.';
     who.querySelector('.bic3').innerHTML = birdIcon(BIRD);
     who.querySelector('b').textContent = BIRD === 'hawk' ? 'Red-tailed hawk' : BIRDS[BIRD]?.name || BIRD;
     who.querySelector('small').textContent = cap(G.placeWhere?.() || '');

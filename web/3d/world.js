@@ -41,7 +41,7 @@ export function setWater(y) { WATER = y; }
 // what systems change at run time: the snowline (0 summer .. 1 deep winter, chunks must be
 // rebuilt when it moves), the thermals' strength, and extra lift (storm cells, waves, kettles)
 // yearFrac: the calendar (earth.js yearFrac), which with the latitude sets each place's season and snow
-export const env = { snow: 0, snowLine: 185, season: 'summer', seasonDay: 0, yearFrac: .47, thermal: 1, lifts: [], thermals: [], solids: [], shade: null };   // shade(x, z): cloud shadow 0..1 (sys/air.js); solids: fns (x, z, r, out) adding things that move or float (sys/sealife.js, sys/drift.js)
+export const env = { liftK: 1, topK: 1, snow: 0, snowLine: 185, season: 'summer', seasonDay: 0, yearFrac: .47, thermal: 1, lifts: [], thermals: [], solids: [], shade: null };   // shade(x, z): cloud shadow 0..1 (sys/air.js); solids: fns (x, z, r, out) adding things that move or float (sys/sealife.js, sys/drift.js)
 
 // how much of each kind of country a point is, 0..1 each (older callers read these)
 export function bands(x, z, bl = blend(x, z)) {
@@ -1045,9 +1045,10 @@ export const thermalCentre = (t, y) => [t.x + WIND[0] * y * .12, t.z + WIND[2] *
 export function airLift(x, y, z, sun) {
   let w = -.25;
   for (const t of thermalsNear(x, z, 140)) {
-    const [tx, tz] = thermalCentre(t, y), d = Math.hypot(x - tx, z - tz);
-    if (d > t.r * 1.6 || y > t.top) continue;
-    const k = Math.exp(-(d * d) / (t.r * t.r * .55)) * smooth(t.top, t.top - 60, y) * smooth(-2, 15, y - height(x, z));
+    // (liftK, topK: your bird's growth, sys/growth.js: stronger lift, higher tops)
+    const [tx, tz] = thermalCentre(t, y), d = Math.hypot(x - tx, z - tz), top = t.top * env.topK;
+    if (d > t.r * 1.6 || y > top) continue;
+    const k = Math.exp(-(d * d) / (t.r * t.r * .55)) * smooth(top, top - 60, y) * smooth(-2, 15, y - height(x, z)) * env.liftK;
     // a cloud's shadow over the column's foot cools the ground: the thermal weakens (round eight C1)
     const sh = env.shade && !t.volcano ? env.shade(t.x, t.z) : 0;
     w += t.w * k * (.35 + .65 * sun) * env.thermal * (1 - .65 * sh) - (d > t.r ? .6 : 0);

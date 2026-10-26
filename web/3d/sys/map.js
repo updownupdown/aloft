@@ -141,8 +141,11 @@ export function mapView(G, J) {
     tally(); countLandmarks(G, () => { if (open) tally(); });
     requestAnimationFrame(() => {
       fit(); fogNow();
-      // open on the hawk, far enough out to see its continent
-      const [la, lo] = hawkLL(); Object.assign(V, { lat: la, lon: lo, R: rMax() * .2 }); Object.assign(T, { lat: la, lon: lo, R: V.R });
+      // open on the hawk, far enough out to see its continent; or on a place asked for (G.showOnMap:
+      // the Quests page), closer in
+      const f = G.mapFocus; G.mapFocus = null;
+      const [la, lo] = f ? latLon(f[0], f[1]) : hawkLL(); Object.assign(V, { lat: la, lon: lo, R: rMax() * (f ? .45 : .2) }); Object.assign(T, { lat: la, lon: lo, R: V.R });
+      if (f) { const q = places().find(p => p.quest && Math.hypot(p.x - f[0], p.z - f[1]) < 1); if (q) pick({ place: q }); }
       draw();
     });
   });
@@ -201,6 +204,9 @@ export function mapView(G, J) {
       const [px, py, front] = at(p.x, p.z); if (!front || px < -20 || py < -20 || px > V.w + 20 || py > V.h + 20) continue;
       if (p.pin) { pin(x, px, py, pinCol(p.pin), sel?.pin === p.pin); shown.push([p, px, py]); continue; }
       if (p.cache) { pin(x, px, py, '#7a4a2a'); shown.push([p, px, py]); continue; }
+      // a rumour's circle (sys/quests.js): somewhere in here, not a spot
+      if (p.r) { const [qx, qy] = at(p.x + p.r, p.z), rr = Math.max(7, Math.hypot(qx - px, qy - py)); x.save(); x.setLineDash([4, 4]); x.strokeStyle = p.col; x.lineWidth = p.tracked ? 2.4 : 1.6; x.fillStyle = p.col + '22'; x.beginPath(); x.arc(px, py, rr, 0, 6.283); x.fill(); x.stroke(); x.restore(); }
+      if (p.tracked) { x.strokeStyle = '#fff'; x.lineWidth = 2; x.beginPath(); x.arc(px, py, 10, 0, 6.283); x.stroke(); }
       if (p.plain) {
         // a repeated name or a land's sight: no mark, a quiet name when close, once per stretch
         if (!close || named.some(([t, qx, qy]) => t === p.name && Math.hypot(qx - px, qy - py) < 220)) continue;
@@ -267,7 +273,7 @@ export function mapView(G, J) {
         <button data-act="col" class="pcol3" style="--pc:${c}" aria-label="Pin colour">${icon('dropper')}</button>
         <span class="pins3">${go}<button data-act="rm">${icon('trash')}Remove</button></span>
         ${swatch ? `<div class="swatch3"><b>Pin colour</b><button data-act="shut" class="shut3" aria-label="Close">${icon('done')}</button><span>${PINS.map(k => `<button data-col="${k}" style="--pc:${k}"${k === c ? ' class="on"' : ''} aria-label="Colour"></button>`).join('')}</span></div>` : ''}`;
-    } else note.innerHTML = `<b>${esc(sel.place.name)}</b>${sel.place.note ? `<small>${esc(sel.place.note)}</small>` : ''}<span class="pins3">${go}</span>`;
+    } else note.innerHTML = `<b>${esc(sel.place.name)}</b>${sel.place.note ? `<small>${esc(sel.place.note)}</small>` : ''}<span class="pins3">${sel.place.quest ? `<button data-act="follow">${icon('quest')}${G.quests?.tracked()?.id === sel.place.quest ? 'Following' : 'Follow'}</button>` : ''}${sel.place.quest && !known(sel.place.x, sel.place.z) ? '' : go}</span>`;
     note.insertAdjacentHTML('beforeend', '<small class="nogo3" hidden>Explore this area to fast-travel to it.</small>');
   }
   note.addEventListener('click', e => {
@@ -279,6 +285,7 @@ export function mapView(G, J) {
       G.hud.did('pin'); G.emit('pin'); pick({ pin: p });
     } else if (act === 'col') { swatch = !swatch; card(); }
     else if (act === 'shut') { swatch = false; card(); }
+    else if (act === 'follow') { G.quests?.track(sel.place.quest); sel.place.tracked = G.quests?.tracked()?.id === sel.place.quest; card(); soon(); }
     else if (act === 'rm') { J.pins = J.pins.filter(q => q !== sel.pin); pick(null); }
     else if (act === 'go') {
       const t = sel.pin || sel.place;
