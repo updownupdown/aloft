@@ -11,7 +11,8 @@ const KINDS = [
   ['tutorial', 'Lessons', 'The end of the first flight, and the lessons when they end'],
   ['hint', 'Nudges', 'What you could do here'],
   ['song', 'Singing', 'Who answers your song, under the song card'],
-  ['name', 'Names', 'A country, a landmark, a rainbow: a title under the compass'],
+  ['name', 'Names', 'A land, a landmark, a rainbow: a title under the compass'],
+  ['next', 'The next step', 'The open lesson, or the day’s aim: a thin line under the compass'],
   ['glint', 'Things to learn', 'Something new waits by the compass: tap it to read'],
   ['tally', 'Counts', 'Twigs, keepsakes, a catch: a few words beside the compass'],
 ];
@@ -34,7 +35,7 @@ export function hintsPage(G) {
     const says = KINDS.map(([k, title, sub]) => {
       const said = H.said[k] || [];
       return `<section class="hgrp3">${sw('say:' + k, !H.off['say:' + k], title, sub, SAY[k].icon, SAY[k].col)}
-        ${said.length ? `<ul class="said3">${said.map(m => `<li>${esc(m)}</li>`).join('')}</ul>` : '<p class="none3">Nothing yet.</p>'}</section>`;
+        ${k === 'next' ? '' : said.length ? `<ul class="said3">${said.map(m => `<li>${esc(m)}</li>`).join('')}</ul>` : '<p class="none3">Nothing yet.</p>'}</section>`;
     }).join('');
     page.innerHTML = `<p>Turn off the hints you don’t need. Tips teach a move once; messages say what is happening.</p>
       <button class="btn hreset3">Show the tips again <em>${Object.keys(H.done).length} seen</em></button>
