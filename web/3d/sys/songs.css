@@ -1,121 +1,131 @@
-/* Song controls (songs system): Sing, the note pad, the song card with its score, the birds to imitate, the notes rising from a beak and the Call button.
-   The song controls sit in black frames with white text, so the note colours stand out; bird
-   pictures sit in white rounds. Colours: --note and --lit on each row, --note on each score glyph.
+/* Song controls (songs system): Sing, the note pad, the song card with its score and line, the birds' list, the first song's coach, the notes rising from a beak and the Call button.
+   In the UI's own cream glass and warm ink (Linen; the songs study F, James 10-24), with the five notes in strong, dark colours
+   (purple, blue, green, orange, red, low to high: singui.js NOTE_COLS; James 10-26: the pastels were too alike), so they
+   read as the pad's rows over any world and as glyphs on cream. Colours: --note on each row and each glyph.
    Everything here can be restyled without touching singui.js. */
 .sing3 { position: absolute; inset: 0; pointer-events: none; --side: calc(14px + env(safe-area-inset-left)); --side2: calc(14px + env(safe-area-inset-right));
-  --blk: rgba(14, 19, 24, .86); --blkedge: rgba(255, 255, 255, .14); --dim: rgba(255, 255, 255, .68); --shadow: 0 4px 16px rgba(10, 20, 28, .28);
-  --top: calc(92px + env(safe-area-inset-top)); --bot: calc(22px + env(safe-area-inset-bottom));
+  --pane: var(--glass); --paneedge: var(--edge); --dim: var(--ink2); --shadow: 0 4px 16px rgba(40, 30, 20, .18); --soft: rgba(42, 36, 32, .07);
+  --learn: #9a6410; --teach: #b0791f; --top: calc(92px + env(safe-area-inset-top)); --bot: calc(22px + env(safe-area-inset-bottom));
   --padw: 96px; --gap: 8px; }
-.sing3 button { font-family: var(--text); color: #fff; touch-action: manipulation; }
-.songcard3, .sgplate3, .birds3 { -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); }
-.sing3:not(.on) :is(.notepad3, .songcard3, .birds3, .sgrail3), .sing3:not(.big) .birds3, .sing3.big .sgrail3, .sing3.on .sgplate3, .sing3.big .songcard3 { display: none; }
+.sing3 button { font-family: var(--text); color: var(--ink); touch-action: manipulation; }
+.songcard3, .sgplate3, .birds3, .sgcoach3 { -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); }
+.sing3:not(.on) :is(.notepad3, .songcard3, .birds3, .sgrail3, .sgcoach3, .sgghost3), .sing3:not(.big) .birds3, .sing3.big :is(.sgrail3, .sgcoach3, .sgghost3), .sing3.on .sgplate3, .sing3.big .songcard3 { display: none; }
 .sing3 svg { flex: none; }
 /* a bird's little flat logo (birdlogos.js), no round behind it */
 /* (blogo3, not logo3: that is the menu's app logo, with a box and a shadow) */
 .sing3 .blogo3 { display: block; width: 100%; height: 100%; }
 
-/* Sing, off: the notes, and the logo of a bird beside you that could teach you */
+/* Sing, off: a cream pill with the notes, and the logo of a bird beside you that could teach you */
 .sgplate3 { pointer-events: auto; box-sizing: border-box; min-height: 52px; display: flex; align-items: center; gap: 8px; padding: 5px 16px 5px 14px;
-  border: 1px solid var(--blkedge); border-radius: 26px; background: var(--blk); box-shadow: var(--shadow); cursor: pointer; font-size: 15px; font-weight: 700; }
-.sgtog3 { flex: none; display: grid; place-items: center; width: 26px; height: 42px; color: #fff; }
+  border: 1px solid var(--paneedge); border-radius: 26px; background: var(--pane); box-shadow: var(--shadow); cursor: pointer; font-size: 15px; font-weight: 700; color: var(--ink); }
+.sgtog3 { flex: none; display: grid; place-items: center; width: 26px; height: 42px; color: var(--moss); }
 .sgtog3 svg { width: 22px; height: 22px; }
 .sghint3 { width: 34px; height: 34px; margin: -4px -6px -4px 0; }
 .sghint3:empty { display: none; }
-.sw3 { position: relative; flex: none; width: 36px; height: 22px; border-radius: 11px; background: rgba(255, 255, 255, .24); transition: background .2s; }
-.sw3 i { position: absolute; left: 3px; top: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .2s; }
-.on > .sw3 { background: #5fb46e; }
-.on > .sw3 i { transform: translateX(14px); }
 
-/* the note pad: five round rows, high at the top, each edged in its own colour, straight over the
-   world. Two thumbs can play. */
+/* the note pad: five round rows, high at the top, each filled with its note's strong colour and
+   edged in cream, straight over the world. Two thumbs can play. */
 .notepad3 { pointer-events: auto; position: absolute; right: var(--side2); bottom: var(--bot); top: var(--top); width: var(--padw); box-sizing: border-box;
   display: flex; flex-direction: column; gap: 7px; touch-action: none; }
-.notepad3 i { position: relative; flex: 1; overflow: hidden; border-radius: 999px; background: color-mix(in srgb, var(--note) 78%, #000); border: 2px solid var(--lit);
-  box-shadow: var(--shadow); transition: transform .12s, filter .12s; }
+.notepad3 i { position: relative; flex: 1; overflow: hidden; border-radius: 999px; background: linear-gradient(color-mix(in srgb, var(--note) 84%, #fff), var(--note) 70%);
+  border: 2px solid rgba(255, 251, 242, .92); box-shadow: var(--shadow); transition: transform .12s, filter .12s; }
 .notepad3 i::after { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 60%; opacity: 0; pointer-events: none;
-  background: linear-gradient(transparent, rgba(255, 255, 255, .75), transparent); }
-.notepad3 i.down { filter: brightness(1.2); }
+  background: linear-gradient(transparent, rgba(255, 255, 255, .8), transparent); }
+.notepad3 i.down { filter: brightness(1.15); transform: scale(.97); }
 /* how a row answers each touch: a tap pulses, a swipe sweeps light the way it went */
 .notepad3 i.k-c { animation: tap3 .28s ease-out; }
-.notepad3 i:is(.k-l, .k-r)::after { top: 0; bottom: 0; left: 0; width: 60%; height: auto; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .75), transparent); }
+.notepad3 i:is(.k-l, .k-r)::after { top: 0; bottom: 0; left: 0; width: 60%; height: auto; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .8), transparent); }
 .notepad3 i.k-d::after { animation: sweepdown3 .45s ease-out; }
 .notepad3 i.k-u::after { animation: sweepup3 .45s ease-out; }
 .notepad3 i.k-r::after { animation: sweepright3 .4s ease-out; }
 .notepad3 i.k-l::after { animation: sweepleft3 .4s ease-out; }
-@keyframes tap3 { 0% { transform: scale(.94); filter: brightness(1.6); } 100% { transform: none; filter: none; } }
+@keyframes tap3 { 0% { transform: scale(.94); filter: brightness(1.4); } 100% { transform: none; filter: none; } }
 @keyframes sweepdown3 { 0% { opacity: 1; transform: translateY(-100%); } 100% { opacity: 1; transform: translateY(170%); } }
 @keyframes sweepup3 { 0% { opacity: 1; transform: translateY(170%); } 100% { opacity: 1; transform: translateY(-100%); } }
 @keyframes sweepright3 { 0% { opacity: 1; transform: translateX(-100%); } 100% { opacity: 1; transform: translateX(170%); } }
 @keyframes sweepleft3 { 0% { opacity: 1; transform: translateX(170%); } 100% { opacity: 1; transform: translateX(-100%); } }
 .notepad3 i.glow { animation: glow3 .7s ease-out; }
-@keyframes glow3 { 0% { filter: brightness(1.9); box-shadow: 0 0 22px var(--lit), var(--shadow); } 100% { filter: none; } }
+@keyframes glow3 { 0% { filter: brightness(1.45); box-shadow: 0 0 0 4px color-mix(in srgb, var(--note) 45%, transparent), 0 0 22px var(--note), var(--shadow); } 100% { filter: none; } }
 /* how a note you sang went, on its row: a ring green (right), amber (right row, not the touch) or
    red (wrong row); it never says which touch was wanted */
 .notepad3 i:is(.yes, .half, .no) { animation: said3 .9s ease-out; }
-.notepad3 i.yes { --said: #5fd47e; }
-.notepad3 i.half { --said: #f2a23a; }
-.notepad3 i.no { --said: #f0584a; animation: said3 .9s ease-out, shake3 .3s; }
-@keyframes said3 { 0%, 40% { border-color: var(--said); box-shadow: 0 0 0 3px var(--said), 0 0 18px var(--said); } 100% { } }
+.notepad3 i.yes { --said: #2f8a3e; }
+.notepad3 i.half { --said: #e09a1a; }
+.notepad3 i.no { --said: #c0392b; animation: said3 .9s ease-out, shake3 .3s; }
+@keyframes said3 { 0%, 40% { border-color: #fff; box-shadow: 0 0 0 4px var(--said), 0 0 18px var(--said); } 100% { } }
 @keyframes shake3 { 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
 /* the bird you learn from sang this note: the row lights and its logo pops up in the middle (just
    the logo: no ground, no shadow) */
 .tlogo3 { position: absolute; left: 50%; top: 50%; width: 38px; height: 38px; margin: -19px 0 0 -19px; opacity: 0; pointer-events: none; z-index: 1; }
 .notepad3 i.teach { animation: teach3 1s ease-out; }
 .notepad3 i.teach .tlogo3 { animation: tlogo3 1s ease-out; }
-@keyframes teach3 { 0%, 30% { filter: brightness(1.6); } 100% { } }
+@keyframes teach3 { 0%, 30% { filter: brightness(1.4); box-shadow: 0 0 0 4px rgba(255, 251, 242, .9), 0 0 20px var(--note); } 100% { } }
 @keyframes tlogo3 { 0% { opacity: 0; transform: scale(.5); } 15%, 65% { opacity: 1; transform: scale(1.1); } 100% { opacity: 0; transform: scale(1); } }
 
 /* bottom left: Sing (off) or the song card (on) */
 .sgleft3 { position: absolute; left: var(--side); bottom: var(--bot); display: flex; flex-direction: column; align-items: flex-start; gap: 8px; pointer-events: none; }
 
-/* the song card, one black card. The top: the bird you sing as, what you are doing (amber
-   learning, green imitating), every bird and X to stop. The bottom: the logo, the song's name and
-   its score; a tap there opens every bird too. */
+/* the song card, one cream card. The top: the bird you sing as, what you are doing (amber
+   learning, moss imitating) and X to stop. Then the song's name, the song as a line, the logo and
+   its score, and what you sang. */
 .songcard3 { pointer-events: auto; box-sizing: border-box; width: min(44vw, 380px); padding: 8px 8px 9px 12px; position: relative; display: flex; flex-direction: column; gap: 4px;
-  border: 1px solid var(--blkedge); border-radius: 24px; background: var(--blk); box-shadow: var(--shadow); color: #fff; --mode: #fff; }
-.songcard3[data-mode=learn] { --mode: #f2c14e; }
-.songcard3[data-mode=imitate] { --mode: #8fcf5a; }
+  border: 1px solid var(--paneedge); border-radius: 24px; background: var(--pane); box-shadow: var(--shadow); color: var(--ink); --mode: var(--ink); }
+.songcard3[data-mode=learn] { --mode: var(--learn); }
+.songcard3[data-mode=imitate] { --mode: var(--moss); }
 .sghead3 { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .sgwho3 { flex: 0 1 auto; min-width: 0; font-size: 15px; font-weight: 700; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
 .sgstate3 { flex: none; padding: 3px 9px; border-radius: 11px; font-style: normal; font-size: 12px; font-weight: 700; letter-spacing: .02em; color: var(--mode);
-  background: color-mix(in srgb, var(--mode) 18%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--mode) 45%, transparent); }
-.sghead3 button { flex: none; width: 34px; height: 34px; padding: 0; display: grid; place-items: center; border: 0; border-radius: 50%; background: rgba(255, 255, 255, .12); cursor: pointer; }
+  background: color-mix(in srgb, var(--mode) 13%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--mode) 38%, transparent); }
+.sghead3 button { flex: none; width: 34px; height: 34px; padding: 0; display: grid; place-items: center; border: 0; border-radius: 50%; background: rgba(42, 36, 32, .08); cursor: pointer; }
 .sgclose3 { margin-left: auto; }
 .sghead3 button svg { width: 18px; height: 18px; }
-/* the song's name (a chevron when you know more than one of the bird's songs: tap for the next),
-   then theirs over yours: the bird's score, and under it what you sang this try */
+/* the song's name (a chevron when you know more than one of the bird's songs: tap for the next) */
 .sgsong3 { align-self: flex-start; max-width: 100%; padding: 0; border: 0; background: none; font-size: 12px; font-weight: 500; color: var(--dim) !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
 .sgsong3.many { pointer-events: auto; cursor: pointer; }
-.sgsong3.many::after { content: ' \203A'; font-weight: 700; color: #fff; }
+.sgsong3.many::after { content: ' \203A'; font-weight: 700; color: var(--ink); }
 .sgrow3 { display: flex; align-items: flex-end; gap: 8px; min-height: 28px; }
-.sglogo3 { flex: none; width: 40px; height: 40px; margin-left: -4px; align-self: center; }
+.sglogo3, .sgsp3 { flex: none; width: 40px; height: 40px; margin-left: -4px; align-self: center; }
 .sgme3 { flex: none; width: 36px; align-self: center; text-align: center; font-size: 11px; font-weight: 700; color: var(--dim); }
 .songcard3.free .sgrow3:not(.mine) { display: none; }
 .songcard3:not(.free) .sgrow3.mine:not(:has(span)) .sgme3 { opacity: .5; }
+/* the song as a line (singui.js lineOf), over the score, each note above its glyph */
+.sgrow3.line { min-height: 0; }
+.sgrow3.line .sgsp3 { height: 0; }
+.sgln3 { display: block; height: 30px; }
+.sgline3 { display: block; overflow: visible; }
+.sgline3 path { fill: none; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.sgline3 .join { stroke: var(--ink2); stroke-width: 1.2; opacity: .3; }
+.sgline3 .tick { stroke: #9a8f84; stroke-width: 2.4; stroke-dasharray: 2 3; opacity: .7; }
+.sgline3 .hint { opacity: .45; }
+.sgline3 .at { fill: rgba(42, 36, 32, .08); }
 
-/* the rail: the birds singing near by down the left, yourself at the bottom */
+/* the rail: the birds singing near by down the left, in the order they sit round you, each with a
+   little arrow its way */
 .sgrail3 { pointer-events: auto; position: absolute; z-index: 1; left: var(--side); top: calc(66px + env(safe-area-inset-top)); bottom: var(--bot); width: 60px; box-sizing: border-box; padding: 6px 0;
-  display: flex; flex-direction: column; align-items: center; gap: 6px; border: 1px solid var(--blkedge); border-radius: 30px; background: var(--blk); box-shadow: var(--shadow);
+  display: flex; flex-direction: column; align-items: center; gap: 6px; border: 1px solid var(--paneedge); border-radius: 30px; background: var(--pane); box-shadow: var(--shadow);
   -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); }
 .sgbirds3 { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; overflow-y: auto; scrollbar-width: none; }
-.sgrail3 button { position: relative; flex: none; width: 48px; height: 48px; padding: 5px; border: 0; border-radius: 50%; background: none; cursor: pointer; --mode: #fff; }
-.sgrail3 button.on { background: color-mix(in srgb, var(--mode) 22%, transparent); box-shadow: inset 0 0 0 2px var(--mode); }
-.sgrail3 button.learn { --mode: #f2c14e; }
-.sgrail3 button.imitate { --mode: #8fcf5a; }
+.sgrail3 button { position: relative; flex: none; width: 48px; height: 48px; padding: 5px; border: 0; border-radius: 50%; background: none; cursor: pointer; --mode: var(--ink); }
+.sgrail3 button.on { background: color-mix(in srgb, var(--mode) 14%, transparent); box-shadow: inset 0 0 0 2px var(--mode); }
+.sgrail3 button.learn { --mode: var(--learn); }
+.sgrail3 button.imitate { --mode: var(--moss); }
 /* a bird beside you that could teach you its song */
-.sgrail3 button.teach::after { content: ''; position: absolute; right: 3px; top: 3px; width: 10px; height: 10px; border-radius: 50%; background: #f2c14e; box-shadow: 0 0 0 2px #0e1318; }
-.sgyou3, .sgmore3 { background: rgba(255, 255, 255, .12) !important; }
-.sgmore3 { color: #fff; }
+.sgrail3 button.teach::after { content: ''; position: absolute; right: 3px; top: 3px; width: 10px; height: 10px; border-radius: 50%; background: var(--teach); box-shadow: 0 0 0 2px var(--btn); }
+/* its way from what the screen shows: an arrow on a cream round, bottom right (up: straight ahead) */
+.dir3 { position: absolute; right: 0; bottom: 0; width: 16px; height: 16px; border-radius: 50%; background: var(--btn); box-shadow: 0 0 0 1px rgba(42, 36, 32, .18); transform: rotate(var(--bear, 0deg)); }
+.dir3::before { content: ''; position: absolute; left: 4px; top: 3px; border: solid transparent; border-width: 0 4px 8px; border-bottom-color: var(--ink); }
+.sgrail3 button.nodir .dir3 { display: none; }
+.sgyou3, .sgmore3 { background: rgba(42, 36, 32, .08) !important; color: var(--ink); }
 .sgmore3 svg { width: 22px; height: 22px; }
-.sgyou3 > svg { width: 30px; height: 30px; margin: 4px; color: #fff; }
-.sgyou3.on { box-shadow: inset 0 0 0 2px #fff; }
+.sgyou3 > svg { width: 30px; height: 30px; margin: 4px; color: var(--ink); }
+.sgyou3.on { box-shadow: inset 0 0 0 2px var(--ink); }
 /* the card comes out from under the rail, their bottom left corners together */
 .sing3.on .songcard3 { width: min(calc(44vw + 60px), 440px); padding-left: 72px; }
 /* the height ladder under the menu button steps aside for the rail */
 #ui3:has(.sing3.on:not(.big)) .alt { opacity: 0; pointer-events: none; }
-/* the birds' X: white on black, over the list's top right corner */
-.sgless3 { position: absolute; z-index: 1; top: 8px; right: 8px; width: 38px; height: 38px; padding: 0; border: 1px solid rgba(255, 255, 255, .3); border-radius: 50%;
-  background: #000; box-shadow: var(--shadow); display: grid; place-items: center; cursor: pointer; color: #fff; }
+/* the birds' X, over the list's top right corner */
+.sgless3 { position: absolute; z-index: 1; top: 8px; right: 8px; width: 38px; height: 38px; padding: 0; border: 1px solid rgba(122, 112, 102, .4); border-radius: 50%;
+  background: var(--btn); box-shadow: var(--shadow); display: grid; place-items: center; cursor: pointer; color: var(--ink); }
 .sgless3 svg { width: 20px; height: 20px; }
 /* the score: one arrow per note, raised by its pitch; a question mark for a note not found yet;
    each note of this try ringed for two seconds after it is sung: green good, blue fair, orange
@@ -123,58 +133,84 @@
 .score3 { --g: 24px; --step: 4px; display: flex; gap: 2px; align-items: flex-end; }
 .score3:has(span), .sgrow3 .score3 { height: calc(var(--g) + var(--step) * 4); }
 .score3 small { font-size: 11.5px; font-weight: 500; color: var(--dim); white-space: nowrap; }
-.score3 span { position: relative; width: var(--g); height: var(--g); box-sizing: border-box; padding: 3px; margin-bottom: calc(var(--lane) * var(--step)); border-radius: 7px; flex: none;
-  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--note) 55%, transparent)); }
+.score3 span { position: relative; width: var(--g); height: var(--g); box-sizing: border-box; padding: 3px; margin-bottom: calc(var(--lane) * var(--step)); border-radius: 7px; flex: none; }
 .score3 svg { width: 100%; height: 100%; stroke: var(--note); fill: var(--note); display: block; }
-.score3 span.q { opacity: .45; filter: none; }
-/* each glyph's colour comes in two: light (--nl) for the black frames, dark (--nd) for Linen (F) */
-.sing3 .score3 span, .sing3 .mini3 i { --note: var(--nl); }
-.sing3.linen .score3 span, .sing3.linen .mini3 i { --note: var(--nd); }
-/* (E) a note hinted after two misses: its shape, dimmer, until you find it */
-.score3 span.hint { opacity: .6; filter: none; }
+.score3 span.q { opacity: .6; }
+/* a note hinted after two misses: its shape, dimmer, until you find it */
+.score3 span.hint { opacity: .45; }
 /* the note being sung (by the bird teaching you) or due next (in your try) */
-.score3 span.at { background: rgba(255, 255, 255, .24); border-radius: 50%; opacity: 1; }
-.score3 span:is(.r-good, .r-ok, .r-meh, .r-wrong)::after { content: ''; position: absolute; inset: 0; border-radius: 50%; border: 1.5px solid var(--r); opacity: 0;
+.score3 span.at { background: rgba(42, 36, 32, .1); border-radius: 50%; opacity: 1; }
+.score3 span:is(.r-good, .r-ok, .r-meh, .r-wrong)::after { content: ''; position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--r); opacity: 0;
   animation: mark3 2s linear var(--md, 0s) both; }
 @keyframes mark3 { 0%, 70% { opacity: 1; } 100% { opacity: 0; } }
-.score3 span.r-good { --r: #5fd47e; }
-.score3 span.r-ok { --r: #5fa8f0; }
-.score3 span.r-meh { --r: #f2a23a; }
-.score3 span.r-wrong { --r: #f0584a; }
+.score3 span.r-good { --r: #2f8a3e; }
+.score3 span.r-ok { --r: #2f6fb0; }
+.score3 span.r-meh { --r: #c07a10; }
+.score3 span.r-wrong { --r: #c0392b; }
 .sing3 svg .ln { fill: none; }
 
-/* the birds to imitate, the whole height of the screen: a row a bird (its picture and name, then
-   each of its songs with its notes, small), and along the bottom Nearby, Sing as yourself and Call */
+/* the birds' list, the whole height of the screen: the birds singing within earshot (nearest first,
+   how far, and whether their song is new), then the birds you know (a row a bird: its picture and
+   name, then each of its songs with its notes, small), and along the bottom Sing as yourself and Call */
 .birds3 { pointer-events: auto; position: absolute; z-index: 3; left: var(--side); top: calc(10px + env(safe-area-inset-top)); bottom: calc(10px + env(safe-area-inset-bottom));
   width: min(560px, calc(100vw - var(--side) - var(--side2) - var(--padw) - 40px)); box-sizing: border-box; display: flex; flex-direction: column; gap: 8px; padding: 8px;
-  border: 1px solid var(--blkedge); border-radius: 20px; background: rgba(14, 19, 24, .92); box-shadow: var(--shadow); color: #fff; }
+  border: 1px solid var(--paneedge); border-radius: 20px; background: var(--glass2); box-shadow: var(--shadow); color: var(--ink); }
 .cards3 { flex: 1; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; display: flex; flex-direction: column; gap: 5px; min-height: 0; }
-.brow3:first-child { margin-right: 44px; }
+.bh3 { margin: 6px 48px 0 8px; font-size: 11.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink2); }
+.bh3 ~ .bh3 { margin-top: 12px; margin-right: 8px; }
 .sing3 .cards3 button { touch-action: pan-y; }
-.brow3 { display: flex; align-items: center; gap: 6px; padding: 4px; border: 1px solid transparent; border-radius: 16px; background: rgba(255, 255, 255, .07); }
-.brow3.on { border-color: rgba(255, 255, 255, .35); background: rgba(255, 255, 255, .13); }
+.nrow3 { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 4px 12px 4px 4px; border: 1px solid transparent; border-radius: 16px; background: var(--soft); text-align: left; cursor: pointer; }
+.nrow3 .blogo3 { flex: none; width: 40px; height: 40px; }
+.nrow3 span { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.nrow3 b { font-size: 13.5px; font-weight: 700; }
+.nrow3 small { font-size: 12px; color: var(--ink2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nrow3 em { flex: none; font-style: normal; font-size: 12px; font-weight: 600; color: var(--ink2); font-variant-numeric: tabular-nums; }
+.nrow3.new em { color: var(--learn); }
+.nrow3.learning { border-color: color-mix(in srgb, var(--learn) 45%, transparent); background: color-mix(in srgb, var(--learn) 10%, transparent); }
+.nrow3.learning em { color: var(--learn); }
+.brow3 { display: flex; align-items: center; gap: 6px; padding: 4px; border: 1px solid transparent; border-radius: 16px; background: var(--soft); }
+.brow3.on { border-color: rgba(42, 36, 32, .2); background: rgba(42, 36, 32, .1); }
 .bwho3 { position: relative; flex: none; width: 128px; display: flex; align-items: center; gap: 8px; padding: 0 4px 0 0; border: 0; background: none; font-size: 13px; font-weight: 700; text-align: left; line-height: 1.15; cursor: pointer; }
-.brow3.heard .bwho3 { opacity: .55; }
+.brow3.heard .bwho3 { opacity: .6; }
 .bwho3 .blogo3 { flex: none; width: 40px; height: 40px; }
 .bsongs3 { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; gap: 5px; }
 .bsong3 { box-sizing: border-box; min-height: 40px; display: flex; flex-direction: column; justify-content: center; gap: 3px; padding: 4px 10px; border: 1px solid transparent; border-radius: 12px;
-  background: rgba(255, 255, 255, .1); font-size: 11.5px; font-weight: 600; text-align: left; cursor: pointer; }
-.bsong3.on { background: #fff; color: #2a2420; }
-.bsong3.q { min-width: 40px; align-items: center; border: 1.5px dashed rgba(255, 255, 255, .25); background: none; color: rgba(255, 255, 255, .4); cursor: default; }
+  background: rgba(42, 36, 32, .07); font-size: 11.5px; font-weight: 600; text-align: left; cursor: pointer; }
+.bsong3.on { background: var(--btn); border-color: var(--moss); box-shadow: inset 0 0 0 1px var(--moss); }
+.bsong3.q { min-width: 40px; align-items: center; border: 1.5px dashed rgba(42, 36, 32, .25); background: none; color: rgba(42, 36, 32, .45); cursor: default; }
 .bsong3.q b { font-size: 14px; }
 .mini3 { display: flex; gap: 1px; align-items: flex-end; height: 18px; }
 .mini3 i { width: 11px; height: 11px; margin-bottom: calc(var(--lane) * 1.6px); }
 .mini3 svg { width: 100%; height: 100%; display: block; stroke: var(--note); fill: var(--note); }
-.bsong3.on .mini3 svg { filter: brightness(.75) saturate(1.3); }
-.near3 { position: absolute; top: -3px; left: 32px; width: 14px; height: 14px; stroke: #9be7a9; fill: #9be7a9; }
-.cards3 p { margin: 6px 8px; font-size: 12.5px; color: var(--dim); }
-/* the bottom: Nearby (a switch), Sing as yourself, and Call, a round */
+.near3 { position: absolute; top: -3px; left: 32px; width: 14px; height: 14px; stroke: var(--moss); fill: var(--moss); }
+.cards3 p { margin: 4px 8px; font-size: 12.5px; color: var(--ink2); }
+/* the bottom: Sing as yourself, and Call, a round */
 .sgbar3 { flex: none; display: flex; gap: 6px; align-items: center; }
-.sgbar3 > button { min-height: 48px; border: 1px solid rgba(255, 255, 255, .16); border-radius: 24px; background: rgba(255, 255, 255, .1); font-size: 14px; font-weight: 600; cursor: pointer; }
-.sgnear3, .sgself3 { flex: 1; display: flex; align-items: center; justify-content: center; gap: 10px; }
-.sgcall3 { flex: none; width: 48px; padding: 0; display: grid; place-items: center; background: #fff !important; color: #2a2420 !important; border-radius: 50% !important; touch-action: none; }
+.sgbar3 > button { min-height: 48px; border: 1px solid rgba(42, 36, 32, .12); border-radius: 24px; background: rgba(42, 36, 32, .07); font-size: 14px; font-weight: 600; cursor: pointer; }
+.sgself3 { flex: 1; display: flex; align-items: center; justify-content: center; gap: 10px; }
+.sgcall3 { flex: none; width: 48px; padding: 0; display: grid; place-items: center; background: var(--moss) !important; color: #fff !important; border-radius: 50% !important; touch-action: none; }
 .sgcall3 svg { width: 26px; height: 26px; }
 .sgcall3.rest { opacity: .4; }
+
+/* the first song's coach: a cream card between the song card and the pad (over Take off), and a ghost thumb on the
+   row the bird just sang, making the move (hidden while a thumb is on the pad) */
+.sgcoach3 { pointer-events: auto; position: absolute; right: calc(var(--side2) + var(--padw) + 14px); bottom: calc(var(--bot) + 64px); width: min(300px, calc(100vw - 540px)); min-width: 200px; box-sizing: border-box;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 12px 14px; border: 1px solid var(--paneedge); border-radius: 20px; background: var(--pane); box-shadow: var(--shadow); }
+.sgcoach3 p { margin: 0; font-size: 14px; font-weight: 600; line-height: 1.35; color: var(--ink); }
+.sgcskip3 { min-height: 32px; padding: 0 14px; border: 1px solid rgba(122, 112, 102, .4); border-radius: 16px; background: var(--btn); font-size: 13px; font-weight: 600; cursor: pointer; }
+.sgcoach3.hidden, .sgghost3.hidden, .sing3.touching .sgghost3 { display: none; }
+.sgghost3 { position: absolute; z-index: 2; width: 0; height: 0; pointer-events: none; }
+.sgghost3 i { position: absolute; left: -22px; top: -22px; width: 44px; height: 44px; border-radius: 50%; background: rgba(255, 255, 255, .55); border: 2px solid #fff;
+  box-shadow: 0 0 0 6px rgba(255, 255, 255, .2), 0 2px 10px rgba(40, 30, 20, .3); }
+.sgghost3.go i { animation: ghost3 1.3s ease-in-out 3; }
+.sgghost3[data-k=u].go i { --gx: 0px; --gy: -24px; }
+.sgghost3[data-k=d].go i { --gx: 0px; --gy: 24px; }
+.sgghost3[data-k=r].go i { --gx: 28px; --gy: 0px; }
+.sgghost3[data-k=l].go i { --gx: -28px; --gy: 0px; }
+.sgghost3[data-k=c].go i { --gx: 0px; --gy: 0px; animation-name: ghostTap3; }
+@keyframes ghost3 { 0% { opacity: 0; transform: none; } 20% { opacity: 1; transform: none; } 75% { opacity: 1; transform: translate(var(--gx), var(--gy)); } 100% { opacity: 0; transform: translate(var(--gx), var(--gy)); } }
+@keyframes ghostTap3 { 0%, 100% { opacity: 0; transform: scale(1.2); } 30% { opacity: 1; transform: scale(1.2); } 50% { opacity: 1; transform: scale(.85); } 75% { opacity: 1; transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .sgghost3.go i { animation: none; opacity: 1; } }
 
 /* left-handed: the sides swap */
 .sing3.lefty .notepad3 { right: auto; left: var(--side); }
@@ -182,7 +218,7 @@
 .sing3.lefty .sgrail3 { left: auto; right: var(--side2); }
 .sing3.lefty.on .songcard3 { padding-left: 12px; padding-right: 72px; }
 .sing3.lefty .birds3 { left: auto; right: var(--side2); }
-.sing3.lefty .brow3:first-child { margin-right: 0; margin-left: 0; }
+.sing3.lefty .sgcoach3 { right: auto; left: calc(var(--side) + var(--padw) + 14px); }
 
 /* notes rising from a beak: each syllable's drawing in its colour, edged in white with a soft
    dark halo so it reads on sky, leaves or snow */
@@ -192,7 +228,7 @@
 .rise3 svg { width: 100%; height: 100%; display: block; overflow: visible; }
 .rise3 .edge { stroke: #fff; fill: #fff; }
 /* another bird's notes: smaller and fainter than the hawk's */
-.rise3 i.faint svg { opacity: .45; }
+.rise3 i.faint svg { opacity: .55; }
 .rise3 svg .ln { fill: none; }
 .rise3 .edge * { stroke-width: 6; }
 @keyframes rise3 {
@@ -255,61 +291,15 @@
 .sghow3 .sgmodes3 { margin: 0; padding: 2px 14px 14px; }
 /* a line about the song, under the scores (H.songLine), in place of the message line */
 /* a song's result sits over the card, so the card never moves (James, 10-23) */
-.sgsay3 { position: absolute; left: 72px; right: 0; bottom: calc(100% + 6px); margin: 0; padding: 7px 12px; box-sizing: border-box; border: 1px solid var(--blkedge); border-radius: 16px;
-  background: var(--blk); box-shadow: var(--shadow); font-size: 13px; font-weight: 500; line-height: 1.4; color: rgba(255, 255, 255, .88);
+.sgsay3 { position: absolute; left: 72px; right: 0; bottom: calc(100% + 6px); margin: 0; padding: 7px 12px; box-sizing: border-box; border: 1px solid var(--paneedge); border-radius: 16px;
+  background: var(--pane); box-shadow: var(--shadow); font-size: 13px; font-weight: 500; line-height: 1.4; color: var(--ink);
   opacity: 0; transform: translateY(4px); pointer-events: none; transition: opacity .3s, transform .3s; }
 .sgsay3.show { opacity: 1; transform: none; }
 .sing3:not(.on) .sgsay3 { left: 0; }
 .sing3.lefty.on .sgsay3 { left: 0; right: 72px; }
 
-/* G. Singers on the compass (the song tests): a small note mark for each bird singing near by, moss
-   for a song you know, amber for one that could teach you (the colour comes with the mark) */
+
+/* singers on the compass (songs.js marks): a small note mark for each bird singing near by, moss for
+   a song you know, amber for one that could teach you (the colour comes with the mark) */
 .compass3 .mk.song { width: 18px; height: 18px; margin-left: -9px; top: 7px; background: currentColor; }
 .compass3 .mk.song svg { width: 12px; height: 12px; }
-
-/* F. Sing in Linen (Settings > Advanced > Song tests): the song controls in the UI's own cream glass
-   and warm ink, the note pad as cream pills tinted with each note's colour. Everything else stays. */
-.sing3.linen { --blk: var(--glass); --blkedge: var(--edge); --dim: var(--ink2); --shadow: 0 4px 16px rgba(40, 30, 20, .16); }
-.sing3.linen button, .sing3.linen .songcard3, .sing3.linen .birds3, .sing3.linen .sgsay3 { color: var(--ink); }
-.sing3.linen .sgplate3 { background: var(--glass); border-color: var(--edge); color: var(--ink); }
-.sing3.linen .sgtog3 { color: var(--moss); }
-.sing3.linen .songcard3 { --mode: var(--ink); color: var(--ink); }
-.sing3.linen .songcard3[data-mode=learn] { --mode: #9a6a12; }
-.sing3.linen .songcard3[data-mode=imitate] { --mode: var(--moss); }
-.sing3.linen .sgstate3 { background: color-mix(in srgb, var(--mode) 13%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--mode) 38%, transparent); }
-.sing3.linen .sghead3 button { background: rgba(42, 36, 32, .08); }
-.sing3.linen .sgsong3 { color: var(--ink2) !important; }
-.sing3.linen .sgsong3.many::after { color: var(--ink); }
-.sing3.linen .score3 span.at { background: rgba(42, 36, 32, .12); }
-.sing3.linen .score3 span.r-good { --r: #3f8a4e; }
-.sing3.linen .score3 span.r-ok { --r: #3f78a8; }
-.sing3.linen .score3 span.r-meh { --r: #b0791f; }
-.sing3.linen .score3 span.r-wrong { --r: #c0533f; }
-.sing3.linen .sgrail3 button { --mode: var(--ink); }
-.sing3.linen .sgrail3 button.learn { --mode: #b0791f; }
-.sing3.linen .sgrail3 button.imitate { --mode: var(--moss); }
-.sing3.linen .sgrail3 button.teach::after { background: #b0791f; box-shadow: 0 0 0 2px var(--btn); }
-.sing3.linen .sgyou3, .sing3.linen .sgmore3 { background: rgba(42, 36, 32, .08) !important; color: var(--ink); }
-.sing3.linen .sgyou3 > svg { color: var(--ink); }
-.sing3.linen .sgyou3.on { box-shadow: inset 0 0 0 2px var(--ink); }
-.sing3.linen .notepad3 i { background: color-mix(in srgb, var(--note) 24%, var(--btn)); border-color: color-mix(in srgb, var(--note) 75%, #fff); }
-.sing3.linen .notepad3 i.down { filter: saturate(1.5) brightness(1.02); }
-.sing3.linen .notepad3 i::after { background: linear-gradient(transparent, rgba(255, 255, 255, .95), transparent); }
-.sing3.linen .notepad3 i:is(.k-l, .k-r)::after { background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .95), transparent); }
-.sing3.linen .notepad3 i.yes { --said: #3f8a4e; }
-.sing3.linen .notepad3 i.half { --said: #b0791f; }
-.sing3.linen .notepad3 i.no { --said: #c0533f; }
-.sing3.linen .birds3 { background: var(--glass2); }
-.sing3.linen .brow3 { background: rgba(42, 36, 32, .05); }
-.sing3.linen .brow3.on { border-color: rgba(42, 36, 32, .2); background: rgba(42, 36, 32, .09); }
-.sing3.linen .bsong3 { background: rgba(42, 36, 32, .07); }
-.sing3.linen .bsong3.on { background: var(--moss); color: #fff; }
-.sing3.linen .bsong3.on .mini3 svg { filter: brightness(1.6); }
-.sing3.linen .bsong3.q { border-color: rgba(42, 36, 32, .25); color: rgba(42, 36, 32, .45); }
-.sing3.linen .near3 { stroke: var(--moss); fill: var(--moss); }
-.sing3.linen .sgless3 { background: var(--btn); color: var(--ink); border-color: rgba(122, 112, 102, .4); }
-.sing3.linen .sgbar3 > button { background: rgba(42, 36, 32, .07); border-color: rgba(42, 36, 32, .12); }
-.sing3.linen .sgcall3 { background: var(--moss) !important; color: #fff !important; }
-.sing3.linen .sw3 { background: rgba(42, 36, 32, .2); }
-.sing3.linen .on > .sw3 { background: var(--moss); }
-.sing3.linen .cards3 p { color: var(--ink2); }

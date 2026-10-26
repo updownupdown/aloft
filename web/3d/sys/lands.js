@@ -50,13 +50,14 @@ function lighthouse() {
 }
 // a waterfall: a ribbon of white water laid over the cliff face from the lip downhill, built
 // once per waterfall from the ground's own profile (local coordinates, +x downhill)
-function fallsMesh(l) {
+// out: how far the curtain hangs clear of the face down the sheer part (a ledge behind it, sys/hidden.js)
+function fallsMesh(l, out = 0) {
   const B = builder(), W = [.86, .92, .95], W2 = [.76, .86, .92], w = 3.2, pts = [];
   let s = -3, y0 = height(l.x - l.dx * 3, l.z - l.dz * 3);
   pts.push([s, y0 + .5]);
   for (s = 0; s < 120; s += 1.5) {
     const y = height(l.x + l.dx * s, l.z + l.dz * s);
-    pts.push([s, y + .7]);
+    pts.push([s + (out && y0 - y >= 1 ? out : 0), y + .7]);
     if (s > 6 && y0 - y < 1) break;     // the fall has reached the bottom: it runs out flat
     y0 = y;
   }
@@ -214,7 +215,7 @@ export function landsSystem(G) {
     return m;
   };
   const fallsOf = new Map();   // landmark id -> { shape, top, foot }
-  const fall = l => { let f = fallsOf.get(l.id); if (!f) { f = fallsMesh(l); f.shape = 'lm_falls_' + l.id; R.shape(f.shape, f.tris); fallsOf.set(l.id, f); } return f; };
+  const fall = l => { const out = G.hidden?.curtain(l) || 0, k = l.id + (out ? 'c' : ''); let f = fallsOf.get(k); if (!f) { f = fallsMesh(l, out); f.shape = 'lm_falls_' + k; R.shape(f.shape, f.tris); fallsOf.set(k, f); } return f; };
   let near = [], rocks = [], fences = [], nearT = 0;
   return {
     id: 'lands',
