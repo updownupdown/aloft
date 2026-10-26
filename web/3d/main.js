@@ -80,7 +80,7 @@ const SYSTEMS = [speciesSystem, movesSystem, lifeSystem, clockSystem, weatherSys
   fieldsSystem, skyDaysSystem, raptorsSystem, wingcraftSystem, stillSystem, swellsSystem, berriesSystem, cuesSystem, windCuesSystem, polesSystem,
   sealifeSystem, driftSystem, islesSystem, skyRiversSystem, nightSeaSystem, lessonsSystem, hiddenSystem];
 
-// Where each bird first flies, in its own country (earth.js toXZ: latitude, longitude): the
+// Where each bird first flies, in its own land (earth.js toXZ: latitude, longitude): the
 // red-tail at a forest edge in the Finger Lakes, the osprey over a Scottish loch, the barn owl in
 // the Loire farmland, the raven over a Norwegian fjord, the royal albatross on Taiaroa Head (its one
 // mainland colony, at the mouth of Otago Harbour). Then the nearest open ground to start over.
@@ -102,7 +102,7 @@ export function start(canvas, ui) {
   audio.on = store.get('sound', true);
   music.setMode(store.get('musicMode', 'valley'));
   // Saves are not kept across big changes yet (experimental): one from before the Earth world
-  // (no home in it) is dropped, and the bird starts afresh in its own country
+  // (no home in it) is dropped, and the bird starts afresh in its own land
   let S0 = store.get('save3d', null);
   if (S0 && !S0.home) { S0 = null; store.set('save3d', null); }
   const home = S0?.home || startOf(BIRD !== 'hawk' ? BIRD : store.get('bird', 'hawk'));

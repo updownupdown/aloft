@@ -123,25 +123,29 @@ export function oceanAt(x, z) {
 
 // ---- named regions: the names the message line and the Journal use ------------------------
 // [key, name, lat, lon, radius lat, radius lon]: an ellipse on the real globe; first match wins
+// Named by what a bird could see (James, 2026-10-24): the shape of the land, the water, the stone,
+// the trees, never a nation or a people (the Loire lowlands, not France; the maple hills, not New
+// England). Islands, seas, rivers and ranges keep their names: they name the land. The keys are
+// what saves hold, so they stay as they were.
 export const REGIONS = [
-  ['alps', 'the Alps', 46.2, 10, 1.5, 4.5], ['pyrenees', 'the Pyrenees', 42.7, 0.8, .8, 2.6], ['highlands', 'the Scottish Highlands', 57.2, -4.8, 1.5, 2.6],
-  ['fingerlakes', 'the Finger Lakes', 42.6, -76.8, .7, 1.4], ['loire', 'the Loire valley', 47.4, 0.7, .5, 1.6], ['lochness', 'the Great Glen', 57.2, -4.6, .5, .8], ['sogne', 'the Sognefjord', 61.15, 6.8, .35, 1.4],
-  ['lakes', 'the Lake District', 54.5, -3.1, .5, .9], ['ireland', 'Ireland', 53.3, -8, 2, 3], ['britain', 'Britain', 53, -1.5, 3.5, 3.5], ['iceland', 'Iceland', 64.9, -18.5, 1.6, 5],
-  ['norway', 'the Norwegian fjords', 63, 9, 5, 6], ['finland', 'the Finnish lakes', 62.5, 26.5, 3, 5], ['sweden', 'Sweden', 61, 15.5, 5, 4], ['iberia', 'Iberia', 40, -4, 4, 6],
-  ['france', 'France', 46.6, 2.5, 3.6, 4.6], ['italy', 'Italy', 42.5, 12.8, 4, 3.2], ['greece', 'Greece', 39, 22.5, 2.6, 3.4], ['carpathians', 'the Carpathians', 47.5, 23.5, 2, 4],
-  ['caucasus', 'the Caucasus', 42.8, 44, 1.6, 4.5], ['germany', 'Germany and the low countries', 51.5, 9, 3.5, 6], ['poland', 'the Polish plain', 52, 19.5, 2.5, 5], ['russia', 'the Russian forests', 57, 40, 5, 14],
+  ['alps', 'the Alps', 46.2, 10, 1.5, 4.5], ['pyrenees', 'the Pyrenees', 42.7, 0.8, .8, 2.6], ['highlands', 'the Highlands', 57.2, -4.8, 1.5, 2.6],
+  ['fingerlakes', 'the Finger Lakes', 42.6, -76.8, .7, 1.4], ['loire', 'the Loire', 47.4, 0.7, .5, 1.6], ['lochness', 'the Great Glen', 57.2, -4.6, .5, .8], ['sogne', 'the Sognefjord', 61.15, 6.8, .35, 1.4],
+  ['lakes', 'the Lakeland fells', 54.5, -3.1, .5, .9], ['ireland', 'Ireland', 53.3, -8, 2, 3], ['britain', 'Britain', 53, -1.5, 3.5, 3.5], ['iceland', 'Iceland', 64.9, -18.5, 1.6, 5],
+  ['norway', 'the fjord coast', 63, 9, 5, 6], ['finland', 'the thousand lakes', 62.5, 26.5, 3, 5], ['sweden', 'the Scandinavian forests', 61, 15.5, 5, 4], ['iberia', 'Iberia', 40, -4, 4, 6],
+  ['france', 'the Loire lowlands', 46.6, 2.5, 3.6, 4.6], ['italy', 'the Apennine peninsula', 42.5, 12.8, 4, 3.2], ['greece', 'the Aegean shores', 39, 22.5, 2.6, 3.4], ['carpathians', 'the Carpathians', 47.5, 23.5, 2, 4],
+  ['caucasus', 'the Caucasus', 42.8, 44, 1.6, 4.5], ['germany', 'the Rhine lowlands', 51.5, 9, 3.5, 6], ['poland', 'the great northern plain', 52, 19.5, 2.5, 5], ['russia', 'the eastern forests', 57, 40, 5, 14],
   ['sahara', 'the Sahara', 23, 10, 8, 22], ['atlas', 'the Atlas', 32, -5, 2.2, 5], ['nile', 'the Nile', 24, 32, 7, 1.6], ['arabia', 'Arabia', 23.5, 46, 7, 10],
   ['sahel', 'the Sahel', 13.5, 5, 3, 20], ['congo', 'the Congo', 0, 22, 5, 9], ['serengeti', 'the Serengeti', -2.5, 35, 3, 3.5], ['kilimanjaro', 'Kilimanjaro', -3.1, 37.4, .6, .6],
   ['kalahari', 'the Kalahari', -23, 22, 4, 5], ['cape', 'the Cape', -33.5, 20, 1.8, 4], ['madagascar', 'Madagascar', -19, 46.7, 7, 3.5], ['okavango', 'the Okavango', -19.3, 22.9, 1.2, 1.4],
-  ['himalaya', 'the Himalaya', 29.5, 83, 2.5, 10], ['tibet', 'Tibet', 33, 88, 4, 10], ['india', 'India', 21, 78, 9, 9], ['siberia', 'Siberia', 63, 100, 10, 40],
-  ['steppe', 'the steppe', 48, 70, 5, 25], ['gobi', 'the Gobi', 43, 105, 4, 12], ['china', 'China', 30, 112, 9, 12], ['guilin', 'the karst hills of Guilin', 24.8, 110.3, 2, 2.5],
-  ['japan', 'Japan', 36.5, 138.5, 6, 6], ['indochina', 'Indochina', 16, 104, 7, 6], ['borneo', 'Borneo', 0.5, 114, 4, 5], ['indonesia', 'the Indonesian islands', -4, 118, 6, 22],
+  ['himalaya', 'the Himalaya', 29.5, 83, 2.5, 10], ['tibet', 'the high plateau', 33, 88, 4, 10], ['india', 'the Ganges plains', 21, 78, 9, 9], ['siberia', 'Siberia', 63, 100, 10, 40],
+  ['steppe', 'the steppe', 48, 70, 5, 25], ['gobi', 'the Gobi', 43, 105, 4, 12], ['china', 'the Yangtze lowlands', 30, 112, 9, 12], ['guilin', 'the karst hills', 24.8, 110.3, 2, 2.5],
+  ['japan', 'the eastern islands', 36.5, 138.5, 6, 6], ['indochina', 'the monsoon forests', 16, 104, 7, 6], ['borneo', 'Borneo', 0.5, 114, 4, 5], ['indonesia', 'the equator islands', -4, 118, 6, 22],
   ['kamchatka', 'Kamchatka', 56, 159.5, 4, 4], ['outback', 'the Outback', -25, 133, 7, 12], ['nz', 'New Zealand', -41.5, 173, 6, 5], ['tasmania', 'Tasmania', -42, 146.6, 1.4, 2],
   ['alaska', 'Alaska', 64, -152, 7, 16], ['bc', 'the coast mountains', 54, -128, 6, 6], ['rockies', 'the Rockies', 45, -112, 8, 6], ['yosemite', 'the Sierra Nevada', 37.5, -119.3, 2, 1.6],
-  ['redwoods', 'the redwood coast', 40, -123.8, 2.5, 1.2], ['california', 'California', 36, -119.5, 4, 3.5], ['grandcanyon', 'the Grand Canyon', 36.2, -112.5, 1.4, 2.2], ['southwest', 'the desert Southwest', 33, -110, 4, 6],
-  ['plains', 'the Great Plains', 42, -101, 8, 6], ['greatlakes', 'the Great Lakes', 45, -84, 4, 8], ['appalachians', 'the Appalachians', 38, -80, 5, 5], ['newengland', 'New England', 43.5, -71.5, 2.6, 3.5],
-  ['florida', 'the Everglades', 26.5, -81, 2, 1.8], ['canada', 'the Canadian forests', 54, -95, 6, 30], ['arctic', 'the Arctic tundra', 70, -100, 8, 50], ['greenland', 'Greenland', 72, -40, 12, 25],
-  ['mexico', 'Mexico', 22, -102, 7, 9], ['yucatan', 'the Yucatán', 20, -89, 2.5, 3], ['amazon', 'the Amazon', -4, -62, 8, 14], ['andes', 'the Andes', -18, -70, 22, 4],
+  ['redwoods', 'the redwood coast', 40, -123.8, 2.5, 1.2], ['california', 'the long dry valley', 36, -119.5, 4, 3.5], ['grandcanyon', 'the Grand Canyon', 36.2, -112.5, 1.4, 2.2], ['southwest', 'the red rock desert', 33, -110, 4, 6],
+  ['plains', 'the Great Plains', 42, -101, 8, 6], ['greatlakes', 'the Great Lakes', 45, -84, 4, 8], ['appalachians', 'the Appalachians', 38, -80, 5, 5], ['newengland', 'the maple hills', 43.5, -71.5, 2.6, 3.5],
+  ['florida', 'the Everglades', 26.5, -81, 2, 1.8], ['canada', 'the north woods', 54, -95, 6, 30], ['arctic', 'the Arctic tundra', 70, -100, 8, 50], ['greenland', 'Greenland', 72, -40, 12, 25],
+  ['mexico', 'the cactus highlands', 22, -102, 7, 9], ['yucatan', 'the Yucatán', 20, -89, 2.5, 3], ['amazon', 'the Amazon', -4, -62, 8, 14], ['andes', 'the Andes', -18, -70, 22, 4],
   ['altiplano', 'the Altiplano', -19, -67.5, 3, 3], ['pantanal', 'the Pantanal', -17.5, -57, 2.5, 2.5], ['pampas', 'the Pampas', -35, -62, 4, 5], ['patagonia', 'Patagonia', -47, -69, 6, 6],
   ['galapagos', 'the Galápagos', -.5, -90.5, 1.5, 1.5], ['hawaii', 'Hawaii', 20, -156.5, 2, 3], ['antarctica', 'Antarctica', -80, 0, 18, 180],
 ];
