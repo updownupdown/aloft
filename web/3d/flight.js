@@ -8,7 +8,7 @@ const g = 9.8;
 export const FLY = {
   best: 12, maxS: 46, cd: .0058, cdTuck: .0024, cdFlare: .03, stall: 7.5, stallFlare: 3.6,
   climb: .55, dive: .9, roll: 1.0, yaw: 1.2, flapS: 3.0, flapUp: 1.3, flapHover: 3.2, flapCost: .065,
-  perchR: 1.6, landS: 10.5,
+  perchR: 1.6, landS: 10.5, landRun: 2.5,
   skimH: 2.6, skimDrag: .45,   // ground effect: within skimH metres of water or flat ground, drag falls by up to skimDrag
   // flared with both thumbs up (float): flare drag falls by up to floatDrag, the stall speed by
   // floatStall, and perches are caught from floatReach metres farther and at floatLand m/s more
@@ -67,10 +67,10 @@ export function step(b, c, dt, E) {
   b.sPrev = b.s; b.view = null;
   aimB = b; if ((b.aimPerchT = (b.aimPerchT || 0) - dt) <= 0) b.aimPerch = null;
 
-  // Controls lab (sys/ctllab.js, b.ctl): beat to climb. Thumbs up with the wings plain and the
-  // speed below the best glide, the hawk beats on its own every .45 s (a .7 flap, at its cost), so
-  // that pushing up keeps climbing instead of mushing at the stall
-  if (b.ctl?.beat && c.pitch > .5 && b.s < FLY.best - 1 && b.flare < .3 && b.tuck < .3 && b.stamina > .1 && !c.flap) {
+  // beat to climb: thumbs up with the wings plain and the speed below the best glide, the hawk
+  // beats on its own every .45 s (a .7 flap, at its cost), so that pushing up keeps climbing
+  // instead of mushing at the stall (the controls study, kept 10-25)
+  if (c.pitch > .5 && b.s < FLY.best - 1 && b.flare < .3 && b.tuck < .3 && b.stamina > .1 && !c.flap) {
     if ((b.beatT = (b.beatT || 0) - dt) <= 0) { b.beatT = .45; c = { ...c, flap: { q: .7, side: 0, sync: .9 } }; }
   } else b.beatT = 0;
   // flaps
@@ -425,9 +425,9 @@ function ground(b, E) {
   }
   b.p[1] = floor;
   const gs = groundSpeed(b);
-  // Controls lab (b.ctl.softLand): a plain glide (12 m/s, over landS) comes down as a landing
+  // the ground takes landRun m/s more than a perch: a plain glide (12 m/s) comes down as a landing
   // that runs on, not a bump
-  if (gs < FLY.landS + (b.ctl?.softLand ? 2.5 : 0) && down < 6) {
+  if (gs < FLY.landS + FLY.landRun && down < 6) {
     // with the wind behind, the hawk comes in fast and runs on a few steps; into it, it just stops
     const run = Math.max(0, gs - FLY.runS) * FLY.runOn, v = [f[0] * b.s + (b.wind?.[0] || 0), f[2] * b.s + (b.wind?.[1] || 0)], vl = Math.hypot(v[0], v[1]) || 1;
     b.state = 'ground'; b.settle = b.settleT = .3 + run * .08; b.from = null; b.landRun = run;
