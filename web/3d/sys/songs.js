@@ -167,6 +167,7 @@ export function songsSystem(G) {
     { id: 'tap-songs', round: 10, pr: 219, title: 'Fast or long songs are copied with taps alone; slow, short ones keep their swipes', how: 'Learn a Wren, Chaffinch or Skylark (fast): the card shows dots, and any touch on the right row counts. A Cuckoo or Hoopoe still wants its swipes.' },
     { id: 'earth-songbirds', round: 10, pr: 216, title: 'Each continent its own songbirds: 86 real singers, at least two in every land, no dialects', how: 'Fly to Europe, Africa, Asia, South America or Oceania and perch in a wood: robins and blackbirds in Europe, bulbuls and robin-chats in Africa, kookaburras and tui in Oceania. Settings > Advanced > Dev mode, then Journal > Songs: every bird, by continent.' },
     { id: 'sing-three', round: 9, pr: 211, title: 'At most two birds sing at once; no piano under your notes; your own bird on the rail sings as yourself', how: 'Perch in a busy wood and listen: never more than two songs overlap. Tap Sing, then your own bird at the top of the rail: Free song, even beside a bird that could teach you.' },
+    { id: 'sing-thin', round: 12, pr: 312, title: 'The music thins while you sing', how: 'With Music on, perch and open Sing: the piano rests and the strings drop back to two soft notes; close Sing and the music comes back.' },
     { id: 'learn-near', round: 9, pr: 203, title: 'Learn from any bird near by; tap its logo to choose it; Dev mode unlocks every song in the Journal', how: 'Perch within about 45 m of a songbird whose song you do not know (amber dot on the rail), or tap its logo: Learning, notes light up, the card fills in from the first note. Settings > Advanced > Dev mode, then Journal > Songs: play every song. The states are explained at the top of Journal > Songs.' },
     { id: 'sing-rail2', round: 9, pr: 197, title: 'Sing rail round two: you on top, birds by name, every bird at the bottom; the card comes out from under it', how: 'Perch among songbirds and tap Sing: the rail runs from under the menu button, your bird first, then the birds near by A to Z (picking one keeps the order), the list button always at the bottom. The card tucks under the rail; the You row keeps its height.' },
     { id: 'bird-logos', round: 9, pr: 195, title: 'Song card in one: bird, Learning or Imitating, every bird, close; each songbird a little logo', how: 'Perch by a songbird and tap Sing: the top says who and what, the bottom shows its logo, the song name and notes. While it teaches, its logo pops up in each row it sings, with a ring.' },
@@ -840,6 +841,7 @@ export function songsSystem(G) {
         S.listening = listening;
       }
       G.singing = ui.open;   // the sing controls are out (main.js turns the perched gyro look off)
+      G.music?.sing?.(ui.open);   // (the music thins while they are)
       ui.update({ available, known, learned: G.learned, picked, pickedK, sc, mode, rail, nearby, earshot, lefty: lefty(), resting: callT > 0, knownK: knownSongs });
 
       // gifts that run for a while
