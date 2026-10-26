@@ -1,10 +1,14 @@
 // Songs: songbirds sit in some trees and sing in their hours, songs written from the real
 // birds' (notes sliding up or down, steady whistles, trills and chips at five pitches; see
 // src/songs.js). Perch near one and copy its song on the note pad to learn it: its score shows as
-// question marks that fill in as you find each note. To use a song you know, pick its bird on the
-// song card and imitate it: sing it right from any perch and a bird of that kind answers, with its
-// gift. Each try sings the whole song from its first note, each note marked good, fair, rough or
-// wrong; a clean, well-timed song makes the gift last longer.
+// question marks that fill in as you find each note, in any order (a wrong note never throws the
+// try away; miss one twice and its shape shows). The bird teaching you sings at its own speed, then
+// again slowly at yours. To use a song you know, pick its bird on the song card and imitate it:
+// sing it right from any perch and a bird of that kind answers, with its gift. Each note is marked
+// good, fair, rough or wrong; a clean, well-timed song makes the gift last longer.
+// Every bird sings from where it sits (left or right, near or far) in its own kind's voice, and
+// loosely, the way real birds do; the ones singing near by show on the compass.
+// (The songs study, 10-24, James: all of A to M, https://claude.ai/artifact/AoPFxbD3awgKp1kRRyct7V)
 // Every clear dawn but in winter the whole wood sings for a few minutes (the dawn chorus); call
 // from a perch just before first light and it starts from your tree, spreading out bird by bird.
 // Most species have more than one song (src/songs.js: sp.songs, a song and its calls); each bird
@@ -28,7 +32,7 @@ import { SPECIES, active, timeOfDay, songOf as songN, songKey, TAP_GAP } from '.
 import { continentAt } from '../earth.js';
 import { period, DAY } from '../sky.js';
 import { height, WATER, treesNear, perchesOf, thermalsNear, landmarksNear } from '../world.js';
-import { clamp, dist3 } from '../util.js';
+import { clamp, dist3, angleTo } from '../util.js';
 import { registerSongbirds, pushBird, songTreesNear, habitat, land, clearSpots } from './songbirds.js';
 import { createSingUI, NOTE_COLS, KINDS, glyph } from './singui.js';
 import { journal } from '../journal.js';
@@ -109,22 +113,13 @@ export function songsSystem(G) {
   // how far into each song you have not learned you have found its notes (by species id)
   const found = store.get('songFound', {});
   const lefty = () => store.get('lefty', false);
-  // ---- the song tests (Settings > Advanced > Song tests; the songs study, 10-24): ideas behind
-  // switches, each off until James turns it on; saved under aloft.songTest.<id>
-  const TESTS = [
-    { id: 'stereo', letter: 'A', label: 'Birds around you', sub: 'each song comes from where its bird sits: left or right, near or far' },
-    { id: 'voices', letter: 'B', label: 'Distinct voices', sub: 'big birds sing lower, and each kind has its own brightness, vibrato and attack' },
-    { id: 'phrases', letter: 'C', label: 'Living phrases', sub: 'songs breathe: loose timing, a swell, a repeat now and then (the bird teaching you stays exact)' },
-    { id: 'finding', letter: 'D', label: 'Learn by finding', sub: 'a wrong note no longer ends the try; the song is learned once every note has been found' },
-    { id: 'hints', letter: 'E', label: 'A hint after two misses', sub: 'miss the same note twice and its shape shows on the card' },
-    { id: 'linen', letter: 'F', label: 'Sing in Linen', sub: 'the song controls in cream glass and warm ink, like the rest of the UI' },
-    { id: 'compass', letter: 'G', label: 'Singers on the compass', sub: 'a note on the compass for each bird singing near by (amber: one that could teach you)' },
-  ];
-  const test = {}; for (const T of TESTS) test[T.id] = !!store.get('songTest.' + T.id, false);
-  const foundBits = store.get('songFoundBits', {});   // D: the notes of a song found so far, by index (bits)
-  const hints = store.get('songHints', {}), missAt = {};   // E: the notes missed twice (bits), and the misses
-  let marks = [];   // G: the singers near by, for the compass
-  const applyTests = () => { A.songTests?.({ stereo: test.stereo, voices: test.voices }); ui.linen?.(test.linen); };
+  const foundBits = store.get('songFoundBits', {});   // the notes of a song found so far, by index (bits)
+  const hints = store.get('songHints', {}), missAt = {};   // the notes missed twice (bits), and the misses
+  let marks = [];   // the singers near by, for the compass
+  // the first song's coach (a card and a ghost thumb on the row; once, then never again)
+  let coached = !!store.get('songCoached', false), coachRight = 0;
+  // a rail logo tapped: the view turns to that bird for a few seconds
+  let turnTo = null;
   // a song (a species' song, or a land's version of it) and what you know of it
   // (a bird sings its kind's first song half the time, else one of the others, fixed by its spot)
   const spotHash = id => { let h = 2166136261; for (const c of String(id)) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return (h >>> 0) / 4294967296; };
@@ -176,7 +171,7 @@ export function songsSystem(G) {
     { id: 'sing-rail2', round: 9, pr: 197, title: 'Sing rail round two: you on top, birds by name, every bird at the bottom; the card comes out from under it', how: 'Perch among songbirds and tap Sing: the rail runs from under the menu button, your bird first, then the birds near by A to Z (picking one keeps the order), the list button always at the bottom. The card tucks under the rail; the You row keeps its height.' },
     { id: 'bird-logos', round: 9, pr: 195, title: 'Song card in one: bird, Learning or Imitating, every bird, close; each songbird a little logo', how: 'Perch by a songbird and tap Sing: the top says who and what, the bottom shows its logo, the song name and notes. While it teaches, its logo pops up in each row it sings, with a ring.' },
     { id: 'dawn-start', title: 'Start the dawn chorus with your call', how: 'Perch before first light and hold Call: the chorus spreads out from your tree. Try it sets the clock to just before dawn.', go: () => { G.tod = .16; } },
-    { id: 'song-tests', round: 11, pr: 298, title: 'Song tests A to G: birds around you (stereo), distinct voices, living phrases, learn by finding, a hint after two misses, Sing in Linen, singers on the compass', how: 'Settings > Advanced > Song tests: switch one on (each is off to begin with), then perch in a wood and listen, or sing.', go: () => G.menu.set(true, 'play', 'dev') },
+    { id: 'songs-study', round: 11, pr: 303, title: 'Songs study A to M: birds around you, distinct voices, living phrases, learn by finding, hints, Sing in Linen with stronger note colours, singers on the compass, the rail by bearing, a coach for the first song, the list shows who is near, the teacher sings it slowly, Learned stays with its bird, the song as a line', how: 'Perch in a wood and listen (headphones help), tap Sing: learn a bird you do not know (guess freely; miss a note twice for a hint). Tap a logo on the rail to turn to its tree. The list button shows the birds within earshot first.' },
   ]) G.dev?.add({ area: 'Songs and music', round: 8, pr: PR, ...f });
 
   // things that happen a moment later, on the game clock (so a pause holds them)
@@ -188,10 +183,10 @@ export function songsSystem(G) {
   const ui = createSingUI(document.getElementById('ui3'), {
     audio: A, voice: () => SPECIES[voiceId() ?? 1].voice, species: () => SPECIES[voiceId() ?? 1], store,
     onSyll: (lane, kind) => { notePart(b.p, lane, kind, true); singNote(lane, kind); },   // (no piano echo: James, 10-22)
-    onPick: pick, onCall: call, onNext: nextSong,
+    onPick: pick, onLook: lookAt, onCall: call, onNext: nextSong, onCoachSkip: () => coachDone(),
   });
   G.hud.songLine = (msg, secs) => ui.say(msg, secs);
-  applyTests(); G.compassMarks = () => marks;
+  G.compassMarks = () => marks;
 
   // ---- songbirds singing --------------------------------------------------------------------
   const storm = () => G.storm || 0, winter = () => G.season.winter;
@@ -203,10 +198,10 @@ export function songsSystem(G) {
   // a syllable rising from a beak: a songbird's (at its perch), or the hawk's (a little ahead of
   // where it sits)
   let lastS = null;
-  // A: where a bird sits, for the ear: pan from the camera's view (-1 left to 1 right) and how far
+  // where a bird sits, for the ear: pan from the camera's view (-1 left to 1 right) and how far
   // off it is from the hawk (0..1 of earshot); the hawk's own notes sit in the middle
   const placeOf = (x, z) => {
-    const S3 = lastS; if (!test.stereo || !S3?.cam) return {};
+    const S3 = lastS; if (!S3?.cam) return {};
     const fx = S3.look[0] - S3.cam[0], fz = S3.look[2] - S3.cam[2], l = Math.hypot(fx, fz) || 1, rx = -fz / l, rz = fx / l;
     const cx = x - S3.cam[0], cz = z - S3.cam[2], cd = Math.hypot(cx, cz) || 1;
     return { pan: clamp((cx * rx + cz * rz) / cd * .85, -1, 1), dist: clamp(Math.hypot(x - b.p[0], z - b.p[2]) / SONG.hearR, 0, 1) };
@@ -236,20 +231,23 @@ export function songsSystem(G) {
       later(tune.notes.length * song.gap, () => say(`Listen: the ${sp.name.toLowerCase()} you taught sings its own song, then ends it with the ${mix.name}'s phrase.`, 5));
     }
     const step = song.gap * (S.bird === o ? slowOf(song) : 1), n = tune.notes.length;
-    // C. Living phrases: any bird but the one teaching you sings a little loosely, swells through
-    // the phrase, and now and then sings it twice over after a short rest
-    const live = test.phrases && S.bird !== o, twice = live && n <= 6 && !o.young && Math.random() < .35, rest = twice ? .5 + Math.random() * .6 : 0;
-    o.singT = n * step * (twice ? 2 : 1) + rest + .2;
+    // living phrases: any bird but the one teaching you sings a little loosely, swells through the
+    // phrase, and now and then sings it twice over after a short rest. The one teaching you sings it
+    // at its own speed, then once more slowly, at the pace you copy it (copyGap)
+    const teaching = S.bird === o && learning() && !mix;
+    const live = S.bird !== o, twice = teaching || live && n <= 6 && !o.young && Math.random() < .35, rest = teaching ? .7 : twice ? .5 + Math.random() * .6 : 0;
+    const step2 = teaching ? copyGap(song) : step;
+    o.singT = n * step + (twice ? n * step2 + rest : 0) + .2;
     // the card shows who is singing within earshot: the bird you copy, or another one
     if (S.bird === o) S.hearT = o.singT;
     const where = { ...placeOf(o.x, o.z), sp };
-    for (let r = 0; r < (twice ? 2 : 1); r++) tune.notes.forEach((note, i) => later(r * (n * step + rest) + i * step + (live ? (Math.random() - .5) * step * .16 : 0), () => {
+    for (let r = 0; r < (twice ? 2 : 1); r++) tune.notes.forEach((note, i) => later(r * (n * step + rest) + i * (r ? step2 : step) + (live ? (Math.random() - .5) * step * .16 : 0), () => {
       const swell = live ? .85 + .3 * Math.sin(Math.PI * (i + .5) / n) : 1;
       if (v > .012) A.note(note, sp.voice, v * (o.young && !winter() ? .8 : 1) * swell, tune.kinds[i], where);   // (fainter than that is lost under the wind, and each note costs the audio thread)
       if (v > .04) hear(sp);
       if (v > .02) notePart([o.x, o.y, o.z], note, tune.kinds[i], false, song);
       // the bird you learn from: each note lights its row, and its place on the card
-      if (S.bird === o) { ui.teach(note, sp); S.teachI = i; }
+      if (S.bird === o) { ui.teach(note, sp); S.teachI = i; if (learning()) coach(note, song.tap ? 'c' : tune.kinds[i]); }
     }, o));
   }
   // a mimic's medley: three snatches of other birds' songs, each in that bird's own voice; often
@@ -310,14 +308,15 @@ export function songsSystem(G) {
 
   // ---- your singing: copying a songbird, or imitating one you know ------------------------
   // a syllable on the pad (or the keys) against the next note of the score: right if both its
-  // pitch and its kind match, and then good, fair or rough by its timing. A wrong note or a long
-  // pause ends the try; the next note starts the song again from the top.
+  // pitch and its kind match, and then good, fair or rough by its timing. While you learn, a wrong
+  // note moves on to the next one (every note found stays found); imitating a song you know, a wrong
+  // note or a long pause ends the try and the next note starts the song again from the top.
   const GRADE = { good: 1, ok: .7, meh: .35 };
   function singNote(lane, kind) {
     const sp = S.target;
     // a free song: the last few notes you sang show on the card
     if (!sp) { if (G.t - S.lastTry > 4) S.mine = []; S.lastTry = G.t; S.mine = [...S.mine, { lane, kind }].slice(-10); return; }
-    const gap = Math.max(sp.gap * slowOf(sp) * 2, .45);
+    const gap = copyGap(sp);
     if (S.over || G.t - S.lastTry > Math.max(3, gap * 3)) { S.res = []; S.over = false; }
     const i = S.res.length, late = i ? clamp((Math.abs(G.t - S.lastTry - gap) - .15) / gap, 0, 1) : 0;
     S.lastTry = G.t;
@@ -332,38 +331,51 @@ export function songsSystem(G) {
       S.res.push('wrong'); mine.r = 'wrong';
       if (!knows(sp)) {
         misses[k] = (misses[k] || 0) + 1;
-        // E. A hint after two misses: from then on the note's shape shows on the card
+        // a hint after two misses: from then on the note's shape shows on the card
         const m = missAt[k] ||= {}; m[i] = (m[i] || 0) + 1;
         if (m[i] >= 2 && !(hints[k] & (1 << i))) { hints[k] = (hints[k] || 0) | (1 << i); store.set('songHints', hints); }
       }
       ui.mark(lane, sp.notes[i] === lane ? 'half' : 'no');
-      // D. Learn by finding: while you learn, a wrong note does not end the try
-      if (!(test.finding && !knows(sp)) || i + 1 >= sp.notes.length) { S.over = true; if (test.finding && !knows(sp) && allFound(sp)) { learn(sp); S.learnedT = 4; } return; }
+      // learning by finding: while you learn, a wrong note does not end the try
+      if (knows(sp) || i + 1 >= sp.notes.length) { S.over = true; if (!knows(sp) && allFound(sp)) learned(sp); }
       return;
     }
     ui.mark(lane, 'yes');
+    if (!coached && learning() && ++coachRight >= 2) coachDone();
     S.res.push(mine.r = late < .25 ? 'good' : late < .55 ? 'ok' : 'meh');
     if (!knows(sp)) {
-      // the notes found so far: the first run of right notes from the top (the card fills in from
-      // the first note), and (D) every note found, by index
+      // the notes found so far: the first run of right notes from the top, and every note found,
+      // by index
       if (!S.res.slice(0, i).includes('wrong') && (found[k] || 0) <= i) { found[k] = i + 1; store.set('songFound', found); }
       if (!(foundBits[k] & (1 << i))) { foundBits[k] = (foundBits[k] || 0) | (1 << i); store.set('songFoundBits', foundBits); }
     }
     if (i + 1 < sp.notes.length) return;
     S.over = true;
     const q = S.res.reduce((a, r) => a + GRADE[r], 0) / S.res.length;
-    if (!knows(sp)) { if (!test.finding || allFound(sp)) { learn(sp); S.learnedT = 4; } }
+    if (!knows(sp)) { if (allFound(sp)) learned(sp); }
     else { respond(sp, S.bird || near.find(s => s.sp === (sp.base || sp) && s.out && dist3([s.x, s.y, s.z], b.p) < SONG.hearR), q); teach(sp); opens(sp, q); }
   }
   const allFound = sp => (foundBits[fkey(sp)] || 0) === (1 << sp.notes.length) - 1;
+  // the pace you copy a song at (and the pace the bird teaching you sings it the second time)
+  const copyGap = sp => Math.max(sp.gap * slowOf(sp) * 2, .45);
+  // a song just learned: the card stays on its bird for a few seconds, Learned, and the bird sings
+  // it back once before the card moves on to the next bird that could teach you
+  function learned(sp) {
+    learn(sp); S.learnedT = 4;
+    if (S.bird) { S.hold = { target: S.target, bird: S.bird, until: G.t + 4 }; const o = S.bird; later(.9, () => { if (o.out) sing(o); }); }
+  }
+  // the first song's coach: the row the bird just sang and the move that copies it, until two
+  // notes are copied right (or Skip); never again after
+  function coach(lane, kind) { if (!coached) ui.coach(lane, kind); }
+  function coachDone() { if (coached) return; coached = true; store.set('songCoached', true); ui.coach(null); }
   // how many notes of a song you can see on the card: all of a learned song, else those found
   // (an opening a mimic sang you counts for every version that starts the same way)
   const seen = sp => knows(sp) ? sp.notes.length : Math.max(found[fkey(sp)] || 0, (sp.k ? 0 : alike(sp, found[sp.id] || 0)));
   const alike = (t, n) => { const s = t.base || t; let i = 0; while (i < n && t.notes[i] === s.notes[i] && t.kinds[i] === s.kinds[i]) i++; return i; };
   // which notes the card shows, as bits: all of a learned song, else those found (the first run
-  // from the top; with D every note found), and apart (E) those hinted
-  const shownOf = sp => { if (knows(sp)) return (1 << sp.notes.length) - 1; let m = (1 << seen(sp)) - 1; if (test.finding) m |= foundBits[fkey(sp)] || 0; return m; };
-  const hintOf = sp => knows(sp) || !test.hints ? 0 : hints[fkey(sp)] || 0;
+  // from the top, and every note found), and apart those hinted
+  const shownOf = sp => knows(sp) ? (1 << sp.notes.length) - 1 : ((1 << seen(sp)) - 1) | (foundBits[fkey(sp)] || 0);
+  const hintOf = sp => knows(sp) ? 0 : hints[fkey(sp)] || 0;
   // learning a song (and the species, the first time)
   function learn(t) {
     const sp = t.base || t, first = !G.learned.has(sp.id), newSong = !first && !knownSongs(sp).includes(t.k || 0);
@@ -389,7 +401,7 @@ export function songsSystem(G) {
     S.self = id === null;
     if (S.chosen) id = null;
     picked = id === null ? null : SPECIES[id]; pickedK = k ?? (picked ? knownSongs(picked)[0] ?? 0 : 0);
-    S.res = []; S.over = false;
+    S.res = []; S.over = false; S.hold = null;
     if (!picked || !G.learned.has(id)) return;
     H.did('imitate');
     preview(imitating());
@@ -403,6 +415,34 @@ export function songsSystem(G) {
     }
     return best;
   }
+  // a logo on the rail (or a bird in the list) tapped: the view turns to the nearest bird of that
+  // kind singing within earshot, for a few seconds
+  function lookAt(id) {
+    let best = null, bd = SONG.hearR;
+    for (const s of near) {
+      if (!s.out || s.sp.id !== id) continue;
+      const d = dist3([s.x, s.y, s.z], b.p); if (d < bd) { bd = d; best = s; }
+    }
+    turnTo = best && b.state !== 'fly' ? { s: best, t: 3.5 } : null;
+  }
+  function turning(dt) {
+    if (!turnTo) return;
+    const f = G.R.viewInfo?.f, s = turnTo.s;
+    if (b.state === 'fly' || !s.out || (turnTo.t -= dt) <= 0 || !f) { turnTo = null; return; }
+    // (camera.js: the view's yaw is its own plus b.lookYaw)
+    const dx = s.x - b.p[0], dz = s.z - b.p[2], base = Math.atan2(f[0], -f[2]) - (b.lookYaw || 0);
+    const want = clamp(angleTo(base, Math.atan2(dx, -dz)), -2.6, 2.6);
+    b.lookYaw = (b.lookYaw || 0) + angleTo(b.lookYaw || 0, want) * Math.min(1, dt * 3);
+    const pitch = clamp(Math.atan2(s.y - b.p[1], Math.hypot(dx, dz)) * 1.1, -.6, 1.1);
+    b.lookPitch = (b.lookPitch || 0) + (pitch - (b.lookPitch || 0)) * Math.min(1, dt * 2.5);
+    b.lookT = 2;
+  }
+  // where a bird is from what the screen shows: 0 straight ahead, + to the right, in radians
+  const bearingOf = (x, z) => {
+    const S3 = lastS; if (!S3?.cam) return null;
+    const fx = S3.look[0] - S3.cam[0], fz = S3.look[2] - S3.cam[2], l = Math.hypot(fx, fz) || 1, cx = x - b.p[0], cz = z - b.p[2];
+    return Math.atan2((cx * -fz + cz * fx) / l, (cx * fx + cz * fz) / l);
+  };
   // the next song you know of the bird you imitate
   function nextSong() {
     if (!picked) return;
@@ -617,7 +657,7 @@ export function songsSystem(G) {
   const CONTS = [['n-america', 'North America'], ['s-america', 'South America'], ['europe', 'Europe'], ['africa', 'Africa'], ['asia', 'Asia'], ['oceania', 'Oceania']];
   // what Sing is doing, and what starts each, at the top of Journal > Songs
   const MODES = `<details class="sghow3"><summary>How singing works</summary><dl class="sgmodes3">
-    <dt class="learn">Learning</dt><dd>Perch within about 45 m of a songbird singing a song you do not know (an amber dot on its logo in the rail), or tap its logo, and tap Sing. Each note it sings lights its row on the pad and its place on the card: copy it with the same swipe or tap. Fast or long songs are copied with taps alone. Every note you get right shows on the card, the first note first, then the next; sing the whole song right to learn it. It stops to listen while you sing and sings again when you stop.</dd>
+    <dt class="learn">Learning</dt><dd>Perch within about 45 m of a songbird singing a song you do not know (an amber dot on its logo in the rail), or tap its logo, and tap Sing. Each note it sings lights its row on the pad and its place on the card: copy it with the same swipe or tap. It sings the song at its own speed, then once more slowly, at your pace. Fast or long songs are copied with taps alone. Every note you get right stays found on the card, in any order, and a wrong note just moves on to the next; miss the same note twice and its shape shows. Find every note to learn the song. It stops to listen while you sing and sings again when you stop.</dd>
     <dt class="imitate">Imitating</dt><dd>Tap the logo of a bird whose song you know (or pick a song from the list). Sing it and a bird of that kind near by answers with a gift. Tap the song's name for the next song you know of that bird.</dd>
     <dt>Voice only</dt><dd>A bird you have heard but whose song you do not know, with none of its kind singing near: you sing in its voice, with no song to copy yet.</dd>
     <dt>Free song</dt><dd>Your own bird, at the top of the rail: sing anything you like.</dd>
@@ -669,7 +709,6 @@ export function songsSystem(G) {
       playing = setTimeout(() => btn.classList.remove('on'), 300 + t.notes.length * t.gap * 1000);
     });
     G.menu.toggle('play', { label: 'Left-handed', sub: 'note pad and Take off on the left, Sing on the right', get: lefty, set: v => store.set('lefty', v) });
-    for (const T of TESTS) G.menu.toggle('play', { label: `${T.letter}. ${T.label}`, sub: T.sub, group: 'songtests', get: () => test[T.id], set: v => { test[T.id] = v; store.set('songTest.' + T.id, v); applyTests(); } });
   }
 
   // ---- each frame --------------------------------------------------------------------------------
@@ -731,7 +770,7 @@ export function songsSystem(G) {
         if (d < fd && b.state !== 'fly' && !s.sp.mimic && !knows(songOf(s))) { fd = d; fresh = s; }
       }
       if (birds.size > 800) for (const id of [...birds.keys()].slice(0, 200)) birds.delete(id);
-      updateVisitor(dt); updateFlock(dt);
+      updateVisitor(dt); updateFlock(dt); turning(dt);
 
       // the field guide: a songbird seen up close
       if ((sightT -= dt) <= 0 && G.sight) {
@@ -750,7 +789,9 @@ export function songsSystem(G) {
       if ((fresh?.id ?? null) !== S.closeId) { S.closeId = fresh?.id ?? null; if (fresh && !S.chosen) picked = null; }
       if (!ui.open) S.self = false;
       const teacher = S.self ? null : S.chosen || fresh || close;
-      const target = imitating() || (teacher ? songOf(teacher) : null), bird = teacher && teacher.sp === (target?.base || target) ? teacher : null;
+      let target = imitating() || (teacher ? songOf(teacher) : null), bird = teacher && teacher.sp === (target?.base || target) ? teacher : null;
+      // a song just learned: the card stays on its bird a few seconds (learned())
+      if (S.hold) { if (G.t < S.hold.until && S.hold.bird.out && ui.open && b.state !== 'fly') ({ target, bird } = S.hold); else S.hold = null; }
       if (target !== S.target || bird !== S.bird) {
         Object.assign(S, { target, bird, res: [], over: false, hearT: 0, teachI: -1 });
       }
@@ -769,23 +810,36 @@ export function songsSystem(G) {
       const at = S.teachI >= 0 ? S.teachI : sp === target && S.res.length && !S.over ? S.res.length : -1;
       const mine = !sp ? (G.t - S.lastTry > 6 ? [] : S.mine) : sp === target ? S.mine.slice(0, S.res.length) : [];
       const sc = { sp, song, many: !learn && picked && knownSongs(picked).length > 1, shown: sp ? shownOf(sp) : 0, hint: sp ? hintOf(sp) : 0, at, learn, mine };
-      // G. Singers on the compass: the six nearest birds singing within earshot
-      marks = test.compass ? near.filter(s => s.out && !s.sp.mimic && dist3([s.x, s.y, s.z], b.p) < SONG.hearR).sort((p, q) => dist3([p.x, p.y, p.z], b.p) - dist3([q.x, q.y, q.z], b.p)).slice(0, 6).map(s => ['song', s.x, s.z, s.sp.name, knows(songOf(s)) ? '#3f5a35' : '#b0791f']) : [];
-      // the rail: the birds singing within earshot and the one you sing as, by name
-      const mode = modeOf(sp, learn), rail = [];
-      for (const id of [sp?.base?.id ?? sp?.id, ...nearby]) {
-        if (id == null || rail.some(r => r.sp.id === id) || SPECIES[id].mimic) continue;
-        const on = id === (sp?.base?.id ?? sp?.id);
-        rail.push({ sp: SPECIES[id], on, state: on ? mode.kind : teachers.has(id) ? 'teach' : '' });
+      // singers on the compass: the six nearest birds singing within earshot
+      marks = near.filter(s => s.out && !s.sp.mimic && dist3([s.x, s.y, s.z], b.p) < SONG.hearR).sort((p, q) => dist3([p.x, p.y, p.z], b.p) - dist3([q.x, q.y, q.z], b.p)).slice(0, 6).map(s => ['song', s.x, s.z, s.sp.name, knows(songOf(s)) ? '#3f5a35' : '#b0791f']);
+      // the birds singing within earshot, a row a kind (its nearest bird), nearest first: the top of
+      // the birds' list, and the rail
+      const mode = modeOf(sp, learn), earshot = [];
+      for (const s of near) {
+        if (!s.out || s.sp.mimic) continue;
+        const d = dist3([s.x, s.y, s.z], b.p); if (d >= SONG.hearR) continue;
+        const e = earshot.find(r => r.sp === s.sp);
+        if (e && e.d <= d) continue;
+        const r = { sp: s.sp, d, song: songOf(s).title, state: s === S.bird && learn ? 'learning' : knows(songOf(s)) ? 'known' : 'new', bear: bearingOf(s.x, s.z) };
+        if (e) Object.assign(e, r); else earshot.push(r);
       }
-      rail.sort((p, q) => p.sp.name.localeCompare(q.sp.name));
+      earshot.sort((p, q) => p.d - q.d);
+      // the rail: those birds and the one you sing as, by where they are, left to right (in steps of
+      // 30 degrees, so it does not shuffle while the view drifts), each with a little arrow its way
+      const rail = [], onId = sp?.base?.id ?? sp?.id;
+      if (onId != null && !SPECIES[onId].mimic && !earshot.some(r => r.sp.id === onId)) rail.push({ sp: SPECIES[onId], on: true, state: mode.kind, bear: null });
+      for (const e of earshot) rail.push({ sp: e.sp, on: e.sp.id === onId, state: e.sp.id === onId ? mode.kind : teachers.has(e.sp.id) ? 'teach' : '', bear: e.bear });
+      const sector = r => r.bear == null ? -99 : Math.round(r.bear / (Math.PI / 6));
+      rail.sort((p, q) => sector(p) - sector(q) || p.sp.name.localeCompare(q.sp.name));
+      // the first song's coach: shows while you learn, until it is done
+      if (!coached) { if (!learn) ui.coach(null); else if (!ui.coaching) ui.coach(-1); }
       if (target) {
         const listening = close && young(close) && close.sp !== target && G.learned.has(target.id) ? close : null;
         if (listening && listening !== S.listening && ui.open) say(`A young ${close.sp.name.toLowerCase()} is listening`);
         S.listening = listening;
       }
       G.singing = ui.open;   // the sing controls are out (main.js turns the perched gyro look off)
-      ui.update({ available, known, learned: G.learned, picked, pickedK, sc, mode, rail, nearby, lefty: lefty(), resting: callT > 0, knownK: knownSongs });
+      ui.update({ available, known, learned: G.learned, picked, pickedK, sc, mode, rail, nearby, earshot, lefty: lefty(), resting: callT > 0, knownK: knownSongs });
 
       // gifts that run for a while
       const g = G.gifts;
