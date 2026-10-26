@@ -9,22 +9,24 @@ import { height } from './world.js';
 import { ih } from './noise.js';
 
 const WATER = 0;
-// key: [name, lat, lon, ground, footprint radius, the story the Journal tells]
+// key: [name, lat, lon, ground, footprint radius, the story the Journal tells]. Named by what a
+// bird sees (James, 2026-10-24): the steel tower, the red bridge, the stone heads; the story
+// under each keeps the lore. The keys are what saves hold, so they stay.
 export const WONDERS = {
-  eiffel: ['The Eiffel Tower', 48.858, 2.294, 'flat', 30, 'An iron tower over a city long gone to meadow. Its rust is the colour of a red-tail’s back.'],
-  liberty: ['The Statue of Liberty', 40.689, -74.045, 'coast', 32, 'A green copper woman on a star-shaped fort, her torch held up to ships that no longer come.'],
-  giza: ['The Pyramids of Giza', 29.979, 31.134, 'flat', 100, 'The oldest of them all. Swifts nest in the cracks between the stones.'],
-  colosseum: ['The Colosseum', 41.89, 12.492, 'flat', 56, 'A ring of arches, half of it fallen. Grass grows where the crowds sat.'],
+  eiffel: ['The Steel Tower', 48.858, 2.294, 'flat', 30, 'An iron tower over a city long gone to meadow. Its rust is the colour of a red-tail’s back.'],
+  liberty: ['The Green Statue', 40.689, -74.045, 'coast', 32, 'A green copper woman on a star-shaped fort, her torch held up to ships that no longer come.'],
+  giza: ['The Stone Peaks', 29.979, 31.134, 'flat', 100, 'The oldest of them all. Swifts nest in the cracks between the stones.'],
+  colosseum: ['The Ring of Arches', 41.89, 12.492, 'flat', 56, 'A ring of arches, half of it fallen. Grass grows where the crowds sat.'],
   pisa: ['The Leaning Tower', 43.723, 10.396, 'flat', 10, 'It leaned before people left, and it leans still, a little more each year.'],
-  stonehenge: ['Stonehenge', 51.179, -1.826, 'flat', 18, 'Older than the cities, and it has outlasted them too.'],
-  taj: ['The Taj Mahal', 27.175, 78.042, 'flat', 70, 'A white tomb built for love. The marble is going grey, and the gardens are a forest.'],
-  greatwall: ['The Great Wall', 40.43, 116.57, 'ridge', 8, 'A wall that walks the ridges as far as you can fly. Its towers make good lookouts.'],
-  angkor: ['Angkor Wat', 13.412, 103.867, 'flat', 50, 'The forest took it back once before. It is taking it back again.'],
-  opera: ['The Opera House', -33.857, 151.215, 'coast', 60, 'White shells by the water. Gulls sit along their edges and nobody sings inside.'],
-  redeemer: ['Christ the Redeemer', -22.952, -43.21, 'peak', 8, 'Arms open over the hills, as if to welcome every bird that passes.'],
-  picchu: ['Machu Picchu', -13.163, -72.545, 'peak', 50, 'A stone town on a saddle in the clouds. The terraces are wild flower meadows now.'],
-  moai: ['The Moai', -27.125, -109.277, 'coast', 24, 'Stone heads with their backs to the sea, still watching over the island.'],
-  goldengate: ['The Golden Gate', 37.82, -122.478, 'strait', 20, 'A red bridge across the bay, its middle fallen into the water.'],
+  stonehenge: ['The Great Stone Circle', 51.179, -1.826, 'flat', 18, 'Older than the cities, and it has outlasted them too.'],
+  taj: ['The White Dome', 27.175, 78.042, 'flat', 70, 'A white tomb built for love. The marble is going grey, and the gardens are a forest.'],
+  greatwall: ['The Long Wall', 40.43, 116.57, 'ridge', 8, 'A wall that walks the ridges as far as you can fly. Its towers make good lookouts.'],
+  angkor: ['The Forest Towers', 13.412, 103.867, 'flat', 50, 'The forest took it back once before. It is taking it back again.'],
+  opera: ['The White Shells', -33.857, 151.215, 'coast', 60, 'White shells by the water. Gulls sit along their edges and nobody sings inside.'],
+  redeemer: ['The Open Arms', -22.952, -43.21, 'peak', 8, 'Arms open over the hills, as if to welcome every bird that passes.'],
+  picchu: ['The Cloud Terraces', -13.163, -72.545, 'peak', 50, 'A stone town on a saddle in the clouds. The terraces are wild flower meadows now.'],
+  moai: ['The Stone Heads', -27.125, -109.277, 'coast', 24, 'Stone heads with their backs to the sea, still watching over the island.'],
+  goldengate: ['The Red Bridge', 37.82, -122.478, 'strait', 20, 'A red bridge across the bay, its middle fallen into the water.'],
 };
 
 // what flight bumps into and perches on: [u, w, r, y0, top, perch?] about the wonder's spot, turned with it

@@ -45,7 +45,7 @@ const SCENES = {
     document.querySelector('.lveil3 [data-i="go"]')?.click(); await wait(7);
     const today = document.querySelector('.aims3 [data-order="3"]');
     A.G.menu.set(true, 'today'); await wait(.4); const shown = today && !today.classList.contains('hidden'); A.G.menu.set(false);
-    return 'from ' + start + ': ' + seen.join(', ') + '; then ' + (card ? 'the lessons card, ' : '(no lessons card: lost) ') + (L.learning ? 'lessons' : 'done') + (shown ? ', Today lists ' + today.querySelector('.lch3 b')?.textContent : ' (Today has no lessons: lost)');`,
+    return 'from ' + start + ': ' + seen.join(', ') + '; then ' + (card ? 'the lessons card, ' : '(no lessons card: lost) ') + (L.learning ? 'lessons' : 'done') + (shown ? ', Today lists ' + today.querySelector('.ntask3')?.textContent : ' (Today has no lessons: lost)');`,
   menu: `const out = [];
     for (const tab of ['today', 'map', 'journal', 'how', 'play']) {
       A.G.menu.set(true, tab); await wait(.5);

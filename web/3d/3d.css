@@ -205,6 +205,21 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .name3 { font-weight: 300; font-size: 24px; line-height: 1.05; letter-spacing: .02em; transition: opacity .9s; }
 .name3 .ic3 svg { width: 20px; height: 20px; display: block; stroke-width: 1.8; }
 .name3.show, .qcount3.show { opacity: 1; }
+/* the next step (quiet.js): the open lesson or the day's aim as a thin label in the name's place;
+   it yields to a name, a count, a message, a tip, a card or the coach, and comes back after */
+.next3 { position: absolute; z-index: 1; left: 50%; top: calc(54px + env(safe-area-inset-top)); transform: translateX(-50%); margin: 0; max-width: min(440px, 86vw);
+  display: flex; align-items: center; gap: 8px; white-space: nowrap; color: #fff; font-size: 14px; font-weight: 600; letter-spacing: .01em; filter: var(--halo3);
+  opacity: 0; pointer-events: none; transition: opacity .6s; }
+.next3.show { opacity: 1; pointer-events: auto; touch-action: none; user-select: none; }
+.next3.drag { transition: none; }
+.next3 .nring3 { flex: none; display: flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .95); color: var(--ink); }
+.next3 .nring3 svg { width: 11px; height: 11px; display: none; fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.next3.done .nring3 { background: #fff; } .next3.done .nring3 svg { display: block; }
+.next3.done .nt3 { opacity: .8; }
+.next3 .nt3 { overflow: hidden; text-overflow: ellipsis; }
+.next3 .ns3 { flex: none; font-size: 12.5px; font-weight: 400; color: rgba(255, 255, 255, .88); }
+.next3 .ns3:empty { display: none; }
+#ui3:has(.name3.show, .qcount3.show, .toast3.show, .hint3.show, .glintcard3:not(.hidden), .coach3:not(.hidden):not(.mini), .tipmore3:not(.hidden)) .next3 { opacity: 0; pointer-events: none; }
 .name3, .glints3, .qcount3 { --halo3: drop-shadow(0 1px 1.5px rgba(10, 20, 28, .55)) drop-shadow(0 0 6px rgba(10, 20, 28, .25)); }
 .glints3 { position: absolute; z-index: 1;   /* under the message line, tips and cards: the small icons never cover them */ top: calc(10px + env(safe-area-inset-top)); left: calc(50% + min(160px, 19vw) + 10px); display: flex; gap: 8px; pointer-events: none; }
 .gl3 { pointer-events: auto; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center;
@@ -235,7 +250,7 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 #ui3:has(.glintcard3:not(.hidden)) .compass3 { opacity: 0; }
 .notes3 em { font-style: normal; opacity: .7; }
 @media (max-width: 620px) {
-  .name3, .qcount3 { top: calc(170px + env(safe-area-inset-top)); }
+  .name3, .qcount3, .next3 { top: calc(170px + env(safe-area-inset-top)); }
   .name3 { font-size: 21px; }
   #ui3:has(.name3.show) .qcount3 { top: calc(202px + env(safe-area-inset-top)); }
   .glints3 { top: calc(130px + env(safe-area-inset-top)); left: calc(50% + min(130px, 30vw) + 8px); }
@@ -388,19 +403,32 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .stack3 .group3 .main3::before { content: ''; width: 20px; height: 15px; background: #fff;
   clip-path: polygon(0 22%, 28% 22%, 36% 0, 64% 0, 72% 22%, 100% 22%, 100% 100%, 0 100%); }
 .stack3 .group3 .main3 em { display: none; }
-/* Today: your bird and how it is, the things to do now; the day's aims beside them */
-.today3 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; align-items: start; }
-.today3 .tcol3, .tmain3 .stack3 { max-width: none; margin: 0; gap: 10px; }
+/* Today (James, 2026-10-24): your bird on the left with your life under it; on the right Next, the
+   one open lesson or the day's aim, on a white plate, the task in large type, Show me and Later */
+.today3 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 12px; align-items: start; }
+.today3 .tcol3 { max-width: none; margin: 0; gap: 10px; }
 .tmain3 { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
-/* the Tutorial box leads: the open chapter and the day's aim on a white plate */
-.ttut3 { padding: 12px 16px 6px; border-radius: 22px; background: var(--plate); box-shadow: var(--shadow); }
-.ttut3[hidden] { display: none; }
-.ttut3 > h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; font-size: 17px; font-weight: 700; }
-.ttut3 > h3 svg { width: 20px; height: 20px; color: var(--moss); }
-.ttut3 .aims3 > section { padding: 0; margin: 0 0 10px; border: 0; background: none; }
-.ttut3 .aims3 > section + section:not(.hidden) { padding-top: 8px; border-top: 1px solid var(--rule); }
+.tnext3 { padding: 14px 18px 12px; border-radius: 22px; background: var(--plate); box-shadow: var(--shadow); border: 1px solid rgba(255, 255, 255, .6); }
+.tnext3[hidden] { display: none; }
+.tnext3 > h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--mossink); }
+.tnext3 > h3 svg { width: 18px; height: 18px; fill: none; stroke: var(--moss); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.tnext3 .aims3 > section { padding: 0; margin: 0; border: 0; background: none; }
+.tnext3 .aims3 > section + section:not(.hidden) { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--rule); }
+.tnext3 .aims3 > section > h3 { display: none; }
+.nch3 { display: flex; align-items: center; gap: 7px; margin: 0 0 4px; font-size: 12.5px; font-weight: 600; color: var(--ink2); }
+.nch3 svg { flex: none; width: 18px; height: 18px; fill: none; stroke: var(--moss); stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.nch3 small { margin-left: auto; font-size: 12px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ntask3 { margin: 0; font-size: 22px; font-weight: 600; line-height: 1.2; letter-spacing: -.01em; }
+.ntask3.done { color: var(--ink2); text-decoration: line-through; text-decoration-color: rgba(42, 36, 32, .35); }
+.nsay3 { margin: 6px 0 0; font-size: 14px; line-height: 1.45; color: var(--ink2); }
+.nbtns3 { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 12px 0 2px; }
+.nbtns3 button { min-height: 42px; padding: 0 18px; border-radius: 999px; border: 1px solid var(--btnedge); background: var(--btn); font: inherit; font-size: 14.5px; font-weight: 600; color: var(--ink); cursor: pointer; }
+.card3 .nbtns3 .main3 { width: auto; min-height: 42px; padding: 0 22px; border: 0; background: var(--moss); color: #fff; }
+.nbtns3 .nall3 { margin-left: auto; border: 0; background: none; font-weight: 500; color: var(--ink2); text-decoration: underline; text-underline-offset: 3px; }
+.nfeat3 { display: flex; align-items: flex-start; gap: 8px; margin: 12px 0 0; padding-top: 10px; border-top: 1px solid var(--rule); font-size: 12.5px; line-height: 1.4; color: var(--ink2); }
+.nfeat3 svg { flex: none; width: 17px; height: 17px; margin-top: 1px; fill: none; stroke: var(--clay); stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
 .tmore3:empty { display: none; }
-/* your bird, quieter, on the right */
+/* your bird, on the left */
 .today3 .now3 { background: rgba(255, 252, 245, .6) !important; box-shadow: none !important; border: 1px solid rgba(42, 36, 32, .06); }
 .now3 { padding: 12px 14px 12px !important; }
 .who3 { display: flex; align-items: center; gap: 10px; }
@@ -429,7 +457,8 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .todo3 .btn:not(.main)::after { grid-column: 2; grid-row: 1 / span 2; }
 .aims3 > section { padding: 4px 16px 12px; margin-bottom: 0; border-radius: 20px; background: rgba(255, 252, 245, .7); border: 1px solid rgba(42, 36, 32, .06); }
 .aims3 > section > h3 { margin: 10px 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--ink2); }
-@media (max-width: 760px) { .today3 { grid-template-columns: minmax(0, 1fr); } }
+/* a phone: one column, Next first */
+@media (max-width: 760px) { .today3 { grid-template-columns: minmax(0, 1fr); } .tmain3 { order: -1; } }
 /* Settings > Messages: the hints after the rows */
 [data-moved=hints] { max-width: 720px; margin: 14px auto 0; }
 /* Your bird: one card, the bird flying through its poses; under it, on the left, its silhouette (as
@@ -567,21 +596,22 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .mapbox3 { position: relative; flex: 1; min-height: 180px; overflow: hidden; background: #1a242c; }
 .mapbox3 canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: grab; }
 .mapbox3 canvas.mapover3 { pointer-events: none; }
-/* the Map's corners: top left how far the journey has come (explored, feathers, biomes, landmarks);
+/* the Map's corners: top left how far the journey has come (explored, lands, landmarks);
    top right the same day dial as in flight, the season and the years; bottom left the pins and
-   places picked; bottom right zoom and where you are */
+   places picked; bottom right zoom and where you are. All of it cream glass like the rest of the
+   menu (James, 2026-10-24; dark till then) */
 .mapsum3 { position: absolute; left: 12px; top: 12px; width: 196px; max-width: calc(100% - 200px); display: flex; flex-direction: column; gap: 9px; padding: 12px 12px 10px 14px; border-radius: 18px;
-  background: var(--dusk); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); box-shadow: var(--shadow); color: var(--pale2); }
+  background: var(--glass2); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); box-shadow: var(--shadow); color: var(--ink2); }
 .mapsum3 .tally3 { grid-template-columns: 1fr; gap: 1px; margin: 0 -6px; }
 .mapsum3 .tally3 li { align-items: center; gap: 8px; padding: 3px 6px; border-radius: 10px; font-size: 12.5px; }
-.mapsum3 .tally3 li[data-go] { cursor: pointer; } .mapsum3 .tally3 li[data-go]:active { background: rgba(244, 239, 230, .1); }
-.mapsum3 .tally3 svg { width: 17px; height: 17px; flex: none; fill: none; stroke: var(--pale2); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.mapsum3 .tally3 li[data-go] { cursor: pointer; } .mapsum3 .tally3 li[data-go]:active { background: var(--mosstint); }
+.mapsum3 .tally3 svg { width: 17px; height: 17px; flex: none; fill: none; stroke: var(--moss); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .mapsum3 .tally3 li > span { flex: 1; }
 .mapsum3 .tally3 b { font-size: 14px; font-variant-numeric: tabular-nums; }
-.mapsum3 .tally3 b span { color: var(--pale2); }
+.mapsum3 .tally3 b span { color: var(--ink2); }
 .mapsum3 .far3 { display: grid; gap: 4px; }
-.mapsum3 .far3 span { height: 5px; border-radius: 3px; background: rgba(244, 239, 230, .18); overflow: hidden; }
-.mapsum3 .far3 i { display: block; height: 100%; border-radius: 3px; background: var(--pale2); }
+.mapsum3 .far3 span { height: 5px; border-radius: 3px; background: rgba(42, 36, 32, .12); overflow: hidden; }
+.mapsum3 .far3 i { display: block; height: 100%; border-radius: 3px; background: var(--moss); }
 .mapsum3 .far3 small { font-size: 11.5px; }
 .tally3 { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 8px; margin: 0; padding: 0; list-style: none; }
 .tally3 li { display: flex; align-items: baseline; gap: 5px; font-size: 12px; color: var(--ink2); line-height: 1.3; }
@@ -618,17 +648,17 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .pins3 svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
 /* a pin's colour: a round swatch with a dropper; tapped, the twelve colours */
 /* a pin's colour: a ring at the card's top right with a dropper; tapped, a box of twelve above the card */
-.mapnote3 .pcol3 { position: absolute; top: 9px; right: 9px; display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 3px solid var(--pc); border-radius: 50%; background: rgba(244, 239, 230, .1); color: var(--pale); cursor: pointer; }
+.mapnote3 .pcol3 { position: absolute; top: 9px; right: 9px; display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 3px solid var(--pc); border-radius: 50%; background: rgba(42, 36, 32, .06); color: var(--ink); cursor: pointer; }
 .mapnote3 .pcol3 svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
 .mapnote3:has(.pcol3) > b, .mapnote3:has(.pcol3) > small:first-of-type { padding-right: 40px; }
-.swatch3 { position: absolute; left: 0; bottom: calc(100% + 8px); display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; padding: 10px 12px 12px 14px; border-radius: 14px; background: var(--dusk2); box-shadow: 0 2px 8px rgba(0, 0, 0, .25); }
+.swatch3 { position: absolute; left: 0; bottom: calc(100% + 8px); display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; padding: 10px 12px 12px 14px; border-radius: 14px; background: var(--glass2); box-shadow: 0 2px 8px rgba(40, 30, 20, .18); }
 .swatch3 b { font-size: 13.5px !important; }
 .swatch3 > span { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(6, 30px); gap: 8px; }
 .swatch3 > span button { width: 30px; height: 30px; padding: 0; border: 0; border-radius: 50%; background: var(--pc); cursor: pointer; box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .3); }
-.swatch3 > span button.on { box-shadow: 0 0 0 2px var(--dusk2), 0 0 0 4px var(--pale); }
-.swatch3 .shut3 { display: grid; place-items: center; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 50%; background: rgba(244, 239, 230, .13); color: var(--pale); cursor: pointer; }
+.swatch3 > span button.on { box-shadow: 0 0 0 2px var(--btn), 0 0 0 4px var(--ink); }
+.swatch3 .shut3 { display: grid; place-items: center; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 50%; background: rgba(42, 36, 32, .08); color: var(--ink); cursor: pointer; }
 .swatch3 .shut3 svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
-.mapnote3 .nogo3 { display: block; margin-top: 7px; color: var(--pale); font-weight: 600; }
+.mapnote3 .nogo3 { display: block; margin-top: 7px; color: var(--clay); font-weight: 600; }
 .mapnote3 .nogo3[hidden] { display: none; }
 
 /* the journal: landmarks and the field guide */
@@ -682,9 +712,29 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .keeps3 h4 { margin: 14px 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--ink2); }
 .keeps3 div { display: flex; flex-wrap: wrap; gap: 6px; } .keeps3 span { padding: 4px 10px; border-radius: 12px; background: var(--btn); border: 1px solid var(--rule); font-size: 13px; }
 @media (max-width: 620px) { .court3 li { grid-template-columns: 20px 80px minmax(0, 1fr) 70px; } .steps3 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.count3 { font-size: 12.5px; font-weight: 500; color: var(--ink2); margin-left: 8px; }
+/* each section's count at the right of its heading, on the same row (James, 2026-10-24) */
+.page3 > section > h3, .fam3 > h3 { display: flex; align-items: baseline; gap: 8px; }
+.page3 > section > h3 > span:first-child, .fam3 > h3 > span:first-child { flex: 1; min-width: 0; }
+.count3 { margin-left: auto; font-size: 12.5px; font-weight: 500; color: var(--ink2); text-transform: none; letter-spacing: 0; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.muted3 { margin: 6px 0 4px; font-size: 13.5px; line-height: 1.45; color: var(--ink2); }
+.star3 { font-style: normal; color: #d39a2a; margin-right: 3px; }
+/* a shelf (journal.js shelf()): found things with a picture or icon and a name, the rest a question mark */
+.shelf3 { list-style: none; margin: 6px 0 4px; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); gap: 8px; }
+.shelf3 li { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 10px 6px 8px; border-radius: 14px; background: var(--btn); border: 1px solid var(--rule); text-align: center; font-size: 12.5px; line-height: 1.25; }
+.shelf3 .pic { flex: none; display: flex; align-items: center; justify-content: center; width: 54px; height: 54px; border-radius: 50%; background: rgba(42, 36, 32, .07); overflow: hidden; color: var(--moss); font-weight: 700; font-size: 18px; }
+.shelf3 .pic img { width: 100%; height: 100%; display: block; object-fit: cover; }
+.shelf3 .pic svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.shelf3 li b { font-weight: 600; } .shelf3 li b small { display: inline; font-weight: 500; }
+.shelf3 li.has { cursor: pointer; }
+.shelf3 li .note { display: none; font-size: 12px; line-height: 1.35; }
+.shelf3 li.open .note { display: block; }
+.shelf3 li.star .pic { box-shadow: 0 0 0 2px #e2b55a; }
+.shelf3 li.empty { background: none; border-style: dashed; color: var(--ink2); }
+.shelf3 li.empty .pic { width: 44px; height: 44px; margin: 5px 0; background: none; border: 1.5px dashed rgba(42, 36, 32, .25); color: var(--ink2); font-size: 15px; }
+.shelf3 li.empty small { font-size: 11.5px; line-height: 1.3; }
+.shelfmore3 { margin: 6px 0 8px; font-size: 12.5px; color: var(--ink2); }
 
-@media (max-width: 620px) { .toast3, .hint3 { max-width: 86vw; } }
+@media (max-width: 620px) { .toast3, .hint3 { max-width: 86vw; } .next3 .ns3 { display: none; } }
 /* Journal > Songs: a card for each songbird with its picture */
 .songs3 .pic { width: 72px; height: 54px; background: linear-gradient(#d3e3ec, #eef1ea); }
 .songs3 img { object-fit: contain; }
@@ -870,14 +920,14 @@ details.lgrp3[open] .lchev3 { transform: rotate(180deg); }
 .lintro3 .lbtns3 { margin: 12px 0 0; }
 .lintro3 .lbtns3 .main3 { border: 0; background: var(--moss); color: #fff; }
 
-/* the Map's overlays are dark with pale text (James, 2026-10-23), so they sit quietly on the globe */
-.mapsum3 .far3 small, .mapsum3 .tally3 li { color: var(--pale2); } .mapsum3 .tally3 b { color: var(--pale); }
-.mapbtn3 button, .mapnote3 { background: var(--dusk2); color: var(--pale); box-shadow: 0 1px 6px rgba(0, 0, 0, .25); }
-.mapbtn3 svg { stroke: var(--pale); } .mapbtn3 svg .dot { fill: var(--pale); }
-.mapbtn3 button:active { background: var(--dusk); }
-.mapnote3 small, .mapnote3 p { color: var(--pale2); }
-.mapnote3 .pins3 button:not(.pcol3) { background: rgba(244, 239, 230, .13); color: var(--pale); }
-.mapnote3 .pins3 button:not(.pcol3):active { background: rgba(244, 239, 230, .22); }
+/* the Map's overlays in cream glass with ink, like the rest of the menu (James, 2026-10-24; dark with pale text from 10-23 till then) */
+.mapsum3 .far3 small, .mapsum3 .tally3 li { color: var(--ink2); } .mapsum3 .tally3 b { color: var(--ink); }
+.mapbtn3 button, .mapnote3 { background: var(--glass2); color: var(--ink); box-shadow: 0 1px 6px rgba(40, 30, 20, .18); }
+.mapbtn3 svg { stroke: var(--ink); } .mapbtn3 svg .dot { fill: var(--ink); }
+.mapbtn3 button:active { background: var(--btn); }
+.mapnote3 small, .mapnote3 p { color: var(--ink2); }
+.mapnote3 .pins3 button:not(.pcol3) { background: rgba(42, 36, 32, .07); color: var(--ink); }
+.mapnote3 .pins3 button:not(.pcol3):active { background: var(--mosstint); }
 /* Settings > Graphics > Battery use: a small table of readings */
 .batt3 { margin: 8px 0 0; padding: 10px 14px 12px 16px; border-radius: 15px; background: var(--btn); box-shadow: 0 1px 4px rgba(40, 30, 20, .08); }
 .batt3 .bhead3 { display: flex; align-items: center; justify-content: space-between; min-height: 30px; font-size: 15px; }

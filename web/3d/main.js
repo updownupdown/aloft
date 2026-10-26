@@ -80,7 +80,7 @@ const SYSTEMS = [speciesSystem, movesSystem, lifeSystem, clockSystem, weatherSys
   fieldsSystem, skyDaysSystem, raptorsSystem, wingcraftSystem, stillSystem, swellsSystem, berriesSystem, cuesSystem, windCuesSystem, polesSystem,
   sealifeSystem, driftSystem, islesSystem, skyRiversSystem, nightSeaSystem, lessonsSystem, hiddenSystem];
 
-// Where each bird first flies, in its own country (earth.js toXZ: latitude, longitude): the
+// Where each bird first flies, in its own land (earth.js toXZ: latitude, longitude): the
 // red-tail at a forest edge in the Finger Lakes, the osprey over a Scottish loch, the barn owl in
 // the Loire farmland, the raven over a Norwegian fjord, the royal albatross on Taiaroa Head (its one
 // mainland colony, at the mouth of Otago Harbour). Then the nearest open ground to start over.
@@ -102,7 +102,7 @@ export function start(canvas, ui) {
   audio.on = store.get('sound', true);
   music.setMode(store.get('musicMode', 'valley'));
   // Saves are not kept across big changes yet (experimental): one from before the Earth world
-  // (no home in it) is dropped, and the bird starts afresh in its own country
+  // (no home in it) is dropped, and the bird starts afresh in its own land
   let S0 = store.get('save3d', null);
   if (S0 && !S0.home) { S0 = null; store.set('save3d', null); }
   const home = S0?.home || startOf(BIRD !== 'hawk' ? BIRD : store.get('bird', 'hawk'));
@@ -274,7 +274,7 @@ if (qs.has('fps')) G.settings.fpsCap = +qs.get('fps') || 60;
   G.dev?.add({ id: 'gpu-order', area: 'Settings and performance', round: 'R8', title: 'Cheaper drawing: solid things first with no discard, nearest ground first, sky last', how: 'Nothing to see: the same picture, less GPU work. Compare battery use (Settings) with the readings from before.' });
   G.dev?.add({ id: 'rest-30', area: 'Settings and performance', round: 'R8', title: 'Rest at 30 fps when perched or on the ground and untouched', how: 'Settings > Show frame rate, perch and leave the phone 5 s: 30; touch: back to your cap. Settings > Rest at 30 fps turns it off.' });
   G.dev?.add({ id: 'heat-guard', area: 'Settings and performance', round: 'R8 G2', title: 'Heat guard: resolution steps down early when late frames creep up', how: 'Graphics on Auto, play 20+ minutes: Frame cost shows late frames and "heat guard on" when it acts.' });
-  G.dev?.add({ id: 'wings-map', area: 'Flight', round: 'Controls 10-22', title: 'Each thumb is a wing: spread wide to soar, spread and down to brake, folded for a fast glide, folded and down to stoop, folded and up to zoom', how: 'Tutorial > Flying shows every wing position. Try each in flight.' });
+  G.dev?.add({ id: 'wings-map', area: 'Flight', round: 'Controls 10-22', title: 'Each thumb is a wing: spread wide to soar, spread and down to brake, folded for a fast glide, folded and down to stoop, folded and up to zoom', how: 'Lessons > Flying shows every wing position. Try each in flight.' });
   G.dev?.add({ id: 'barrel', area: 'Flight', round: 'Controls 10-22', title: 'Barrel roll: left stick down, right up, both a full circle anticlockwise (or the mirror, clockwise)', how: 'In flight at speed, turn both thumbs round together. Z / X on a keyboard.', go: () => { input.keyBarrel = 1; } });
   G.dev?.add({ id: 'soar-thermal', area: 'Flight', round: 'Controls 10-22', title: 'Ride thermals by soaring: wider thermals, spread wide and steer to circle; no auto-circling, no vario beeps', how: 'Find a thermal, spread both thumbs out, tip one slightly lower. The red arrows by your height show the lift.', go: () => window.__aloft3d?.dbg.thermal() });
   H.showFps(G.settings.fps);

@@ -1,5 +1,5 @@
 // Tips, as a few words and an icon at the top of the screen. Swipe one away and it never comes
-// back; touch its i to pause and read the whole of it, with a way into the Tutorial; its gear opens
+// back; touch its i to pause and read the whole of it, with a way into the Lessons; its gear opens
 // Journal > Messages (hints.js), where each group of tips can be turned off. Systems still
 // write their tips in full with G.hud.tip(id, when, text); the short line and the icon for each are
 // here, keyed by id (a tip not listed shows its full text with a plain dot).
@@ -59,7 +59,7 @@ export { SHORT };
 
 export function tipBar(G, ui, H) {
   ui.insertAdjacentHTML('beforeend', `<div class="hint3" role="status"><span class="ic3"></span><span class="tx3"></span><button class="set3" aria-label="Choose which hints show">${icon('settings')}</button></div>
-    <div class="tipmore3 hidden" role="dialog" aria-label="Tip"><p></p><div><button data-t="how">Tutorial</button><button data-t="ok" class="main3">Got it</button></div></div>`);
+    <div class="tipmore3 hidden" role="dialog" aria-label="Tip"><p></p><div><button data-t="how">Lessons</button><button data-t="ok" class="main3">Got it</button></div></div>`);
   const el = ui.querySelector('.hint3'), more = ui.querySelector('.tipmore3');
   let tip = null, x0 = null, dx = 0;
   const T = {
