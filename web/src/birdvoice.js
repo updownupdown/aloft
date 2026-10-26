@@ -121,15 +121,7 @@ export function createBirdVoice(ctx, dest, noiseBuf) {
     const env = ctx.createGain(), atk = (e.atk ?? Math.min(.006, e.dur * .2)) * (tm?.atk ?? 1), end = t + e.dur;
     env.gain.setValueAtTime(0, t); env.gain.linearRampToValueAtTime(vol, t + atk); env.gain.exponentialRampToValueAtTime(.0004, end);
     let out = env;
-    // birds around you (the songs study, A): the note comes from where the bird sits, duller and
-    // more in the woods' echo the further off it is (a panner and a filter for this note alone)
-    let sink = input;
-    if (o?.pan != null && ctx.createStereoPanner) {
-      const pan = ctx.createStereoPanner(), dl = ctx.createBiquadFilter(), dist = Math.min(1, Math.max(0, o.dist || 0));
-      pan.pan.value = o.pan; dl.type = 'lowpass'; dl.frequency.value = 20000 - 17000 * Math.pow(dist, 1.3);
-      dl.connect(pan).connect(input); sink = dl;
-      if (dist > .3) { const fs = ctx.createGain(); fs.gain.value = (dist - .3) * .9; dl.connect(fs).connect(conv); }
-    }
+    const sink = o?.sink || input;
     if (e.am) {
       const am = ctx.createGain(), l = ctx.createOscillator(), lg = ctx.createGain();
       am.gain.value = 1 - e.am / 2; l.frequency.value = e.amF; lg.gain.value = e.am / 2;
@@ -153,7 +145,7 @@ export function createBirdVoice(ctx, dest, noiseBuf) {
     }
     if (e.pure) { tone(1, 1.1); if (tm && tm.bright > .14) tone(2, (tm.bright - .14) * .5); }
     else if (e.harsh) { tone(1, .8); tone(2, .45); tone(3, .3); tone(4, .15); }
-    else { tone(1, 1); tone(2, e.soft ? .22 : tm ? tm.bright : .1); }   // (a third partial at 2.5% was inaudible, and a third more oscillators)
+    else { tone(1, 1); if (e.dur > .04) tone(2, e.soft ? .22 : tm ? tm.bright : .1); }   // (a third partial at 2.5% was inaudible, and a third more oscillators; a trill's 30 ms beats are too short to hear an overtone on, and there are six of them)
     if (e.dual) tone(e.dual, .45);
     // the other side of the syrinx: a quieter line a fifth (thrush) or a third above, drifting a little
     if (V.engine === 'syrinx') tone(e.vib ? 1.5 : 1.26 + (Math.random() - .5) * .02, .32);
@@ -191,21 +183,45 @@ export function createBirdVoice(ctx, dest, noiseBuf) {
   // one song note at pitch f (the game's pitch for that note), in a species' voice; `kind` picks
   // a syllable shape (left out: the species' own note, as the bird song lab plays it)
   // `o`: { pan, dist, sp }: where the bird sits (pan and distance) and its species (its timbre)
+  // birds around you: the note comes from where the bird sits, duller and more in the woods' echo
+  // the further off it is (one panner and filter for the whole note, however many syllables)
+  function placed(o) {
+    if (o?.pan == null || !ctx.createStereoPanner) return null;
+    const pan = ctx.createStereoPanner(), dl = ctx.createBiquadFilter(), dist = Math.min(1, Math.max(0, o.dist || 0));
+    pan.pan.value = o.pan; dl.type = 'lowpass'; dl.frequency.value = 20000 - 17000 * Math.pow(dist, 1.3);
+    dl.connect(pan).connect(input);
+    if (dist > .3) { const fs = ctx.createGain(); fs.gain.value = (dist - .3) * .9; dl.connect(fs).connect(conv); }
+    return dl;
+  }
+  // a busy wood: at most VOICES notes sound at once. Each note is a handful of oscillators, and a
+  // phone's audio thread crackles once it runs out of time (James, 10-26); past three or four
+  // birds at once nobody hears them apart anyway. Your own notes and your teacher's (o.keep)
+  // always sound; a far bird's note gives way first.
+  const VOICES = 5; let ends = [];
+  const room = (o, now) => {
+    ends = ends.filter(e => e > now);
+    return o?.keep || ends.length < VOICES - ((o?.dist ?? 0) > .55 ? 2 : 0);
+  };
   V.sing = (f, voice = 0, vol = .16, kind = null, o = null) => {
-    const tm = timbre(o?.sp), at = o && (o.pan != null || tm) ? { pan: o.pan, dist: o.dist, tim: tm } : null;
+    if (!room(o, ctx.currentTime)) return;
+    const tm = timbre(o?.sp), at = o && (o.pan != null || tm) ? { sink: placed(o), tim: tm } : null;
     const jit = tm ? tm.jit : .03, low = tm && !REG[voice % NV] ? tm.reg : 1;
     if (kind && !OWN[kind]?.has(voice % NV)) {
       const t = ctx.currentTime + LEAD, prev = V.engine, reg = REG[voice % NV], pitch = (reg ? f * reg : f * V.octave * low) * (1 + (Math.random() - .5) * jit);
       if (V.engine === 'whistle') V.engine = 'natural';
-      for (const e of kindTemplate(kind, voice)) element(t + e.at, e, pitch, vol * (e.v ?? 1) * (reg ? 1.3 : 1.1), at);
+      const els = kindTemplate(kind, voice);
+      for (const e of els) element(t + e.at, e, pitch, vol * (e.v ?? 1) * (reg ? 1.3 : 1.1), at);
+      ends.push(t + Math.max(...els.map(e => e.at + e.dur)));
       V.engine = prev; return;
     }
     const t = ctx.currentTime + LEAD, prev = V.engine;
-    if (V.engine === 'whistle' && voice % NV < 8) { V.engine = 'natural'; whistle(t, f, voice, vol * .85); V.engine = prev; return; }
+    if (V.engine === 'whistle' && voice % NV < 8) { V.engine = 'natural'; whistle(t, f, voice, vol * .85); ends.push(t + .5); V.engine = prev; return; }
     // a little variation every time: no bird sings a note exactly the same twice
     const j = 1 + (Math.random() - .5) * jit, reg = REG[voice % NV], pitch = reg ? f * reg * j : f * V.octave * low * j, rnd = Math.random;
     if (V.engine === 'whistle') V.engine = 'natural';
-    for (const e of template(voice, rnd)) element(t + e.at * (1 + (rnd() - .5) * .1), e, pitch, vol * (e.v ?? 1) * (reg ? 1.3 : 1.1), at);
+    const els = template(voice, rnd);
+    for (const e of els) element(t + e.at * (1 + (rnd() - .5) * .1), e, pitch, vol * (e.v ?? 1) * (reg ? 1.3 : 1.1), at);
+    ends.push(t + Math.max(...els.map(e => e.at * 1.05 + e.dur)));
     V.engine = prev;
   };
   return V;

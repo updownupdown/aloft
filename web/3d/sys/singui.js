@@ -142,7 +142,7 @@ export function createSingUI(ui, { audio, voice, species = () => null, onSyll, o
   const ANSWER = { c: 'k-c', u: 'k-u', d: 'k-d', l: 'k-l', r: 'k-r' };
   function sound(lane, kind) {
     const r = rows[lane]; r.classList.remove(...Object.values(ANSWER)); void r.offsetWidth; r.classList.add(ANSWER[kind]);
-    audio.note(lane, voice(), .18, kind, { pan: 0, dist: 0, sp: species() }); onSyll(lane, kind);
+    audio.note(lane, voice(), .18, kind, { pan: 0, dist: 0, sp: species(), keep: true }); onSyll(lane, kind);
   }
   const touches = new Map();
   const way = t => { const dx = t.x - t.x0, dy = t.y - t.y0; return Math.abs(dy) >= Math.abs(dx) ? (dy < 0 ? 'u' : 'd') : dx < 0 ? 'l' : 'r'; };

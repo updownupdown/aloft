@@ -166,7 +166,7 @@ export function songsSystem(G) {
     { id: 'song-says', round: 10, pr: 226, title: 'A song\'s result shows over the card, so the card does not move; Journal > Songs shows each song\'s notes; Dev mode refreshes the songbook at once', how: 'Sing a song to a bird: the answer shows above the card. Turn on Dev mode in Settings, then open Journal > Songs: every song plays and shows its notes.' },
     { id: 'tap-songs', round: 10, pr: 219, title: 'Fast or long songs are copied with taps alone; slow, short ones keep their swipes', how: 'Learn a Wren, Chaffinch or Skylark (fast): the card shows dots, and any touch on the right row counts. A Cuckoo or Hoopoe still wants its swipes.' },
     { id: 'earth-songbirds', round: 10, pr: 216, title: 'Each continent its own songbirds: 86 real singers, at least two in every land, no dialects', how: 'Fly to Europe, Africa, Asia, South America or Oceania and perch in a wood: robins and blackbirds in Europe, bulbuls and robin-chats in Africa, kookaburras and tui in Oceania. Settings > Advanced > Dev mode, then Journal > Songs: every bird, by continent.' },
-    { id: 'sing-three', round: 9, pr: 211, title: 'At most three birds sing at once; no piano under your notes; your own bird on the rail sings as yourself', how: 'Perch in a busy wood and listen: never more than three songs overlap. Tap Sing, then your own bird at the top of the rail: Free song, even beside a bird that could teach you.' },
+    { id: 'sing-three', round: 9, pr: 211, title: 'At most two birds sing at once; no piano under your notes; your own bird on the rail sings as yourself', how: 'Perch in a busy wood and listen: never more than two songs overlap. Tap Sing, then your own bird at the top of the rail: Free song, even beside a bird that could teach you.' },
     { id: 'learn-near', round: 9, pr: 203, title: 'Learn from any bird near by; tap its logo to choose it; Dev mode unlocks every song in the Journal', how: 'Perch within about 45 m of a songbird whose song you do not know (amber dot on the rail), or tap its logo: Learning, notes light up, the card fills in from the first note. Settings > Advanced > Dev mode, then Journal > Songs: play every song. The states are explained at the top of Journal > Songs.' },
     { id: 'sing-rail2', round: 9, pr: 197, title: 'Sing rail round two: you on top, birds by name, every bird at the bottom; the card comes out from under it', how: 'Perch among songbirds and tap Sing: the rail runs from under the menu button, your bird first, then the birds near by A to Z (picking one keeps the order), the list button always at the bottom. The card tucks under the rail; the You row keeps its height.' },
     { id: 'bird-logos', round: 9, pr: 195, title: 'Song card in one: bird, Learning or Imitating, every bird, close; each songbird a little logo', how: 'Perch by a songbird and tap Sing: the top says who and what, the bottom shows its logo, the song name and notes. While it teaches, its logo pops up in each row it sings, with a ring.' },
@@ -206,7 +206,7 @@ export function songsSystem(G) {
     const cx = x - S3.cam[0], cz = z - S3.cam[2], cd = Math.hypot(cx, cz) || 1;
     return { pan: clamp((cx * rx + cz * rz) / cd * .85, -1, 1), dist: clamp(Math.hypot(x - b.p[0], z - b.p[2]) / SONG.hearR, 0, 1) };
   };
-  const hawkAt = sp => ({ pan: 0, dist: 0, sp });
+  const hawkAt = sp => ({ pan: 0, dist: 0, sp, keep: true });   // (keep: always heard, however busy the wood)
   // a note rising from a beak: the hawk's own clear, a songbird's fainter (and only its pitch, as a
   // question mark, until you have learned its song)
   function notePart(p, lane, kind, hawk = false, sp = null) {
@@ -240,10 +240,10 @@ export function songsSystem(G) {
     o.singT = n * step + (twice ? n * step2 + rest : 0) + .2;
     // the card shows who is singing within earshot: the bird you copy, or another one
     if (S.bird === o) S.hearT = o.singT;
-    const where = { ...placeOf(o.x, o.z), sp };
+    const where = { ...placeOf(o.x, o.z), sp, keep: S.bird === o };
     for (let r = 0; r < (twice ? 2 : 1); r++) tune.notes.forEach((note, i) => later(r * (n * step + rest) + i * (r ? step2 : step) + (live ? (Math.random() - .5) * step * .16 : 0), () => {
       const swell = live ? .85 + .3 * Math.sin(Math.PI * (i + .5) / n) : 1;
-      if (v > .012) A.note(note, sp.voice, v * (o.young && !winter() ? .8 : 1) * swell, tune.kinds[i], where);   // (fainter than that is lost under the wind, and each note costs the audio thread)
+      if (v > .02) A.note(note, sp.voice, v * (o.young && !winter() ? .8 : 1) * swell, tune.kinds[i], where);   // (fainter than that is lost under the wind, and each note costs the audio thread)
       if (v > .04) hear(sp);
       if (v > .02) notePart([o.x, o.y, o.z], note, tune.kinds[i], false, song);
       // the bird you learn from: each note lights its row, and its place on the card
@@ -268,7 +268,7 @@ export function songsSystem(G) {
       const len = 2 + (Math.random() < .5 ? 1 : 0), from = G.learned.has(q.id) && k !== 1 ? Math.floor(Math.random() * Math.max(1, q.notes.length - len)) : 0;
       const notes = q.notes.slice(from, from + len), kinds = q.kinds.slice(from, from + len);
       notes.forEach((n, i) => later(at + i * q.gap, () => {
-        if (v > .005) A.note(n, q.voice, v, kinds[i], { ...where, sp: q });
+        if (v > .02) A.note(n, q.voice, v, kinds[i], { ...where, sp: q });
         if (v > .02) notePart([o.x, o.y, o.z], n, kinds[i], false, q);
       }));
       // the opening of a song you do not know, heard close enough: its first notes show on its card
@@ -752,9 +752,10 @@ export function songsSystem(G) {
         // again a moment after you stop; the others sing less while you learn
         if (S.bird === s && learning()) { st.next = Math.min(st.next, 6); if (G.t - S.lastTry < 3) st.next = Math.max(st.next, 1.5); }
         // mornings are busy, so each bird sings half as often then
-        // at most three birds sing at once (the one you learn from among them), so a busy wood stays
-        // clear and light on the phone; the others wait a moment
-        if (st.next <= 0 && S.bird !== s && singing >= (S.bird ? 2 : 3)) st.next = .8 + Math.random() * 1.5;
+        // at most two birds sing at once (the one you learn from among them), so a busy wood stays
+        // clear and light on the phone (three or more crackled, and nobody hears them apart: James,
+        // 10-26); the others wait a moment
+        if (st.next <= 0 && S.bird !== s && singing >= (S.bird ? 1 : 2)) st.next = .8 + Math.random() * 1.5;
         if (st.next <= 0) {
           if (S.bird !== s) singing++;
           const morning = chorus || timeOfDay(G.tod) === 'dawn';
