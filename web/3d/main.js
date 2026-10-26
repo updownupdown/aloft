@@ -33,7 +33,6 @@ import { momentsSystem } from './sys/moments.js';
 import { appRows } from './app.js';
 import { guideSystem } from './sys/guide.js';
 import { journeySystem } from './sys/journey.js';
-import { nestSystem } from './sys/nest.js';
 import { storySystem } from './sys/story.js';
 import { ruinsSystem } from './sys/ruins.js';
 import { howtoSystem } from './sys/howto.js';
@@ -79,7 +78,7 @@ import { cavesSystem } from './sys/caves.js';
 import { createLooks } from './look.js';
 
 const SYSTEMS = [speciesSystem, movesSystem, lifeSystem, clockSystem, weatherSystem, watersSystem, windsSystem, floraSystem, bushesSystem, airSystem, ringsSystem, foodSystem, findwaterSystem, aimSystem, sleepSystem, feelSystem, batterySystem, songsSystem, momentsSystem,
-  guideSystem, journeySystem, nestSystem, storySystem, ruinsSystem, howtoSystem, faunaSystem, neighboursSystem, landsSystem, seasonsSystem, glowSystem, landAirSystem, crittersSystem, huntersSystem, aimsSystem,
+  guideSystem, journeySystem, storySystem, ruinsSystem, howtoSystem, faunaSystem, neighboursSystem, landsSystem, seasonsSystem, glowSystem, landAirSystem, crittersSystem, huntersSystem, aimsSystem,
   fieldsSystem, skyDaysSystem, raptorsSystem, wingcraftSystem, stillSystem, swellsSystem, berriesSystem, cuesSystem, windCuesSystem, polesSystem,
   sealifeSystem, driftSystem, islesSystem, skyRiversSystem, nightSeaSystem, lessonsSystem, hiddenSystem, natureSystem, cavesSystem];
 
@@ -285,7 +284,7 @@ if (qs.has('fps')) G.settings.fpsCap = +qs.get('fps') || 60;
   document.addEventListener('visibilitychange', () => { if (document.hidden) { persist(); audio.suspend(); G.menu.set(true); } else audio.resume(); });
   addEventListener('pagehide', persist);
 
-  // tricks, for whoever is watching (a mate, the story): a full stoop, a wingover (a hard
+  // tricks (the story, the life goals): a full stoop, a wingover (a hard
   // bank one way then the other)
   let stooping = false, lastBank = 0, lastBankT = -9;
   function tricks() {

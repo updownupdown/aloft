@@ -6,7 +6,7 @@ import { SAY } from './hud.js';
 import { SHORT, ICON, TIP_GROUPS, tipGroup } from './tips.js';
 
 const KINDS = [
-  ['event', 'Things that happen', 'A mate, an egg, a song learned: one line every half minute at most'],
+  ['event', 'Things that happen', 'A landmark, a song learned: one line every half minute at most'],
   ['warn', 'Warnings', 'Danger, or something you tried that didn’t work'],
   ['tutorial', 'Lessons', 'The end of the first flight, and the lessons when they end'],
   ['hint', 'Nudges', 'What you could do here'],
@@ -14,7 +14,7 @@ const KINDS = [
   ['name', 'Names', 'A land, a landmark, a rainbow: a title under the compass'],
   ['next', 'The next step', 'The open lesson, or the day’s aim: a thin line under the compass'],
   ['glint', 'Things to learn', 'Something new waits by the compass: tap it to read'],
-  ['tally', 'Counts', 'Twigs, keepsakes, a catch: a few words beside the compass'],
+  ['tally', 'Counts', 'Keepsakes, a catch: a few words beside the compass'],
 ];
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const sw = (key, on, title, sub, ic, col = '') =>

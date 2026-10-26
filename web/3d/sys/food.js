@@ -9,8 +9,7 @@
 // tucked (the aim tightens, see aim.js) and the reach is longer.
 // A catch (a mouse, a worm, a fish, other prey) is held in the feet (b.carry) and eaten only when you
 // tap Eat (the action button): the hawk bends and tears at it until it is gone. Or carry it off:
-// to a branch (a calmer meal, worth more; Leave it there to cache it), or home, where it drops into
-// the nest by itself (for the chick, or kept there for later).
+// to a branch (a calmer meal, worth more; Leave it there to cache it for later).
 import { height, normalAt, forest, WATER, ih, fbm, coastDist } from '../world.js';
 import { lakeAt } from '../earth.js';
 import { mouseRich } from '../settle.js';
@@ -91,7 +90,7 @@ export function foodSystem(G) {
   const squeaks = [];   // { m, t }: marks over squeaking mice, each a moment long
   const worms = []; let wormT = 0; G.wet = 0;
   const caches = G.caches = [];   // { x, y, z, kind, food, wet, day }: catches left on branches
-  G.hud.tip('carry', () => !!b.carry && b.state !== 'fly' && !(b.eating > 0), 'Tap Eat to eat your catch here, or take off with it in your feet: on a branch it is a calmer meal, and at your nest it drops in for later.');
+  G.hud.tip('carry', () => !!b.carry && b.state !== 'fly' && !(b.eating > 0), 'Tap Eat to eat your catch here, or take off with it in your feet: on a branch it is a calmer meal, or Leave it there for later.');
   G.hud.tip('worms', () => b.state === 'ground' && worms.length > 0, 'After rain, worms come up. Tap to hop to the nearest one and pick it up, then Eat.');
   G.hunger = 1; G.thirst = 1;
   const setHunger = G.hud.meter('hunger', { label: 'food', colour: 'linear-gradient(90deg,#a8483a,#c96a4e)' });
@@ -300,7 +299,6 @@ export function foodSystem(G) {
     G.hud.tally('Kept for later: on your map', 'pin');
     G.emit('cache', caches[caches.length - 1]);
   }
-  // landing with a catch at the nest: it drops in (nest.js feeds the chick; else it keeps there);
   // landing where you left one: you pick it up again
   let noPick = null, landed = false;
   G.on('land', () => { landed = true; });
@@ -308,17 +306,9 @@ export function foodSystem(G) {
     if (!landed || b.settle > 0) return;
     landed = false;
     if (b.state !== 'perch') return;
-    const n = G.nest, atNest = n && Math.hypot(b.perch.x - n.x, b.perch.y - n.y, b.perch.z - n.z) < 3;
-    if (b.carry && atNest) {
-      const c = b.carry; b.carry = null;
-      if (G.nestDrop?.(c)) return;
-      caches.push({ x: n.x, y: n.y + .05, z: n.z, kind: c.kind, food: c.food, wet: c.wet, day: G.day + G.tod, yaw: b.yaw, nest: true });
-      G.hud.tally('In the nest, for later', 'nest'); G.emit('cache', caches[caches.length - 1]);
-      noPick = b.perch; return;
-    }
     if (!b.carry && b.perch !== noPick) {
-      const i = caches.findIndex(c => Math.hypot(c.x - b.p[0], c.y - b.p[1], c.z - b.p[2]) < (c.nest ? 3 : 1.5));
-      if (i >= 0) { const c = caches.splice(i, 1)[0]; hold(c.food, c.wet, c.kind); G.hud.tally(c.nest ? 'A meal from the nest' : 'Back in your feet', 'prey'); G.emit('cache', null); }
+      const i = caches.findIndex(c => Math.hypot(c.x - b.p[0], c.y - b.p[1], c.z - b.p[2]) < 1.5);
+      if (i >= 0) { const c = caches.splice(i, 1)[0]; hold(c.food, c.wet, c.kind); G.hud.tally('Back in your feet', 'prey'); G.emit('cache', null); }
     }
     noPick = null;
   }
@@ -354,7 +344,7 @@ export function foodSystem(G) {
     for (let i = 0; i < 8; i++) G.part([m.x + (Math.random() - .5) * .6, m.y + .5, m.z + (Math.random() - .5) * .6], [0, 1.6 + Math.random(), 0], 1.4, [1, .86, .45], .14);
     G.hud.tally('Caught a mouse', 'prey');
     G.hud.did('hunt'); G.emit('catch', { kind: 'mouse', x: m.x, z: m.z });
-    if (!G.flags.firstMouse) { G.flags.firstMouse = 1; G.hud.say('Caught! Tap Eat to eat it here, or carry it to a branch or your nest.', { kind: 'tutorial', secs: 5, icon: 'prey' }); }
+    if (!G.flags.firstMouse) { G.flags.firstMouse = 1; G.hud.say('Caught! Tap Eat to eat it here, or carry it to a branch for a calmer meal.', { kind: 'tutorial', secs: 5, icon: 'prey' }); }
   }
 
   // other prey (sys/critters.js: jackrabbits, lizards, marmots, crabs, squirrels): the same

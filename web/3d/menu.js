@@ -47,7 +47,7 @@ const UNDER = { 'Wind volume': 'Sound effects', 'Rain volume': 'Sound effects', 
 // pages that moved: Lessons (once How to play, then Tutorial) > Hints, then Settings > Messages, is Journal > Messages
 const MOVED = { 'how/hints': ['journal', 'messages', 'Messages', 40], 'play/messages': ['journal', 'messages', 'Messages', 40] };
 // Journal pages that were folded into others (10-24: Songs, Places, Things, Nest)
-const PAGE_ALIAS = { 'journal/landmarks': 'places', 'journal/lands': 'places', 'journal/finds': 'things', 'journal/guide': 'things' };
+const PAGE_ALIAS = { 'journal/landmarks': 'places', 'journal/lands': 'places', 'journal/finds': 'things', 'journal/guide': 'things', 'journal/family': 'things' };
 
 export function createMenu(G, ui) {
   ui.insertAdjacentHTML('beforeend', `
@@ -248,6 +248,6 @@ export function createMenu(G, ui) {
   if (desk()) M.group('keys').insertAdjacentHTML('beforeend', keysHtml());   // Settings > Controls > Keyboard, on desktop only (the keys: howto.js)
   G.dev = createDev(G, M);   // Settings > Advanced > Feature list (dev.js)
   G.dev.add({ id: 'menu-a', area: 'Menu and map', round: 10, title: 'The menu, tidied: Today, Map, Journal, Lessons and Settings down the rail; each section’s pages in a column beside it',
-    how: 'Open the menu: Today shows your bird, food, water, wings and health, and Next (the lesson or the day’s aim); Map shows the globe; Journal has Songs, Places, Things, Nest and Messages; Settings has Sounds, Graphics, Controls, Your bird and Advanced.' });
+    how: 'Open the menu: Today shows your bird, food, water, wings and health, and Next (the lesson or the day’s aim); Map shows the globe; Journal has Songs, Places, Things and Messages; Settings has Sounds, Graphics, Controls, Your bird and Advanced.' });
   return M;
 }

@@ -2,22 +2,22 @@
 // when the menu opens; the place says which section and page it is on (James, 2026-10-23):
 //   before 10   Today (before 7 in its Next card: lessons 3, aims 5 the day's aim; then 7 your life)
 //   10-29       not shown (the old Log: daily records were too much)
-//   30-41       Journal > Nest (nest 30, story 40)
+//   30-41       not shown (was Journal > Nest, removed 2026-10-26)
 //   42          Journal > Things: Keepsakes (the story's glinting things, the ruins' trinkets and
 //               treasures, the bottles' notes, one shelf: ruins.js)
 //   43-59       Journal > Places (landmarks 43, with the wonders starred: journey.js; lands 45: aims.js)
 //   60 on       Journal > Things too (creatures: the field guide's animals and water life)
 // Songs have their own page, Journal > Songs (page('songs')), with the field guide's other birds.
-// The Journal is Songs, Places, Things, Nest (James, 2026-10-24); six kinds of thing to find
+// The Journal is Songs, Places, Things (James, 2026-10-24; Nest removed 10-26); six kinds of thing to find
 // (songs, landmarks, lands, keepsakes, creatures, feathers), each a shelf (shelf()) but the songs
 // and the feathers, each with its count at the right of its heading (section().count()).
 // The Map has no pages: the globe fills it.
 import { icon } from './icons.js';
 
 const PAGES = {
-  songs: ['journal', 'Songs', 5], places: ['journal', 'Places', 10], things: ['journal', 'Things', 20], family: ['journal', 'Nest', 30],
+  songs: ['journal', 'Songs', 5], places: ['journal', 'Places', 10], things: ['journal', 'Things', 20],
 };
-const pageOf = o => o < 10 ? 'today' : o < 30 ? null : o < 42 ? 'family' : o < 43 ? 'things' : o < 60 ? 'places' : 'things';
+const pageOf = o => o < 10 ? 'today' : o < 42 ? null : o < 43 ? 'things' : o < 60 ? 'places' : 'things';
 // a section's heading where the page already says it
 const RETITLE = { Today: '', Lessons: '' };
 

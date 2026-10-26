@@ -173,7 +173,7 @@ export function faunaSystem(G) {
         G.audio.splash(true);
         for (let i = 0; i < 14; i++) G.part([f.x, WATER, f.z], [(Math.random() - .5) * 4, 2 + Math.random() * 3, (Math.random() - .5) * 4], 1, [.85, .92, .95], .07);
         G.emit('catch', { kind: 'fish', x: f.x, z: f.z });
-        once('firstFish', 'A fish', 'A fish! Snatched from the surface. Tap Eat, or carry it to a branch or your nest.', 'prey');
+        once('firstFish', 'A fish', 'A fish! Snatched from the surface. Tap Eat, or carry it to a branch.', 'prey');
         return;
       }
     }

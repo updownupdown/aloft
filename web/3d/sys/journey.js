@@ -1,5 +1,5 @@
 // The long game: the whole Earth to wander (earth.js), the lands (regions) and the landmarks found
-// on the way, the route flown, the years and the family tree. Writes Journal > Places > Landmarks:
+// on the way, the route flown, and the years. Writes Journal > Places > Landmarks:
 // every landmark found, newest first, the wonders starred (sys/ruins.js finds them, wonders.js
 // names them). The Map tab (map.js, made here) shows the land flown over. A year turns with your own spring (the seasons follow the latitude, so a bird that
 // crosses the equator meets spring early or late); the tropics, with no spring, count 32 days.
@@ -17,7 +17,7 @@ const placeName = (x, z) => W.placeName(x, z);
 
 export function journeySystem(G) {
   const b = G.b;
-  const J = { year: 1, yearDay: 1, family: [], yearChicks: 0, found: {}, regions: {}, route: [], box: [b.p[0], b.p[2], b.p[0], b.p[2]] };
+  const J = { year: 1, yearDay: 1, found: {}, regions: {}, route: [], box: [b.p[0], b.p[2], b.p[0], b.p[2]] };
   G.journey = J;
   G.placeName = placeName;
   // 'over the meadows, the Loire lowlands near the Old Oak'
@@ -86,10 +86,9 @@ export function journeySystem(G) {
   }
   // a year ends with the start of your own spring, or 32 days on where there is none
   function year() {
-    J.family.push({ year: J.year, mate: !!G.story?.mate, chicks: J.yearChicks, landmarks: Object.keys(J.found).length });
-    J.year++; J.yearChicks = 0; J.yearDay = G.day;
+    J.year++; J.yearDay = G.day;
     G.emit('newYear', J.year);
-    G.hud.name(`Year ${J.year}`, 'nest');
+    G.hud.name(`Year ${J.year}`, 'today');
   }
   G.on('season', s => { if (s.name === 'spring' && G.day - J.yearDay >= YEAR_DAYS / 2) year(); });
   G.on('newDay', () => { if (G.season.tropic && G.day - J.yearDay >= YEAR_DAYS) year(); });
@@ -116,7 +115,7 @@ export function journeySystem(G) {
       trace(); map.update(dt);
       if ((findT -= dt) <= 0) { findT = .5; landmarks(); regions(.5); waters(); }
     },
-    save: () => ({ waters: J.waters || {}, loops: J.loops || 0, year: J.year, yearDay: J.yearDay, family: J.family, yearChicks: J.yearChicks, found: J.found, regions: J.regions, pins: J.pins || [], route: J.route, box: J.box.map(Math.round), fog: map.save() }),
+    save: () => ({ waters: J.waters || {}, loops: J.loops || 0, year: J.year, yearDay: J.yearDay, found: J.found, regions: J.regions, pins: J.pins || [], route: J.route, box: J.box.map(Math.round), fog: map.save() }),
     load(o) { const { fog, ...rest } = o; Object.assign(J, rest); if (!J.box) J.box = [b.p[0], b.p[2], b.p[0], b.p[2]]; map.load(fog); },
   };
 }

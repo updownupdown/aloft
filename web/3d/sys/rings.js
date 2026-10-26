@@ -1,5 +1,5 @@
-// Rings of mist hang over the land in courses (world.js ringLoop): faint wreaths of mist, just
-// about visible. Each course starts low and climbs; fly through one for a burst of speed
+// Rings of mist hang over the land in courses (world.js ringLoop): wreaths of mist, made twice as
+// visible on 2026-10-26 (James: they were too hard to see). Each course starts low and climbs; fly through one for a burst of speed
 // (RING_BOOST), enough to carry the hawk up to the next, which glows a little brighter. Fly a whole
 // course in one go and it says so ('ringLoop'). The courses are laid afresh each day.
 // Each course leads somewhere (world.js: its last ring over a landmark or rising air), and the last
@@ -92,7 +92,7 @@ export function ringsSystem(G) {
         const aimed = G.aim?.ring?.id === r.id;
         let col = mix3(S.horizon, [1, 1, .98], .5 + near * .2 + (next ? .2 : 0));
         if (aimed) col = mix3(col, G.aim?.ringCol || [1, .84, .4], .4);
-        const al = Math.min(.6, .34 + near * .14 + (next ? .1 : 0) + (aimed ? .08 : 0)) * Math.min(1, (360 - d) / 60);
+        const al = Math.min(.95, 2 * (.34 + near * .14 + (next ? .1 : 0) + (aimed ? .08 : 0))) * Math.min(1, (360 - d) / 60);   // twice as visible (James, 10-26)
         // (a soft volume of mist, clouds.js ringv, denser for the way on)
         if (G.R.cloudStyle !== 'poly') { (S.props.ringv ||= []).push(r.x, r.y, r.z, r.r, r.yaw, Math.min(1, .3 + (next ? .4 : 0) + (aimed ? .3 : 0)), 0, 0); continue; }
         const c = Math.cos(r.yaw), sn = Math.sin(r.yaw), N = 30;

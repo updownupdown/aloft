@@ -47,8 +47,8 @@ export const KINDS = {
     lobes: [[0, 0, 0, 1.7, .16, 1], [.1, .13, 0, 1.2, .09, .71], [-.05, -.1, .05, 1.2, .1, .8]] },
   puff: { base: -9, sigma: .06, col: [.97, .96, .94], under: [.86, .86, .88],
     lobes: [[0, 0, 0, .7, .22, .7], [.45, .05, .2, .45, .18, .45], [-.4, .04, -.25, .5, .2, .5]] },
-  // a ring of mist (sys/rings.js, its radius the scale)
-  ringv: { base: -9, sigma: .16, col: [1, 1, .98], under: [.92, .92, .94],
+  // a ring of mist (sys/rings.js, its radius the scale); twice as dense since 10-26 (James: twice as visible)
+  ringv: { base: -9, sigma: .32, col: [1, 1, .98], under: [.92, .92, .94],
     lobes: Array.from({ length: 16 }, (_, i) => { const a = i / 16 * Math.PI * 2, w = .17 + .05 * Math.sin(i * 2.3); return [Math.cos(a), Math.sin(a), Math.sin(i * 1.7) * .05, w, w, w * .9]; }) },
   // a dust devil (sys/landair.js, its height the scale): a twisting column of grit widening upward
   // from a skirt of dust on the ground (the instance's yaw spins it)
