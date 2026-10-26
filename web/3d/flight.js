@@ -2,7 +2,8 @@
 // diving speeds you up), drag depends on the wing shape (tucked, gliding, flared), banking
 // turns, and below stall speed the nose drops. Rising air (thermals, ridges) lifts the whole
 // air mass, so it never changes airspeed. With no input the hawk trims to its best glide.
-import { height, normalAt, WATER, treesNear, TREE, perchesOf, airLift, thermalsNear, thermalCentre, solidsNear } from './world.js';
+import { height, surface, normalAt, WATER, treesNear, TREE, perchesOf, airLift, thermalsNear, thermalCentre, solidsNear } from './world.js';
+import { roofAt } from './caves.js';
 
 const g = 9.8;
 export const FLY = {
@@ -92,7 +93,7 @@ export function step(b, c, dt, E) {
 
   const sStall = FLY.stall + (FLY.stallFlare - FLY.stall) * b.flare + 2 * b.tuck - FLY.floatStall * b.float + FLY.wetStall * (b.wet || 0);
   // ground effect: skimming low over water or a flat field, the air cushions the wings and you carry
-  const gy = height(b.p[0], b.p[2]), wet = gy < WATER, agl = b.p[1] - Math.max(gy, WATER) - .35;
+  const gy = surface(b.p[0], b.p[2], b.p[1]), wet = gy < WATER, agl = b.p[1] - Math.max(gy, WATER) - .35;
   const flat = wet ? 1 : Math.max(0, (normalAt(b.p[0], b.p[2])[1] - .94) / .05);
   b.skim = agl < FLY.skimH ? Math.min(1, flat) * (1 - Math.max(0, agl) / FLY.skimH) * (1 - b.tuck) * (1 - b.flare) : 0;
   b.skimWet = wet;
@@ -244,7 +245,7 @@ function still(b, c, dt, E) {
 // the way to take off: straight ahead if the climb out clears the ground, else the nearest heading
 // either side that does, else straight down the slope
 function clearYaw(b) {
-  const ok = a => { for (const d of [2, 4, 7, 11, 16]) if (height(b.p[0] + Math.sin(a) * d, b.p[2] - Math.cos(a) * d) + .5 > b.p[1] + d * .28) return false; return true; };
+  const ok = a => { for (const d of [2, 4, 7, 11, 16]) if (surface(b.p[0] + Math.sin(a) * d, b.p[2] - Math.cos(a) * d, b.p[1]) + .5 > b.p[1] + d * .28) return false; return true; };
   if (ok(b.yaw)) return b.yaw;
   for (let k = .3; k < Math.PI; k += .3) for (const a of [b.yaw + k, b.yaw - k]) if (ok(a)) return a;
   const n = normalAt(b.p[0], b.p[2]);
@@ -257,8 +258,8 @@ function groundHop(b, E, to) {
   const a = to || b.hopAim, d = a ? Math.hypot(a[0] - b.p[0], a[2] - b.p[2]) : 0;
   if (a && d > .2) b.view = b.yaw = Math.atan2(a[0] - b.p[0], -(a[2] - b.p[2]));   // the camera comes round behind
   const step = a ? Math.min(d, 2.5) : 1.4, nx = b.p[0] + Math.sin(b.yaw) * step, nz = b.p[2] - Math.cos(b.yaw) * step;
-  const ny = height(nx, nz);
-  if (WATER - ny >= FLY.shallow) return;   // (the shallows are fine)
+  const ny = surface(nx, nz, b.p[1]);
+  if (WATER - ny >= FLY.shallow || ny > b.p[1] + .6) return;   // (nor up a wall: in a cave)   // (the shallows are fine)
   b.from = [...b.p]; b.p = [nx, Math.max(ny, WATER) + .35, nz];
   b.settle = b.settleT = .32; b.hop = .35; b.flapL = b.flapR = 0; b.ampL = b.ampR = .6;
   E.flap(.4, 0); E.hopped?.();
@@ -416,8 +417,24 @@ export function perchAhead(b) {
   return best;
 }
 
+// in a cave (caves.js): the roof overhead, and the walls either side, which turn the bird back the way
+// it came rather than lift it out on top of the hill
+function cave(b, E) {
+  const r = roofAt(b.p[0], b.p[2]);
+  if (b.inCave && (!r || b.p[1] > r.under) && height(b.p[0], b.p[2]) > b.p[1] + .6 && b.prevP) {
+    b.p[0] = b.prevP[0]; b.p[2] = b.prevP[2]; b.s *= .7;
+    if (b.t - b.lastHit > .4) { b.lastHit = b.t; E.bump(b.p, 'ground'); }
+    return;
+  }
+  if (r && b.p[1] < (r.under + r.top) / 2) {
+    b.inCave = r.cv;
+    if (b.p[1] > r.under - .45) { b.p[1] = r.under - .45; b.vy = Math.min(b.vy, 0); b.gamma = Math.min(b.gamma, 0); }
+  } else b.inCave = null;
+  b.prevP = [b.p[0], b.p[1], b.p[2]];
+}
 function ground(b, E) {
-  const gy = height(b.p[0], b.p[2]), floor = Math.max(gy, WATER) + .35;
+  cave(b, E);
+  const gy = surface(b.p[0], b.p[2], b.p[1]), floor = Math.max(gy, WATER) + .35;
   if (b.p[1] >= floor) return;
   const f = fwd(b), down = -(f[1] * b.s + b.vy + b.lift);
   if (gy < WATER) {
@@ -440,7 +457,7 @@ function ground(b, E) {
     const run = Math.max(0, gs - FLY.runS) * FLY.runOn, v = [f[0] * b.s + (b.wind?.[0] || 0), f[2] * b.s + (b.wind?.[1] || 0)], vl = Math.hypot(v[0], v[1]) || 1;
     b.state = 'ground'; b.settle = b.settleT = .3 + run * .08; b.from = null; b.landRun = run;
     if (run > .6) {
-      const to = [b.p[0] + v[0] / vl * run, b.p[2] + v[1] / vl * run], ty = height(to[0], to[1]);
+      const to = [b.p[0] + v[0] / vl * run, b.p[2] + v[1] / vl * run], ty = surface(to[0], to[1], b.p[1]);
       if (ty > WATER && Math.abs(ty - gy) < 1.5) { b.from = [...b.p]; b.p = [to[0], ty + .35, to[1]]; b.hop = .08; b.fromYaw = b.yaw; b.view = b.yaw = Math.atan2(v[0], -v[1]); }
     }
     E.land('ground'); return;

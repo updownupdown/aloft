@@ -1,6 +1,7 @@
 // The chase camera, the hawk's frame in the world, and its pose (wing beats, fold, flare,
 // feet, tail). Fills the camera, hawk and pose parts of the scene.
-import { height, WATER } from './world.js';
+import { height, surface, WATER } from './world.js';
+import { roofAt } from './caves.js';
 import { angleTo, clamp, cross, lerp, mix3, norm, smooth, store } from './util.js';
 
 export function createCamera(G) {
@@ -66,7 +67,14 @@ export function createCamera(G) {
     for (let i = 0; i < 3; i++) C.cam[i] += (want[i] - C.cam[i]) * k;
     if (b.state === 'fly' && Math.hypot(want[0] - C.cam[0], want[1] - C.cam[1], want[2] - C.cam[2]) < .05) C.still = false;
     if (b.state !== 'fly') C.still = true;
-    C.cam[1] = Math.max(C.cam[1], height(C.cam[0], C.cam[2]) + 1.1, WATER + .6);
+    const roof = roofAt(b.p[0], b.p[2]);
+    if (roof && b.p[1] < (roof.under + roof.top) / 2) {
+      // in a cave (caves.js): close behind the bird, under the roof
+      const d = [C.cam[0] - b.p[0], C.cam[1] - b.p[1], C.cam[2] - b.p[2]], l = Math.hypot(d[0], d[1], d[2]) || 1, k = Math.min(1, 3.2 / l);
+      for (let i = 0; i < 3; i++) C.cam[i] = b.p[i] + d[i] * k;
+      const r = roofAt(C.cam[0], C.cam[2]);
+      C.cam[1] = Math.max(Math.min(C.cam[1], (r ? r.under : roof.under) - .35), height(C.cam[0], C.cam[2]) + .5, WATER + .4);
+    } else C.cam[1] = Math.max(C.cam[1], surface(C.cam[0], C.cam[2], C.cam[1]) + 1.1, WATER + .6);
     if (!C.look) C.look = look.slice();
     for (let i = 0; i < 3; i++) C.look[i] += (look[i] - C.look[i]) * (b.snapCam ? 1 : Math.min(1, dt * (b.state === 'fly' ? 12 : 4)));
     b.snapCam = false;   // a travel (main.js G.travelTo): the view jumps with the bird, once

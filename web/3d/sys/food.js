@@ -101,7 +101,7 @@ export function foodSystem(G) {
   let drinking = false, sipT = 0, rustleT = 0;
   // water to drink: afloat, at the water's edge, or by a puddle (seasons.js G.puddles: 8 floats each)
   // (and the rain pools in island rock, sys/isles.js G.pools)
-  const puddleAt = (x, z, pad) => { for (const P of [G.puddles || [], G.pools || [], G.oases || []]) for (let i = 0; i < P.length; i += 8) if (Math.hypot(P[i] - x, P[i + 2] - z) < P[i + 3] + pad) return [P[i], P[i + 1], P[i + 2]]; return null; };
+  const puddleAt = (x, z, pad) => { for (const P of [G.puddles || [], G.pools || [], G.oases || [], G.tarns || []]) for (let i = 0; i < P.length; i += 8) if (Math.hypot(P[i] - x, P[i + 2] - z) < P[i + 3] + pad) return [P[i], P[i + 1], P[i + 2]]; return null; };
   // the sea is salt: only rivers, lakes, puddles and rain pools quench a thirst
   // (the great lakes are fresh, but for the salt ones: the Dead Sea, the Great Salt Lake...)
   const salt = () => coastDist(b.p[0], b.p[2]) < 30 && !puddleAt(b.p[0], b.p[2], 1.2) && (lakeAt(b.p[0], b.p[2])?.salt ?? true);
