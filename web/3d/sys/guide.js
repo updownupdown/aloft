@@ -5,7 +5,7 @@
 // in metres; cheap when already seen) and may add or rename its page with G.guide.page().
 import { SPECIES } from '../../src/songs.js';
 import { project, afterDraw, portrait } from '../shot.js';
-import { journal, esc } from '../journal.js';
+import { journal, esc, shelf } from '../journal.js';
 
 const NOTES = {
   mouse: ['Meadow vole', 'A red-tail’s favourite meal: it runs in hidden tunnels through the grass.'],
@@ -65,7 +65,8 @@ export function guideSystem(G) {
   }
 
   // the field guide has no page of its own now (James, 10-24): its other birds sit at the foot of
-  // Journal > Songs (songs.js asks G.guide.cards('bird')), its animals and water life in Journal > Things.
+  // Journal > Songs (songs.js asks G.guide.cards('bird')), its animals and water life on one shelf,
+  // Creatures, under Journal > Things.
   // Each is found or not; when doesn't matter. Found: a card with its portrait; not yet: a ? and a hint.
   const BIRDY = /eagle|hawk|owl|gull|kestrel|heron|egret|crow|raven|starling|buzzard|falcon|kite|vulture|tern|puffin|albatross|gannet|pelican|booby|frigate|swan|duck|goose|stork|crane|ibis|flamingo|penguin|parrot|cormorant/i;
   const WET = /whale|turtle|fish|seal|dolphin|shark|orca|walrus|crab|ray\b|sunfish/i;
@@ -88,8 +89,14 @@ export function guideSystem(G) {
     more[m.dataset.more] = true; const box = m.closest('.gsec3'), t = box.querySelector('h3')?.firstChild?.textContent.trim() || '';
     box.outerHTML = G.guide.cards(m.dataset.more, t);
   });
-  const sec = journal(G).section(60);
-  G.menu.onOpen(() => { for (const k in more) delete more[k]; sec.body.innerHTML = G.guide.cards('land', 'Animals') + G.guide.cards('water', 'Water life'); });
+  const sec = journal(G).section(60, 'Creatures');
+  G.menu.onOpen(() => {
+    for (const k in more) delete more[k];
+    const all = [...of('land'), ...of('water')], got = all.filter(p => p.s).length;
+    sec.count(`${got} of ${all.length}`);
+    sec.body.innerHTML = shelf(all.map(p => ({ name: p.name, found: !!p.s, pic: p.s?.src, icon: 'guide', note: p.note, hint: p.hint })))
+      + (got ? '' : '<p class="muted3">Fly close by an animal and hold it in view a moment: it is noted here, with its portrait.</p>');
+  });
 
   return {
     id: 'guide',

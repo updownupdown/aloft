@@ -165,7 +165,7 @@ export function howtoSystem(G) {
     card(['out up', 'out up'], 'Hover', 'Slow right down, then thumbs out and up: you hang on beating wings. It tires them fast.'),
     card(['ccw', 'ccw'], 'Barrel roll', 'Left thumb down and right up, then turn both a full circle anticlockwise together. Tricks like this help win a mate.'));
   cards('world',
-    card('lands', 'Lands', 'Forest, steppe, tundra, desert, rainforest: the Earth has many lands, each with its own trees and birds. Journal > Biomes fills in as you cross them.'),
+    card('lands', 'Lands', 'Forest, steppe, tundra, desert, rainforest: the Earth has many lands, each with its own trees and birds. Journal > Places fills in as you cross them.'),
     card('guide', 'The field guide', 'Fly close by an animal you have not met and it is noted in the Journal: birds under Songs, animals under Things.'));
   hintsPage(G);
   // the hawks of the Flying page fly only while it shows

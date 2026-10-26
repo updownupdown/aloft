@@ -1,10 +1,11 @@
-// The long game: the whole Earth to wander (earth.js), the countries and the landmarks found on
-// the way, the route flown, the years and the family tree. Writes the top of the Journal: where
-// you are and how much of the world you know. The Map tab (map.js, made here) shows the country
-// flown over. A year turns with your own spring (the seasons follow the latitude, so a bird that
+// The long game: the whole Earth to wander (earth.js), the lands (regions) and the landmarks found
+// on the way, the route flown, the years and the family tree. Writes Journal > Places > Landmarks:
+// every landmark found, newest first, the wonders starred (sys/ruins.js finds them, wonders.js
+// names them). The Map tab (map.js, made here) shows the land flown over. A year turns with your own spring (the seasons follow the latitude, so a bird that
 // crosses the equator meets spring early or late); the tropics, with no spring, count 32 days.
 import * as W from '../world.js';
 import { YEAR_DAYS, REGIONS, EARTH } from '../earth.js';
+import { WONDERS } from '../wonders.js';
 import { journal, esc } from '../journal.js';
 import { mapView } from './map.js';
 import { hourName } from '../dial.js';
@@ -19,18 +20,18 @@ export function journeySystem(G) {
   const J = { year: 1, yearDay: 1, family: [], yearChicks: 0, found: {}, regions: {}, route: [], box: [b.p[0], b.p[2], b.p[0], b.p[2]] };
   G.journey = J;
   G.placeName = placeName;
-  // 'over the meadows, France near the Old Oak'
+  // 'over the meadows, the Loire lowlands near the Old Oak'
   G.placeWhere = (x = b.p[0], z = b.p[2]) => {
     let lm = null, ld = 1500;
     for (const id in J.found) { const l = J.found[id], d = Math.hypot(l.x - x, l.z - z); if (d < ld) { ld = d; lm = l.name; } }
     return `over ${inSentence(placeName(x, z))}${lm ? ` near ${inSentence(lm)}` : ''}`;
   };
   G.placeNote = (x = b.p[0], z = b.p[2]) => `${G.date?.text || `Day ${G.day}`}, ${G.season.name}, ${G.placeWhere(x, z)}.`;
-  G.hud.tip('wander', () => b.state === 'fly' && G.t > 90 && Object.keys(J.regions).length < 2, 'The whole Earth is yours to wander: each country has its own birds and sights, and the Map shows where you have been. The world wraps round: fly on past the far sea and you come back to where you began.');
+  G.hud.tip('wander', () => b.state === 'fly' && G.t > 90 && Object.keys(J.regions).length < 2, 'The whole Earth is yours to wander: each land has its own birds and sights, and the Map shows where you have been. The world wraps round: fly on past the far sea and you come back to where you began.');
   let findT = 0, regionAt = '', regionT = 0;
   const map = mapView(G, J);
   // Settings > Advanced > Dev mode: progress mocked at k (0, .25, .5 or 1; dev.js), then saved and reloaded
-  // (landmarks and countries, nearest first: the whole Earth's list takes a few seconds)
+  // (landmarks and lands, nearest first: the whole Earth's list takes a few seconds)
   G.on('mock', k => {
     const all = W.landmarksNear(0, EARTH.Z0 + EARTH.H / 2, 5e4).filter(W.isNotable).sort((p, q) => Math.hypot(p.x - b.p[0], p.z - b.p[2]) - Math.hypot(q.x - b.p[0], q.z - b.p[2]));
     J.found = Object.fromEntries(all.slice(0, Math.round(k * all.length)).map(l => [l.id, { name: l.name, x: Math.round(l.x), z: Math.round(l.z), note: 'Found in a dev mock.' }]));
@@ -63,7 +64,7 @@ export function journeySystem(G) {
       G.emit('landmark', l);
     }
   }
-  // a country (earth.js REGIONS) the first time the bird flies over it, once it has held a few seconds
+  // a land (earth.js REGIONS) the first time the bird flies over it, once it has held a few seconds
   function regions(dt) {
     const r = W.regionAt(b.p[0], b.p[2]), k = r?.key || '';
     if (k !== regionAt) { regionAt = k; regionT = 0; return; }
@@ -82,26 +83,18 @@ export function journeySystem(G) {
   G.on('season', s => { if (s.name === 'spring' && G.day - J.yearDay >= YEAR_DAYS / 2) year(); });
   G.on('newDay', () => { if (G.season.tropic && G.day - J.yearDay >= YEAR_DAYS) year(); });
 
-  /* ---------- the journal ---------- */
-  const COUNT = ['no chicks', 'one chick', 'two chicks', 'three chicks'];
-  const chicks = n => COUNT[n] ?? `${n} chicks`;
-  const head = journal(G).section(10), lmSec = journal(G).section(50, 'Landmarks');
-  head.body.innerHTML = '<p class="j-trip"></p><p class="j-family"></p><p class="j-rings"></p><p class="j-sky"></p>';
-  lmSec.body.innerHTML = '<ul class="list3"></ul><p class="j-lands"></p>';
+  /* ---------- the journal: Places > Landmarks ---------- */
+  // every landmark found, newest first: the wonders starred with their story, the named landmarks,
+  // the island sights and the ice edges (James, 2026-10-24: one list; the lands flown over are the
+  // Map's to name, not a collection)
+  const lmSec = journal(G).section(43, 'Landmarks');
+  const wonderOf = name => Object.keys(WONDERS).find(k => WONDERS[k][0] === name);
   G.menu.onOpen(() => {
-    const pct = map.explored() * 100, nr = Object.keys(J.regions).length;
-    const trip = `You know ${pct < 1 ? pct.toFixed(1) : Math.round(pct)}% of the world${nr ? `, and have flown over ${nr} ${nr === 1 ? 'country' : 'countries'}` : ''}.`;
-    head.body.querySelector('.j-trip').textContent = `${G.placeNote()} ${trip}`;
-    const years = J.family.map(y => `Year ${y.year}: you${y.mate ? ' and your mate' : ''}, ${chicks(y.chicks)} fledged.`);
-    head.body.querySelector('.j-family').textContent = years.length || J.yearChicks ? `${years.join(' ')} Now year ${J.year}${J.yearChicks ? `, ${chicks(J.yearChicks)} fledged so far` : ''}.` : '';
-    // the rings flown (sys/rings.js keeps G.rings) and the whole courses of them flown
-    head.body.querySelector('.j-rings').textContent = G.rings ? `Rings of cloud flown: ${G.rings}${J.loops ? `, and ${J.loops} whole course${J.loops > 1 ? 's' : ''} of them` : ''}.` : '';
-    // the weather's notes on what the sky has shown lately (sys/weather.js)
-    head.body.querySelector('.j-sky').textContent = (G.skyNotes || []).slice(-3).join(' ');
-    const lms = Object.values(J.found).sort((a, c) => a.z - c.z);
-    const rs = Object.values(J.regions);
-    if (rs.length) lmSec.body.querySelector('.j-lands').textContent = `Countries: ${rs.map(r => r.name).join(', ')}.`;
-    lmSec.body.firstChild.innerHTML = lms.length ? lms.map(l => `<li>${esc(l.name)} <small>${esc(l.note)}</small></li>`).join('') : '<li class="none">None found yet. Rare sights wait in every country.</li>';
+    const lms = Object.values(J.found).reverse(), W = Object.keys(WONDERS), nw = W.filter(k => G.relics?.wonders?.[k]).length;
+    lmSec.count(`${lms.length} found`);
+    const row = l => { const w = wonderOf(l.name); return `<li${w ? ' class="star"' : ''}>${w ? '<i class="star3" title="A wonder">★</i>' : ''}${esc(l.name)} <small>${w ? esc(WONDERS[w][5]) + ' ' : ''}${esc(l.note)}</small></li>`; };
+    lmSec.body.innerHTML = `<p class="muted3">${nw} of ${W.length} wonders found: people built them, long ago, where the old maps put them. ★ marks one.</p>`
+      + (lms.length ? `<ul class="list3">${lms.map(row).join('')}</ul>` : '<p class="muted3">None found yet. Rare sights wait in every land: an old oak, a waterfall, a tower, a light.</p>');
   });
   G.menu.subtitle(() => { const h = hourName(G.tod); return `${h[0].toUpperCase()}${h.slice(1)} on ${G.date?.text || `day ${G.day}`}, ${G.season.name}.`; });
 

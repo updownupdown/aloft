@@ -2,15 +2,14 @@
 // pans of sea ice along the pack's edge, driftwood logs on every
 // ocean, and now and then a bottle with a note curled inside, left by people long gone. A bird can
 // stand on a berg, a pan or a log (world.js solidsNear, through env.solids); skim low over a
-// bottle to pick it up: it joins your keepsakes, and its note the Journal.
+// bottle to pick it up: it joins your keepsakes, and its note the keepsakes shelf (Journal > Things, ruins.js).
 // All of it is placed by hash in cells (the same berg is always in the same place).
 import { height, WATER, ih, env, latAt } from '../world.js';
 import { oceanAt } from '../earth.js';
 import { berg, floe, driftwood, bottle } from './oceanshapes.js';
-import { journal, esc } from '../journal.js';
 
 export const DRIFT = { bergCell: 700, bergR: 2200, floeCell: 70, floeR: 360, woodCell: 450, woodR: 700, bottleCell: 1900, bottleR: 900, refresh: 25 };
-const NOTES = [
+export const NOTES = [
   'If anyone finds this: the lamp oil is in the blue shed. Keep the light lit for us. M.',
   'Day forty. The birds come every morning now, as if they are checking on us.',
   'We are leaving the island today. The terns can have it back.',
@@ -29,6 +28,7 @@ export function driftSystem(G) {
   const b = G.b, R = G.R, H = G.hud;
   R.shape('bergT', berg(false)); R.shape('bergP', berg(true)); R.shape('floe', floe()); R.shape('drift', driftwood()); R.shape('bottle', bottle());
   const found = new Set(G.store.get('bottles3d', [])), notes = G.store.get('bottleNotes3d', []);
+  G.bottleNotes = () => notes;   // [{ note: an index into NOTES, where }] for the keepsakes shelf
   // Settings > Advanced > Dev mode: progress mocked at k (0, .25, .5 or 1; dev.js), then saved and reloaded
   G.on('mock', k => { notes.length = 0; for (let i = 0; i < Math.round(k * NOTES.length); i++) notes.push({ note: i, where: 'Found in a dev mock' }); G.store.set('bottleNotes3d', notes); });
   const once = (id, title, msg, ic, how) => { if (!G.flags[id]) { G.flags[id] = 1; G.hud.quietly(how, title, msg, ic); } };
@@ -97,14 +97,6 @@ export function driftSystem(G) {
   });
 
   // ---- bottles -----------------------------------------------------------------------------
-  const sec = journal(G).section(42, 'Messages in bottles');
-  // Dev mode (Settings > Advanced) lists every note there is, the ones not yet found greyed
-  const show = () => {
-    const got = notes.map(n => `<li>“${esc(NOTES[n.note] || '')}”<br><small>${esc(n.where || '')}</small></li>`).join('');
-    const rest = !['off', false].includes(G.store.get('devMode', 'off')) ? NOTES.map((t, i) => notes.some(n => n.note === i) ? '' : `<li class="unfound3">“${esc(t)}”<br><small>Dev mode: not found yet</small></li>`).join('') : '';
-    sec.body.innerHTML = got || rest ? `<ul class="bottles3">${got}${rest}</ul>` : '<p class="muted3">None yet. They drift on every ocean; skim low over one to pick it up.</p>';
-  };
-  show(); G.menu?.onOpen?.(show);
   function pick(o) {
     found.add(o.id); G.store.set('bottles3d', [...found]);
     notes.push({ note: o.note, where: G.placeNote?.(o.x, o.z) || '' }); G.store.set('bottleNotes3d', notes);
@@ -114,7 +106,7 @@ export function driftSystem(G) {
     H.glint('A bottle', `A bottle, with a note curled inside: “${NOTES[o.note]}”`, 'keepsake');
   }
 
-  G.dev?.add({ id: 'drift', title: 'Icebergs, sea ice, driftwood and bottles', area: 'World', how: 'Bergs in the cold seas and down the North Atlantic, pans of ice near the poles, logs and bottles on every ocean. Stand on a berg, a pan or a log; skim low over a bottle for its note (Journal > Log). Go puts you by the nearest berg, else log, else bottle.',
+  G.dev?.add({ id: 'drift', title: 'Icebergs, sea ice, driftwood and bottles', area: 'World', how: 'Bergs in the cold seas and down the North Atlantic, pans of ice near the poles, logs and bottles on every ocean. Stand on a berg, a pan or a log; skim low over a bottle for its note (Journal > Things). Go puts you by the nearest berg, else log, else bottle.',
     go: () => {
       const pickO = L => L.sort((a, q) => Math.hypot(a.x - b.p[0], a.z - b.p[2]) - Math.hypot(q.x - b.p[0], q.z - b.p[2]))[0];
       const o = pickO(list.bergs) || pickO(list.woods) || pickO(list.bottles); if (!o) return H.reply('Nothing drifting near', 2);

@@ -613,23 +613,24 @@ export function perchesOf(t) {
 // end of the journey. { id, name, kind, x, y, z, r, h, yaw }.
 // The giant oaks, willows and redwoods are trees too (see treesIn), so they can be perched on.
 export const LM_CELL = 1300;
+// named by what a bird sees, never by who used it (James, 2026-10-24: no shepherds, rangers or fire watchers)
 const LM_NAMES = {
   oak: ['The Old Oak', 'The Elder Oak', 'Grandfather Oak', 'The Hollow Oak'],
   stones: ['The Standing Stones', 'The Heron Stones', 'The Grey Stones', 'The Nine Maidens'],
   redstones: ['The Red Stones', 'The Sun Stones', 'The Sand Circle'],
-  cairn: ['The Shepherd\'s Cairn', 'The High Cairn', 'The Wind Cairn'],
+  cairn: ['The Hilltop Cairn', 'The High Cairn', 'The Wind Cairn'],
   summit: ['The Summit Cairn', 'The Snow Crown', 'The Eagle\'s Peak'],
-  tower: ['The Ruined Tower', 'The Watchtower', 'The Lonely Tower'],
-  falls: ['Silver Falls', 'The Long Falls', 'Mist Falls', 'The Bridal Veil'],
+  tower: ['The Ruined Tower', 'The Grey Tower', 'The Lonely Tower'],
+  falls: ['Silver Falls', 'The Long Falls', 'Mist Falls', 'The White Veil'],
   lighthouse: ['The Lighthouse', 'The North Light', 'Gull Point Light'],
   willow: ['The Old Willow'],
   volcano: ['The Fire Mountain', 'The Smoking Hill', 'Ember Peak'],
   arch: ['The Great Arch', 'The Sky Bridge', 'The Window Rock'],
-  giant: ['The Grandfather Redwood', 'The Tallest Tree', 'The Cathedral Tree'],
+  giant: ['The Grandfather Redwood', 'The Tallest Tree', 'The Pillar Tree'],
   karst: ['The Stone Forest', 'The Hundred Towers'], saltflat: ['The White Pan', 'The Salt Mirror'],
   badlands: ['The Painted Hills', 'The Striped Hills'], desert: ['The Singing Dunes', 'The Golden Sea'],
-  barn: ['The Old Barn', 'The Red Barn', 'The Owl Barn', 'The Hay Barn'], lookout: ['The Fire Lookout', 'The Ranger\'s Lookout', 'Pine Watch'],
-  windmill: ['The Old Windmill', 'The Iron Mill', 'The Wind Pump'], stack: ['The Old Man', 'The Needle', 'The Gull Stack', 'The Lone Stack'],
+  barn: ['The Old Barn', 'The Red Barn', 'The Owl Barn', 'The Long Barn'], lookout: ['The High Lookout', 'The Ridge Lookout', 'Pine Watch'],
+  windmill: ['The Old Windmill', 'The Iron Mill', 'The Wind Pump'], stack: ['The Grey Stack', 'The Needle', 'The Gull Stack', 'The Lone Stack'],
 };
 const SIZE = { oak: [40, 14], willow: [30, 12], giant: [70, 12], stones: [4, 9], cairn: [3, 2], tower: [22, 5], falls: [0, 6], lighthouse: [26, 4], volcano: [0, 240], arch: [30, 16], sight: [0, 260], barn: [9, 8], lookout: [17, 4], windmill: [13, 3], stack: [30, 4] };
 const lmCache = new Map();

@@ -12,7 +12,7 @@ import { icon, birdKey } from '../icons.js';
 import { clamp, lerp, angleTo } from '../util.js';
 
 export const HEALTH_START = .35;
-const KEEPSAKES = ['blue jay feather', 'snail shell', 'smooth white pebble', 'curl of birch bark', 'robin’s eggshell', 'tuft of thistledown', 'acorn cap', 'heron feather'];
+export const KEEPSAKES = ['blue jay feather', 'snail shell', 'smooth white pebble', 'curl of birch bark', 'robin’s eggshell', 'tuft of thistledown', 'acorn cap', 'heron feather'];
 const KC = 420;   // one keepsake maybe in each cell this many metres across
 const COURT = { need: .62, time: 75, keep: 5, songs: 5, tricks: 8 };
 // your mate and young are always your own kind, whichever bird you fly now (Settings > Bird):
@@ -153,18 +153,18 @@ export function storySystem(G) {
   }
   G.on('wrap', dx => { for (const k of kin) k.p[0] += dx; });
   G.on('fledged', () => addKin('young', 16 + kin.filter(k => k.kind === 'young').length * 5));
-  G.on('newYear', () => { for (const k of kin) if (k.kind === 'young') k.leave = .01; G.hud.glint('The young leave', 'Last year’s young are grown, and fly off to find their own country.', birdKey(BIRD)); });
+  G.on('newYear', () => { for (const k of kin) if (k.kind === 'young') k.leave = .01; G.hud.glint('The young leave', 'Last year’s young are grown, and fly off to find lands of their own.', birdKey(BIRD)); });
 
   // ---- the journal ---------------------------------------------------------------------------
-  // Journal > Nest and family: your mate, or what wins one (four bars and what would help most),
-  // then the keepsakes you carry
+  // Journal > Nest: your mate, or what wins one (four bars and what would help most); the keepsakes
+  // themselves are a shelf under Journal > Things (ruins.js)
   const sec = journal(G).section(40, 'Your mate');
   sec.el.classList.add('fam3');
-  sec.body.innerHTML = '<p class="fnote3"></p><ul class="court3"></ul><p class="ftip3"></p><div class="keeps3"></div>';
+  sec.body.innerHTML = '<p class="fnote3"></p><ul class="court3"></ul><p class="ftip3"></p>';
   const bar = (ic, t, v, label) => `<li><span class="si3">${icon(ic)}</span><b>${t}</b><span class="cb3"><i style="width:${Math.round(Math.min(1, v) * 100)}%"></i></span><em>${label}</em></li>`;
   G.menu.onOpen(() => {
     const q = c => sec.body.querySelector(c), p = parts(), songs = G.learned?.size || 0;
-    sec.head.textContent = St.mate ? 'Your mate' : 'Finding a mate';
+    sec.head.firstChild.textContent = St.mate ? 'Your mate' : 'Finding a mate';
     q('.fnote3').textContent = St.mate ? `Met ${St.mate.note.replace(/\.$/, '').replace(/^Day/, 'on day')}, your mate flies with you and brings the chick a meal now and then.`
       : `In spring a${'aeiou'.includes(kind()[0][0]) ? 'n' : ''} ${kind()[0]} may come circling up to look you over. Win it with ${show()}, keepsakes, songs and acrobatics.`;
     q('.court3').innerHTML = St.mate ? '' : [
@@ -174,8 +174,6 @@ export function storySystem(G) {
       bar('stoop', 'Acrobatics', p.acrobatics, `${Math.min(St.tricks, COURT.tricks)} of ${COURT.tricks}`),
     ].join('');
     q('.ftip3').textContent = St.mate ? '' : tip();
-    // names: things people left (ruins.js)
-    q('.keeps3').innerHTML = St.keepsakes.length ? `<h4>Keepsakes</h4><div>${St.keepsakes.map(k => `<span>${esc(KEEPSAKES[k] ?? k)}</span>`).join('')}</div>` : '';
   });
 
   // Settings > Advanced > Dev mode: progress mocked at k (0, .25, .5 or 1; dev.js), then saved and reloaded
