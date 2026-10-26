@@ -95,7 +95,7 @@ export function startOf(bird) {
 }
 
 export function start(canvas, ui) {
-  const gl = createGL(canvas);
+  const gl = createGL(canvas, !/[?&]aa=0/.test(location.search));   // (?aa=0: no multisampling, to measure what it costs)
   if (!gl) { ui.innerHTML = '<div class="card3"><h1>Tiercel</h1><p>This browser has no WebGL2, which Tiercel needs. Try Chrome or a newer phone browser.</p></div>'; return; }
   const R = createRenderer(gl), input = createInput(canvas);
   const audio = createAudio(), music = createMusic(audio);

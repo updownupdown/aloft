@@ -1,6 +1,6 @@
 // Small WebGL2 helpers and 4x4 matrix maths (column-major, like GL). No library.
-export function createGL(canvas) {
-  const gl = canvas.getContext('webgl2', { antialias: true, alpha: false, powerPreference: 'high-performance' });
+export function createGL(canvas, antialias = true) {
+  const gl = canvas.getContext('webgl2', { antialias, alpha: false, powerPreference: 'high-performance' });
   if (!gl) return null;
   gl.enable(gl.DEPTH_TEST);
   gl.enable(gl.CULL_FACE);
