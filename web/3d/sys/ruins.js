@@ -12,7 +12,9 @@ import { railsNear } from '../rail.js';
 import { wondersNear, WONDERS } from '../wonders.js';
 import * as WS from './wondershapes.js';
 import * as SS from './seashapes.js';
-import { journal, esc } from '../journal.js';
+import { journal, esc, shelf } from '../journal.js';
+import { KEEPSAKES } from './story.js';
+import { NOTES as BOTTLE_NOTES } from './drift.js';
 
 const DRAW = 650, NEST_R = 3.2;
 const cap = s => s[0].toUpperCase() + s.slice(1);
@@ -140,20 +142,28 @@ export function ruinsSystem(G) {
   }
 
   // ---- the journal ----------------------------------------------------------------------------
-  const sec = journal(G).section(42, 'Things people left'), wsec = journal(G).section(43, 'Wonders');
-  sec.body.innerHTML = '<p class="j-relic"></p><ul class="list3"></ul>';
+  // Journal > Things > Keepsakes (James, 2026-10-24): one shelf for everything that ends up on the
+  // rim of a nest: the glinting things in the grass (story.js), the trinkets by the old doorsteps,
+  // the one-of-a-kind treasures (starred, with their story), and the notes from bottles (drift.js)
+  const sec = journal(G).section(42, 'Keepsakes');
+  const capA = n => n.replace(/^(a|an|the) /i, '').replace(/^./, c => c.toUpperCase());
   G.menu.onOpen(() => {
-    const T = Object.keys(St.treasures), all = Object.keys(M.TREASURES).length;
-    const counts = {}; for (const k of St.trinkets) counts[k] = (counts[k] || 0) + 1;
-    const tr = Object.entries(counts).map(([k, n]) => n > 1 ? `${M.TRINKETS[k].replace(/^an? /, '')} ×${n}` : M.TRINKETS[k].replace(/^an? /, ''));
-    sec.body.querySelector('.j-relic').textContent = (St.trinkets.length || T.length)
-      ? `Treasures: ${T.length} of ${all}. Trinkets: ${tr.length ? tr.join(', ') : 'none yet'}.${St.nest.length ? ` In your nest: ${St.nest.length} of them.` : ''}${St.kept.length ? ` ${St.kept.length} waiting to go in a nest.` : ''}`
-      : 'Nobody lives in the old farms and villages now. Things they left still glint by the doorsteps and wells: land beside one to take it.';
-    // the wonders found, each with its line; the rest only counted (a list of question marks said nothing)
-    const W = Object.keys(WONDERS), got = W.filter(k => St.wonders[k]);
-    wsec.body.innerHTML = `<p>${got.length} of ${W.length} found. People built them, long ago, where the old maps put them.</p>`
-      + (got.length ? `<ul class="list3">${got.map(k => `<li>${esc(WONDERS[k][0])} <small>${esc(WONDERS[k][5])}</small></li>`).join('')}</ul>` : '');
-    sec.body.querySelector('ul').innerHTML = T.map(k => `<li>${esc(M.TREASURES[k][0])} <small>${esc(M.TREASURES[k][2])} Found on day ${St.treasures[k].day}${St.treasures[k].place ? `, at ${esc(St.treasures[k].place)}` : ''}.</small></li>`).join('');
+    const K = G.story?.keepsakes || [], kc = {}, tc = {};
+    for (const k of K) if (typeof k === 'number') kc[k] = (kc[k] || 0) + 1;
+    for (const k of St.trinkets) tc[k] = (tc[k] || 0) + 1;
+    const notes = G.bottleNotes?.() || [];
+    const items = [
+      ...KEEPSAKES.map((n, i) => ({ name: capA(n), found: !!kc[i], n: kc[i], icon: 'keepsake' })),
+      ...Object.entries(M.TRINKETS).map(([k, n]) => ({ name: capA(n), found: !!tc[k], n: tc[k], icon: 'keepsake' })),
+      ...Object.entries(M.TREASURES).map(([k, [n, , story]]) => { const f = St.treasures[k]; return { name: capA(n), star: true, found: !!f, icon: 'keepsake', note: f ? `${story} Found on day ${f.day}${f.place ? `, at ${f.place}` : ''}.` : '' }; }),
+      // a bottle's note, named by its first words: “If anyone finds this…”
+      ...BOTTLE_NOTES.map((t, i) => { const f = notes.find(q => q.note === i); return { name: f ? `“${t.split(' ').slice(0, 4).join(' ').replace(/[.,;:]$/, '')}…”` : 'A note in a bottle', found: !!f, icon: 'keepsake', note: f ? `“${t}” ${f.where || ''}` : '' }; }),
+    ];
+    const got = items.filter(i => i.found).length;
+    sec.count(`${got} of ${items.length}`);
+    sec.body.innerHTML = shelf(items)
+      + (got ? (St.nest.length || St.kept.length ? `<p class="muted3">${St.nest.length ? `${St.nest.length} of them in your nest.` : ''}${St.kept.length ? ` ${St.kept.length} waiting to go in a nest.` : ''}</p>` : '')
+        : '<p class="muted3">Rare things glint in the grass, and by the doorsteps and wells of the old farms and villages: land beside one to take it. Bottles with notes drift on every ocean. All of it goes to the rim of your nest.</p>');
   });
 
   // the feature list (Settings > Advanced): each with a Try it that flies you there
@@ -169,7 +179,7 @@ export function ruinsSystem(G) {
       go: () => { const S = nearest(settlementsNear(b.p[0], b.p[2], 9000, false).filter(S => S.kind === 'drowned')); if (S) toward(S, 70, 30); } },
     { id: 'r8-chimes', title: 'Wind chimes on a few porches', how: 'Land by a cottage door with a chime: it rings in gusts, in the Valley’s key.', round: 'R8 B4',
       go: () => { const bd = nearest(settlementsNear(b.p[0], b.p[2], 4000, false).flatMap(S => S.build.filter(chimeAt))); if (bd) { const c = chimeAt(bd); toward({ x: c[0], z: c[2] }, 35, 10); } } },
-    { id: 'wonders', title: 'Wonders where they stood on Earth', how: 'Find the Eiffel Tower, the Great Wall, the Statue of Liberty and more; Journal > Places lists them.', round: 'Earth',
+    { id: 'wonders', title: 'Wonders where they stood on Earth', how: 'Find the Steel Tower, the Long Wall, the Green Statue and more; Journal > Places lists them, starred.', round: 'Earth',
       go: () => { const L = Object.keys(WONDERS).map(k => wondersNear(b.p[0], b.p[2], 1e5).find(W => W.key === k)).filter(Boolean), W = nearest(L); if (W) toward(W, 260, 70); } },
     { id: 'regional-ruins', title: 'Ruins built the way each region built', how: 'Whitewashed crofts in Scotland and Ireland, log cabins in the north, stilt houses in swamps, mud brick in dry lands, clapboard in America.', round: 'Earth',
       go: () => { const S = nearest(settlementsNear(b.p[0], b.p[2], 6000, false).filter(S => S.style && S.style !== 'stone')); if (S) toward(S, 80, 25); } },

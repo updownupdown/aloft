@@ -13,7 +13,6 @@ import { createDial } from '../dial.js';
 import { icon } from '../icons.js';
 import { EARTH, wrapX, latLon, toXZ, declination } from '../earth.js';
 import { createGlobe, prebake } from '../globe.js';
-import { FEATHER } from './aims.js';
 
 const CELL = 100;                        // fog cells, metres
 const SEE = [160, 2.2, 520];             // clearing radius: base, per metre of height, most
@@ -119,14 +118,14 @@ export function mapView(G, J) {
       }
     }
   });
-  // top left: how much is known, the feathers, the biomes and the landmarks found, each of how many
-  // (biomes and landmarks a way to their Journal page)
+  // top left: how much is known, the lands and the landmarks found, each of how many (a way to
+  // their Journal page); the feathers are Today's and the Lessons' (James, 2026-10-24)
   sum.addEventListener('click', e => { const b = e.target.closest('[data-go]'); if (b) G.menu.set(true, 'journal', b.dataset.go); });
   const tally = () => {
     const pct = explored() * 100, L = G.collection?.(), found = Object.keys(J.found || {}).length;
-    const row = (ic, n, of, word, go) => `<li${go ? ` data-go="${go}" role="button"` : ''}>${icon(ic)}<span>${word}</span><b>${n}<span>/${of}</span></b></li>`;
-    sum.innerHTML = `<div class="far3"><span><i style="width:${Math.max(2, Math.round(pct))}%"></i></span><small>${pct < 1 ? pct.toFixed(2) : Math.round(pct)}% of the world explored</small></div>
-      <ul class="tally3">${L ? row('feather', L.feathers, FEATHER.most, 'Feathers') + row('lands', L.lands, L.of, 'Biomes', 'lands') : ''}${row('landmarks', found, lmTotal || '…', 'Landmarks', 'places')}</ul>`;
+    const row = (ic, n, of, word, go) => `<li${go ? ` data-go="${go}" role="button"` : ''}>${icon(ic)}<span>${word}</span><b>${n}${of ? `<span>/${of}</span>` : ''}</b></li>`;
+    sum.innerHTML = `<div class="far3"><span><i style="width:${Math.max(2, Math.round(pct))}%"></i></span><small>${pct < .1 ? 'Nothing explored yet' : `${pct < 1 ? pct.toFixed(1) : Math.round(pct)}% of the world explored`}</small></div>
+      <ul class="tally3">${L ? row('lands', L.lands, L.of, 'Lands', 'places') : ''}${row('landmarks', found, lmTotal, 'Landmarks', 'places')}</ul>`;
   };
   G.on('menuTab', id => {
     open = id === 'map';
