@@ -115,7 +115,7 @@ function cell(i, j) {
       const p = P[k], q = P[k + 1], yaw = Math.atan2(q.z - p.z, q.x - p.x), side = ih(i, j, 807) < .5 ? -1 : 1;
       const nx = -Math.sin(yaw) * side, nz = Math.cos(yaw) * side;
       R.station = { id: 's' + i + '_' + j, x: p.x + nx * 9, z: p.z + nz * 9, y: p.g, yaw: yaw + (side < 0 ? Math.PI : 0), px: p.x + nx * 3.7, pz: p.z + nz * 3.7, lineYaw: yaw };
-      R.lms.push({ id: 'st' + i + '_' + j, name: 'The old station', kind: 'station', x: p.x, y: p.g, z: p.z, r: 25, h: 6, yaw });
+      R.lms.push({ id: 'st' + i + '_' + j, name: 'The empty station', kind: 'station', x: p.x, y: p.g, z: p.z, r: 25, h: 6, yaw });
       for (const [n, v] of [[0, 0], [1, ih(i, j, 808) < .6 ? 1 : 0]]) {
         const u = 3 + n * 10, a = P[k + 1];
         R.cars.push({ x: p.x + Math.cos(yaw) * u, z: p.z + Math.sin(yaw) * u, y: p.g + (a.g - p.g) * u / STEP, yaw, v, id: 'c' + i + '_' + j + n });

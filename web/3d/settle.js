@@ -52,7 +52,9 @@ export const DIM = {
 // the walls left standing, by variant: 0 roofed (sagging, mossy), 1 roof fallen in, 2 a shell
 export const WALL_LEFT = [1, 1, .62];
 const NAME_A = ['Ash', 'Brack', 'Thorn', 'Hollin', 'Wren', 'Elder', 'Fern', 'Marl', 'Rush', 'Haw', 'Lark', 'Sallow', 'Alder', 'Briar', 'Cobble', 'Linden', 'Otter', 'Rook', 'Heron', 'Bramble'];
-const NAME_B = ['ford', 'by', 'combe', 'ley', 'wick', 'stead', 'thwaite', 'hope', 'den', 'ton', 'well', 'field', 'mere', 'holt'];
+// a tree or a bird, then a landscape word (James, 2026-10-24: no settlement words, no Farm or Fold:
+// a bird names the place by its ford, combe or mere)
+const NAME_B = ['ford', 'combe', 'ley', 'hope', 'den', 'well', 'field', 'mere', 'holt'];
 const nameAt = (gx, gz) => NAME_A[Math.floor(ih(gx, gz, 641) * NAME_A.length)] + NAME_B[Math.floor(ih(gx, gz, 642) * NAME_B.length)];
 
 // ---- placing ---------------------------------------------------------------------------------
@@ -82,7 +84,7 @@ function footing(x, z, yaw, d) {
 
 function layout(kind, x, z, gx, gz) {
   const id = 's' + gx + '_' + gz, h = n => ih(gx, gz, 650 + n), yaw0 = h(0) * 6.283, c0 = Math.cos(yaw0), s0 = Math.sin(yaw0);
-  const S = { id, kind, name: nameAt(gx, gz) + ({ farm: ' Farm', fold: ' Fold' }[kind] || ''), x, y: height(x, z), z, yaw: yaw0, build: [], fences: [], spots: [], lanes: [] };
+  const S = { id, kind, name: nameAt(gx, gz), x, y: height(x, z), z, yaw: yaw0, build: [], fences: [], spots: [], lanes: [] };
   const at = (u, w) => [x + c0 * u - s0 * w, z + s0 * u + c0 * w];
   const variant = (n, roofed = .5) => (h(n) < roofed ? 0 : h(n) < roofed + (1 - roofed) * .6 ? 1 : 2);
   const put = (k, px, pz, yaw, v = 0) => {
@@ -232,7 +234,7 @@ function drownedAt(gx, gz) {
         if (py < -6.4 || py > -5) continue;
         S.build.push({ kind: 'cottage', x: px, y: py, z: pz, yaw: Math.atan2(-(x - px), z - pz), v: ih(gx * 5 + k, gz, 734) < .4 ? 0 : 1 + (ih(gx, gz * 5 + k, 735) < .5), id: S.id + '_' + S.build.length, under: true });
       }
-      S.lm = { id: 'v' + S.id, name: 'The drowned church of ' + nm, kind: 'drowned', x, y: 0, z, r: 20, h: 16, yaw: 0 };
+      S.lm = { id: 'v' + S.id, name: 'The drowned spire at ' + nm, kind: 'drowned', x, y: 0, z, r: 20, h: 16, yaw: 0 };
     }
   }
   drownCache.set(key, S);

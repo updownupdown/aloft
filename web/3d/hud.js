@@ -25,6 +25,7 @@ export const SAY = {
   name: { col: '#ffffff', icon: 'landmarks' },      // a place or a moment: a thin title under the compass
   glint: { col: '#ffe9b0', icon: 'how' },           // something new to learn: an icon to tap beside the compass
   tally: { col: '#ffffff', icon: 'done' },          // a count or a confirmation: a few words, then gone
+  next: { col: '#ffffff', icon: 'aim' },            // the next step: the open lesson or the day's aim, a thin line under the compass
 };
 // the pace (James, 2026-10-24: one message per 30 s of play): one piece of news every `gap`
 // seconds of play, whichever kind it is (a line, a tip, a glint, a name); warn, reply, song,
@@ -62,6 +63,10 @@ export function createHud(G, ui, input) {
   // now: a lesson's glint, not held back by the pace
   H.glint = (title, text, ic, now) => H.say(text, { kind: now ? 'lesson' : 'glint', title, icon: ic });
   H.tally = (text, ic) => H.say(text, { kind: 'tally', icon: ic });
+  // the next step under the compass (quiet.js): who is 'lesson' or 'aim'; text null clears it
+  H.next = (who, text, sub) => quiet.next(who, text, sub);
+  H.nextDone = who => quiet.nextDone(who);
+  H.nextRest = () => quiet.nextRest();
   H.reply = (msg, secs = 3) => H.say(msg, { kind: 'reply', secs });
   // a first-time line by its level: a glint (default), a name and a glint ('n'), a warning ('w'), a tally ('t')
   // Once read, a notice's glint never comes again (James, 2026-10-24: 'Glass-off' each evening was

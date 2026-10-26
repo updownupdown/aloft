@@ -10,8 +10,8 @@
 // companion hawk flies to the thing (sys/fauna.js), and a task with a new move shows its thumbs a
 // few seconds. Until eating, drinking and sleeping are learned, hunger and thirst
 // run at half speed and health holds (G.ease, read by food.js and story.js). A tip stays quiet
-// until its lesson is done (hud.js asks G.lessons.quiet). The menu's Tutorial section (James,
-// 2026-10-24) has it all: the Overview lists the chapters in order (the first flight is Flying),
+// until its lesson is done (hud.js asks G.lessons.quiet). The menu's Lessons section (James,
+// 2026-10-24; 'Tutorial' till 10-24) has it all: All lessons lists the chapters in order (the first flight is Flying),
 // each with its progress and Replay; each chapter's own page (howto.js) shows its lessons ticked,
 // with Practise, above the cards that explain it. The payoff: a feather for the first flight and
 // for each chapter finished, once (G.feather, sys/aims.js: each makes the wings last longer).
@@ -41,7 +41,7 @@ const STEPS = [
 ];
 
 // ---- the lessons --------------------------------------------------------------------------
-// a chapter: title, its page in the Tutorial (howto.js PAGES), icon, its tasks. A task: id, text, say (when it
+// a chapter: title, its page under Lessons (howto.js PAGES), icon, its tasks. A task: id, text, say (when it
 // opens), on: an event that does it (ok: a test of the event's argument), or poll(dt, c); move: the
 // thumbs it teaches [left, right, name, line] (the coach shows them until done once); go: where the companion
 // flies (a function of the bird, below), dusk: only toward night
@@ -81,7 +81,7 @@ const CHAPTERS = [
     { id: 'barrel', text: 'A barrel roll', say: 'Left thumb down and right up, then turn both a full circle anticlockwise together: a roll.', on: 'trick', ok: k => k === 'barrel', move: ['ccw', 'ccw', 'Barrel roll', 'Left down, right up, then both round a full circle anticlockwise.'] },
   ] },
   { title: 'The wide world', page: 'world', icon: 'south', tasks: [
-    { id: 'guide', text: 'Add a page to the field guide', say: 'Fly close by an animal you have not seen before: it gets a page in the Guide.', on: 'sighted' },
+    { id: 'guide', text: 'Add a page to the field guide', say: 'Fly close by an animal you have not seen before: it gets a page under Journal > Things.', on: 'sighted' },
     { id: 'land', text: 'Fly over a new land', say: 'The Earth has many lands: forest, steppe, tundra, desert. Fly until you cross into a new one.', on: 'newLand' },
   ] },
 ];
@@ -157,7 +157,7 @@ export function lessonsSystem(G) {
   // back to when a first flight flown again ends
   // paid: the feathers given (flight, and chapters by index); replay: a chapter played again
   const S = { stage: G.fresh ? 'flight' : 'done', step: 0, done: {}, practice: null, replay: null, after: 'learn', intro: 0, paid: {} };
-  let hold = null, prog = 0, flaps = 0, okT = 0, stepT = 0, cur = null, openT = 0, goT = 0, sent = false, coachT = 0, count = 0, introT = 0;
+  let hold = null, prog = 0, flaps = 0, okT = 0, stepT = 0, cur = null, openT = 0, goT = 0, sent = false, coachT = 0, count = 0, introT = 0, showMe = false;
 
   // ---- the HUD: hidden in the first flight, all of it after ----------------------------------
   function classes() {
@@ -230,7 +230,7 @@ export function lessonsSystem(G) {
     card.innerHTML = `<h2>${icon('how')}Lessons</h2>
       <p>You can fly${S.paid.flight ? ', and that earned your first feather: each feather makes your wings last longer' : ''}. Now a few small lessons teach the rest, one at a time: eating, drinking and rest first, then rising air, finding your way, songs, a nest and more. Finish a chapter for another feather.</p>
       <div class="lfirst3">${icon(CHAPTERS[t.ch].icon)}<span><small>First</small><b>${esc(t.text)}</b><span>${esc(t.say)}</span></span></div>
-      <p>Each new lesson shows as a short line at the top of the screen. All of them, ticked as you go, are in the menu: under <b>Today</b>, and in the <b>Tutorial</b>. Nothing is required: fly as you like.</p>
+      <p>The open lesson stays as a thin line under the compass. All of them, ticked as you go, are in the menu: the next under <b>Today</b>, and all of them under <b>Lessons</b>. Nothing is required: fly as you like.</p>
       <div class="lbtns3"><button data-i="go" class="main3">Start</button><button data-i="all">See all lessons</button><button data-i="skip">No lessons, thanks</button></div>`;
     veil.classList.remove('hidden');
   }
@@ -250,12 +250,15 @@ export function lessonsSystem(G) {
     const ch = CHAPTERS[t.ch];
     H.tally(`Lesson: ${t.text}`, ch.icon);
     H.glint(`Lesson: ${t.text}`, t.say, ch.icon, true);   // the tutorial is not held back by the pace (hud.js)
+    // and the next step, a thin line under the compass while the lesson is open (quiet.js; James, 2026-10-24)
+    H.next?.('lesson', t.text, t.go && G.companion ? 'your companion shows the way' : '');
     coachT = t.move ? 8 : 0;
   }
   function complete(t, quiet) {
     S.done[t.id] = 1;
     if (cur === t) {
       if (!quiet) { H.tally(`Done: ${t.text}`, 'check'); G.audio.ring?.(); }
+      H.nextDone?.('lesson');
       cur = null; coach.hide(); S.practice = null; openT = 3;
     }
     if (CHAPTERS[t.ch].tasks.every(q => S.done[q.id])) {
@@ -271,12 +274,12 @@ export function lessonsSystem(G) {
     G.feather?.(title);
   }
   function finish() {
-    S.stage = 'done'; cur = null; coach.hide(); classes();
+    S.stage = 'done'; cur = null; coach.hide(); classes(); H.next?.('lesson', null);
     H.say('That is every lesson. From now on each day offers one aim under Today, each worth a feather.', { kind: 'tutorial', secs: 7, icon: 'check' });
   }
   function skipAll() {
-    S.stage = 'done'; hold = null; cur = null; S.practice = null; S.replay = null; S.done.flight = 1; coach.hide(); classes();
-    H.say('Lessons skipped. The Tutorial, in the menu, has them all whenever you want them.', { kind: 'tutorial', secs: 5 });
+    S.stage = 'done'; hold = null; cur = null; S.practice = null; S.replay = null; S.done.flight = 1; coach.hide(); classes(); H.next?.('lesson', null);
+    H.say('Lessons skipped. Lessons, in the menu, has them all whenever you want them.', { kind: 'tutorial', secs: 5 });
   }
   // an event can tick any task not yet done (doing things ahead counts), the open one aloud
   for (const ev of new Set(TASKS.filter(t => t.on).map(t => t.on))) G.on(ev, (...a) => {
@@ -310,7 +313,7 @@ export function lessonsSystem(G) {
       const dusk = G.tod > .68 && G.tod < .78;
       if (b.state === 'fly' && !G.companion?.busy && (t.dusk ? dusk : period(G.tod) === 'day')) {
         const pts = t.go(b);
-        if (pts) { sent = true; G.companion?.fly(pts, 13, () => {}); }
+        if (pts) { sent = true; G.companion?.fly(pts, 13, () => {}); if (showMe) { showMe = false; H.tally('Your companion shows the way', CHAPTERS[t.ch].icon); } }
       }
     }
   }
@@ -321,7 +324,19 @@ export function lessonsSystem(G) {
     get flying() { return S.stage === 'flight'; },
     quiet: id => S.stage === 'flight' || (S.stage === 'learn' && TIP_LESSON[id] && !S.done[TIP_LESSON[id]]),
     replay: () => { G.menu.set(false); startFlight(); },
+    // Today's Next card (today.js): Show me opens the lesson now and sends the companion to the thing
+    // as soon as you fly; Later rests the line under the compass till the next take-off
+    showMe() {
+      const t = nextTask(); if (!t) return;
+      if (cur !== t) open(t);
+      goT = 0; sent = false; showMe = true;
+      G.menu.set(false);
+      if (b.state !== 'fly') H.reply('Take off: your companion will show the way.', 3.5);
+    },
+    later() { H.nextRest?.(); G.menu.set(false); },
   };
+  // the lesson Today shows: the open one, else the one up next
+  const nextTask = () => cur || (S.practice ? TASKS.find(q => q.id === S.practice) : S.replay != null ? TASKS.find(q => q.ch === S.replay && !S.done[q.id]) : null) || first();
   // Settings > Advanced > Dev mode: progress mocked at k (0, .25, .5 or 1; dev.js), then saved and reloaded
   // (lessons done in order; none: the first flight again)
   G.on('mock', k => {
@@ -332,10 +347,10 @@ export function lessonsSystem(G) {
   });
   const ease = () => S.stage === 'flight' || (S.stage === 'learn' && !SURVIVE.every(k => S.done[k])) ? .5 : 1;
 
-  // ---- Today: the open chapter, its tasks ticked ----------------------------------------------
+  // ---- Today: the one lesson up next, in the Next card (today.js) -----------------------------
   const today = journal(G).section(3, 'Lessons');
-  // ---- the Tutorial: the Overview, then a page for each chapter (howto.js adds the cards) -------
-  const over = G.menu.page('how', 'lessons', 'Overview', 5);
+  // ---- Lessons: All lessons, then a page for each chapter (howto.js adds the cards) -----------
+  const over = G.menu.page('how', 'lessons', 'All lessons', 5);
   const pg = Object.fromEntries(PAGES.map(([id, title, order]) => [id, G.menu.page('how', id, title, order)]));
   const box = {};
   for (const id in pg) { box[id] = document.createElement('div'); box[id].className = 'lchap3'; pg[id].prepend(box[id]); }
@@ -348,14 +363,14 @@ export function lessonsSystem(G) {
   const opened = new Set();
   const fold = (key, done, head, body) => `<details class="lgrp3" data-k="${key}" data-d="${done ? 1 : 0}"${!done || opened.has(String(key)) ? ' open' : ''}><summary>${head}${done ? `<span class="lchev3">${icon('chevron')}</span>` : ''}</summary>${body}</details>`;
   function paint() {
-    const on = live();
+    const t = live() ? nextTask() : null, on = !!t;
     today.el.classList.toggle('hidden', !on);
     if (on) {
-      const t = cur || (S.replay != null ? TASKS.find(q => q.ch === S.replay && !S.done[q.id]) : null) || first(), ch = CHAPTERS[t ? t.ch : 0];
-      const n = CHAPTERS.indexOf(ch) + 2;
-      today.body.innerHTML = `<p class="lch3">${icon(ch.icon)}<b>${esc(ch.title)}</b><small>${n} of ${CHAPTERS.length + 1}</small></p>
-        <ul class="lessons3">${ch.tasks.map(q => `<li class="${S.done[q.id] ? 'done' : q === t || q.id === t?.id ? 'now' : 'later'}">${tick(q)}<span>${esc(q.text)}</span></li>`).join('')}</ul>
-        <p class="lnote3">${S.paid[CHAPTERS.indexOf(ch)] ? 'Played again: no new feather.' : 'Finish the chapter for a feather.'} <button data-l="page">Tutorial</button></p>`;
+      // the one lesson up next: its chapter, the task large, its line, Show me and Later (James, 2026-10-24)
+      const ch = CHAPTERS[t.ch], k = TASKS.findIndex(q => q.id === t.id) + 1;
+      today.body.innerHTML = `<p class="nch3">${icon(ch.icon)}<span>${esc(ch.title)}</span><small>Lesson ${k} of ${TASKS.length}</small></p>
+        <p class="ntask3">${esc(t.text)}</p><p class="nsay3">${esc(t.say)}</p>
+        <div class="nbtns3">${t.go && G.companion ? '<button data-l="show" class="main3">Show me</button>' : ''}<button data-l="later">Later</button><button data-l="page" class="nall3">All lessons</button></div>`;
     }
     // the Overview: the payoff, then every chapter in order with its progress and Replay
     const done = TASKS.filter(t => S.done[t.id]).length + (S.done.flight ? 1 : 0), all = TASKS.length + 1;
@@ -393,6 +408,8 @@ export function lessonsSystem(G) {
     if (el.dataset.p) return G.menu.set(true, 'how', el.dataset.p);
     if (el.dataset.r != null) return replay(el.dataset.r);
     if (l === 'page') return G.menu.set(true, 'how', 'lessons');
+    if (l === 'show') return G.lessons.showMe();
+    if (l === 'later') return G.lessons.later();
     if (l === 'flight') return G.lessons.replay();
     if (l === 'skip') { skipAll(); return paint(); }
     if (l === 'over') { S.done = { flight: 1 }; S.practice = null; S.replay = null; cur = null; if (S.stage === 'done') S.stage = 'learn'; openT = 2; classes(); G.menu.set(false); return; }
@@ -401,15 +418,15 @@ export function lessonsSystem(G) {
   for (const el of [over, today.body, ...Object.values(box)]) el.addEventListener('click', act);
   for (const el of Object.values(box)) el.addEventListener('toggle', e => { const k = e.target.dataset?.k; if (k != null && e.target.dataset.d === '1') { if (e.target.open) opened.add(k); else opened.delete(k); } }, true);
 
-  G.dev?.add({ id: 'lessons', area: 'Menu and story', round: 'Tutorial 10-23', title: 'Lessons: the first flight (HUD hidden, ghost thumbs, Skip), then a chain of lessons under Today; HUD pieces appear as they matter',
-    how: 'Reset all game data (Settings > Advanced), or Tutorial > Flying > Fly the first flight again. Replay any chapter from the Overview; practise any lesson on its page.', go: () => G.lessons.replay() });
+  G.dev?.add({ id: 'lessons', area: 'Menu and story', round: 'Tutorial 10-23', title: 'Lessons: the first flight (HUD hidden, ghost thumbs, Skip), then a chain of lessons, the next one under Today and as a line under the compass',
+    how: 'Reset all game data (Settings > Advanced), or Lessons > Flying > Fly the first flight again. Replay any chapter from All lessons; practise any lesson on its page.', go: () => G.lessons.replay() });
 
   classes();
   return {
     id: 'lessons',
     update(dt, c) {
       G.ease = ease();
-      if (introT > 0 && (introT -= dt) <= 0 && !G.menu.open) intro();
+      if (introT > 0 && (introT -= dt) <= 0) { if (G.menu.open) introT = .5; else intro(); }   // the menu open: try again after
       if (S.stage === 'flight') flight(dt, c);
       else if (S.stage === 'learn' || S.practice || S.replay != null) learn(dt, c);
     },

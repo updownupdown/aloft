@@ -1,9 +1,8 @@
 // Soft aims: an intention for each day, the bird's life goal on the Log (sys/life.js), the lands
 // collection and racing the companion. Each dawn the Journal offers one optional aim (fly a ring
 // course, sing with a songbird, see a land you haven't, ...); doing it earns a feather. The lands
-// collection is a page of small faceted tiles, one for each land of the world, that fill in as you
-// fly over them, with a star when its sight is found (world.js LANDS). Now and then the companion
-// races you round a ring course.
+// collection is a shelf of small faceted tiles, one for each land of the world, that fill in as you
+// fly over them (Journal > Places > Lands). Now and then the companion races you round a ring course.
 import * as W from '../world.js';
 import { BIOMES, blend } from '../biomes.js';
 import { facets } from '../facet.js';
@@ -43,11 +42,13 @@ export function aimsSystem(G) {
     A.last = [...A.last, A.aim].slice(-4);
   }
   const offer = () => G.hud.glint('Today’s aim', `If you like: ${AIMS[A.aim].text[0].toLowerCase()}${AIMS[A.aim].text.slice(1)}`, 'keepsake');
+  // the aim as the next step, a thin line under the compass, once the lessons are done (quiet.js)
+  const line = () => { const a = AIMS[A.aim]; G.hud.next?.('aim', a && !A.done && !G.lessons?.learning ? a.text : null, 'today’s aim, for a feather'); };
   G.on('newDay', () => { pick(); if (!G.lessons?.learning) offer(); });   // while the lessons run (sys/lessons.js) they are the day's things to do
   for (const ev of new Set(Object.values(AIMS).map(a => a.on))) G.on(ev, e => {
     const a = AIMS[A.aim]; if (!a || A.done || a.on !== ev || (a.ok && !a.ok(e))) return;
     if (++A.count < (a.n || 1)) return;
-    A.done = true; G.feather('Aim done');
+    A.done = true; G.feather('Aim done'); G.hud.nextDone?.('aim');
   });
   // feathers: one for each day's aim kept and one for each chapter of the lessons (sys/lessons.js);
   // each makes the wings last longer (b.endure divides what flaps and hovering cost, flight.js)
@@ -103,29 +104,28 @@ export function aimsSystem(G) {
   // a found landmark counts as its land's sight when it is the kind that land is known for
   const sightOf = l => {
     const land = landOf(l.x, l.z), want = (W.LANDS || []).find(e => e.key === land)?.sight;
-    if (land && want && (l.kind === want || (want === 'summit' && l.summit)) && !A.sights[land]) {
-      A.sights[land] = 1; G.hud.tally(`${BIOMES[land]?.label || 'This land'}: in your biomes`, 'lands');
-    }
+    if (land && want && (l.kind === want || (want === 'summit' && l.summit)) && !A.sights[land]) A.sights[land] = 1;   // (kept, no longer shown: James, 2026-10-24)
   };
   G.on('landmark', sightOf); G.on('sight', sightOf);   // (a landmark found, or one passed that is only scenery)
 
-  // ---- the Journal: the day's aim on the Log, the lands on their own page --------------------
+  // ---- the Journal: the day's aim in Today's Next card, the lands under Places ----------------
   const today = journal(G).section(5, 'Today');
-  const lands = journal(G).section(45, 'Biomes');
+  const lands = journal(G).section(45, 'Lands');
   // the chosen bird's life goal (sys/life.js G.life), as a checklist with counts
   const life = journal(G).section(7, 'Your life');
   const tile = {};
   G.menu.onOpen(() => {
     const a = AIMS[A.aim];
     today.el.classList.toggle('hidden', !!G.lessons?.learning);
-    today.body.innerHTML = a ? `<p class="aim3 ${A.done ? 'done' : ''}"><i></i><span>${esc(a.text)}</span>${a.n && !A.done ? ` <small>${A.count} of ${a.n}</small>` : ''}</p>
-      <p class="feathers3">${icon('feather')}<span>${A.done ? 'Done: a feather earned.' : 'Do it for a feather.'} Each feather makes your wings last longer: ${A.feathers ? `${A.feathers} so far, wings +${G.wingBonus()}%` : 'none yet'}.</span></p>` : '';
+    today.body.innerHTML = a ? `<p class="nch3">${icon('keepsake')}<span>Today’s aim</span>${a.n && !A.done ? `<small>${A.count} of ${a.n}</small>` : ''}</p>
+      <p class="ntask3${A.done ? ' done' : ''}">${esc(a.text)}</p><p class="nsay3">${A.done ? 'Done: a feather earned.' : 'If you like: it earns a feather. Tomorrow brings another.'}</p>` : '';
     const L = G.life;
     life.el.classList.toggle('hidden', !L);
     if (L) life.body.innerHTML = `<p class="life3t">${esc(L.title)}${L.done ? ' <small>Done.</small>' : ''}</p><ul class="life3">${L.steps.map(s => `<li class="${s.done ? 'done' : ''}"><i></i><span>${esc(s.text)}</span>${s.need > 1 ? ` <small>${Math.min(s.n, s.need)} of ${s.need}</small>` : ''}</li>`).join('')}</ul>`;
     const n = KEYS.filter(k => A.seen[k]).length;
-    lands.body.innerHTML = `<p class="lands3sum">${n} of ${KEYS.length} biomes flown over${(W.LANDS || []).length ? `, ${Object.keys(A.sights).length} sights found` : ''}.</p>
-      <div class="lands3">${KEYS.map(k => `<figure class="${A.seen[k] ? 'seen' : ''}"><img alt="" src="${pic(k)}"><figcaption>${A.seen[k] ? esc(cap(BIOMES[k].label)) : '?'}${A.sights[k] ? ' <b title="sight found">★</b>' : ''}</figcaption></figure>`).join('')}</div>`;
+    lands.count(`${n} of ${KEYS.length}`);
+    lands.body.innerHTML = `<div class="lands3">${KEYS.map(k => `<figure class="${A.seen[k] ? 'seen' : ''}"><img alt="" src="${pic(k)}"><figcaption>${A.seen[k] ? esc(cap(BIOMES[k].label)) : '?'}</figcaption></figure>`).join('')}</div>`
+      + (n ? '' : '<p class="muted3">Each land you fly over fills in here: forest, steppe, tundra, desert, rainforest.</p>');
   });
   const cap = t => t.replace(/^the /, '').replace(/^./, c => c.toUpperCase());
   // a small faceted tile in the land's own ground colours (cached)
@@ -147,9 +147,9 @@ export function aimsSystem(G) {
       if (race && G.clock - race.t > 90) { G.companion?.stop?.(); race = null; }
       if (!A.aim || A.day !== G.day) { pick(); if (G.t > 3 && !G.lessons?.learning) offer(); }
       if ((landT -= dt) <= 0) {
-        landT = 2;
+        landT = 2; line();
         const k = landOf(b.p[0], b.p[2]);
-        if (k && !A.seen[k]) { A.seen[k] = 1; if (Object.keys(A.seen).length > 1) { G.hud.tally(`New biome: ${BIOMES[k]?.label || k}`, 'lands'); G.emit('newLand', k); } }
+        if (k && !A.seen[k]) { A.seen[k] = 1; if (Object.keys(A.seen).length > 1) { G.hud.tally(`New land: ${BIOMES[k]?.label || k}`, 'lands'); G.emit('newLand', k); } }
       }
       if (G.thirst < drank || b.eating > 0) drank = G.thirst; else if (G.thirst - drank > .05 && b.state !== 'fly') { G.emit('drink'); drank = G.thirst; }
       if (b.asleep && !asleep) G.emit('sleep'); asleep = !!b.asleep;
