@@ -3,6 +3,7 @@
 // the long ones (the Great Wall, the Golden Gate) are built along their own path.
 import { builder, blob, prism, tube, reseed, rnd } from '../shapes.js';
 import { box } from './ruinshapes.js';
+import { CAP_SPOTS, METEORA } from '../wonders.js';
 
 const DARK = [.11, .11, .12], IVY = [.3, .44, .26], IVY2 = [.36, .5, .28], MOSS = [.44, .5, .33];
 const pick = a => a[Math.floor(rnd() * a.length)];
@@ -283,5 +284,129 @@ export function goldenGate(span) {
     const sag = Math.abs(x) < T ? deck + 4 + (top - deck - 4) * (x / T) ** 2 : null;
     if (sag && rnd() < .8) for (const k of [-5.5, 5.5]) tube(B, [x, deck, k], [x, sag, k], .08, O2);
   }
+  return B.out();
+}
+
+// ---- the regional wonders (option G1 of the geography study): built into their own country's rock --
+
+// ---- Petra's Treasury: a facade cut into a rose sandstone cliff (the cliff behind, -x), its columns,
+// the round tholos above between two half pediments, the doorway dark
+export function petra() {
+  reseed(941); const B = builder(), R = [.78, .5, .4], R2 = [.7, .44, .36], R3 = [.84, .58, .46];
+  box(B, -9, -2, 0, 10, 46, 40, 0, R2, R);                     // the rock it is cut from
+  box(B, -3.6, 0, 0, 1.2, 2, 26, 0, R2);                       // the step
+  for (let i = 0; i < 6; i++) { const w = -10 + i * 4; prism(B, -2.6, w, .9, .85, 1.5, 13, 10, R3); }
+  box(B, -3.2, 13, 0, 1.6, 2.4, 26, 0, R3, R2);                // the entablature
+  for (let k = 0; k < 6; k++) box(B, -2.8, 15.4 + k * 1.1, 0, 1.2, 1.1, 22 - k * 3.6, 0, R3);   // the pediment
+  box(B, -3, 22, 0, 1.6, 1.8, 26, 0, R2);                      // the upper storey's floor
+  for (const w of [-11, -7, 7, 11]) prism(B, -2.6, w, .7, .65, 23.8, 33, 10, R3);
+  prism(B, -3.2, 0, 3.8, 3.8, 23.8, 33, 12, R3, .9);            // the tholos
+  coneAt(B, -3.2, 0, 33, 37, 4.2, R2, 12); prism(B, -3.2, 0, .6, .3, 37, 40, 6, R3);
+  for (const w of [-9, 9]) for (let k = 0; k < 4; k++) box(B, -3, 33 + k * .9, w, 1.2, .9, 7 - k * 1.7, 0, R3);
+  box(B, -2.4, 1.5, 0, .3, 8, 4.4, 0, DARK);                   // the door
+  return B.out();
+}
+
+// ---- Cappadocia: fairy chimneys of pale tuff, each with a dark cap stone, hollowed into rooms and
+// dovecotes (rows of little dark holes)
+const coneAt = (B, x, z, y0, y1, r, col, sides = 7) => {
+  for (let i = 0; i < sides; i++) {
+    const a = i / sides * 6.283, b = (i + 1) / sides * 6.283;
+    B.tri([x + Math.cos(a) * r, y0, z + Math.sin(a) * r], [x, y1, z], [x + Math.cos(b) * r, y0, z + Math.sin(b) * r], col, (rnd() - .5) * .08);
+  }
+};
+export function cappadocia() {
+  reseed(951); const B = builder(), T = [[.86, .78, .66], [.82, .72, .6], [.88, .8, .7]], CAP = [.42, .36, .32];
+  for (const [x, z, h] of CAP_SPOTS) {
+    const col = pick(T);
+    prism(B, x, z, 4.2, 1.6, -1, h, 9, col, .9);
+    coneAt(B, x, z, h - .5, h + 2.6, 2.3, CAP);
+    for (let k = 0; k < 5; k++) { const a = rnd() * 6.283, y = 2 + rnd() * (h - 4), r = 4.2 - (4.2 - 1.6) * (y + 1) / (h + 1); box(B, x + Math.cos(a) * r, y, z + Math.sin(a) * r, .25, .9, .7, a, DARK); }
+    for (let k = 0; k < 6; k++) { const a = rnd() * 6.283, y = 1 + rnd() * (h * .6); box(B, x + Math.cos(a) * 3.6, y, z + Math.sin(a) * 3.6, .2, .4, .3, a, DARK); }
+  }
+  return B.out();
+}
+
+// ---- Mesa Verde's Cliff Palace: an alcove under an overhang of rock (the cliff behind, -x), rooms of
+// stone in rows and steps, two round towers, the kivas' sunken rings in front
+export function mesaverde() {
+  reseed(961); const B = builder(), S = [[.78, .62, .46], [.72, .56, .42], [.8, .66, .5]], ROCK = [.7, .52, .38], ROCK2 = [.62, .46, .34];
+  box(B, -16, -2, 0, 14, 30, 70, 0, ROCK2, ROCK);               // the cliff
+  box(B, -4, 14, 0, 14, 8, 72, 0, ROCK, ROCK2);                 // the overhang
+  for (let i = 0; i < 26; i++) {
+    const w = -28 + rnd() * 56, u = -8 + rnd() * 9, h = 2.5 + rnd() * 6 * (1 - Math.abs(w) / 40);
+    box(B, u, 0, w, 3 + rnd() * 2, h, 3 + rnd() * 3, 0, pick(S), pick(S));
+    if (rnd() < .5) box(B, u + 1.6, h * .5, w, .2, .9, .7, 0, DARK);
+  }
+  for (const w of [-10, 14]) { prism(B, -3, w, 2.2, 2.1, 0, 11, 10, pick(S)); box(B, -.9, 6, w, .2, .9, .6, 0, DARK); }
+  for (const w of [-18, -2, 8, 20]) { prism(B, 4, w, 3, 3, -.6, .5, 12, [.66, .52, .4]); prism(B, 4, w, 2.4, 2.4, -.8, .52, 12, [.3, .24, .2]); }
+  return B.out();
+}
+
+// ---- Meteora: three sandstone pillars, a monastery on the top of each: stone walls, red tile roofs,
+// a little bell tower
+export function meteora() {
+  reseed(971); const B = builder(), P = [[.66, .6, .5], [.6, .55, .46], [.7, .63, .52]], W = [.84, .8, .72], ROOF = [.62, .3, .22];
+  for (const [x, z, r, h] of METEORA) {
+    for (let k = 0; k < 6; k++) prism(B, x, z, r * (1.15 - k * .03), r * (1.12 - (k + 1) * .03), -2 + k * h / 6, -2 + (k + 1) * h / 6, 9, pick(P), .9);
+    const y = h - 2, L = r * 1.3, D = r * .9;
+    box(B, x, y, z, L, 5, D, 0, W, [.5, .45, .4]);
+    for (const k of [-1, 1]) { const zz = z + k * D / 4; B.tri([x - L / 2, y + 5, zz - k * D / 4], [x + L / 2, y + 5, zz - k * D / 4], [x, y + 8, z], ROOF); }
+    box(B, x - L / 2 - .2, y + 5, z - D / 2, L + .4, .1, D, 0, ROOF);
+    prism(B, x + L / 2 - 1, z + D / 2 - 1, 1.1, 1.1, y + 5, y + 9, 4, W); coneAt(B, x + L / 2 - 1, z + D / 2 - 1, y + 9, y + 11, 1.4, ROOF, 4);
+    for (let i = 0; i < 4; i++) box(B, x + (i - 1.5) * 2.4, y + 2, z + D / 2, .7, 1.1, .1, 0, DARK);
+  }
+  return B.out();
+}
+
+// ---- Skellig Michael: a sea crag of grey rock, steps up it and the monks' beehive huts of dry stone
+// on a shelf near the top
+export function skellig() {
+  reseed(981); const B = builder(), G = [[.46, .46, .44], [.4, .41, .4], [.52, .52, .5]], GRASS = [.42, .56, .34];
+  for (let k = 0; k < 7; k++) blob(B, (rnd() - .5) * 12, k * 7, (rnd() - .5) * 12, 18 - k * 2.2, pick(G), pick(G), [1, .9, 1], 1);
+  blob(B, -20, 4, 16, 12, pick(G), GRASS, [1, 1.4, 1], 1);      // the lower peak
+  for (let i = 0; i < 6; i++) { const a = i / 6 * 3.2 + 1, x = Math.cos(a) * 8, z = Math.sin(a) * 8; blob(B, x, 40, z, 2.2, [.5, .5, .47], [.44, .44, .42], [1, 1.25, 1], 1); box(B, x + Math.cos(a) * 2, 40, z + Math.sin(a) * 2, .5, 1, .7, a, DARK); }
+  box(B, 0, 39.2, 0, 22, .8, 14, .3, GRASS);
+  for (let k = 0; k < 18; k++) box(B, 14 - k * .9, k * 2.2, -6 + Math.sin(k) * 3, 2.2, .4, 1.4, .8, [.56, .56, .52]);
+  return B.out();
+}
+
+// ---- the Bandiagara escarpment: the Dogon's mud granaries with thatched peaks, stacked into the foot
+// of a long cliff (the cliff behind, -x)
+export function bandiagara() {
+  reseed(991); const B = builder(), M = [[.66, .48, .32], [.6, .43, .3], [.7, .52, .36]], TH = [.6, .5, .3], ROCK = [.62, .46, .34];
+  box(B, -14, -2, 0, 12, 34, 90, 0, ROCK, [.56, .5, .36]);
+  for (let i = 0; i < 34; i++) {
+    const w = -40 + rnd() * 80, u = -7 + rnd() * 6, y = rnd() < .4 ? 6 + rnd() * 10 : 0, s = 2 + rnd() * 1.4, h = 3 + rnd() * 1.6;
+    box(B, u, y, w, s, h, s, rnd() * .4, pick(M), pick(M));
+    if (rnd() < .7) coneAt(B, u, w, y + h - .2, y + h + 2.2, s * .85, TH, 6);
+    if (rnd() < .5) box(B, u + s / 2 + .05, y + h * .4, w, .1, .7, .6, 0, DARK);
+  }
+  return B.out();
+}
+
+// ---- a stave church (Borgund): dark tarred wood under stepped shingle roofs, dragon heads on the gables
+export function stave() {
+  reseed(1001); const B = builder(), T = [.24, .17, .12], T2 = [.3, .22, .15], SH = [.2, .15, .11];
+  box(B, 0, -.5, 0, 14, 6.5, 9, 0, T, T2);
+  box(B, 0, -.5, 0, 17, 2.4, 12, 0, T2);
+  const roof = (y, L, W, h) => { B.tri([-L / 2, y, -W / 2], [L / 2, y, -W / 2], [L / 2, y + h, 0], SH); B.tri([-L / 2, y, -W / 2], [L / 2, y + h, 0], [-L / 2, y + h, 0], SH); B.tri([L / 2, y, W / 2], [-L / 2, y, W / 2], [-L / 2, y + h, 0], SH); B.tri([L / 2, y, W / 2], [-L / 2, y + h, 0], [L / 2, y + h, 0], SH); B.tri([L / 2, y, -W / 2], [L / 2, y, W / 2], [L / 2, y + h, 0], T2); B.tri([-L / 2, y, W / 2], [-L / 2, y, -W / 2], [-L / 2, y + h, 0], T2); };
+  roof(1.9, 18, 13, 2.2); roof(6, 15, 10, 3.2); box(B, 0, 8.6, 0, 8, 2.6, 6, 0, T, T2); roof(11.2, 9, 7, 2.6); box(B, 0, 13.4, 0, 4, 2, 4, 0, T); coneAt(B, 0, 0, 15.4, 21, 2.8, SH, 4);
+  for (const [x, y] of [[7.5, 9.2], [-7.5, 9.2], [4.5, 13.8], [-4.5, 13.8]]) { tube(B, [x * .9, y - 1, 0], [x * 1.12, y + .6, 0], .25, T); tube(B, [x * 1.12, y + .6, 0], [x * 1.2, y + .2, 0], .2, T); }
+  box(B, 7.05, 0, 0, .1, 2.6, 1.4, 0, DARK);
+  return B.out();
+}
+
+// ---- the Potala: a white fortress palace up its hill, walls leaning in, a red palace at the top under
+// gold roofs, rows of dark windows
+export function potala() {
+  reseed(1011); const B = builder(), WH = [.9, .88, .84], WH2 = [.84, .82, .78], RED = [.55, .22, .2], GOLD = [.82, .64, .3];
+  const tier = (x, z, L, D, y, h, col) => {
+    for (let k = 0; k < 4; k++) box(B, x, y + k * h / 4, z, L - k * 1.2, h / 4 + .02, D - k * 1.2, 0, col, col === RED ? [.62, .3, .24] : WH2);
+    for (let i = 0; i < Math.floor(L / 3); i++) for (let r = 0; r < Math.floor(h / 3.2); r++) box(B, x - L / 2 + 1.8 + i * 3, y + 1 + r * 3.2, z + D / 2 - r * .3 * 1.2 + .02, .8, 1.3, .1, 0, DARK);
+  };
+  tier(0, 0, 120, 34, -6, 18, WH); tier(-10, -4, 84, 26, 12, 14, WH); tier(-6, -6, 46, 20, 26, 16, RED);
+  for (const [x, z] of [[-22, -8], [-4, -8], [12, -8]]) { box(B, x, 42, z, 9, 1.2, 9, 0, GOLD); coneAt(B, x, z, 43.2, 47.5, 6, GOLD, 4); }
+  for (const x of [-60, 60]) box(B, x, -6, 0, 8, 20, 30, 0, WH, WH2);
   return B.out();
 }

@@ -12,6 +12,7 @@
 // to a branch (a calmer meal, worth more; Leave it there to cache it), or home, where it drops into
 // the nest by itself (for the chick, or kept there for later).
 import { height, normalAt, forest, WATER, ih, fbm, coastDist } from '../world.js';
+import { lakeAt } from '../earth.js';
 import { mouseRich } from '../settle.js';
 import { builder, blob, reseed } from '../shapes.js';
 import { clamp, smooth } from '../util.js';
@@ -102,7 +103,8 @@ export function foodSystem(G) {
   // (and the rain pools in island rock, sys/isles.js G.pools)
   const puddleAt = (x, z, pad) => { for (const P of [G.puddles || [], G.pools || [], G.oases || []]) for (let i = 0; i < P.length; i += 8) if (Math.hypot(P[i] - x, P[i + 2] - z) < P[i + 3] + pad) return [P[i], P[i + 1], P[i + 2]]; return null; };
   // the sea is salt: only rivers, lakes, puddles and rain pools quench a thirst
-  const salt = () => coastDist(b.p[0], b.p[2]) < 30 && !puddleAt(b.p[0], b.p[2], 1.2);
+  // (the great lakes are fresh, but for the salt ones: the Dead Sea, the Great Salt Lake...)
+  const salt = () => coastDist(b.p[0], b.p[2]) < 30 && !puddleAt(b.p[0], b.p[2], 1.2) && (lakeAt(b.p[0], b.p[2])?.salt ?? true);
   const shore = () => [[2, 0], [-2, 0], [0, 2], [0, -2], [1.4, 1.4], [-1.4, 1.4], [1.4, -1.4], [-1.4, -1.4]].some(([x, z]) => height(b.p[0] + x, b.p[2] + z) < WATER);
   const waterBy = () => b.state === 'swim' || (b.state === 'ground' && (shore() || !!puddleAt(b.p[0], b.p[2], 1.2)));
   // aim.js calls drink() for a tap on the water; a tap on water out of reach hops over first (b.wantDrink)
@@ -111,7 +113,7 @@ export function foodSystem(G) {
     drink() {
       if (!waterBy() || b.settle > 0) return false;
       if (G.thirst >= .99) { G.hud.tally('Not thirsty', 'thirst'); return true; }
-      if (salt()) { G.hud.say('The sea is salt. Drink from a river or a lake, or the rain pools on the islands.', { kind: 'warn', secs: 3.5, icon: 'thirst' }); return true; }
+      if (salt()) { G.hud.say(lakeAt(b.p[0], b.p[2]) ? `${lakeAt(b.p[0], b.p[2]).name} is salt. Drink from a river or a fresh lake.` : 'The sea is salt. Drink from a river or a lake, or the rain pools on the islands.', { kind: 'warn', secs: 3.5, icon: 'thirst' }); return true; }
       drinking = true; sipT = 0; return true;
     },
   };

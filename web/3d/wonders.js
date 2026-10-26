@@ -27,7 +27,19 @@ export const WONDERS = {
   picchu: ['The Cloud Terraces', -13.163, -72.545, 'peak', 50, 'A stone town on a saddle in the clouds. The terraces are wild flower meadows now.'],
   moai: ['The Stone Heads', -27.125, -109.277, 'coast', 24, 'Stone heads with their backs to the sea, still watching over the island.'],
   goldengate: ['The Red Bridge', 37.82, -122.478, 'strait', 20, 'A red bridge across the bay, its middle fallen into the water.'],
+  // each land's own (option G1 of the geography study), built into its rock
+  petra: ['The Rose Cliff Temple', 30.322, 35.451, 'cliff', 16, 'A temple front carved out of a rose-red cliff. Rock doves nest above the door.'],
+  cappadocia: ['The Capped Chimneys', 38.64, 34.83, 'flat', 40, 'Towers of soft pale rock, each with a dark cap, hollowed into rooms and dovecotes.'],
+  mesaverde: ['The Town Under the Ledge', 37.17, -108.47, 'cliff', 30, 'A stone town tucked under a lip of rock. Swallows build where the people slept.'],
+  meteora: ['The Pillar Houses', 39.72, 21.63, 'flat', 46, 'Houses of prayer on the tops of stone pillars. The ropes and ladders that reached them are long gone.'],
+  skellig: ['The Beehive Crag', 51.77, -10.54, 'coast', 22, 'A crag in the sea with stone huts like beehives near its top. Puffins own it now.'],
+  bandiagara: ['The Granary Cliffs', 14.34, -3.6, 'cliff', 40, 'Granaries of mud with straw hats, stacked into the foot of a long cliff.'],
+  stave: ['The Dragon Roofs', 61.1, 7.81, 'flat', 10, 'A church of tarred wood under roof upon roof, with dragons on its gables.'],
+  potala: ['The White Palace', 29.658, 91.117, 'peak', 60, 'A white palace climbing its hill, red at the top and roofed in gold.'],
 };
+// Cappadocia's chimneys [x, z, height] and Meteora's pillars [x, z, r, height] (the meshes and the solids share them)
+export const CAP_SPOTS = [[0, 0, 22], [14, 6, 17], [-12, 10, 15], [8, -16, 19], [-18, -8, 13], [26, -4, 14], [-4, 26, 18], [20, 22, 11], [-28, 18, 12], [-24, -24, 16], [4, -32, 12], [32, 14, 10], [-34, -2, 11]];
+export const METEORA = [[0, 0, 11, 62], [38, 22, 9, 48], [-30, 34, 8, 54]];
 
 // what flight bumps into and perches on: [u, w, r, y0, top, perch?] about the wonder's spot, turned with it
 const EIFFEL_SOLIDS = [[-17, -17, 4, -1, 20], [17, -17, 4, -1, 20], [17, 17, 4, -1, 20], [-17, 17, 4, -1, 20],
@@ -44,9 +56,18 @@ const PISA_SOLIDS = [[0, 0, 7.4, -1, 24], [0, 1.6, 7.4, 24, 48, 1], [0, 2.8, 5, 
 const PICCHU_SOLIDS = [[30, 0, 4.4, -1, 4.8, 1], ...Array.from({ length: 6 }, (_, i) => [-38 + i * 15, i & 1 ? 18 : -18, 3.4, -1, 3, 1])];
 const ANGKOR_SOLIDS = [[0, 0, 48, -1, 6, 1], [0, 0, 35, 6, 13, 1], [0, 0, 23, 13, 22, 1], [0, 0, 6, 22, 55, 1], ...[[-18, -18], [18, -18], [18, 18], [-18, 18]].map(([x, z]) => [x, z, 4, 22, 46, 1])];
 const MOAI_SOLIDS = Array.from({ length: 9 }, (_, i) => [-18 + i * 4.5, 0, 1.3, -1, i === 2 || i === 6 ? 3.4 : i % 3 === 0 ? 10.9 : 9.4, 1]);
+const PETRA_SOLIDS = [[-9, -14, 6, -2, 44, 1], [-9, 0, 6, -2, 44, 1], [-9, 14, 6, -2, 44, 1], [-3, 0, 4, 23, 40, 1]];
+const CAP_SOLIDS = CAP_SPOTS.map(([x, z, h]) => [x, z, 3.2, -1, h + 2, 1]);
+const MESAVERDE_SOLIDS = [[-16, -24, 8, -2, 28, 1], [-16, 0, 8, -2, 28, 1], [-16, 24, 8, -2, 28, 1], [-4, -20, 7, 14, 22, 1], [-4, 0, 7, 14, 22, 1], [-4, 20, 7, 14, 22, 1], [-3, -10, 2.2, 0, 11, 1], [-3, 14, 2.2, 0, 11, 1]];
+const METEORA_SOLIDS = METEORA.map(([x, z, r, h]) => [x, z, r * 1.1, -2, h + 3, 1]);
+const SKELLIG_SOLIDS = [[0, 0, 16, -2, 38], [0, 0, 11, 38, 40.2, 1], [-20, 16, 10, -2, 18, 1]];
+const BANDIAGARA_SOLIDS = [[-14, -36, 8, -2, 32, 1], [-14, -12, 8, -2, 32, 1], [-14, 12, 8, -2, 32, 1], [-14, 36, 8, -2, 32, 1]];
+const STAVE_SOLIDS = [[0, 0, 7, -1, 8.4, 1], [0, 0, 4, 8.4, 15, 1], [0, 0, 1.5, 15, 21, 1]];
+const POTALA_SOLIDS = [[-40, 0, 16, -6, 12, 1], [0, 0, 16, -6, 12, 1], [40, 0, 16, -6, 12, 1], [-10, -4, 14, 12, 26, 1], [-6, -6, 12, 26, 42, 1], [-60, 0, 6, -6, 14, 1], [60, 0, 6, -6, 14, 1]];
 const goldenGateSolids = span => { const T = span * .32; return [[-T, 0, 7, -6, 88, 1], [T, 0, 7, -6, 88, 1]]; };
 const SOLIDS = { eiffel: EIFFEL_SOLIDS, liberty: LIBERTY_SOLIDS, giza: GIZA_SOLIDS, colosseum: COLOSSEUM_SOLIDS, taj: TAJ_SOLIDS, opera: OPERA_SOLIDS,
-  redeemer: REDEEMER_SOLIDS, stonehenge: HENGE_SOLIDS, pisa: PISA_SOLIDS, picchu: PICCHU_SOLIDS, angkor: ANGKOR_SOLIDS, moai: MOAI_SOLIDS };
+  redeemer: REDEEMER_SOLIDS, stonehenge: HENGE_SOLIDS, pisa: PISA_SOLIDS, picchu: PICCHU_SOLIDS, angkor: ANGKOR_SOLIDS, moai: MOAI_SOLIDS,
+  petra: PETRA_SOLIDS, cappadocia: CAP_SOLIDS, mesaverde: MESAVERDE_SOLIDS, meteora: METEORA_SOLIDS, skellig: SKELLIG_SOLIDS, bandiagara: BANDIAGARA_SOLIDS, stave: STAVE_SOLIDS, potala: POTALA_SOLIDS };
 export function wonderSolids(b, pillar) {
   if (b.kind === 'walltower') return pillar(b.x, b.z, 4.6, b.y - 4, b.y + 12);
   if (b.kind === 'wallseg') return pillar(b.x, b.z, 2.8, b.y - 4, b.top);
@@ -93,6 +114,20 @@ export function wonderAt(key) {
         }
       }
       if (best) { at = [best.x, best.z]; yaw = best.yaw; extra.span = best.span; }
+    }
+    // at the foot of a cliff, its back to the rock: level ground with a wall of rock just behind
+    if (ground === 'cliff') {
+      at = spiral(x0, z0, 1800, 50, (x, z, r) => {
+        const [lo, hi] = ok(x, z, 8); if (lo < WATER + 1.5 || hi - lo > 4) return -1e9;
+        let best = 0, dir = 0; for (let i = 0; i < 12; i++) { const a = i / 12 * 6.283, up = height(x + Math.cos(a) * 22, z + Math.sin(a) * 22) - lo; if (up > best) { best = up; dir = a; } }
+        if (best < 14) return -1e9;
+        extra.cyaw = dir + Math.PI;
+        return best - (hi - lo) * 4 - r * .02;
+      });
+      if (at) { const [x, z] = at; let best = 0; for (let i = 0; i < 24; i++) { const a = i / 24 * 6.283, up = height(x + Math.cos(a) * 22, z + Math.sin(a) * 22); if (up > best) { best = up; yaw = a + Math.PI; } } }
+      delete extra.cyaw;
+      // (no cliff near enough: on level ground, the mesh brings its own rock)
+      if (!at) at = spiral(x0, z0, 1200, 60, (x, z, r) => { const [lo, hi] = ok(x, z, rr); return lo < WATER + 1.5 ? -1e9 : -(hi - lo) * 30 - r * .02; });
     }
     if (ground === 'ridge') at = spiral(x0, z0, 1500, 60, (x, z, r) => height(x, z) - r * .03);
     if (at) {

@@ -73,6 +73,17 @@ export function journeySystem(G) {
     G.hud.name(r.name[0].toUpperCase() + r.name.slice(1), 'map');
     G.emit('region', r);
   }
+  // a great lake or river (earth.js, the real ones) named the first time the bird is over it
+  let waterAt = '';
+  function waters() {
+    const n = W.waterName(b.p[0], b.p[2]) || '';
+    if (!n || n === waterAt) { waterAt = n; return; }
+    waterAt = n; J.waters ||= {};
+    if (J.waters[n]) return;
+    J.waters[n] = { day: G.day, date: G.date?.text || '' };
+    G.hud.name(n[0].toUpperCase() + n.slice(1), 'map');
+    G.emit('water', n);
+  }
   // a year ends with the start of your own spring, or 32 days on where there is none
   function year() {
     J.family.push({ year: J.year, mate: !!G.story?.mate, chicks: J.yearChicks, landmarks: Object.keys(J.found).length });
@@ -94,7 +105,8 @@ export function journeySystem(G) {
     lmSec.count(`${lms.length} found`);
     const row = l => { const w = wonderOf(l.name); return `<li${w ? ' class="star"' : ''}>${w ? '<i class="star3" title="A wonder">★</i>' : ''}${esc(l.name)} <small>${w ? esc(WONDERS[w][5]) + ' ' : ''}${esc(l.note)}</small></li>`; };
     lmSec.body.innerHTML = `<p class="muted3">${nw} of ${W.length} wonders found: people built them, long ago, where the old maps put them. ★ marks one.</p>`
-      + (lms.length ? `<ul class="list3">${lms.map(row).join('')}</ul>` : '<p class="muted3">None found yet. Rare sights wait in every land: an old oak, a waterfall, a tower, a light.</p>');
+      + (lms.length ? `<ul class="list3">${lms.map(row).join('')}</ul>` : '<p class="muted3">None found yet. Rare sights wait in every land: an old oak, a waterfall, a tower, a light.</p>')
+      + (Object.keys(J.waters || {}).length ? `<p class="muted3">Great waters: ${esc(Object.keys(J.waters).join(', '))}.</p>` : '');
   });
   G.menu.subtitle(() => { const h = hourName(G.tod); return `${h[0].toUpperCase()}${h.slice(1)} on ${G.date?.text || `day ${G.day}`}, ${G.season.name}.`; });
 
@@ -102,9 +114,9 @@ export function journeySystem(G) {
     id: 'journey',
     update(dt) {
       trace(); map.update(dt);
-      if ((findT -= dt) <= 0) { findT = .5; landmarks(); regions(.5); }
+      if ((findT -= dt) <= 0) { findT = .5; landmarks(); regions(.5); waters(); }
     },
-    save: () => ({ loops: J.loops || 0, year: J.year, yearDay: J.yearDay, family: J.family, yearChicks: J.yearChicks, found: J.found, regions: J.regions, pins: J.pins || [], route: J.route, box: J.box.map(Math.round), fog: map.save() }),
+    save: () => ({ waters: J.waters || {}, loops: J.loops || 0, year: J.year, yearDay: J.yearDay, family: J.family, yearChicks: J.yearChicks, found: J.found, regions: J.regions, pins: J.pins || [], route: J.route, box: J.box.map(Math.round), fog: map.save() }),
     load(o) { const { fog, ...rest } = o; Object.assign(J, rest); if (!J.box) J.box = [b.p[0], b.p[2], b.p[0], b.p[2]]; map.load(fog); },
   };
 }

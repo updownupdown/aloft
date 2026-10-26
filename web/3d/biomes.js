@@ -8,7 +8,7 @@
 // and flags for the shared touches (rock on steep ground, snow up high, sand at the shore).
 // Trees, rocks and flora read the biome too (world.js, sys/flora.js).
 import { ih, fbm, ridged, softRidged, smooth, clamp } from './noise.js';
-import { earthBiome, continentAt, latLon, coastDist } from './earth.js';
+import { lakeAt, byGrain, earthBiome, continentAt, latLon, coastDist } from './earth.js';
 
 export const BIOME_CELL = 950, BLEND = 210;
 
@@ -86,14 +86,16 @@ export const BIOMES = {
     h: (x, z, B) => 22 + B.big * 14 - Math.abs(B.mid) * 6,
     c: (x, y, z) => mixc(PAL.moor, PAL.heather2, smooth(0, .4, fbm(x / 30, z / 30, 15, 2)) * .55),
   },
+  // The ranges' ridges run the way the real range does (the bake's grain: the Andes north to south,
+  // the Himalaya east to west): the ridged noise stretched along that bearing (option D)
   mountains: {
     label: 'the high country', forest: 0, high: 1,
-    h: (x, z, B) => 30 + B.big * 30 + B.mid * 12 + softRidged(x / 260, z / 260, 4, 3) ** 2 * 160,
+    h: (x, z, B) => 30 + B.big * 30 + B.mid * 12 + ranged(x, z, 260, 4, 3, .08) ** 2 * 160,
     c: (x, y, z) => mixc(PAL.meadow, PAL.heath, smooth(40, 110, y) * .6),
   },
   alpine: {
     label: 'the snowy peaks', forest: -.2, high: 1, peaks: 1,
-    h: (x, z, B) => 70 + B.big * 40 + B.mid * 16 + softRidged(x / 330, z / 330, 41, 3, .06) ** 2.2 * 270 + softRidged(x / 90, z / 90, 42, 2, .15) ** 2 * 8,
+    h: (x, z, B) => 70 + B.big * 40 + B.mid * 16 + ranged(x, z, 330, 41, 3, .06) ** 2.2 * 270 + softRidged(x / 90, z / 90, 42, 2, .15) ** 2 * 8,
     c: (x, y, z, st) => mixc(mixc(PAL.alpine, PAL.heath, smooth(60, 140, y)), PAL.scree, smooth(.15, .3, st) * smooth(90, 150, y)),
   },
   cliffs: {
@@ -274,6 +276,24 @@ function dryRound(x, z) {
 // the savanna, ice by the ice (no beach in Antarctica), mangroves and rainforest on the wet tropical
 // coasts, the coast elsewhere
 const DRY_SHORE = { desert: 'desert', saltflat: 'desert', canyon: 'desert', badlands: 'desert', savanna: 'savanna', steppe: 'steppe', ice: 'ice' };
+const STRETCH = 4, TRIG = Array.from({ length: 16 }, (_, q) => [Math.cos(q / 16 * Math.PI), Math.sin(q / 16 * Math.PI)]);
+function ranged(x, z, k, seed, oct, soft) {
+  return byGrain(x, z, th => {
+    if (th < 0) return softRidged(x / k, z / k, seed, oct, soft);
+    const [c, s] = TRIG[Math.round(th / Math.PI * 16) % 16], a = x * c + z * s, b = -x * s + z * c;
+    return softRidged(a / (k * STRETCH), b / k, seed, oct, soft);
+  });
+}
+// The rare lands the bake places on purpose, at the real place (tower karst, a salt flat, the
+// redwoods...): a cell of one is that land for certain, not a roll of its palette (option A3). Not
+// the fire mountains: each cell of one is a whole caldera, so they keep their roll
+const SITE_LANDS = new Set(['karst', 'saltflat', 'badlands', 'canyon', 'cliffs', 'marsh', 'redwood', 'sequoia']);
+// and the shores of tower karst are karst too, out to its islands (Ha Long); a fire mountain's
+// island is a fire mountain (F);
+// world.js tells which real island a point is on (isleOf: its kind, 'volcano', 'atoll', 'high')
+const SITE_SHORES = new Set(['karst']);
+let isleOf = null;
+export const setIsleOf = f => { isleOf = f; };
 function cellAt(gx, gz) {
   const key = gx * 100003 + gz; let c = cells.get(key); if (c) return c;
   const wcx = (gx + .15 + ih(gx, gz, 321) * .7) * BIOME_CELL, wcz = (gz + .15 + ih(gx, gz, 322) * .7) * BIOME_CELL;
@@ -284,10 +304,14 @@ function cellAt(gx, gz) {
   let pal = PALETTE[e] || PALETTE.forest;
   if (e === 'swamp' && dryRound(cx, cz)) e = 'desert';   // no mangroves on the desert coasts (the Namib, the Red Sea)
   if (e === 'sea') {
-    const l = landNear(cx, cz);
+    const l = landNear(cx, cz), lake = lakeAt(cx, cz);
     if (l) w.cont = cont = l.cont;
-    pal = l && DRY_SHORE[l.e] ? [[DRY_SHORE[l.e], 1]] : lat < -60 ? [['ice', 1]] : Math.abs(lat) < 24 ? PALETTE.seaTropic : PALETTE.sea;
-  }
+    pal = l && SITE_SHORES.has(l.e) ? [[l.e, 1]]
+      // a great lake's shores are the land round it (a salt lake's a salt flat), not a sea coast
+      : lake && l ? (lake.salt ? [['saltflat', 1]] : (PALETTE[l.e] || PALETTE.forest).filter(p => !SITE_LANDS.has(p[0])))
+      : l && DRY_SHORE[l.e] ? [[DRY_SHORE[l.e], 1]] : lat < -60 ? [['ice', 1]] : Math.abs(lat) < 24 ? PALETTE.seaTropic : PALETTE.sea;
+    if (isleOf?.(cx, cz) === 'volcano') pal = [['volcano', 1]];
+  } else if (SITE_LANDS.has(e)) pal = [pal[0]];
   pal = pal.filter((p, i) => i === 0 || !FITS[p[0]] || FITS[p[0]](w));
   let tot = 0; for (const p of pal) tot += p[1];
   let r = ih(gx, gz, 323) * tot, name = pal[0][0];
