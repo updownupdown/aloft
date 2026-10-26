@@ -342,7 +342,6 @@ export function createAudio() {
   };
   let BV = null;
   const birds = () => BV || (BV = createBirdVoice(A.ctx, A.master, noiseBuf), BV.set(loadVoice()), BV);
-  // the song tests (Settings > Advanced > Song tests): A stereo places, B distinct voices
   A.setBirdVoice = v => { if (BV) BV.set(v); };
   // songs echo off rock walls (0..1): canyons, fjords, sea cliffs
   A.setPlace = k => { if (A.ctx) birds().place(k); };
