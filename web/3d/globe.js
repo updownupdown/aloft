@@ -88,7 +88,8 @@ precision highp float;
 uniform sampler2D land, fog; uniform vec2 C; uniform float R, veil, dpr; uniform mat3 M; uniform vec3 S;
 out vec4 o;
 const float PI = 3.14159265;
-// value noise, for the paper's fibres and the hand-drawn lines
+const vec3 PENCIL = vec3(.2, .19, .18), PENCIL_LIGHT = vec3(.78, .76, .72);
+// value noise, for the paper's fibres and the pencil's pressure
 float h3(vec3 p) { p = fract(p * .3183099 + .1); p *= 17.; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
 float vn(vec3 x) {
   vec3 i = floor(x), f = fract(x); f = f * f * (3. - 2. * f);
@@ -120,12 +121,17 @@ void main() {
   // where it is day on Earth now: the night side in blue shade, a warm band at the dusk line
   float sun = dot(w, S), day = smoothstep(-.14, .12, sun);
   c = mix(c * vec3(.36, .42, .6), c, day) + vec3(.5, .28, .12) * (1. - abs(sun) / .14) * step(abs(sun), .14) * .12;
-  // the lines every 30 degrees, drawn by hand: they wander a little, and the ink comes and goes
-  vec2 ll = vec2(lat, lon) / (PI / 6.) + (vec2(vn(w * 2.2), vn(w * 2.2 + 7.)) - .5) * .16 + (vec2(vn(w * 7.), vn(w * 7. + 3.)) - .5) * .03;
+  // the lines every 30 degrees, straight, drawn in pencil (James, 10-25): graphite catching on the
+  // paper's tooth, so the stroke breaks up grain by grain, and the pressure comes and goes along it
+  vec2 ll = vec2(lat, lon) / (PI / 6.);
   vec2 g = abs(fract(ll + .5) - .5) / max(fwidth(ll), vec2(1e-5)) / dpr;
-  float ink = .35 + .65 * smoothstep(.2, .8, vn(w * 6.)), lonFade = smoothstep(1.4, 1.2, abs(lat));
-  float line = max((1. - smoothstep(.2, 1.1, g.x)), (1. - smoothstep(.2, 1.1, g.y)) * lonFade);
-  c = mix(c, vec3(1., .96, .88), line * ink * .26);
+  float lonFade = smoothstep(1.4, 1.2, abs(lat));
+  float line = max((1. - smoothstep(.4, 1.5, g.x)), (1. - smoothstep(.4, 1.5, g.y)) * lonFade);
+  float press = .55 + .45 * vn(w * 5.) * (.6 + .4 * vn(w * 23.));
+  float tooth = smoothstep(.2, .7, gh(floor(gl_FragCoord.xy * .7)) * .6 + vn(vec3(gl_FragCoord.xy / dpr * .35, 2.)) * .6);
+  // graphite reads dark on the land and catches the light over the dark sea
+  vec3 pen = mix(PENCIL_LIGHT, PENCIL, smoothstep(.16, .3, dot(c, vec3(.3, .55, .15))));
+  c = mix(c, pen, line * press * tooth * .65);
   c *= paper(gl_FragCoord.xy);
   c += vec3(.45, .65, .85) * pow(1. - v.z, 3.) * .35;   // the air at the edge
   o = vec4(mix(c, bg + vec3(.45, .65, .85) * .55, smoothstep(1. - aa, 1. + aa, r)), 1.);
