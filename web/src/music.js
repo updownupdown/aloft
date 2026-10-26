@@ -72,7 +72,7 @@ export function createMusic(audio) {
     pianoBus.connect(plp); plp.connect(audio.musicBus || audio.master); plp.connect(M.pwet); M.pwet.connect(rv);
     M.pgain = pianoBus;
     pianoBus.gain.value = 0;
-    M.out.gain.setTargetAtTime(M.on ? 1 : 0, ctx.currentTime, 1.5); pianoBus.gain.setTargetAtTime(M.on ? 1 : 0, ctx.currentTime, 1.5);
+    M.out.gain.setTargetAtTime(level(), ctx.currentTime, 1.5); pianoBus.gain.setTargetAtTime(level(true), ctx.currentTime, 1.5);
     noise = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
     const d = noise.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
     M.lp = lp; M.next = ctx.currentTime + 6; M.chordT = ctx.currentTime + .5; M.droneT = ctx.currentTime; M.t0 = ctx.currentTime;
@@ -83,17 +83,27 @@ export function createMusic(audio) {
     if (M.wet) { const t = audio.ctx.currentTime; M.wet.gain.setTargetAtTime(M.tune.room, t, .3); M.pwet.gain.setTargetAtTime(M.tune.pianoRoom, t, .3); }
   };
   M.log = () => {};   // the lab listens here: what Valley just played
-  M.setOn = on => {
-    M.on = on;
-    if (M.out) for (const g of [M.out, M.pgain]) g.gain.setTargetAtTime(on && !M.menu ? 1 : 0, audio.ctx.currentTime, .8);
-  };
+  // how loud the strings (and, with piano, the piano) are now: off, under the menu, or thinned while
+  // you sing (SING: the piano rests, the strings drop back, so the birds and your notes come through)
+  const SING = { strings: .55, piano: 0 };
+  const level = (piano = false) => !M.on || M.menu ? 0 : M.singing ? SING[piano ? 'piano' : 'strings'] : 1;
+  const relevel = secs => { if (M.out) { const t = audio.ctx.currentTime; M.out.gain.setTargetAtTime(level(), t, secs); M.pgain.gain.setTargetAtTime(level(true), t, secs); } };
+  M.setOn = on => { M.on = on; relevel(.8); };
   M.hush = 0;          // 0..1: the hush after snow, an eclipse (set from the moments system): softer
   // with the menu open the music fades away slowly (about fifteen seconds), and comes back more
   // quickly when it closes
   M.hold = on => {
     if (!!on === !!M.menu) return;
     M.menu = !!on;
-    if (M.out && M.on) for (const g of [M.out, M.pgain]) g.gain.setTargetAtTime(M.menu ? 0 : 1, audio.ctx.currentTime, M.menu ? 5 : 1.5);
+    relevel(M.menu ? 5 : 1.5);
+  };
+  // the Sing controls are out (songs.js): the music thins (no piano, two-note chords, no violins or
+  // cello, softer) and comes back as they close. Useful for learning, and light on a phone's audio
+  // with birds singing (James, 10-26)
+  M.sing = on => {
+    if (!!on === !!M.singing) return;
+    M.singing = !!on;
+    relevel(on ? .6 : 2.5);
   };
   M.setMode = () => {};   // one style now (older saves still call this)
 
@@ -239,15 +249,19 @@ export function createMusic(audio) {
       else {
         const nx = set[M.chord].next; M.chord = nx[(Math.random() * nx.length) | 0];
         const ch = set[M.chord], dur = T.chordLen + Math.random() * T.chordVar, vol = T.strings * quiet * (.7 + .6 * arc);
-        strings(ch.up.map(hz), t, dur, vol, T.bright + arc * 400 - night * 250);
+        // (while you sing: just the chord's outer notes, and no violins or cello over the birds)
+        const thin = M.singing;
+        strings((thin ? [ch.up[0], ch.up[ch.up.length - 1]] : ch.up).map(hz), t, dur, vol, T.bright + arc * 400 - night * 250);
         // high violins: the top of the chord an octave up, thin and quiet, as the arc climbs
-        if (arc > .45 && Math.random() < T.violins) strings([hz(ch.up[ch.up.length - 1] + 12), hz(ch.up[ch.up.length - 2] + 12)], t + dur * .15, dur * .8, vol * .35, T.bright * 1.6);
-        const cello = Math.random() < T.cello;
+        if (!thin && arc > .45 && Math.random() < T.violins) strings([hz(ch.up[ch.up.length - 1] + 12), hz(ch.up[ch.up.length - 2] + 12)], t + dur * .15, dur * .8, vol * .35, T.bright * 1.6);
+        const cello = !thin && Math.random() < T.cello;
         if (cello) strings([hz(ch.bass)], t + dur * .08, dur * .92, vol * .9, T.bright * .65);
         M.chordT = t + dur * T.overlap;   // the next chord swells in as this one fades
         M.log(`${ch.name} for ${Math.round(dur)} s${cello ? ', a cello under it' : ''}`);
       }
     }
+    // the piano rests while you sing, and starts a new run a little after
+    if (M.singing) { M.next = Math.max(M.next, now + 3); M.left = 0; M.resting = true; return; }
     if (now > M.next - .2) {
       const t = Math.max(now, M.next), vol = T.piano * quiet * (.8 + .4 * arc), ch = set[Math.min(M.chord, set.length - 1)];
       if (M.left <= 0) {
@@ -274,7 +288,7 @@ export function createMusic(audio) {
   // a moment of the flight answered: a soft rolled chord rising into a high note, at most every
   // couple of minutes and not every time (first light, out of a thermal, a high perch, a long glide)
   M.moment = (what, chance = .6) => {
-    if (!M.on || !ensure()) return false;
+    if (!M.on || M.singing || !ensure()) return false;
     const now = audio.ctx.currentTime;
     if (now - M.momentT < 120 || Math.random() > chance) return false;
     M.momentT = now;
