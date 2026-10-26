@@ -52,7 +52,7 @@ function lighthouse() {
 // once per waterfall from the ground's own profile (local coordinates, +x downhill)
 // out: how far the curtain hangs clear of the face down the sheer part (a ledge behind it, sys/hidden.js)
 function fallsMesh(l, out = 0) {
-  const B = builder(), W = [.86, .92, .95], W2 = [.76, .86, .92], w = 3.2, pts = [];
+  const B = builder(), W = [.86, .92, .95], W2 = [.76, .86, .92], w = l.w || 3.2, pts = [];
   let s = -3, y0 = height(l.x - l.dx * 3, l.z - l.dz * 3);
   pts.push([s, y0 + .5]);
   for (s = 0; s < 120; s += 1.5) {
@@ -137,6 +137,28 @@ function box(B, x, y, z, l, h, w, a, col, top = col) {
   q(P(-L, h, -W), P(L, h, -W), P(L, h, W), P(-L, h, W), top);
 }
 // a fire lookout: four splayed legs with braces, a cabin with a pyramid roof and a railed walk
+// an old mine on a hillside (+x downhill): the adit's timber mouth into the slope, a headframe with its
+// wheel over the shaft, a tin-roofed shed, the tip of grey spoil down the slope, ore carts on a rail
+function mine() {
+  reseed(83); const B = builder(), T = [.42, .34, .26], T2 = [.34, .27, .2], SP = [.5, .48, .45], SP2 = [.44, .42, .4], TIN = [.5, .38, .3], RAIL = [.3, .26, .22];
+  // the adit: posts and a lintel, dark inside, the hill's rock round it
+  for (const w of [-1.4, 1.4]) box(B, -4, -1, w, .4, 4.2, .4, 0, T);
+  box(B, -4, 3, 0, .5, .5, 3.6, 0, T2); box(B, -4.5, -1, 0, .3, 4, 2.4, 0, [.06, .06, .06]);
+  blob(B, -6, 1, 0, 3.5, [.46, .44, .4], [.4, .38, .35], [1, 1, 1.4], 1);
+  // the rail and a cart out to the tip
+  for (const w of [-.5, .5]) box(B, 3, -.1, w, 14, .15, .12, 0, RAIL);
+  box(B, 5, .2, 0, 1.6, 1, 1.1, 0, [.36, .3, .26]);
+  // the headframe: an A of timber over the shaft, the wheel at the top
+  for (const [a, b] of [[[-1.6, 0, -1.6], [-.4, 12, -.4]], [[1.6, 0, -1.6], [.4, 12, -.4]], [[-1.6, 0, 1.6], [-.4, 12, .4]], [[1.6, 0, 1.6], [.4, 12, .4]], [[4.5, 0, 0], [.3, 11, 0]]])
+    tube(B, [a[0] + 1, a[1] - .5, a[2] - 5], [b[0] + 1, b[1], b[2] - 5], .2, T);
+  for (let i = 0; i < 12; i++) { const a = i / 12 * 6.283, c = i / 12 * 6.283 + .52; tube(B, [1 + Math.cos(a) * 1.4, 12 + Math.sin(a) * 1.4, -5], [1 + Math.cos(c) * 1.4, 12 + Math.sin(c) * 1.4, -5], .09, T2); }
+  // the shed
+  box(B, 1, -.5, 5, 6, 3.4, 4, 0, [.46, .4, .34], TIN);
+  B.tri([-2, 2.9, 3], [4, 2.9, 3], [4, 4.2, 5], TIN); B.tri([-2, 2.9, 3], [4, 4.2, 5], [-2, 4.2, 5], TIN); B.tri([4, 2.9, 7], [-2, 2.9, 7], [-2, 4.2, 5], TIN); B.tri([4, 2.9, 7], [-2, 4.2, 5], [4, 4.2, 5], TIN);
+  // the spoil tip, down the slope
+  blob(B, 13, -1, 0, 5.5, SP, SP2, [1.5, .6, 1.1], 1); blob(B, 18, -3, 2, 4, SP2, SP, [1.3, .5, 1], 1);
+  return B.out();
+}
 function lookout() {
   reseed(82); const B = builder(), wood = [.5, .42, .33], wood2 = [.42, .35, .28], cab = [.62, .55, .44], win = [.3, .35, .4], roof = [.36, .3, .26];
   const legs = [[-1, -1], [1, -1], [1, 1], [-1, 1]];
@@ -207,7 +229,7 @@ export function landsSystem(G) {
   R.shape('lm_stones', stones()); R.shape('lm_cairn', cairn()); R.shape('lm_tower', tower()); R.shape('lm_lighthouse', lighthouse());
   R.shape('rock_tor', tor()); R.shape('rock_hoodoo', hoodoo()); R.shape('rock_boulder', boulder());
   R.shape('rock_lava', lava()); R.shape('rock_arch', arch()); R.shape('rock_stack', stack()); R.shape('rock_skerry', skerry());
-  R.shape('lm_lookout', lookout());
+  R.shape('lm_lookout', lookout()); R.shape('lm_mine', mine());
   const fenceOf = new Map();   // run id -> { shape, at }
   const fenceShape = f => {
     let m = fenceOf.get(f.id);
@@ -239,6 +261,7 @@ export function landsSystem(G) {
       for (const l of near) {
         if (Math.hypot(l.x - cam[0], l.z - cam[2]) > 600) continue;
         if (l.kind === 'lookout') (S.props.lm_lookout ||= []).push(l.x, l.y - .2, l.z, 1, l.yaw, .5, 0, 0);
+        if (l.kind === 'mine') (S.props.lm_mine ||= []).push(l.x, l.y, l.z, 1, l.yaw, .5, 0, 0);
         if (l.kind === 'stack') (S.props.rock_stack ||= []).push(l.x, l.y - .3, l.z, l.h, l.yaw, .5, 0, 0);
         if (l.kind === 'stones') (S.props.lm_stones ||= []).push(l.x, l.y, l.z, 1, l.yaw, .5, 0, 0);
         if (l.kind === 'cairn') (S.props.lm_cairn ||= []).push(l.x, l.y - .3, l.z, 1, l.yaw, .5, 0, 0);

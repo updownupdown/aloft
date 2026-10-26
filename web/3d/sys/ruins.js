@@ -117,7 +117,8 @@ export function ruinsSystem(G) {
 
   // ---- the wonders (wonders.js): drawn from far off, each mesh built when first near ---------
   const WDRAW = 2400, wonderOf = new Map();
-  const WMESH = { eiffel: 'eiffel', liberty: 'liberty', giza: 'giza', colosseum: 'colosseum', taj: 'taj', opera: 'opera', redeemer: 'redeemer', stonehenge: 'stonehenge', pisa: 'pisa', picchu: 'picchu', angkor: 'angkor', moai: 'moai' };
+  const WMESH = { eiffel: 'eiffel', liberty: 'liberty', giza: 'giza', colosseum: 'colosseum', taj: 'taj', opera: 'opera', redeemer: 'redeemer', stonehenge: 'stonehenge', pisa: 'pisa', picchu: 'picchu', angkor: 'angkor', moai: 'moai',
+    petra: 'petra', cappadocia: 'cappadocia', mesaverde: 'mesaverde', meteora: 'meteora', skellig: 'skellig', bandiagara: 'bandiagara', stave: 'stave', potala: 'potala' };
   const wonderShape = W => {
     let m = wonderOf.get(W.id); if (m) return m;
     if (W.key === 'greatwall') { m = WS.greatWall(W.path); m.shape = 'wd_' + W.key; R.shape(m.shape, m.tris); }

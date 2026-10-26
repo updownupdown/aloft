@@ -4,7 +4,7 @@
 // has seen, splatted soft). A view is { lat, lon, R }: the point in the middle and the ball's
 // radius in CSS pixels; project()/unproject() go between lat/lon and the screen for the markers.
 import { LL, EARTH, CELL } from './earthdata.js';
-import { coastDist, earthBiome, latLon } from './earth.js';
+import { coastDist, earthBiome, latLon, bakedRiver } from './earth.js';
 import { riverAt } from './world.js';
 import { program } from './gl.js';
 
@@ -90,6 +90,8 @@ function bakeLand() {
       const w0 = (1 - fx) * (1 - fz), w1 = fx * (1 - fz), w2 = (1 - fx) * fz, w3 = fx * fz;
       r = g[a] * w0 + g[b] * w1 + g[c] * w2 + g[e] * w3; gg = g[a + 1] * w0 + g[b + 1] * w1 + g[c + 1] * w2 + g[e + 1] * w3; bb = g[a + 2] * w0 + g[b + 2] * w1 + g[c + 2] * w2 + g[e + 2] * w3;
       if (d < 120) { const t = .86 + .14 * Math.min(1, Math.max(0, (d - 60) / 60)); r *= t; gg *= t; bb *= t; }   // a darker coastline
+      const rv = bakedRiver(x, z);   // the great rivers, a thread of water
+      if (rv && rv.d < 70 - rv.line.rank * 8) { const t = .35 + .65 * rv.d / (70 - rv.line.rank * 8); r = SHALLOW[0] + (r - SHALLOW[0]) * t; gg = SHALLOW[1] + (gg - SHALLOW[1]) * t; bb = SHALLOW[2] + (bb - SHALLOW[2]) * t; }
       if (d < 70) { const t = .5 + d / 140; r = SHALLOW[0] + (r - SHALLOW[0]) * t; gg = SHALLOW[1] + (gg - SHALLOW[1]) * t; bb = SHALLOW[2] + (bb - SHALLOW[2]) * t; }   // a soft shore
     }
     px[k] = r; px[k + 1] = gg; px[k + 2] = bb; px[k + 3] = 255;

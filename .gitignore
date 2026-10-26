@@ -4,3 +4,5 @@ Thumbs.db
 *.tmp
 __pycache__/
 *.pyc
+tools/earth/land10.png
+tools/earth/ne_10m_*.geojson

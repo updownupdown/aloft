@@ -35,7 +35,7 @@ web/3d/flight.js        hawk flight model (energy, tuck/flare, flaps, thermal ri
 web/3d/input.js         two thumbs = two wings (floating sticks, paired taps), keyboard
 web/3d/camera.js        chase camera, hawk frame, pose (wing beats with per-wing amplitude)
 web/3d/world.js         terrain height(x,z) (coasts from earth.js, islands, pack ice), colours, trees + perches, thermals, airLift, rings
-web/3d/earth.js         the Earth under the world: coastDist, earthBiome, continentAt, latLon/toXZ, oceanAt (each ocean's way across), regionAt, calendar (yearFrac, dateOf, seasonAt, snowLine)
+web/3d/earth.js         the Earth under the world: coastDist, earthBiome, continentAt, latLon/toXZ, oceanAt (each ocean's way across), regionAt, lakeAt (the great lakes, fresh or salt), bakedRiver (the great rivers, Natural Earth lines), byGrain (the ranges' ridge bearing), calendar (yearFrac, dateOf, seasonAt, snowLine)
 web/3d/earthdata.js     baked grids for earth.js (made by tools/earth/bake.py from Natural Earth; do not edit by hand)
 web/3d/render.js        WebGL2 renderer: sky, chunks, instanced trees and named shapes, hawk, water, points
 web/3d/clouds.js        clouds as soft volumes (lobes integrated along the view ray) and the valley mist (S.mists); Soft is the look (James, 10-23), ?clouds=poly the old polygons

@@ -4,8 +4,8 @@
 // and latitude and longitude every 2 km. Pure functions of (x, z), so the chunk worker runs them
 // too. x east, z south; the wrap seam (x = +-W/2) runs down the open Pacific, the poles are the
 // strip's north and south edges, both ice.
-import { EARTH, SDF, CELL, BIOME_IDS, CONTINENTS, LL } from './earthdata.js';
-export { EARTH, BIOME_IDS, CONTINENTS };
+import { EARTH, SDF, CELL, BIOME_IDS, CONTINENTS, LL, GRAIN, LAKE, LAKES, RIVERS } from './earthdata.js';
+export { EARTH, BIOME_IDS, CONTINENTS, LAKES };
 
 const W = EARTH.W, X0 = EARTH.X0, Z0 = EARTH.Z0;
 export const NORTH = Z0, SOUTH = Z0 + EARTH.H;          // the edges of the world (z)
@@ -21,11 +21,13 @@ const sd = (() => {
   for (let j = 0; j < SDF.nz; j++) { let acc = 0; for (let i = 0; i < SDF.nx; i++) { const k = j * SDF.nx + i; acc += b[k] - 128; a[k] = acc; } }
   return a;
 })();
-const cells = (() => {
-  const b = bytes(CELL.data), a = new Uint8Array(CELL.nx * CELL.nz); let o = 0;
+// runs of (value, count) bytes
+function runs(G) {
+  const b = bytes(G.data), a = new Uint8Array(G.nx * G.nz); let o = 0;
   for (let i = 0; i < b.length; i += 2) { a.fill(b[i], o, o + b[i + 1]); o += b[i + 1]; }
   return a;
-})();
+}
+const cells = runs(CELL), grains = runs(GRAIN), lakes = runs(LAKE);
 
 // metres to the nearest coast: positive on land, negative at sea (smooth: bilinear on 250 m)
 export function coastDist(x, z) {
@@ -51,6 +53,94 @@ export function dryAt(x, z) {
 }
 // 'europe', 'africa', 'asia', 'n-america', 's-america', 'oceania', 'antarctica', or null at sea
 export const continentAt = (x, z) => CONTINENTS[cellByte(x, z) >> 5];
+
+// ---- the great lakes and rivers (Natural Earth): lakes are water in the land at the sea's level,
+// fresh unless salt; rivers are lines in metres (rank 0 the greatest), cut by world.js riverAt
+// the lake there, or near its water (within 500 m): { name, salt } or null
+const CASPIAN = { name: 'the Caspian Sea', salt: true };
+// lakes named for the water, never a nation or a human use (CLAUDE.md: as a bird sees them)
+const LAKE_AS = { 'Lago de Nicaragua': 'Lake Cocibolca', 'Réservoir Manicouagan': 'the Ring Lake', 'Rybinsk Reservoir': 'the Rybinsk water', 'Lago Titicaca': 'Lake Titicaca' };
+export function lakeAt(x, z) {
+  const i = mod(Math.round((wrapX(x) - X0) / LAKE.step), LAKE.nx), j = clamp(Math.round((z - Z0) / LAKE.step), 0, LAKE.nz - 1);
+  const k = lakes[j * LAKE.nx + i];
+  if (!k) {
+    // the Caspian, a salt lake the land mask has as sea
+    if (coastDist(x, z) > 500) return null;
+    const [lat, lon] = latLon(x, z);
+    return lat > 36.5 && lat < 47.5 && lon > 46.5 && lon < 55 ? CASPIAN : null;
+  }
+  const l = LAKES[k - 1]; return { name: LAKE_AS[l[0]] || l[0], salt: !!l[1] };
+}
+// the bearing of the ranges' ridges there (radians, 0..PI, along x = 0), or -1 off the ranges
+export function grainAt(x, z) {
+  const i = mod(Math.round((wrapX(x) - X0) / GRAIN.step), GRAIN.nx), j = clamp(Math.round((z - Z0) / GRAIN.step), 0, GRAIN.nz - 1);
+  const q = grains[j * GRAIN.nx + i]; return q ? (q - 1) / 16 * Math.PI : -1;
+}
+// f(theta) blended over the four grain nodes round a point (bilinear; theta -1 off the ranges),
+// each bearing's value worked out once
+export function byGrain(x, z, f) {
+  const u = (wrapX(x) - X0) / GRAIN.step, v = clamp((z - Z0) / GRAIN.step, 0, GRAIN.nz - 1.001), i = Math.floor(u), j = Math.floor(v), fx = u - i, fz = v - j;
+  const q = [grains[j * GRAIN.nx + mod(i, GRAIN.nx)], grains[j * GRAIN.nx + mod(i + 1, GRAIN.nx)], grains[(j + 1) * GRAIN.nx + mod(i, GRAIN.nx)], grains[(j + 1) * GRAIN.nx + mod(i + 1, GRAIN.nx)]];
+  const w = [(1 - fx) * (1 - fz), fx * (1 - fz), (1 - fx) * fz, fx * fz];
+  if (q[0] === q[1] && q[0] === q[2] && q[0] === q[3]) return f(q[0] ? (q[0] - 1) / 16 * Math.PI : -1);
+  let s = 0;
+  for (let n = 0; n < 4; n++) {
+    if (w[n] <= 0 || q.indexOf(q[n]) < n) continue;
+    let wt = 0; for (let m = n; m < 4; m++) if (q[m] === q[n]) wt += w[m];
+    s += wt * f(q[n] ? (q[n] - 1) / 16 * Math.PI : -1);
+  }
+  return s;
+}
+// The rivers' segments in buckets of RB metres (each one in every bucket within RM of it), so a
+// point finds the near ones in one look
+const RB = 500, RM = 320, RNX = Math.ceil(W / RB);
+export const RIVER_LINES = RIVERS.map(([name, rank, p], id) => {
+  const cum = [0]; for (let k = 0; k + 3 < p.length; k += 2) cum.push(cum[cum.length - 1] + Math.hypot(p[k + 2] - p[k], p[k + 3] - p[k + 1]));
+  return { id, name, rank, p, cum, len: cum[cum.length - 1], openA: false, openB: false };
+});
+const rbuckets = (() => {
+  const m = new Map();
+  for (const L of RIVER_LINES) for (let k = 0; k + 3 < L.p.length; k += 2) {
+    const ax = L.p[k], az = L.p[k + 1], bx = L.p[k + 2], bz = L.p[k + 3];
+    const i0 = Math.floor((Math.min(ax, bx) - RM - X0) / RB), i1 = Math.floor((Math.max(ax, bx) + RM - X0) / RB);
+    const j0 = Math.floor((Math.min(az, bz) - RM - Z0) / RB), j1 = Math.floor((Math.max(az, bz) + RM - Z0) / RB);
+    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+      const key = j * RNX + mod(i, RNX); let a = m.get(key); if (!a) m.set(key, a = []);
+      a.push(L.id, k);
+    }
+  }
+  return m;
+})();
+// a line's end that stops on dry land (a source, not a mouth, a lake or another river) fades out
+let ended = false;
+function ends() {
+  ended = true;
+  for (const L of RIVER_LINES) for (const end of [0, 1]) {
+    const k = end ? L.p.length - 2 : 0, x = L.p[k], z = L.p[k + 1];
+    if (coastDist(x, z) < 120 || lakeAt(x, z)) continue;
+    const o = bakedRiverOf(x, z, L.id); L[end ? 'openB' : 'openA'] = !o || o.d > 60;
+  }
+}
+// the nearest great river within RM: { d (metres), side (+1/-1), t (along the segment 0..1), line, k (segment) } or null
+export const bakedRiver = (x, z) => bakedRiverOf(x, z, -1);
+function bakedRiverOf(x, z, not) {
+  if (!ended) ends();
+  x = wrapX(x);
+  const a = rbuckets.get(Math.floor((z - Z0) / RB) * RNX + mod(Math.floor((x - X0) / RB), RNX)); if (!a) return null;
+  let best = null, bd = RM * RM;
+  for (let n = 0; n < a.length; n += 2) {
+    const L = RIVER_LINES[a[n]], k = a[n + 1], p = L.p;
+    if (L.id === not) continue;
+    let ax = p[k], az = p[k + 1], bx = p[k + 2], bz = p[k + 3];
+    // (a line across the seam: brought to this side)
+    if (ax - x > W / 2) { ax -= W; bx -= W; } else if (x - ax > W / 2) { ax += W; bx += W; }
+    const ux = bx - ax, uz = bz - az, l2 = ux * ux + uz * uz || 1;
+    const t = clamp(((x - ax) * ux + (z - az) * uz) / l2, 0, 1), dx = x - ax - ux * t, dz = z - az - uz * t, d2 = dx * dx + dz * dz;
+    if (d2 < bd) { bd = d2; best = { d: 0, side: ux * (z - az) - uz * (x - ax) < 0 ? -1 : 1, t, line: L, k }; }
+  }
+  if (best) { best.d = Math.sqrt(bd); const L = best.line, at = L.cum[best.k / 2] + best.t * (L.cum[best.k / 2 + 1] - L.cum[best.k / 2]); best.fade = Math.min(L.openA ? at / 500 : 1, L.openB ? (L.len - at) / 500 : 1, 1); }
+  return best;
+}
 
 // ---- latitude and longitude ----------------------------------------------------------------
 const llAt = (i, j, k) => k === 0 ? LL.lat[j * LL.nx + mod(i, LL.nx)] : LL.lon[j * LL.nx + mod(i, LL.nx)] + 360 * Math.floor(i / LL.nx);
@@ -116,7 +206,7 @@ export function oceanKey(lat, lon) {
 }
 // { key, name, travel } at sea, null on land
 export function oceanAt(x, z) {
-  if (coastDist(x, z) > 0) return null;
+  if (coastDist(x, z) > 0 || lakeAt(x, z)) return null;
   const [lat, lon] = latLon(x, z), key = oceanKey(lat, lon);
   return { key, ...OCEANS[key] };
 }

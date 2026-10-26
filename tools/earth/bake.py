@@ -5,11 +5,16 @@
 #   npm pack world-atlas@2.0.2 && tar xzf world-atlas-2.0.2.tgz      (public domain, Natural Earth)
 #   py -3 tools/earth/mask.py package/land-10m.json tools/earth/land10.png 0.1
 #   py -3 tools/earth/bake.py tools/earth/land10.png
+# and the great lakes and rivers (public domain, Natural Earth 10m), saved beside this script:
+#   https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_10m_lakes.geojson
+#   https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_10m_rivers_lake_centerlines.geojson
 # The warp: CP pins real places (lon, lat) to spots on the strip (u, v), in units of 4/3 km, u east
 # from the wrap seam, v south from the north edge. Move a pin, bake, look at earth-preview.png.
 import sys, os, json, base64, numpy as np
 from PIL import Image
 from scipy.ndimage import distance_transform_edt
+from scipy.spatial import cKDTree
+from PIL import ImageDraw
 HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.dirname(os.path.dirname(HERE))
 land = np.array(Image.open(sys.argv[1] if len(sys.argv) > 1 else os.path.join(HERE, 'land10.png'))) > 127
 RES = 180 / land.shape[0]
@@ -80,16 +85,61 @@ glon, glat = lonlat(warp(UV))
 iy = np.clip(((90 - glat) / RES).astype(int), 0, land.shape[0] - 1); ix = ((glon + 180) / RES).astype(int) % land.shape[1]
 L = land[iy, ix]
 L[np.abs(X) > 48000 - SEAM] = False
+NZF, NXF = L.shape
+def _xyz(lo, la):
+    lo = np.radians(lo); la = np.radians(la); return np.stack([np.cos(la) * np.cos(lo), np.cos(la) * np.sin(lo), np.sin(la)], -1)
+_fine = cKDTree(_xyz(glon.ravel(), glat.ravel()))
+def to_px(coords):
+    # real (lon, lat) points -> fine-grid pixels (i east, j south), refined past the nearest node
+    c = np.asarray(coords, float)[:, :2]; k = _fine.query(_xyz(c[:, 0], c[:, 1]))[1]; i, j = k % NXF, k // NXF
+    i1, j1 = np.clip(i, 1, NXF - 2), np.clip(j, 1, NZF - 2)
+    dlo = lambda a, b: (a - b + 540) % 360 - 180
+    a = dlo(glon[j1, i1 + 1], glon[j1, i1 - 1]) / 2; b = dlo(glon[j1 + 1, i1], glon[j1 - 1, i1]) / 2
+    cc = (glat[j1, i1 + 1] - glat[j1, i1 - 1]) / 2; d = (glat[j1 + 1, i1] - glat[j1 - 1, i1]) / 2
+    r0 = dlo(c[:, 0], glon[j, i]); r1 = c[:, 1] - glat[j, i]; det = a * d - b * cc
+    ok = np.abs(det) > 1e-12; det = np.where(ok, det, 1)
+    di = np.where(ok, (r0 * d - b * r1) / det, 0); dj = np.where(ok, (a * r1 - cc * r0) / det, 0)
+    return np.stack([i + np.clip(di, -1.5, 1.5), j + np.clip(dj, -1.5, 1.5)], 1)
+# ---- the great lakes (Natural Earth, scale rank 0 to 2 and a few more): water in the land, at the
+# sea's level, fresh unless salt (alkaline, or named). Each is dilated a node so the small ones show.
+SALT = {'Great Salt Lake', 'Dead Sea', 'North Aral Sea', 'South Aral Sea', 'Aral Sea', 'Lake Eyre North', 'Lake Eyre South', 'Lake Torrens', 'Lake Urmia', 'Lake Van', 'Qinghai Hu', 'Lake Natron', 'Lake Turkana', 'Lake Balkhash'}
+MORE = {'Lake Turkana', 'Lake Geneva', 'Lac Léman', 'Lake Constance', 'Bodensee', 'Lake Garda', 'Loch Ness', 'Lake Tahoe', 'Dead Sea', 'Lake Tana', 'Lake Chad', 'Lake Nicaragua', 'Lake Urmia', 'Lake Van', 'Qinghai Hu', 'Lake Okeechobee', 'Päijänne', 'Vättern', 'Lake Inari', 'Lake Toba'}
+LAKE_SRC = os.path.join(HERE, 'ne_10m_lakes.geojson')
+LAKES = []; lakeId = np.zeros(L.shape, np.uint8)
+if os.path.exists(LAKE_SRC):
+    for f in json.load(open(LAKE_SRC, encoding='utf-8'))['features']:
+        pr = f['properties']; nm = pr.get('name') or ''; rank = pr.get('scalerank', 9)
+        if not nm or (rank > 2 and nm not in MORE) or len(LAKES) >= 250: continue
+        g = f['geometry']; polys = g['coordinates'] if g['type'] == 'MultiPolygon' else [g['coordinates']]
+        im = Image.new('L', (NXF, NZF), 0); dr = ImageDraw.Draw(im)
+        for poly in polys:
+            for ri, ring in enumerate(poly):
+                px = to_px(ring)
+                if len(px) >= 3 and np.ptp(px[:, 0]) < NXF / 2: dr.polygon([tuple(q) for q in px.round(1)], fill=0 if ri else 255)
+        m = np.array(im) > 0
+        if m.sum() == 0: continue
+        m = m | np.roll(m, 1, 0) | np.roll(m, -1, 0) | np.roll(m, 1, 1) | np.roll(m, -1, 1)   # a node wider all round
+        # (some are water in the land mask already, Geneva and the like: they are still this lake)
+        if (m & L).sum() < 3 and m.sum() < 12: continue
+        salt = pr.get('featurecla') == 'Alkaline Lake' or nm in SALT
+        LAKES.append([nm, 1 if salt else 0]); lakeId[m] = len(LAKES); L[m] = False
+    print('lakes', len(LAKES), '(salt', sum(s for _, s in LAKES), ')')
 pad = 160
 Lp = np.concatenate([L[:, -pad:], L, L[:, :pad]], 1)
 dsea = distance_transform_edt(Lp, sampling=FINE)[:, pad:-pad]       # on land: metres to the sea
 dland = distance_transform_edt(~Lp, sampling=FINE)[:, pad:-pad]     # at sea: metres to land
 sdf = np.where(L, dsea - FINE / 2, -(dland - FINE / 2))
 SDF = sdf[::4, ::4]; SNX, SNZ = SDF.shape[1], SDF.shape[0]
+# each node within 500 m of a lake's water knows which lake (0: none): fresh water to drink, no whales
+_, (li, lj) = distance_transform_edt(lakeId == 0, sampling=FINE, return_indices=True)
+near = distance_transform_edt(lakeId == 0, sampling=FINE) <= 500
+LAKEGRID = np.where(near, lakeId[li, lj], 0)[::4, ::4].astype(np.uint8)
 
 # ---- biomes and continents (500 m) -----------------------------------------------------------
 lon, lat = glon[::8, ::8].copy(), glat[::8, ::8].copy()
-dl = sdf[::8, ::8] / (KM * 1000)          # on land: units inland
+# on land: units inland from the sea (the lakes don't make coasts: their shores keep their land)
+Ls = L | (lakeId > 0); Lsp = np.concatenate([Ls[:, -pad:], Ls, Ls[:, :pad]], 1)
+dl = (distance_transform_edt(Lsp, sampling=FINE)[:, pad:-pad] - FINE / 2)[::8, ::8] / (KM * 1000)
 Lb = L[::8, ::8]
 alat = np.abs(lat)
 def vnoise(x, y, f, seed):
@@ -195,7 +245,19 @@ R = [
  ([(-153, 62.5), (-147, 63.3), (-141, 62)], 1.2, 'alpine'), ([(-160, 68), (-145, 68.5)], 1.0, 'mountains'), ([(157, 51), (160, 56), (162, 58)], 1.0, 'mountains'),
  ([(138, -4.5), (146, -6.5)], 1.0, 'mountains'), ([(100, 27), (102, 31), (103, 34)], 1.5, 'mountains'), ([(43, 15), (44.5, 13.5)], 1.2, 'mountains'),
 ]
-for pts, w, nm, *wm in R: put(linem(pts, w, *wm) if wm else line(pts, w), nm)   # a fourth number: a band at least that wide on the strip, metres
+for pts, w, nm, *wm in R: put(linem(pts, w, *wm), nm)   # a fourth number: a band at least that wide on the strip, metres
+# the grain of each range (D): which way its ridges run, the bearing of the nearest stretch of its
+# line on the strip, in sixteenths of a half turn (+1; 0 where no range runs)
+GRAIN = np.zeros(lon.shape, np.uint8); _gd = np.full(lon.shape, 1e9)
+for pts, w, nm, *wm in R:
+    if nm not in ('mountains', 'alpine'): continue
+    GP = [spot(x, y) for x, y in pts]; wmin = wm[0] if wm else WMIN
+    for (x0, z0, s0), (x1, z1, s1) in zip(GP, GP[1:]):
+        ax, az = dxw(x1, x0), z1 - z0; px, pz = dxw(Xb + jx, x0), Zb + jz - z0
+        t = np.clip((px * ax + pz * az) / max(ax * ax + az * az, 1), 0, 1); d = np.hypot(px - t * ax, pz - t * az)
+        band = max(wmin, w * (s0 + s1) / 2) * 1.3; q = int(round((np.arctan2(az, ax) % np.pi) / np.pi * 16)) % 16 + 1
+        m = (d <= band) & (d < _gd); GRAIN[m] = q; _gd[m] = d[m]
+print('grain nodes', int((GRAIN > 0).sum()))
 put(ellm(88, 33, 9, 3.8), 'alpine'); put(ellm(38.5, 9.5, 3, 4), 'mountains'); put(ellm(-4.5, 57.2, 1.6, .9), 'moor')
 put(ellm(-61, 5.5, 1.6) | ellm(-64, 5.8, 1.2), 'cliffs')    # the tepuis
 # ---- coasts, fjords, moors ----------------------------------------------------------------
@@ -216,6 +278,9 @@ for x, y, r in [(4.5, 43.5, .4), (29.3, 45.1, .5), (22.9, -19.3, 1.3), (-57, -17
 for x, y, r in [(-19, 64.6, 1.4), (15, 37.75, .4), (14.4, 40.8, .3), (37.35, -3.07, .6), (138.7, 35.4, .5), (-155.5, 19.6, 1.4), (-121.8, 46.85, .5), (-98.6, 19, .6),
                 (-78.4, -0.7, .6), (160, 55, 1.5), (112.9, -7.9, .8), (105.4, -6.1, .4), (175.6, -39.3, .6), (44.3, 39.7, .5), (-16.6, 28.3, .8), (-28, 38.5, 1.2), (-90.5, -0.5, 1.2), (-122.2, 42.9, .4)]:
     put(ellm(x, y, r), 'volcano')
+# each wonder in the land it was built in (G3): the pyramids in the desert, Stonehenge on the downs
+for x, y, nm in [(31.134, 29.979, 'desert'), (2.294, 48.858, 'meadow'), (12.492, 41.89, 'maquis'), (10.396, 43.723, 'meadow'), (-1.826, 51.179, 'meadow'), (78.042, 27.175, 'meadow'), (103.867, 13.412, 'rainforest')]:
+    put(ellm(x, y, 0, None, 650), nm)
 # ---- ice ------------------------------------------------------------------------------------
 put((lat < -60) | (lat > 80) | (box(-56, -18, 60, 84) & (dl > .5)), 'ice')
 B[~Lb] = "sea"
@@ -250,6 +315,50 @@ LON, LAT = lonlat(warp(UV2))
 LON = np.degrees(np.unwrap(np.radians(LON), axis=1))
 for j in range(1, LON.shape[0]): LON[j] -= 360 * np.round((LON[j, 0] - LON[j - 1, 0]) / 360)   # rows agree
 
+# ---- the great rivers (Natural Earth, scale rank 0 to 3; 4 in Europe, which is drawn larger) ----
+# Each as lines of strip points (metres), source to mouth, simplified to about 12 m; world.js cuts
+# them, so they run where the real ones do and never fade (the Nile through the Sahara)
+ENGLISH = {'Amazonas': 'Amazon', 'Huang': 'Yellow River', 'Chang Jiang': 'Yangtze', 'Jinsha': 'Yangtze', 'Donau': 'Danube', 'Firat': 'Euphrates', 'Ertis': 'Irtysh', 'Lancang': 'Mekong',
+           'Abay': 'Blue Nile', "Argun'": 'Argun', 'Grande': 'Rio Grande', 'Ganga': 'Ganges', 'Yarlung': 'Brahmaputra', 'Rhein': 'Rhine', 'Wisla': 'Vistula', 'Dnipro': 'Dnieper', 'Dunav': 'Danube', 'Duna': 'Danube', 'Dunarea': 'Danube',
+           # the branches and headwaters under the names of the rivers they are
+           'Al Furat': 'Euphrates', 'Dicle': 'Tigris', 'Dnepre': 'Dnieper', 'Bratul Chillia': 'Danube', 'Bratul Sfintu Gheorghe': 'Danube', 'Borcea': 'Danube',
+           'Olenekskaya Protoka': 'Lena', 'Bykovskaya Protoka': 'Lena', 'Rosetta Branch': 'Nile', 'Damietta Branch': 'Nile', 'Damqogkanbab': 'Brahmaputra', 'Dihang': 'Brahmaputra',
+           'Tongtian': 'Yangtze', 'Tuotuo': 'Yangtze', 'Ideriyn': 'Selenga', 'Za': 'Mekong', 'Ergun': 'Argun', 'Hailar': 'Argun', 'Kibali': 'Uele', 'Shiquan': 'Indus', 'Lek': 'Rhine',
+           'Yellow': 'Yellow River', 'Irrawaddy Delta': 'Irrawaddy', 'Negro': 'Rio Negro', 'Mountain Nile': 'White Nile', 'Albert Nile': 'White Nile'}
+RIVER_SRC = os.path.join(HERE, 'ne_10m_rivers_lake_centerlines.geojson')
+def simplify(P, tol):
+    if len(P) < 3: return P
+    keep = np.zeros(len(P), bool); keep[0] = keep[-1] = True; st = [(0, len(P) - 1)]
+    while st:
+        a, b = st.pop(); A, Bp = P[a], P[b]; seg = Bp - A; L2 = max(seg @ seg, 1e-9)
+        t = np.clip(((P[a + 1:b] - A) @ seg) / L2, 0, 1); d = np.hypot(*(P[a + 1:b] - A - t[:, None] * seg).T) if b > a + 1 else np.array([])
+        if len(d) and d.max() > tol: k = a + 1 + int(d.argmax()); keep[k] = True; st += [(a, k), (k, b)]
+    return P[keep]
+RIVERS = []
+if os.path.exists(RIVER_SRC):
+    for f in json.load(open(RIVER_SRC, encoding='utf-8'))['features']:
+        pr = f['properties']; nm = pr.get('name_en') or pr.get('name') or ''; rank = pr.get('scalerank', 9)
+        g = f['geometry']; lines = g['coordinates'] if g['type'] == 'MultiLineString' else [g['coordinates']]
+        if not nm or not lines or not lines[0]: continue
+        lo0, la0 = lines[0][0][0], lines[0][0][1]
+        eu = -12 < lo0 < 45 and 35 < la0 < 72
+        if rank > (4 if eu else 3): continue
+        nm = ENGLISH.get(nm, nm)
+        for ln in lines:
+            px = to_px(ln) * FINE + [X0, Z0]
+            # cut where it jumps across the wrap seam or runs off past the coast
+            run = []
+            for q in px:
+                i, j = int(round((q[0] - X0) / FINE)) % NXF, int(np.clip(round((q[1] - Z0) / FINE), 0, NZF - 1))
+                wet = sdf[j, i] < -150
+                if run and (abs(q[0] - run[-1][0]) > 2000 or wet):
+                    if len(run) > 1: RIVERS.append([nm, int(rank), simplify(np.array(run), 12)])
+                    run = [] if wet else [q]
+                    continue
+                if not wet: run.append(q)
+            if len(run) > 1: RIVERS.append([nm, int(rank), simplify(np.array(run), 12)])
+    RIVERS = [r for r in RIVERS if np.hypot(*np.diff(r[2], axis=0).T).sum() > 300]
+    print('rivers', len(RIVERS), 'lines,', len({r[0] for r in RIVERS}), 'named,', sum(len(r[2]) for r in RIVERS), 'points')
 # ---- write ----------------------------------------------------------------------------------
 def rle(a):
     out = bytearray(); f = a.ravel(); i = 0
@@ -265,11 +374,17 @@ assert (np.abs(delta) <= 127).all()
 js = f'''// Baked by tools/earth/bake.py from Natural Earth (public domain). Do not edit by hand: rebake.
 // SDF: metres to the coast (+ land, - sea) / 50, every {int(FINE * 4)} m, rows of deltas + 128, base64.
 // CELL: biome | continent << 5 every 500 m, run-length pairs, base64. LL: [lat, lon] every 2 km.
+// GRAIN: the ranges' ridge bearing (sixteenths of a half turn, +1) every 500 m. LAKE: which of LAKES
+// ([name, salt]) the water there is, every 250 m. RIVERS: [name, scale rank, [x, z, x, z ...]] lines.
 export const EARTH = {{ W: 96000, H: {H * KM * 1000:.0f}, X0: {X0:.0f}, Z0: {Z0:.0f}, SEAM: {SEAM} }};
 export const SDF = {{ step: 250, nx: {SNX}, nz: {SNZ}, data: '{base64.b64encode(dz.tobytes()).decode()}' }};
 export const CELL = {{ step: 500, nx: {BNX}, nz: {BNZ}, data: '{rle(cell)}' }};
 export const BIOME_IDS = {json.dumps(BIOMES)};
 export const CONTINENTS = {json.dumps(CONTS)};
+export const GRAIN = {{ step: 500, nx: {BNX}, nz: {BNZ}, data: '{rle(GRAIN)}' }};
+export const LAKE = {{ step: 250, nx: {SNX}, nz: {SNZ}, data: '{rle(LAKEGRID)}' }};
+export const LAKES = {json.dumps(LAKES, ensure_ascii=False)};
+export const RIVERS = {json.dumps([[n, r, [int(v) for v in P.round().ravel()]] for n, r, P in RIVERS], ensure_ascii=False, separators=(',', ':'))};
 export const LL = {{ step: 2000, nx: {LAT.shape[1]}, nz: {LAT.shape[0]}, lat: {json.dumps([round(float(v), 2) for v in LAT.ravel()])}, lon: {json.dumps([round(float(v), 2) for v in LON.ravel()])} }};
 '''
 open(os.path.join(ROOT, 'web', '3d', 'earthdata.js'), 'w').write(js)

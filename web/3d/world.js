@@ -6,8 +6,9 @@
 // x east, z south, y up, metres-ish. Water level is y = 0.
 import { store } from './util.js';
 import { ih, fbm, smooth, clamp, WORLD, newWorld } from './noise.js';
-import { BIOMES, PAL, blend, weightOf, share, rollBiome, cellsNear } from './biomes.js';
-import { coastDist, latLon, latAt, oceanKey, regionAt, wrapX, toXZ, EARTH, NORTH, SOUTH, seasonAt, snowLine, dryAt } from './earth.js';
+import { BIOMES, PAL, blend, weightOf, share, rollBiome, cellsNear, setIsleOf } from './biomes.js';
+import { coastDist, latLon, latAt, oceanKey, regionAt, wrapX, toXZ, EARTH, NORTH, SOUTH, seasonAt, snowLine, dryAt, bakedRiver, lakeAt } from './earth.js';
+import { realPlaces, shapeAt, colourAt as realColour, volcanoName } from './realplaces.js';
 import { railCut, railShade, railNear, railSolids, railLandmarks } from './rail.js';
 import { settlementsNear, buildingsNear, bridgesNear, roadShade, buildingSolids, bridgeSolids, polesNear, poleSolids, clearOf, saplingIn } from './settle.js';
 export { ih, fbm, WORLD, newWorld, PAL, blend };
@@ -54,9 +55,17 @@ export function biomeAt(x, z) {
 }
 export function placeName(x, z) {
   const l = landmarksNear(x, z, 700).sort((a, b) => Math.hypot(a.x - x, a.z - z) - Math.hypot(b.x - x, b.z - z))[0];
-  if (l && Math.hypot(l.x - x, l.z - z) < 300 + (l.kind === 'sight' ? l.r : 0)) return l.name;
-  const r = regionAt(x, z);
+  if (l && Math.hypot(l.x - x, l.z - z) < 300 + (l.kind === 'sight' || l.kind === 'nature' ? l.r : 0)) return l.name;
+  const r = regionAt(x, z), w = waterName(x, z);
+  if (w) return r ? `${w}, ${r.name}` : w;
   return r ? `${blend(x, z)[0].b.label}, ${r.name}` : blend(x, z)[0].b.label;
+}
+
+// the great lake or river there, by name ('Lake Baikal', 'the Nile'), or null
+export function waterName(x, z) {
+  const l = lakeAt(x, z); if (l && coastDist(x, z) < 60) return l.name;
+  const r = bakedRiver(x, z); if (r && r.fade > .5 && r.d < 70) return `the ${r.line.name}`;
+  return null;
 }
 
 // ---- terrain -----------------------------------------------------------------------------
@@ -70,7 +79,7 @@ export function baseHeight(x, z) {
   if (!bl[0].b.flat) h += B.fine * 1.6 * (1 - share(bl, 'saltflat'));
   h = shore(x, z, h, bl);
   h = riverCut(x, z, h);
-  return h;
+  return shapeAt(x, z, h, baseHeight);   // the real wonders' shapes (realplaces.js)
 }
 // The real coastline (earth.js: metres to the coast) roughened by noise at two sizes: the land
 // shelves down to beaches, or drops in sea cliffs where the land is cliffy; the sea floor deepens
@@ -119,12 +128,21 @@ function isleH(I, x, z) {
   return Math.max(-30 * smooth(1, 1.6, d), cone + 2 * smooth(1.1, .9, d));
 }
 export function islesNear(x, z, r) {
-  if (!isleList) isleList = REAL_ISLES.map(([la, lo, R, kind], i) => { const p = toXZ(la, lo); return p && Math.abs(p[0]) < EARTH.W / 2 - EARTH.SEAM - 1500 ? { x: p[0], z: p[1], r: R, kind, H: kind === 'atoll' ? 0 : R * .11, real: i } : null; }).filter(Boolean);
+  if (!isleList) {
+    isleList = REAL_ISLES.map(([la, lo, R, kind], i) => { const p = toXZ(la, lo); return p && Math.abs(p[0]) < EARTH.W / 2 - EARTH.SEAM - 1500 ? { x: p[0], z: p[1], r: R, kind, H: kind === 'atoll' ? 0 : R * .11, real: i } : null; }).filter(Boolean);
+    // the Great Barrier Reef: a string of reefs offshore, along the coast
+    for (const P of realPlaces()) if (P.form === 'reef') for (let i = -3; i <= 3; i++) {
+      const c = Math.cos(P.yaw), s = Math.sin(P.yaw), x = P.x + c * (300 + ih(i, 1, 619) * 500) - s * i * 520, z = P.z + s * (300 + ih(i, 1, 619) * 500) + c * i * 520;
+      if (coastDist(x, z) < -150) isleList.push({ x, z, r: 150 + ih(i, 2, 620) * 140, kind: 'atoll', H: 0, real: -1 });
+    }
+  }
   const out = isleList.filter(I => Math.abs(I.x - x) < r + I.r * 1.6 && Math.abs(I.z - z) < r + I.r * 1.6);
   const a = Math.floor((x - r - 800) / ISLE), b = Math.floor((x + r + 800) / ISLE), c = Math.floor((z - r - 800) / ISLE), d = Math.floor((z + r + 800) / ISLE);
   for (let gz = c; gz <= d; gz++) for (let gx = a; gx <= b; gx++) { const I = isleCell(gx, gz); if (I) out.push(I); }
   return out;
 }
+// which real island a point is on (biomes.js gives a fire mountain's island its land)
+setIsleOf((x, z) => { for (const I of islesNear(x, z, 0)) if (I.real !== undefined && Math.hypot(I.x - x, I.z - z) < I.r * 1.1) return I.kind; return null; });
 function isles(x, z) {
   let y = -99;
   for (const I of islesNear(x, z, 0)) y = Math.max(y, isleH(I, x, z));
@@ -138,7 +156,23 @@ function isles(x, z) {
 export const RIVER = { scale: 1500, seed: 91, half: 8, bed: -2.2 };
 // side: which side of the channel the point is on (+1/-1); lean (-1..1) which bank is the high,
 // steep outer one along this stretch (the other is a low, wide inner bank), changing as it winds
+// The great rivers are the real ones (earth.js, from Natural Earth: the Nile through the Sahara,
+// the Amazon, the Danube), broad by their rank and never fading; the rest are the noise rivers.
+// riverAt gives the nearer of the two (name: the great river's), and the ground is cut by both.
+const GREAT_W = [17, 14, 11.5, 9.5, 7.5];
+export function greatRiverAt(x, z) {
+  // the drawn line wanders a little more: bends of its own along the real course
+  const mx = fbm(x / 170, z / 170, RIVER.seed + 51, 2) * 26 + fbm(x / 48, z / 48, RIVER.seed + 53, 1) * 7;
+  const mz = fbm(x / 170, z / 170, RIVER.seed + 55, 2) * 26 + fbm(x / 48, z / 48, RIVER.seed + 57, 1) * 7;
+  const r = bakedRiver(x + mx, z + mz); if (!r || r.fade <= 0) return null;
+  const u = fbm(x / 380, z / 380, RIVER.seed + 59, 1) * .5 + .5, w = GREAT_W[Math.min(4, r.line.rank)] * (.75 + .5 * u) * smooth(0, 1, r.fade);
+  return { d: r.d, w, m: .02 + r.fade * .98, side: r.side, lean: clamp(fbm(x / 260, z / 260, RIVER.seed + 19, 1) * 2.2, -1, 1), name: r.line.name, great: true };
+}
 export function riverAt(x, z) {
+  const g = greatRiverAt(x, z), n = noiseRiverAt(x, z);
+  return !g ? n : !n ? g : g.d - g.w <= n.d - n.w ? g : n;
+}
+function noiseRiverAt(x, z) {
   const m = fbm(x / 2600, z / 2600, RIVER.seed + 7, 1) - dryAt(x, z) * .6;   // the deserts have none (a wadi at most)
   if (m < .02) return null;
   // the channel line is warped by noises at four sizes, so it swings in big meanders (some
@@ -157,7 +191,10 @@ export function riverAt(x, z) {
   return { d: Math.abs(v) * RIVER.scale * .55, w: RIVER.half * wide * smooth(.02, .2, m), m, side: v < 0 ? -1 : 1, lean: clamp(fbm(x / 260, z / 260, RIVER.seed + 19, 1) * 2.2, -1, 1) };
 }
 function riverCut(x, z, h) {
-  const r = riverAt(x, z); if (!r || h < RIVER.bed) return h;
+  return cutBy(noiseRiverAt(x, z), cutBy(greatRiverAt(x, z), h));
+}
+function cutBy(r, h) {
+  if (!r || h < RIVER.bed) return h;
   const s1 = r.side * r.lean;   // +1 on the outer (cut) bank, -1 on the inner one
   const bank = (r.w + 22 + Math.max(0, h) * 1.1) * (1 - s1 * .45); if (r.d > bank) return h;
   // the bed: deepest under the outer bank, up to the waterline at the edge; where the river
@@ -231,6 +268,11 @@ function groundColour(x, y, z, ny, bl = blend(x, z)) {
       c = mixc(c, [.62, .58, .38], grassy * (1 - f) * patch * turn * .4);
     }
   }
+  // a green strip along a great river through dry country (the Nile's fields and palms)
+  if (y > .3 && dryAt(x, z) > .15) {
+    const r = bakedRiver(x, z);
+    if (r) c = mixc(c, mixc(PAL.lush, PAL.savGreen, .35), smooth(140, 40, r.d) * smooth(.15, .5, dryAt(x, z)) * smooth(.4, .2, steep) * .85);
+  }
   // the old tracks between the empty farms and villages (settle.js), worn earth half grown over
   const rd = y > .3 ? roadShade(x, z) : 0;
   if (rd > 0) c = mixc(c, [.74, .66, .5], rd * (.6 + .4 * smooth(-.3, .25, fbm(x / 70, z / 70, 695, 2))));
@@ -243,6 +285,7 @@ function groundColour(x, y, z, ny, bl = blend(x, z)) {
   // lower toward the poles, where the ice and the tundra keep some all year
   const line = snowLine(lat, env.yearFrac);
   c = mixc(c, PAL.snow, smooth(line - 5, line + 25, y + fbm(x / 40, z / 40, 7, 2) * 12) * smooth(.45, .25, steep) * (y > .3 ? 1 : 0) * (1 - noSnow * .85));
+  const rc = realColour(x, y, z, steep); if (rc) c = mixc(c, rc, rc[3]);
   const j = .92 + ih(Math.floor(x * 7), Math.floor(z * 7), 5) * .14;   // a little pigment variation per facet
   return [c[0] * j, c[1] * j, c[2] * j];
 }
@@ -624,6 +667,7 @@ const LM_NAMES = {
   falls: ['Silver Falls', 'The Long Falls', 'Mist Falls', 'The White Veil'],
   lighthouse: ['The Lighthouse', 'The North Light', 'Gull Point Light'],
   willow: ['The Old Willow'],
+  mine: ['The Hollow Hill', 'The Green-stained Hill', 'The Glittering Seam', 'The Grey Spoil', 'The Dark Shaft'],
   volcano: ['The Fire Mountain', 'The Smoking Hill', 'Ember Peak'],
   arch: ['The Great Arch', 'The Sky Bridge', 'The Window Rock'],
   giant: ['The Grandfather Redwood', 'The Tallest Tree', 'The Pillar Tree'],
@@ -632,18 +676,53 @@ const LM_NAMES = {
   barn: ['The Old Barn', 'The Red Barn', 'The Owl Barn', 'The Long Barn'], lookout: ['The High Lookout', 'The Ridge Lookout', 'Pine Watch'],
   windmill: ['The Old Windmill', 'The Iron Mill', 'The Wind Pump'], stack: ['The Grey Stack', 'The Needle', 'The Gull Stack', 'The Lone Stack'],
 };
-const SIZE = { oak: [40, 14], willow: [30, 12], giant: [70, 12], stones: [4, 9], cairn: [3, 2], tower: [22, 5], falls: [0, 6], lighthouse: [26, 4], volcano: [0, 240], arch: [30, 16], sight: [0, 260], barn: [9, 8], lookout: [17, 4], windmill: [13, 3], stack: [30, 4] };
+const SIZE = { mine: [16, 14], nature: [0, 200], oak: [40, 14], willow: [30, 12], giant: [70, 12], stones: [4, 9], cairn: [3, 2], tower: [22, 5], falls: [0, 6], lighthouse: [26, 4], volcano: [0, 240], arch: [30, 16], sight: [0, 260], barn: [9, 8], lookout: [17, 4], windmill: [13, 3], stack: [30, 4] };
 const lmCache = new Map();
 const nameOf = (kind, a, b) => { const n = LM_NAMES[kind]; return n[Math.floor(ih(a, b, 85) * n.length)]; };
+// the real natural wonders (realplaces.js): each a landmark to find, with its parts (the great falls'
+// curtains of water, the sea stacks) as scenery round it
 function fixedLandmarks() {
   if (lmCache.has('fixed')) return lmCache.get('fixed');
   const L = [];
   lmCache.set('fixed', L);
+  for (const P of realPlaces()) {
+    const l = finishLandmark({ id: P.id, name: P.name, kind: 'nature', form: P.form, key: P.key, x: P.x, z: P.z }, 88);
+    l.r = P.r; l.h = P.h; l.yaw = P.yaw;
+    if (P.form === 'reef') l.y = 0;
+    L.push(l);
+    const part = (n, o) => L.push(finishLandmark({ id: P.id + '_' + n, name: P.name, part: true, ...o }, 89));
+    const c = Math.cos(P.yaw), s = Math.sin(P.yaw);
+    if (P.form === 'falls') {
+      // ribbons round the gorge's rim, each facing into the gorge
+      const g = P.o.gorge, gx = P.x + c * g, gz = P.z + s * g, n = Math.round(P.o.arc * 2 * g / 9);
+      for (let i = 0; i <= n; i++) {
+        const a = P.yaw + Math.PI - P.o.arc + i / n * P.o.arc * 2, dx = -Math.cos(a), dz = -Math.sin(a);
+        const x = gx - dx * (g + 3), z = gz - dz * (g + 3);
+        if (height(x, z) - height(x + dx * 12, z + dz * 12) > 8) part(i, { kind: 'falls', x, z, dx, dz, drop: P.o.drop, w: 5.5 });
+      }
+    }
+    if (P.form === 'tepui' && P.o.falls) {
+      // Angel Falls: one long ribbon from the rim of the tableland
+      for (let i = 0; i < 40; i++) {
+        const a = P.yaw + i * .16, dx = Math.cos(a), dz = Math.sin(a), x = P.x + dx * P.r * .97, z = P.z + dz * P.r * .97;
+        if (height(x, z) - height(x + dx * 30, z + dz * 30) > P.h * .5) { part('f', { kind: 'falls', x, z, dx, dz, drop: P.h, w: 3 }); break; }
+      }
+    }
+    if (P.form === 'stacks') {
+      // stacks off the shore: in shallow water, seaward of the cliffs
+      for (let i = 0, k = 0; i < 160 && k < P.o.n; i++) {
+        const a = P.yaw + (ih(i, 7, 616) - .5) * 2.6, r = 25 + ih(i, 8, 617) * P.r, x = P.x + Math.cos(a) * r, z = P.z + Math.sin(a) * r, y = height(x, z);
+        if (y > -1.5 || y < -9 || L.some(o => o.kind === 'stack' && Math.hypot(o.x - x, o.z - z) < 30)) continue;
+        part(k++, { kind: 'stack', x, z });
+        const t = L[L.length - 1]; t.h = -t.y + (P.o.tall ? 26 + ih(i, 9, 618) * 22 : 12 + ih(i, 9, 618) * 10);
+      }
+    }
+  }
   return L;
 }
 function finishLandmark(l, seed) {
   // nudge off water and onto fairly level ground
-  const fixed = l.kind === 'falls' || l.kind === 'volcano' || l.kind === 'sight' || l.kind === 'lighthouse' || l.kind === 'stack';
+  const fixed = l.kind === 'falls' || l.kind === 'volcano' || l.kind === 'sight' || l.kind === 'lighthouse' || l.kind === 'stack' || l.kind === 'nature' || l.kind === 'mine';
   for (let n = 0; n < 12 && !fixed && (height(l.x, l.z) < 1.5 || normalAt(l.x, l.z)[1] < .8); n++) { l.x += Math.cos(n * 2.4) * 30; l.z += Math.sin(n * 2.4) * 30; }
   l.y = height(l.x, l.z); l.yaw = ih(l.x | 0, l.z | 0, seed) * 6.283;
   [l.h, l.r] = SIZE[l.kind];
@@ -671,7 +750,16 @@ function cellSight(c) {
       for (let i = 0; i < 90 && !l; i++) { const a = i * 2.39996, r = 20 + i * 8, x = cx + Math.cos(a) * r, z = cz + Math.sin(a) * r, d = coastDist(x, z); if (d > 15 && d < 80 && height(x, z) > 6) l = { kind: 'lighthouse', x, z }; }
       break;
     }
-    case 'volcano': l = { kind: 'volcano', x: cx, z: cz }; break;
+    case 'volcano': {
+      // one fire mountain to find in a cluster of them (the first cell's), the rest scenery calderas
+      if (cellsNear(cx, cz, 1500).some(o => o.name === 'volcano' && (o.gz < gz || (o.gz === gz && o.gx < gx)) && Math.hypot(o.cx - cx, o.cz - cz) < 1500)) break;
+      if (c.earth !== 'sea') { l = { kind: 'volcano', x: cx, z: cz }; break; }
+      // a fire mountain's island or shore (biomes.js F): its peak, if it has one above the sea
+      let best = null;
+      for (let i = 0; i < 60; i++) { const a = i * 2.39996, r = 15 + i * 9, x = cx + Math.cos(a) * r, z = cz + Math.sin(a) * r, h = height(x, z); if (!best || h > best.h) best = { x, z, h }; }
+      if (best.h > 8) l = { kind: 'volcano', x: best.x, z: best.z };
+      break;
+    }
     case 'alpine': {
       let best = null;
       for (let i = 0; i < 48; i++) { const a = i * 2.39996, r = 15 + i * 7, x = cx + Math.cos(a) * r, z = cz + Math.sin(a) * r, h = height(x, z); if (!best || h > best.h) best = { x, z, h }; }
@@ -684,7 +772,7 @@ function cellSight(c) {
     case 'karst': case 'saltflat': case 'badlands': case 'desert': l = { kind: 'sight', x: cx, z: cz, of: c.name }; break;
   }
   if (l) {
-    l.id = id; l.name = nameOf(l.summit ? 'summit' : l.of || l.kind, gx, gz);
+    l.id = id; l.name = (l.kind === 'volcano' && volcanoName(l.x, l.z)) || nameOf(l.summit ? 'summit' : l.of || l.kind, gx, gz);
     finishLandmark(l, 87);
     if (l.kind === 'arch' && (l.y < 2 || normalAt(l.x, l.z)[1] < .9)) l = null;   // an arch wants a level mesa top
     else if (l.kind !== 'volcano' && l.kind !== 'sight' && l.kind !== 'falls' && l.y < 1) l = null;
@@ -701,6 +789,9 @@ const LM_KIND = {
   redwood: ['lookout'], taiga: ['lookout', 'stones'], tundra: ['cairn', 'stones'], steppe: ['stones', 'tower'], maquis: ['tower', 'stones'],
   rainforest: ['falls'],
 };
+// where people dug for metal and slate (regions in earth.js REGIONS)
+const MINE_LANDS = new Set(['mountains', 'moor', 'canyon', 'badlands', 'tundra', 'alpine']);
+const MINING = new Set(['rockies', 'andes', 'altiplano', 'appalachians', 'carpathians', 'britain', 'lakes', 'highlands', 'southwest', 'outback', 'alps', 'norway', 'sweden', 'bc', 'alaska', 'cape', 'atlas', 'caucasus', 'siberia', 'yosemite', 'california']);
 // a sea stack wants shallow water just off the shore (a stack is a piece of the cliff the sea cut
 // off, so it stands close in, never out in open water)
 function stackSpot(x, z) {
@@ -716,13 +807,19 @@ function landmarkCell(gx, gz) {
   let l = null;
   const x = (gx + .25 + ih(gx, gz, 81) * .5) * LM_CELL, z = (gz + .25 + ih(gx, gz, 82) * .5) * LM_CELL;
   if (ih(gx, gz, 83) < .42) {
-    const kinds = LM_KIND[blend(x, z)[0].name];
+    const land = blend(x, z)[0].name, kinds = LM_KIND[land];
     let kind = kinds?.[Math.floor(ih(gx, gz, 84) * kinds.length)];
+    if (MINE_LANDS.has(land) && ih(gx, gz, 88) < .32 && MINING.has(regionAt(x, z)?.key)) kind = 'mine';
     if (kind) {
       l = { id: 'l' + gx + '_' + gz, name: nameOf(kind, gx, gz), kind: kind === 'redstones' ? 'stones' : kind, x, z };
       if (kind === 'falls') { const f = fallsSpot(x, z); if (f) Object.assign(l, { x: f.x, z: f.z, drop: f.drop, dx: f.dx, dz: f.dz }); else { l.kind = 'cairn'; l.name = LM_NAMES.cairn[0]; } }
       if (kind === 'stack') { const p = stackSpot(x, z); if (p) [l.x, l.z] = p; else l.kind = null; }
+      // the old mines (G2): only in the real mining country, their headframe on a slope
+      if (kind === 'mine') {
+        for (let i = 0; i < 30; i++) { const a = i * 2.39996, r = 10 + i * 12, px = x + Math.cos(a) * r, pz = z + Math.sin(a) * r, n = normalAt(px, pz); if (n[1] < .9 && n[1] > .7 && height(px, pz) > 6) { l.x = px; l.z = pz; l.face = Math.atan2(n[2], n[0]); break; } }
+      }
       if (l.kind) finishLandmark(l, 86);
+      if (l.kind === 'mine' && l.face != null) l.yaw = l.face;   // its mouth into the hill, the tip downhill
       if (l.kind === 'stack') l.h = -l.y + 12 + ih(gx, gz, 87) * 8;   // its top stands this far over its foot (stout: lands.js stack)
       else if (!l.kind || l.y < 1) l = null;
     }
@@ -757,14 +854,14 @@ export function landmarksNear(x, z, r) {
 // and old oaks). The rest stay in the world as scenery, not finds (James 10-24: under 100 in all,
 // spread evenly; with the islands' sights and the two ice edges about 90).
 export const NOTABLE = { cell: 10000, r: 3000 };
-const RANK = { wonder: 9, volcano: 9, falls: 7, arch: 7, drowned: 6, lighthouse: 5, stack: 5, viaduct: 4, summit: 4, tower: 3, station: 3, lookout: 2, oak: 2, willow: 2, stones: 2, cairn: 1, derelict: 1, village: 1 };
+const RANK = { mine: 4, nature: 9, wonder: 9, volcano: 9, falls: 7, arch: 7, drowned: 6, lighthouse: 5, stack: 5, viaduct: 4, summit: 4, tower: 3, station: 3, lookout: 2, oak: 2, willow: 2, stones: 2, cairn: 1, derelict: 1, village: 1 };
 const notableCache = new Map();
 function notableIn(gx, gz) {
   const key = gx + ',' + gz; if (notableCache.has(key)) return notableCache.get(key);
   const C = NOTABLE.cell, ax = (gx + .3 + ih(gx, gz, 191) * .4) * C, az = (gz + .3 + ih(gx, gz, 192) * .4) * C;
   let best = null, bs = -1;
   for (const l of landmarksNear(ax, az, NOTABLE.r)) {
-    if (l.kind === 'sight' || Math.floor(l.x / C) !== gx || Math.floor(l.z / C) !== gz) continue;
+    if (l.kind === 'sight' || l.part || Math.floor(l.x / C) !== gx || Math.floor(l.z / C) !== gz) continue;
     const sc = (RANK[l.summit ? 'summit' : l.kind] || 1) * 1e5 - Math.hypot(l.x - ax, l.z - az);
     if (sc > bs) { bs = sc; best = l.id; }
   }
@@ -772,8 +869,8 @@ function notableIn(gx, gz) {
   return best;
 }
 export function isNotable(l) {
-  if (l.kind === 'wonder' || l.kind === 'volcano') return true;
-  if (l.kind === 'sight') return false;
+  if (l.kind === 'wonder' || l.kind === 'volcano' || l.kind === 'nature') return true;
+  if (l.kind === 'sight' || l.part) return false;
   return notableIn(Math.floor(l.x / NOTABLE.cell), Math.floor(l.z / NOTABLE.cell)) === l.id;
 }
 
