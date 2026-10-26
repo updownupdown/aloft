@@ -8,6 +8,7 @@ import { store } from './util.js';
 import { ih, fbm, smooth, clamp, WORLD, newWorld } from './noise.js';
 import { BIOMES, PAL, blend, weightOf, share, rollBiome, cellsNear, setIsleOf } from './biomes.js';
 import { coastDist, latLon, latAt, oceanKey, regionAt, wrapX, toXZ, EARTH, NORTH, SOUTH, seasonAt, snowLine, dryAt, bakedRiver, lakeAt } from './earth.js';
+import { cut as caveCut, roofAt, nearCave, caveShade, setCutting } from './caves.js';
 import { realPlaces, shapeAt, colourAt as realColour, volcanoName } from './realplaces.js';
 import { railCut, railShade, railNear, railSolids, railLandmarks } from './rail.js';
 import { settlementsNear, buildingsNear, bridgesNear, roadShade, buildingSolids, bridgeSolids, polesNear, poleSolids, clearOf, saplingIn } from './settle.js';
@@ -71,7 +72,11 @@ export function waterName(x, z) {
 // ---- terrain -----------------------------------------------------------------------------
 // The shared rolling ground, then each biome near the point shapes its own, blended by weight;
 // then the old railway's cuttings and embankments (rail.js, which reads baseHeight)
-export const height = (x, z) => railCut(x, z, baseHeight(x, z));
+export const height = (x, z) => caveCut(x, z, railCut(x, z, baseHeight(x, z)));
+// the ground without the caves cut into it (caves.js keeps the hill's surface as their roof)
+export const height0 = (x, z) => railCut(x, z, baseHeight(x, z));
+// the ground under a point at height y: a cave's roof if the point is above one, else the ground
+export function surface(x, z, y) { const r = roofAt(x, z); return r && y > r.under ? r.top : height(x, z); }
 export function baseHeight(x, z) {
   const bl = blend(x, z), B = { big: fbm(x / 520, z / 520, 1, 3), mid: fbm(x / 150, z / 150, 2, 3), fine: fbm(x / 32, z / 32, 5, 2) };
   let h = 0;
@@ -239,7 +244,7 @@ export const forest = (x, z) => forestOf(x, z, blend(x, z));
 // ---- colours -------------------------------------------------------------------------------
 const mixc = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 let facet = 2;   // the facet size of the chunk being built (chunkMesh), for the railway's ballast
-function groundColour(x, y, z, ny, bl = blend(x, z)) {
+export function groundColour(x, y, z, ny, bl = blend(x, z)) {
   const steep = 1 - ny;
   let c = [0, 0, 0], own = 0, noSnow = 0, sandy = 0;
   for (const e of bl) {
@@ -286,6 +291,8 @@ function groundColour(x, y, z, ny, bl = blend(x, z)) {
   const line = snowLine(lat, env.yearFrac);
   c = mixc(c, PAL.snow, smooth(line - 5, line + 25, y + fbm(x / 40, z / 40, 7, 2) * 12) * smooth(.45, .25, steep) * (y > .3 ? 1 : 0) * (1 - noSnow * .85));
   const rc = realColour(x, y, z, steep); if (rc) c = mixc(c, rc, rc[3]);
+  // in a cave's shade: dim rock, blue in the ice, dark and wet where the sea comes in
+  const cs = caveShade(x, z, y); if (cs) c = mixc(c, cs.ice ? [.5, .68, .82] : cs.wet ? [.2, .22, .22] : [.26, .24, .22], cs.k);
   const j = .92 + ih(Math.floor(x * 7), Math.floor(z * 7), 5) * .14;   // a little pigment variation per facet
   return [c[0] * j, c[1] * j, c[2] * j];
 }
@@ -297,14 +304,20 @@ export function mapColour(x, z) {
 
 // A chunk of ground as flat-shaded triangles: pos, normal, colour, colour (two-sided slot).
 // size: a far tile (render.js) is one big coarse chunk, sunk a little (drop) under the near ground
+// (the far tiles and the coarsest ground keep the hills whole: caves are cut only where the facets are
+// 3 m or finer, which sys/caves.js's roofs cover; caves.js)
 export function chunkMesh(cx, cz, N = CELLS, size = CHUNK, drop = 0) {
+  setCutting(size <= CHUNK && size / N <= 3.1);
+  try { return chunkMeshOf(cx, cz, N, size, drop); } finally { setCutting(true); }
+}
+function chunkMeshOf(cx, cz, N = CELLS, size = CHUNK, drop = 0) {
   const C = size / N, x0 = cx * size, z0 = cz * size;
   facet = C;
   const H = new Float32Array((N + 1) * (N + 1));
   for (let j = 0; j <= N; j++) for (let i = 0; i <= N; i++) H[j * (N + 1) + i] = height(x0 + i * C, z0 + j * C) - drop;
   // the open sea floor is dead flat: one cell is the same picture as a thousand (its edges match
   // any neighbour's exactly, being the same flat height)
-  if (N > 1 && H.every(h => h === H[0])) return chunkMesh(cx, cz, 1, size, drop);
+  if (N > 1 && H.every(h => h === H[0])) return chunkMeshOf(cx, cz, 1, size, drop);
   // the biomes are looked up once per few cells for colouring (they change over 100s of m)
   const BL = [], bs = N >= 36 ? 4 : 2, bn = N / bs;
   for (let j = 0; j < N; j += bs) for (let i = 0; i < N; i += bs) BL.push(blend(x0 + (i + bs / 2) * C, z0 + (j + bs / 2) * C));
@@ -548,7 +561,7 @@ export function treesIn(cx, cz) {
     const y = groundAt(x, z), wet = e.name === 'swamp';
     if ((wet ? y < -1.2 || y > 3 : y < 1.2) || y > 140) continue;
     const nm = normalAt(x, z); if (nm[1] < .82) continue;
-    if (roadShade(x, z) > .25 || railNear(x, z) < 6) continue;   // nor on the old tracks and the railway
+    if (roadShade(x, z) > .25 || railNear(x, z) < 6 || nearCave(x, z)) continue;   // nor on the old tracks and the railway, nor over a cave
     const look = lookFor(e.name, x, z, y, ih(gx, gz, 28), f, e);
     const s = sizeOf(look, e.name, x, z, f, ih(gx, gz, 29), ih(gx, gz, 24));
     t.push({ x, y: y - .3, z, s, yaw: ih(gx, gz, 25) * 6.283, kind: LOOKS[look].kind, look, id: gx * 7919 + gz, tint: ih(gx, gz, 26) });
@@ -609,7 +622,7 @@ export function bushesIn(cx, cz) {
     if (!L || p > L[1] * (.4 + 1.2 * clump)) continue;
     const y = groundAt(x, z); if (y < 1 || y > 170) continue;
     if (normalAt(x, z)[1] < .78) continue;
-    if (roadShade(x, z) > .25 || railNear(x, z) < 6) continue;
+    if (roadShade(x, z) > .25 || railNear(x, z) < 6 || nearCave(x, z)) continue;
     if (trees.some(t => Math.abs(t.x - x) < 3 && Math.abs(t.z - z) < 3)) continue;
     const s = L[2] * (.6 + ih(gx, gz, 166) * .5 + clump * .25) + L[3] * ih(gx, gz, 167) * .5;
     out.push({ x, y: y - .1, z, s, w: L[0] === 'sage' ? 1.3 : L[0] === 'thorn' ? 1.4 : 1.15, yaw: ih(gx, gz, 168) * 6.283, kind: L[0], tint: ih(gx, gz, 169), id: 5e7 + gx * 7919 + gz });

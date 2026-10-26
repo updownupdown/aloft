@@ -34,7 +34,9 @@ web/3d/main.js          boot, the frame loop, save/resume, the SYSTEMS list, fli
 web/3d/flight.js        hawk flight model (energy, tuck/flare, flaps, thermal ride, trees, perching, ground, water)
 web/3d/input.js         two thumbs = two wings (floating sticks, paired taps), keyboard
 web/3d/camera.js        chase camera, hawk frame, pose (wing beats with per-wing amplitude)
-web/3d/world.js         terrain height(x,z) (coasts from earth.js, islands, pack ice), colours, trees + perches, thermals, airLift, rings
+web/3d/world.js         terrain height(x,z) (with the caves cut in; height0 without, surface(x,z,y) the roof's top when above it) (coasts from earth.js, islands, pack ice), colours, trees + perches, thermals, airLift, rings
+web/3d/realplaces.js    the real natural wonders (Uluru, the great falls, tepuis, basalt columns...) shaped into the ground (shapeAt), and VOLCANOES' names; sys/nature.js their meshes, geysers, columns
+web/3d/caves.js         caves you fly into (cave, icecave, seacave, tube, cenote, tarn, adit, rail tunnel): paths cut into the ground under a roof; cut(), roofAt(), caveShade(); sys/caves.js draws the roofs, the bird and camera keep under them (flight.js cave(), camera.js), found with the hidden places
 web/3d/earth.js         the Earth under the world: coastDist, earthBiome, continentAt, latLon/toXZ, oceanAt (each ocean's way across), regionAt, lakeAt (the great lakes, fresh or salt), bakedRiver (the great rivers, Natural Earth lines), byGrain (the ranges' ridge bearing), calendar (yearFrac, dateOf, seasonAt, snowLine)
 web/3d/earthdata.js     baked grids for earth.js (made by tools/earth/bake.py from Natural Earth; do not edit by hand)
 web/3d/render.js        WebGL2 renderer: sky, chunks, instanced trees and named shapes, hawk, water, points
@@ -76,7 +78,7 @@ web/3d/sys/*.js         systems: air (thermal clouds/motes), rings, food (hunger
                         aims (a daily aim and feathers (G.feather: each makes the wings last 3% longer, b.endure, up to 20), the lands collection, racing the companion),
                         lessons (the tutorial: the first flight with the HUD hidden and coach.js's ghost thumbs, then the lessons card once and a chain of quiet lessons: the next one in Today's Next card and as the next-step line under the compass; Lessons > All lessons lists the chapters with Replay; a feather for the first flight and each chapter, once), poles (the ice edges: pale air, aurora, the pole wall; fly through it to cross to the opposite longitude),
                         sealife (whales to ride, fish boils, flying fish, turtles), drift (icebergs, sea ice, driftwood, bottles; perches via world.js env.solids),
-                        isles (rain pools, seabirds, a sight per archipelago; the sea is salt, food.js), skyrivers (G.skyWind), nightsea (pole star / Southern Cross, plankton)
+                        isles (rain pools, seabirds, a sight per archipelago; the sea is salt, food.js), skyrivers (G.skyWind), nightsea (pole star / Southern Cross, plankton), hidden (ledges behind the sheer falls, rock shelters, oases where date palms grow, hollow old trees; Journal > Places > Hidden places, with the caves), caves (cave roofs, tarns), nature (the real wonders' meshes)
 ```
 
 A system is `(G) => ({ id, update?(dt, c), scene?(S), save?(), load?(o) })`, added to `SYSTEMS` in
