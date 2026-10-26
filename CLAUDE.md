@@ -1,6 +1,10 @@
-# Aloft — project conventions
+# Tiercel — project conventions
 
-**2026-10-20: Aloft is 3D** (James's decision); the 2D game was deleted (it is in git history
+**2026-10-25: the game is called Tiercel** (James; "Aloft" was taken on Steam). Everything a player
+reads says Tiercel; the repo, the live URL (/aloft/), the `aloft.` storage keys, the `aloft-vN` cache
+and `__aloft3d` keep the old name on purpose, so installs and saves carry over.
+
+**2026-10-20: the game is 3D** (James's decision); the 2D game was deleted (it is in git history
 before that date). `web/src/` keeps only `audio.js`, `music.js`, `birdvoice.js` and `songs.js`,
 shared by 3D and the labs.
 

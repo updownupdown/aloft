@@ -95,7 +95,7 @@ export function startOf(bird) {
 
 export function start(canvas, ui) {
   const gl = createGL(canvas);
-  if (!gl) { ui.innerHTML = '<div class="card3"><h1>Aloft</h1><p>This browser has no WebGL2, which Aloft needs. Try Chrome or a newer phone browser.</p></div>'; return; }
+  if (!gl) { ui.innerHTML = '<div class="card3"><h1>Tiercel</h1><p>This browser has no WebGL2, which Tiercel needs. Try Chrome or a newer phone browser.</p></div>'; return; }
   const R = createRenderer(gl), input = createInput(canvas);
   const audio = createAudio(), music = createMusic(audio);
   audio.on = store.get('sound', true);
