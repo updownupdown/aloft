@@ -27,15 +27,16 @@
 // turning the phone (gyro, while I.gyroOn), look round instead (read as look: [x, y]).
 
 const TAP_TIME = .3, TAP_MOVE = .06, PAIR = .2;
+// a stick's full move, as a share of the screen's short side (James, 10-25: between the study's
+// Normal .13 and Long .17); a dead zone on a thumb flying alone, so a resting thumb doesn't drift the heading
+const REACH = .15, DEAD1 = .08;
 // the barrel roll: a stick counts as turning past ROLL_ON of its reach (and stops below ROLL_OFF);
 // both must turn ROLL_TURN of a circle the same way within ROLL_TIME seconds, from the start
 // poses give or take ROLL_START radians
 const ROLL_ON = .55, ROLL_OFF = .3, ROLL_TURN = .85, ROLL_TIME = 2.5, ROLL_START = 1.2;
 
 export function createInput(el) {
-  // ctl: the Controls lab's switches (sys/ctllab.js): reach (the stick's reach as a share of the
-  // short side), dead1 (a dead zone on a single thumb), holdFlap (a tap beside a held thumb is a full flap)
-  const I = { L: pad(), R: pad(), keys: new Set(), taps: [], invert: false, onAny: null, onTap: null, radius: 70, drag: 0, dragY: 0, pinch: 1, lk: [0, 0], gyroOn: false, ctl: {} };
+  const I = { L: pad(), R: pad(), keys: new Set(), taps: [], invert: false, onAny: null, onTap: null, radius: 70, drag: 0, dragY: 0, pinch: 1, lk: [0, 0], gyroOn: false };
   function pad() { return { id: null, x0: 0, y0: 0, x: 0, y: 0, t0: 0, moved: 0, dx: 0, dy: 0, rx: 0, a: null, a0: 0, turn: 0, tt: 0 }; }
   const size = () => Math.min(innerWidth, innerHeight);
   el.addEventListener('touchstart', e => {
@@ -95,7 +96,7 @@ export function createInput(el) {
 
   // what the wings are asking for this frame: { pitch, roll, spread, flap, held }
   I.read = () => {
-    const r = I.radius = size() * (I.ctl.reach || .13);
+    const r = I.radius = size() * REACH;
     for (const P of [I.L, I.R]) if (P.id !== null) {
       // rx: the sideways shift unclamped (to twice the reach), for steering with the thumbs pulled in
       P.rx = Math.max(-2, Math.min(2, (P.x - P.x0) / r));
@@ -122,7 +123,7 @@ export function createInput(el) {
       roll = clampU(dead((R.dy - L.dy) / 2, dz) + side * tk * 1.6);
       yaw = clampU(side);
     } else if (l || rr) {
-      const P = l ? L : R, dz = I.ctl.dead1 ? .08 : 0; pitch = -dead(P.dy, dz) * k; roll = dead(P.dx, dz);
+      const P = l ? L : R, dz = DEAD1; pitch = -dead(P.dy, dz) * k; roll = dead(P.dx, dz);
     }
     const K = I.keys, key = (...c) => c.some(x => K.has(x));
     if (key('KeyW', 'ArrowUp')) pitch = 1 * k; if (key('KeyS', 'ArrowDown')) pitch = -1 * k;
@@ -130,8 +131,9 @@ export function createInput(el) {
     if (key('ShiftLeft', 'ShiftRight')) spread = -1; if (key('KeyQ')) spread = 1;
     // taps: two thumbs within PAIR of each other are one full flap. A tap on its own is a weak
     // flap with that wing, read as soon as no partner can come: the other side idle past the
-    // pair window, or the other thumb down as a stick (held too long, or slid, to be a tap); it
-    // once waited the whole PAIR + TAP_TIME, half a second after the thumb went down
+    // pair window, or the other thumb down as a stick (held too long, or slid, to be a tap): then it
+    // is a full flap, so you can steer with one thumb and beat with the other. It once waited the
+    // whole PAIR + TAP_TIME, half a second after the thumb went down
     let flap = null; const now = performance.now() / 1000;
     I.taps.sort((a, b) => a.t - b.t);
     while (I.taps.length) {
@@ -141,7 +143,7 @@ export function createInput(el) {
       if (b) { I.taps.splice(I.taps.indexOf(b), 1); I.taps.shift(); flap = { q: 1, side: 0, sync: 1 - Math.abs(b.t - a.t) / PAIR }; break; }
       const o = a.side < 0 ? R : L, held = o.id !== null && (Math.abs(o.t0 - a.t) >= PAIR || now - o.t0 > TAP_TIME || o.moved >= TAP_MOVE * size());
       if (now - a.t > PAIR + TAP_TIME || (o.id === null && now - a.t > PAIR) || held) {
-        I.taps.shift(); flap = held && I.ctl.holdFlap ? { q: 1, side: 0, sync: .8 } : { q: .55, side: a.side }; break;
+        I.taps.shift(); flap = held ? { q: 1, side: 0, sync: .8 } : { q: .55, side: a.side }; break;
       }
       break;
     }
