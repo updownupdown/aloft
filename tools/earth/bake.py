@@ -103,6 +103,35 @@ lon0, lat0 = lon.copy(), lat.copy()
 lon = lon0 + fbm(lon0, lat0, .15, 11) * 3.2
 lat = lat0 + fbm(lon0, lat0, .15, 12) * 2.2
 patch = fbm(lon0, lat0, .5, 13)
+# ---- places measured on the strip (metres), not in warped degrees ------------------------------
+# A site a few tenths of a degree across is 100-300 m on the strip, smaller than one 500 m node, and the
+# +-3 degree noise warp above moves it a few km besides: most sites never landed (3 fire mountains in
+# the world out of 18, no redwoods). So a site is placed at the real place's spot on the strip (the
+# nearest unwarped node) and given at least RMIN of radius, a band at least WMIN of half-width; the
+# edges wobble by metres (jx, jz) instead of by degrees.
+from scipy.spatial import cKDTree
+Xb, Zb = X[::8, ::8], Z[::8, ::8]                                            # metres of each 500 m node
+mpd = 500 / np.maximum(np.abs(np.gradient(lat0, axis=0)), 1e-6)               # metres per degree of latitude there
+def _xyz(lo, la):
+    lo = np.radians(lo); la = np.radians(la); return np.stack([np.cos(la) * np.cos(lo), np.cos(la) * np.sin(lo), np.sin(la)], -1)
+_tree = cKDTree(_xyz(lon0.ravel(), lat0.ravel()))
+def spot(x, y):
+    i = _tree.query(_xyz(x, y))[1]; return Xb.ravel()[i], Zb.ravel()[i], mpd.ravel()[i]
+RMIN, WMIN = 900.0, 500.0
+jx = fbm(lon0, lat0, .5, 21) * 350; jz = fbm(lon0, lat0, .5, 22) * 350
+def dxw(a, b):
+    d = (a - b) % 96000; return np.where(d > 48000, d - 96000, d)
+def ellm(x, y, r, ry=None, rmin=None):
+    rmin = RMIN if rmin is None else rmin; sx, sz, s = spot(x, y); rx = max(rmin, r * s); rz = max(rmin, (ry or r) * s)
+    return (dxw(Xb + jx, sx) / rx) ** 2 + ((Zb + jz - sz) / rz) ** 2 <= 1
+def linem(pts, w, wmin=None):
+    m = np.zeros(lon.shape, bool); P = [spot(x, y) for x, y in pts]; wmin = WMIN if wmin is None else wmin
+    for (x0, z0, s0), (x1, z1, s1) in zip(P, P[1:]):
+        ax, az = dxw(x1, x0), z1 - z0; px, pz = dxw(Xb + jx, x0), Zb + jz - z0
+        t = np.clip((px * ax + pz * az) / max(ax * ax + az * az, 1), 0, 1)
+        m |= np.hypot(px - t * ax, pz - t * az) <= max(wmin, w * (s0 + s1) / 2)
+    return m
+def box0(a, b, c, d): return (lon0 >= a) & (lon0 <= b) & (lat0 >= c) & (lat0 <= d)
 def box(a, b, c, d): return (lon >= a) & (lon <= b) & (lat >= c) & (lat <= d)
 def ell(x, y, rx, ry=None):
     ry = ry or rx; dx = ((lon - x + 540) % 360 - 180) / rx; return dx * dx + ((lat - y) / ry) ** 2 <= 1
@@ -136,8 +165,6 @@ desert = (box(-17, 33, 16, 31) | box(33, 58, 14, 31) | box(68, 75.5, 24, 30) | b
   | box(53, 63, 26, 35) | (box(117, 147, -33, -18) & (dl > .45)) | box(12, 24, -28, -17) | box(-71.5, -69, -28, -16) | box(-118, -108, 28, 37.5)
   | box(-108, -101, 25, 32) | box(42, 51.5, 2, 11) | box(-114.5, -109, 24, 32))
 put(desert, 'desert')
-put(box(-112.5, -107.5, 35.3, 39.2) | ell(17.6, -27.6, .6) | ell(-107.8, 27.4, 1), 'canyon')
-put(ell(-102.3, 43.8, 1.2) | ell(-112.7, 51, .7) | ell(-1.5, 42.2, .4) | ell(34.8, 38.6, .6), 'badlands')
 # ---- the Mediterranean, the Cape, California, central Chile, SW Australia --------------------
 med = (box(-10, 37, 30.5, 44) & ~box(-10, 10, 43, 44)) | box(26, 37, 36, 41.5)
 put(med & ~desert, 'maquis')
@@ -148,7 +175,7 @@ rain = (ell(-63, -3.5, 14, 8.5) | ell(20, .5, 10.5, 5.2) | box(-13, 9, 4, 8) | b
 put(rain & (alat <= 23.5), 'rainforest')
 # mangroves on tropical shores, here and there
 put((alat < 24) & (dl < .3) & (fbm(lon0, lat0, 2, 14) > -.1) & ~desert, 'swamp')
-for x, y, r in [(-81, 25.8, .9), (89.2, 21.9, 1.2), (6, 4.8, .9), (105.8, 9.8, .9), (-50, 0, 1.2), (-61.5, 8.6, .8), (-82.3, 30.8, .6)]: put(ell(x, y, r), 'swamp')
+for x, y, r in [(-81, 25.8, .9), (89.2, 21.9, 1.2), (6, 4.8, .9), (105.8, 9.8, .9), (-50, 0, 1.2), (-61.5, 8.6, .8), (-82.3, 30.8, .6)]: put(ellm(x, y, r), 'swamp')
 # ---- mountains ----------------------------------------------------------------------------
 R = [
  ([(6, 44.2), (7, 45.8), (10, 46.5), (13, 47), (16, 47.5)], 1.0, 'alpine'), ([(-1.8, 43), (3, 42.5)], .6, 'mountains'),
@@ -158,7 +185,7 @@ R = [
  ([(59, 50), (60, 55), (60, 61), (64, 67)], .8, 'mountains'),
  ([(-150, 62), (-135, 60), (-122, 54), (-116, 49), (-112, 45), (-107, 40), (-106, 35)], 2.6, 'mountains'),
  ([(-135, 60), (-122, 54), (-116, 49), (-111, 45), (-106.5, 40)], 1.1, 'alpine'),
- ([(-121.5, 48.5), (-121.7, 44), (-121.2, 40.5)], 1.0, 'mountains'), ([(-120.5, 39.5), (-119, 37), (-118.2, 35.6)], .9, 'sequoia'),
+ ([(-121.5, 48.5), (-121.7, 44), (-121.2, 40.5)], 1.0, 'mountains'), ([(-120.5, 39.5), (-119, 37), (-118.2, 35.6)], .9, 'sequoia', 800),
  ([(-84, 34), (-80, 37), (-77, 40), (-73, 43), (-69, 46)], 1.4, 'mountains'),
  ([(-75, 10), (-77, 3), (-78, -2), (-76, -10), (-71, -15), (-68, -20), (-69, -30), (-70.5, -36), (-72, -45), (-73, -50), (-72, -54)], 1.8, 'alpine'),
  ([(72, 35.5), (77, 33), (81, 30), (85, 28), (90, 27.6), (95, 28.5)], 1.6, 'alpine'), ([(70, 41.5), (76, 42), (82, 43), (88, 43.5)], 1.2, 'alpine'),
@@ -168,28 +195,31 @@ R = [
  ([(-153, 62.5), (-147, 63.3), (-141, 62)], 1.2, 'alpine'), ([(-160, 68), (-145, 68.5)], 1.0, 'mountains'), ([(157, 51), (160, 56), (162, 58)], 1.0, 'mountains'),
  ([(138, -4.5), (146, -6.5)], 1.0, 'mountains'), ([(100, 27), (102, 31), (103, 34)], 1.5, 'mountains'), ([(43, 15), (44.5, 13.5)], 1.2, 'mountains'),
 ]
-for pts, w, nm in R: put(line(pts, w), nm)
-put(ell(88, 33, 9, 3.8), 'alpine'); put(ell(38.5, 9.5, 3, 4), 'mountains'); put(ell(-4.5, 57.2, 1.6, .9), 'moor')
-put(ell(-61, 5.5, 1.6) | ell(-64, 5.8, 1.2), 'cliffs')    # the tepuis
+for pts, w, nm, *wm in R: put(linem(pts, w, *wm) if wm else line(pts, w), nm)   # a fourth number: a band at least that wide on the strip, metres
+put(ellm(88, 33, 9, 3.8), 'alpine'); put(ellm(38.5, 9.5, 3, 4), 'mountains'); put(ellm(-4.5, 57.2, 1.6, .9), 'moor')
+put(ellm(-61, 5.5, 1.6) | ellm(-64, 5.8, 1.2), 'cliffs')    # the tepuis
 # ---- coasts, fjords, moors ----------------------------------------------------------------
 temperate_coast = (alat > 34) & (alat < 66) & (dl < .35) & np.isin(B, ['forest', 'meadow', 'maquis', 'steppe', 'taiga', 'birch', 'lakeland'])
 put(temperate_coast, 'coast')
-for x, y, r in [(-9.4, 52.9, .5), (-5.5, 50.2, .5), (0.3, 49.7, .5), (1.4, 51.1, .3), (143, -38.7, .8), (-121.6, 36.2, .6), (-8.5, 37, .5), (-7, 58.3, .5)]: put(ell(x, y, r) & (dl < .6), 'cliffs')
+for x, y, r in [(-9.4, 52.9, .5), (-5.5, 50.2, .5), (0.3, 49.7, .5), (1.4, 51.1, .3), (143, -38.7, .8), (-121.6, 36.2, .6), (-8.5, 37, .5), (-7, 58.3, .5)]: put(ellm(x, y, r, None, 600) & (dl < .6), 'cliffs')   # a stretch of coast, not a disc that reaches inland towns
 put(box(-11, 1.8, 50, 59) & (lat > 53.5) | box(-10.5, -6, 51.5, 55.4) & ~(dl < .3) | box(-25, -13, 63, 67) | box(-8, -6, 61.5, 62.5) | box(-61, -57, -52.5, -51), 'moor')
 fj = ((box(4.5, 31, 58, 71) & (dl < 1.0)) | (box(-160, -123, 48, 61) & (dl < 1.0)) | (box(-76, -72, -56, -41) & (dl < 1.2)) | (box(166, 168.5, -46.5, -44) & (dl < .7))
       | (box(-74, -18, 59.5, 78) & (dl < .5)) | (box(-24, -21, 65, 66.6) & (dl < .5)) | (box(-7, -4.8, 56, 58.6) & (dl < .35)) | (box(-66, -52, 47, 60) & (dl < .5)))
 put(fj, 'fjord')
-put(box(-124.5, -122.6, 37.3, 42.2) & (dl < 1.4) | box(-74, -72, -42, -38) & (dl < 1.2), 'redwood')
+put(linem([(-122.4, 37.3), (-123.6, 39.3), (-124.1, 41), (-124.2, 42.2)], 1.0, 900) & (dl < 1.4) | linem([(-73.4, -38), (-73.6, -40), (-73.7, -42)], .9, 900) & (dl < 1.2), 'redwood')   # the fog coasts: California north of the Golden Gate, Valdivia
+put(box0(-112.5, -107.5, 35.3, 39.2) | ellm(17.6, -27.6, .6) | ellm(-107.8, 27.4, 1), 'canyon')
+put(ellm(-102.3, 43.8, 1.2) | ellm(-112.7, 51, .7) | ellm(-1.5, 42.2, .4) | ellm(34.8, 38.6, .6), 'badlands')
 # ---- sites --------------------------------------------------------------------------------
-for x, y, r in [(110.3, 24.8, 2.4), (107, 20.9, 1), (14.3, 45.7, .5), (-88.8, 20.4, 1.8), (98.5, 8.3, .8), (-9, 53, .3), (44.9, -18.8, .6)]: put(ell(x, y, r), 'karst')
-for x, y, r in [(-67.5, -20.2, 1.0), (-113.5, 40.8, .8), (137.3, -28.4, 1.6), (8.4, 33.7, .7), (16.3, -18.8, .7), (69.8, 23.8, .9), (54, 34.5, 1.2)]: put(ell(x, y, r), 'saltflat')
-for x, y, r in [(4.5, 43.5, .4), (29.3, 45.1, .5), (22.9, -19.3, 1.3), (-57, -17.5, 2), (30.5, 7.5, 2), (47, 31, 1), (-84, 53, 3), (78, 57, 3), (-6.4, 37, .4), (6.5, 53.4, .6), (31, 31.2, .6), (0.3, 52.7, .4), (-89.5, 29.3, .7)]: put(ell(x, y, r), 'marsh')
+for x, y, r in [(110.3, 24.8, 2.4), (107, 20.9, 1), (14.3, 45.7, .5), (-88.8, 20.4, 1.8), (98.5, 8.3, .8), (-9, 53, .3), (44.9, -18.8, .6)]: put(ellm(x, y, r), 'karst')
+for x, y, r in [(-67.5, -20.2, 1.0), (-113.5, 40.8, .8), (137.3, -28.4, 1.6), (8.4, 33.7, .7), (16.3, -18.8, .7), (69.8, 23.8, .9), (54, 34.5, 1.2)]: put(ellm(x, y, r), 'saltflat')
+for x, y, r in [(4.5, 43.5, .4), (29.3, 45.1, .5), (22.9, -19.3, 1.3), (-57, -17.5, 2), (30.5, 7.5, 2), (47, 31, 1), (-84, 53, 3), (78, 57, 3), (-6.4, 37, .4), (6.5, 53.4, .6), (31, 31.2, .6), (0.3, 52.7, .4), (-89.5, 29.3, .7)]: put(ellm(x, y, r), 'marsh')
 for x, y, r in [(-19, 64.6, 1.4), (15, 37.75, .4), (14.4, 40.8, .3), (37.35, -3.07, .6), (138.7, 35.4, .5), (-155.5, 19.6, 1.4), (-121.8, 46.85, .5), (-98.6, 19, .6),
                 (-78.4, -0.7, .6), (160, 55, 1.5), (112.9, -7.9, .8), (105.4, -6.1, .4), (175.6, -39.3, .6), (44.3, 39.7, .5), (-16.6, 28.3, .8), (-28, 38.5, 1.2), (-90.5, -0.5, 1.2), (-122.2, 42.9, .4)]:
-    put(ell(x, y, r), 'volcano')
+    put(ellm(x, y, r), 'volcano')
 # ---- ice ------------------------------------------------------------------------------------
 put((lat < -60) | (lat > 80) | (box(-56, -18, 60, 84) & (dl > .5)), 'ice')
 B[~Lb] = "sea"
+print('rare lands (500 m nodes):', ', '.join(f'{nm} {int((B == nm).sum())}' for nm in ['volcano', 'karst', 'saltflat', 'badlands', 'canyon', 'cliffs', 'marsh', 'redwood', 'sequoia']))
 
 # continents, from the unwarped real place
 lo, la = lon0, lat0
