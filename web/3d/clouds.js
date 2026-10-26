@@ -234,7 +234,7 @@ export function createClouds(gl) {
   let sorted = new Float32Array(1024);
   const CL = {
     has: key => !!kinds[key],
-    // built again with the look tests' #defines (render.js compile)
+    // built again with the graphics level's #defines (render.js compile)
     relook(d) {
       gl.deleteProgram(prog.p); gl.deleteProgram(mistP.p);
       const D = src => src.replace('#version 300 es', '#version 300 es\n' + d);

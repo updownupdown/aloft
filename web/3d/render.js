@@ -29,22 +29,16 @@ const BUILT = /^(ru_|wd_|lm_|fence_)/;
 const classOf = key => GRASSY.has(key) ? 3 : key === 'stone' ? 6 : BUILT.test(key) ? 2 : ANIMAL.test(key) ? 1 : 0;
 // instanced shapes that hoar frost whitens (the plants and stones; not the animals)
 const FROSTY = new Set(['tuft', 'tuft1', 'tuft2', 'tuft3', 'scrub', 'bush', 'gorse', 'sage', 'thorn', 'heath', 'reeds', 'stone', 'flowerY', 'flowerW', 'flowerP', 'hay', 'hayLaid', 'bale', 'barrel']);
-// closed shapes whose back faces K (look.js, on trial) leaves undrawn, with the trees
+// closed shapes whose back faces are left undrawn, with the trees'
 const CULLED = new Set(['bush', 'gorse', 'sage', 'thorn', 'heath']);
 // The value noise the shaders paint with (the land's hue drift, the mist's lumps, moss and rain
-// streaks on walls, slicks on the water, the sky's high haze): worked out from a hash, four sines
-// a sample; or, N (look.js, on trial), read from a small tiling picture of the same noise
-// (NOISE_N lattice cells across, four texels to a cell), one texture read a sample
+// streaks on walls, slicks on the water, the sky's high haze), read from a small tiling picture
+// (NOISE_N lattice cells across, four texels to a cell): one texture read a sample, not four sines
 const NOISE_N = 64, NOISE_PX = 256;
 const NOISE_GLSL = `
 float h21(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
-#ifdef L_NOISETEX
 uniform sampler2D uNoiseT;
-float vn(vec2 p) { return texture(uNoiseT, p * (1. / ${NOISE_N}.)).r; }
-#else
-float vn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f);
-  return mix(mix(h21(i), h21(i + vec2(1, 0)), f.x), mix(h21(i + vec2(0, 1)), h21(i + vec2(1, 1)), f.x), f.y); }
-#endif`;
+float vn(vec2 p) { return texture(uNoiseT, p * (1. / ${NOISE_N}.)).r; }`;
 // the light that is the same over a whole facet: the hills' shadows and the clouds' shadows
 // (uSun and uShadeC[8] are declared by whoever includes this)
 const LIGHT_GLSL = `
@@ -69,20 +63,16 @@ float sunlit(vec3 p) {
   for (int i = 0; i < 8; i++) { vec4 c = uShadeC[i]; if (c.z <= 0.) break; s = max(s, c.w * smoothstep(c.z, c.z * .55, length(p.xz - c.xy))); }   // nearest first; none left, stop
   return 1. - s;
 }`;
-// V (look.js, on trial): what is the same over a facet, worked out once per vertex instead of at
+// What is the same over a facet, worked out once per vertex instead of at
 // every pixel: the land's hue drift (hundreds of metres across), the hills' shadow (baked per
 // facet) and the clouds' shadows (tens of metres across). TRIM(pos, colB, at) in each vertex shader.
 const TRIM_VS = `
-#ifdef L_VTRIM
 out vec3 vDrift; out vec2 vLight;
 uniform vec3 uSun; uniform vec4 uShadeC[8];
 ${NOISE_GLSL}
 ${LIGHT_GLSL}
 vec3 drift(vec2 at) { float hd = vn(at / 380.) - .5, hd2 = vn(at / 95. + 17.) - .5; return vec3(1. + hd * .12 + hd2 * .04, 1. + hd2 * .05, 1. - hd * .12); }
-#define TRIM(pos, colB, at) vDrift = drift(at); vLight = vec2((colB).r > 1.5 ? hills(colB) : 1., sunlit(pos));
-#else
-#define TRIM(pos, colB, at)
-#endif`;
+#define TRIM(pos, colB, at) vDrift = drift(at); vLight = vec2((colB).r > 1.5 ? hills(colB) : 1., sunlit(pos));`;
 const COMMON_FS = `
 uniform vec3 uCam, uSun, uSunCol, uSkyAmb, uGndAmb, uFogCol, uFocus;
 uniform vec3 uZenith;
@@ -92,12 +82,8 @@ uniform vec4 uShadeC[8], uFrost, uSwell, uMist; uniform vec2 uFrostDir; uniform 
 // flowers, 4 the hawk, 5 the ground, 6 a stone), the wet after rain, snow lying, the screen's size
 uniform float uClass, uWet, uSnowLine, uSnowAll, uClip; uniform vec2 uScreen;
 in vec3 vPos, vNrm, vCol, vColB; in float vLeaf, vFade, vGone, vLy; in vec4 vCrown;   // (a tree's crown: its middle and size)
-#ifdef L_VTRIM
-in vec3 vDrift; in vec2 vLight;   // (V: the hue drift, the hills' and the clouds' shadows, from the vertex shader)
+in vec3 vDrift; in vec2 vLight;   // (the hue drift, the hills' and the clouds' shadows, from the vertex shader)
 #define SUNV vLight.y
-#else
-#define SUNV sunlit(vPos)
-#endif
 out vec4 frag;
 ${GRADE_GLSL}
 #ifdef L_REFLECT
@@ -324,12 +310,7 @@ void main() {
   float y = vPos.y + uLift;
   // the land's hue drifts over a few hundred metres; the grass and flowers take the same drift
   if (uClass > 4.5 && uClass < 5.5 || uClass > 2.5 && uClass < 3.5) {
-#ifdef L_VTRIM
     col *= vDrift;
-#else
-    float hd = vn(vPos.xz / 380.) - .5, hd2 = vn(vPos.xz / 95. + 17.) - .5;
-    col *= vec3(1. + hd * .12 + hd2 * .04, 1. + hd2 * .05, 1. - hd * .12);
-#endif
   }
   if (uClass > 4.5 && uClass < 5.5 && y > uWater) col *= mix(.7, 1., smoothstep(uWater, uWater + .9, y));   // the wet band of shore
   if (uClass > 1.5 && uClass < 2.5) {
@@ -348,11 +329,7 @@ void main() {
   if (uClass > .5 && uClass < 1.5) col *= mix(1.12, .88, smoothstep(-.6, .7, n.y));   // counter-shading: dark backs, pale bellies
   if (uFrost.x > 0. && uDither < 1.5 && y > uWater) col = frosted(col, n, vPos);
   float sun = SUNV;
-#ifdef L_VTRIM
   if (uClass > 4.5 && uClass < 5.5 && vColB.r > 1.5) sun *= vLight.x;
-#else
-  if (uClass > 4.5 && uClass < 5.5 && vColB.r > 1.5) sun *= hills(vColB);
-#endif
   vec3 c = shade(col, n, sun), hp = vPos;
   { vec3 vd = normalize(vPos - uCam); float bk = pow(max(dot(vd, uSun), 0.), 3.) * sun;
     if (vLeaf > .5 || uClass > 3.5 && uClass < 4.5) c += col * uSunCol * bk * .5 * (1. - max(dot(n, uSun), 0.));   // leaves and feathers lit through
@@ -612,8 +589,8 @@ void main() {
   vec3 c = shade(col, n, SUNV);
   frag = vec4(grade(haze(c, vPos)) * grain(), alpha);
 }`;
-// H (look.js, on trial): the hawk's shadow as its own shape, the hawk's mesh laid flat on the
-// ground under it (wings, tail, feet and all), in place of the soft disc
+// the hawk's shadow as its own shape, the hawk's mesh laid flat on the ground under it (wings,
+// tail, feet and all): the cue for landing
 const SHADOW_VS = `#version 300 es
 layout(location=0) in vec3 aPos; uniform mat4 uVP, uModel; uniform vec3 uFoot, uN; uniform float uGrow;
 void main() {
@@ -624,7 +601,7 @@ void main() {
 }`;
 const SHADOW_FS = `#version 300 es
 precision mediump float; uniform vec4 uCol; out vec4 frag; void main() { frag = uCol; }`;
-// S (look.js, on trial): the sun's glare, a soft bloom over the view round the sun while it is in
+// the sun's glare, a soft bloom over the view round the sun while it is in
 // sight, fading as a hill or your own wing comes across it (an occlusion query on a small probe)
 const GLARE_VS = `#version 300 es
 layout(location=0) in vec2 aP; uniform vec2 uAt, uSize; uniform float uZ; out vec2 vQ;
@@ -707,7 +684,7 @@ export function treeSway(t, y, time, wind) {
 }
 
 export function createRenderer(gl) {
-  // the shaders, built again with the look tests' #defines (look.js LOOKS) whenever one is switched (R.relook)
+  // the shaders, built again with the graphics level's #defines (look.js LOOKS) whenever it changes (R.relook)
   let lit, inst, sky, solid, solidInst, flat, stars, impP, shadowP, glareP;
   const SOLID_FS = LIT_FS.replace('precision highp float;', 'precision highp float;\n#define SOLID');
   function compile() {
@@ -1076,7 +1053,7 @@ export function createRenderer(gl) {
     }
     if (!again) upload(m.ibuf, d);   // (the clouds draw twice, depth then colour: one upload)
     const decal = DECAL.has(key); if (decal) { gl.enable(gl.POLYGON_OFFSET_FILL); gl.polygonOffset(-1, -4); }
-    const cull = R.look.cull && CULLED.has(key); if (cull) { gl.enable(gl.CULL_FACE); gl.cullFace(S_.clip ? gl.FRONT : gl.BACK); }   // (K: a closed shape's far side is never seen)
+    const cull = CULLED.has(key); if (cull) { gl.enable(gl.CULL_FACE); gl.cullFace(S_.clip ? gl.FRONT : gl.BACK); }   // (a closed shape's far side is never seen)
     gl.bindVertexArray(m.vao); gl.drawArraysInstanced(gl.TRIANGLES, 0, m.count, n); S_.tris += m.count / 3 * n;
     if (decal) gl.disable(gl.POLYGON_OFFSET_FILL);
     if (cull) { gl.disable(gl.CULL_FACE); gl.cullFace(gl.BACK); }
@@ -1144,15 +1121,15 @@ export function createRenderer(gl) {
     gl.uniformMatrix4fv(inst.u.uVP, false, vp); gl.uniform1f(inst.u.uTime, S.time); gl.uniform3fv(inst.u.uAutumn, S.autumnCol); gl.uniform1f(inst.u.uSnowLine, S.snowLine ?? 999);
     gl.uniform1f(inst.u.uSway, .012 + S.wind * .02); gl.uniform2fv(inst.u.uWindD, SEA_D); gl.uniform1f(inst.u.uDither, 1);
     const treeD = R.treeD || [0, 1, 1e5, 1e5 + 1]; gl.uniform4fv(inst.u.uTreeD, treeD); gl.uniform3fv(inst.u.uTreeP, S.hawk.p);
-    // K (look.js, on trial): the trees' back faces left undrawn (shapes.js winds every closed shape
-    // outward); in the mirror the winding is the other way
-    if (R.look.cull) { gl.enable(gl.CULL_FACE); gl.cullFace(clip ? gl.FRONT : gl.BACK); }
+    // the trees' back faces left undrawn (shapes.js winds every closed shape outward); in the
+    // mirror the winding is the other way
+    gl.enable(gl.CULL_FACE); gl.cullFace(clip ? gl.FRONT : gl.BACK);
     for (const k of kinds) for (const m of [k.near, k.far]) {
       if (!m.icount) continue;
       gl.uniform1f(inst.u.uFade, m === k.near ? 1 : 2);
       gl.bindVertexArray(m.vao); gl.drawArraysInstanced(gl.TRIANGLES, 0, m.count, m.icount); S_.tris += m.count / 3 * m.icount;
     }
-    if (R.look.cull) { gl.disable(gl.CULL_FACE); gl.cullFace(gl.BACK); }
+    gl.disable(gl.CULL_FACE); gl.cullFace(gl.BACK);
     gl.uniform1f(inst.u.uDither, 0); gl.uniform1f(inst.u.uSway, 0); gl.uniform1f(inst.u.uFade, 0); gl.uniform4fv(inst.u.uTreeD, NOTREED);
     {
       gl.useProgram(impP.p); setLight(impP, S); gl.uniform1f(impP.u.uClip, clip);
@@ -1167,9 +1144,9 @@ export function createRenderer(gl) {
     }
     gl.disable(gl.SAMPLE_ALPHA_TO_COVERAGE);
     };
-    // O (look.js, on trial): the trees drawn before the ground, so the ground under their crowns
-    // fails the depth test and is never shaded; else the ground first (as it was)
-    if (R.look.order) { treesPass(); groundPass(); } else { groundPass(); treesPass(); }
+    // the trees drawn before the ground, so the ground under their crowns fails the depth test
+    // and is never shaded
+    treesPass(); groundPass();
 
     // sky, just where nothing else is (it sits at the very back of the depth range)
     pf?.pass('sky');
@@ -1265,16 +1242,8 @@ export function createRenderer(gl) {
     pf?.pass('shadow, foam');
     gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA); gl.depthMask(false);
     gl.useProgram(flat.p); gl.uniformMatrix4fv(flat.u.uVP, false, vpO); gl.uniform3fv(flat.u.uO, O); gl.uniform1f(flat.u.uPx, h * .9); if (flat.u.uGradeT) gl.uniform3fv(flat.u.uGradeT, S.gradeT); if (flat.u.uGrain) gl.uniform4fv(flat.u.uGrain, S.grain);
-    const sh = R.look.birdshadow ? null : shadowVerts(S);
-    if (sh) {
-      gl.uniform1f(flat.u.uPoints, 0);
-      gl.enable(gl.POLYGON_OFFSET_FILL); gl.polygonOffset(-2, -2);
-      gl.bindBuffer(gl.ARRAY_BUFFER, fx.buf); gl.bufferData(gl.ARRAY_BUFFER, sh, gl.DYNAMIC_DRAW);
-      gl.bindVertexArray(fx.vao); gl.drawArrays(gl.TRIANGLES, 0, sh.length / 7);
-      gl.disable(gl.POLYGON_OFFSET_FILL);
-    }
-    if (R.look.birdshadow) { birdShadow(S, vpO, O); gl.useProgram(flat.p); }
-    if (R.look.glare) { glare(S, vp, w, h); gl.useProgram(flat.p); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA); }
+    birdShadow(S, vpO, O); gl.useProgram(flat.p);
+    glare(S, vp, w, h); gl.useProgram(flat.p); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
     // soft dark patches under ruins and animals
     const cv = contactVerts(S);
     if (cv.length) {
@@ -1313,9 +1282,12 @@ export function createRenderer(gl) {
   // nearer, then once more nearer still, where each pixel's first fragment passes and the rest
   // fail, so the shade is laid once. Higher up, two wider copies under it make a softer patch.
   function birdShadow(S, vpO, O) {
-    const p = S.hawk.p, g = Math.max(groundAt(p[0], p[2]), 0), above = p[1] - g;   // (the drawn facets' height, so it never sinks under them)
-    if (above > 45 || above < -1) return;
-    const a = .24 * (1 - above / 45), n = g > 0 ? groundNormal(p[0], p[2]) : [0, 1, 0], hm = R.hawkMesh;
+    // (the drawn facets' height, so it never sinks under them; over shallow water it lies on the
+    // bottom you see through it, fading as the water deepens: on the surface it seemed to float off
+    // from the bird, James 10-24)
+    const p = S.hawk.p, g = groundAt(p[0], p[2]), deep = Math.max(0, -g), above = p[1] - g;
+    if (above > 45 || above < -1 || deep > 3.5) return;
+    const a = .24 * (1 - above / 45) * (1 - deep / 3.5), n = groundNormal(p[0], p[2]), hm = R.hawkMesh;
     gl.useProgram(shadowP.p);
     gl.uniformMatrix4fv(shadowP.u.uVP, false, vpO);
     gl.uniformMatrix4fv(shadowP.u.uModel, false, basis([p[0] - O[0], p[1] - O[1], p[2] - O[2]], S.hawk.r, S.hawk.u, S.hawk.f, HAWK_SCALE));
@@ -1384,35 +1356,6 @@ export function createRenderer(gl) {
     gl.enable(gl.DEPTH_TEST);
   }
 
-
-  // a soft dark patch on the ground under the hawk, fading with height: the cue for landing
-  function shadowVerts(S) {
-    // over shallow water the patch lies on the bottom you see through it (James 10-24: on the
-    // surface it seemed to float off from the bird), fading out as the water deepens
-    const p = S.hawk.p, gh = height(p[0], p[2]), deep = Math.max(0, -gh), g = deep < 3.5 ? gh : 0, above = p[1] - g;
-    if (above > 45 || above < -1 || deep > 3.5) return null;
-    const a = .19 * (1 - above / 45) * (1 - deep / 3.5), n = normalAt(p[0], p[2]);
-    const out = [], N = 10, rad = .55 + above * .01;
-    const tx = [n[1], -n[0], 0], tl = Math.hypot(...tx) || 1; tx[0] /= tl; tx[1] /= tl;
-    const tz = [n[1] * tx[2] - n[2] * tx[1], n[2] * tx[0] - n[0] * tx[2], n[0] * tx[1] - n[1] * tx[0]];
-    const f = S.hawk.f, span = S.pose.fold > .7 ? .6 : 1.4;
-    const at = (ang, r) => {
-      const lx = Math.cos(ang) * r * span, lz = Math.sin(ang) * r;   // stretched across the wings
-      const wx = lx * -f[2] + lz * f[0], wz = lx * f[0] + lz * f[2];
-      return [p[0] + wx, g + .06 + (wx * -n[0] - wz * n[2]) / Math.max(n[1], .3), p[2] + wz];
-    };
-    void tz;
-    const c = [p[0], g + .06, p[2]];
-    // (the higher you are the softer the patch: a fainter core, its edge blurred wide)
-    const blur = Math.min(1, above / 30), ca = a * (1 - blur * .45), ra = blur ? rad * (1 - blur * .4) : rad, rb = rad * (1 + blur * 1.2);
-    for (let i = 0; i < N; i++) {
-      const a0 = i / N * 6.283, a1 = (i + 1) / N * 6.283;
-      out.push(...c, .1, .08, .06, ca, ...at(a0, ra), .1, .08, .06, blur ? ca * .6 : 0, ...at(a1, ra), .1, .08, .06, blur ? ca * .6 : 0);
-      if (blur) out.push(...at(a0, ra), .1, .08, .06, ca * .6, ...at(a0, rb), .1, .08, .06, 0, ...at(a1, rb), .1, .08, .06, 0,
-        ...at(a0, ra), .1, .08, .06, ca * .6, ...at(a1, rb), .1, .08, .06, 0, ...at(a1, ra), .1, .08, .06, ca * .6);
-    }
-    return new Float32Array(out);
-  }
 
   // rebuild every ground chunk (after the snowline, the season or the detail changes): each is redone
   // in place, the old one drawn until its new mesh is ready
