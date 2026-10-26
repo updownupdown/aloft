@@ -3,13 +3,15 @@
 // R.relook). Settled 10-24 (James): kept for good, with no switch, D layered blue ridges, E sunset
 // undersides and G the glory (render.js, clouds.js); taken out A wind waves, B dew, F dappled
 // light, real shadows, smooth shading, land detail and the grain choice (the grain is Paper).
-// T mirror reflections has no switch: Settings > Graphics > Ultra turns it on (app.js).
+// T mirror reflections has no switch: Settings > Graphics > Ultra turns it on (app.js); C shore
+// foam has none either: High and Ultra draw it (James 10-25).
 // ?look=foam (or ?look=all) tries them for one visit without saving.
 import { store } from './util.js';
 
 export const LOOKS = [
   { id: 'reflect', letter: 'T', def: 'L_REFLECT', ultra: true, label: 'Mirror reflections' },
-  { id: 'foam', letter: 'C', def: 'L_FOAM', on: true, key: 'foam2', label: 'Shore foam', sub: 'soft broken foam lapping in and out along lake shores and coasts, on unless switched off, made bold to be seen (it can be dialled back). Cost: under 0.1 ms (two noise reads a near water pixel)' },
+  // C shore foam: kept (James 10-25), no switch; drawn at High and Ultra (and Auto when it climbs to High)
+  { id: 'foam', letter: 'C', def: 'L_FOAM', high: true, label: 'Shore foam' },
   // the performance and graphics study (10-24): three trims that should look the same and draw
   // faster (V, N, K) and three looks (H, S, W). Measure with ?full=1&res=1 and Show frame rate.
   { id: 'vtrim', letter: 'V', def: 'L_VTRIM', label: 'Lighter ground shading', sub: 'the land\'s hue drift, the hills\' shadow and the clouds\' shadows worked out once per facet corner instead of at every pixel. Should look the same; saves a quarter to a third of each ground pixel\'s work' },
@@ -24,17 +26,17 @@ export const LOOKS = [
 export function createLooks(G, R) {
   const q = new URLSearchParams(location.search).get('look'), forced = q ? new Set(q.split(',')) : null;
   R.look = {};
-  const ultra = () => G.gfx?.preset === 'ultra';
-  for (const L of LOOKS) R.look[L.id] = forced ? forced.has('all') || forced.has(L.id) || forced.has(L.letter) : L.ultra ? ultra() : !!store.get('look.' + (L.key || L.id), L.on ?? false);
+  const ultra = () => G.gfx?.preset === 'ultra', high = () => (G.gfx?.level ?? 1) >= 2;
+  for (const L of LOOKS) R.look[L.id] = forced ? forced.has('all') || forced.has(L.id) || forced.has(L.letter) : L.ultra ? ultra() : L.high ? high() : !!store.get('look.' + (L.key || L.id), L.on ?? false);
   R.relook?.();
   const set = (id, v) => {
     if (R.look[id] === v) return;
-    const L = LOOKS.find(l => l.id === id); R.look[id] = v; if (!forced && !L.ultra) store.set('look.' + (L.key || id), v);
+    const L = LOOKS.find(l => l.id === id); R.look[id] = v; if (!forced && !L.ultra && !L.high) store.set('look.' + (L.key || id), v);
     R.relook?.(); G.emit('look', R.look);
   };
-  G.on('gfx', () => { if (!forced) set('reflect', ultra()); });
-  for (const L of LOOKS.filter(l => !l.ultra)) G.menu.toggle('play', { label: `${L.letter}. ${L.label}`, sub: L.sub, group: 'looks', get: () => R.look[L.id], set: v => set(L.id, v) });
-  G.dev?.add({ id: 'look-tests-ag', area: 'Settings and performance', title: 'Look tests: shore foam (C) still on trial; blue ridges, sunset undersides and the glory kept', how: 'Settings > Advanced > Look tests. Shores for foam; far hills by day, sunset clouds, mist below you with the sun behind.' });
+  G.on('gfx', () => { if (!forced) { set('reflect', ultra()); set('foam', high()); } });
+  for (const L of LOOKS.filter(l => !l.ultra && !l.high)) G.menu.toggle('play', { label: `${L.letter}. ${L.label}`, sub: L.sub, group: 'looks', get: () => R.look[L.id], set: v => set(L.id, v) });
+  G.dev?.add({ id: 'look-tests-ag', area: 'Settings and performance', title: 'Shore foam at High and Ultra (no switch); blue ridges, sunset undersides and the glory kept', how: 'Settings > Graphics > High, then a lake shore or coast. Far hills by day, sunset clouds, mist below you with the sun behind.' });
   G.dev?.add({ id: 'look-tests-perf', area: 'Settings and performance', title: 'Look tests from the performance study: V lighter ground shading, N noise from a picture, K trees one-sided, O trees before the ground (should all look the same); H your shadow has your shape, S sun glare, W soft dark corners', how: 'Settings > Advanced > Look tests. To measure: open ?full=1&res=1 with Show frame rate on, fly the same stretch of forest with each switch on and off.' });
 }
 

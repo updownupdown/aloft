@@ -2,7 +2,7 @@
 // water, thermal motes. One lit shader with two-sided faces, hemisphere light, haze toward the
 // horizon colour and a paper grain, so it stays in Aloft's palette at very little cost.
 import { program, mesh, perspective, lookAt, mul, basis } from './gl.js';
-import { CHUNK, chunkMesh, cellsFor, treesNear, ringsNear, height, normalAt, thermalsNear, thermalCentre, TREE, perchesOf, env, WORLD, WIND } from './world.js';
+import { CHUNK, chunkMesh, cellsFor, treesNear, ringsNear, height, normalAt, groundAt, groundNormal, thermalsNear, thermalCentre, TREE, perchesOf, env, WORLD, WIND } from './world.js';
 import { ring, cloud, TREE_LOOKS } from './shapes.js';
 import { buildHawk, HAWK_SCALE } from './hawk.js';
 import { starPoints, starLines, GAL } from './stars.js';
@@ -1313,9 +1313,9 @@ export function createRenderer(gl) {
   // nearer, then once more nearer still, where each pixel's first fragment passes and the rest
   // fail, so the shade is laid once. Higher up, two wider copies under it make a softer patch.
   function birdShadow(S, vpO, O) {
-    const p = S.hawk.p, g = Math.max(height(p[0], p[2]), 0), above = p[1] - g;
+    const p = S.hawk.p, g = Math.max(groundAt(p[0], p[2]), 0), above = p[1] - g;   // (the drawn facets' height, so it never sinks under them)
     if (above > 45 || above < -1) return;
-    const a = .24 * (1 - above / 45), n = g > 0 ? normalAt(p[0], p[2]) : [0, 1, 0], hm = R.hawkMesh;
+    const a = .24 * (1 - above / 45), n = g > 0 ? groundNormal(p[0], p[2]) : [0, 1, 0], hm = R.hawkMesh;
     gl.useProgram(shadowP.p);
     gl.uniformMatrix4fv(shadowP.u.uVP, false, vpO);
     gl.uniformMatrix4fv(shadowP.u.uModel, false, basis([p[0] - O[0], p[1] - O[1], p[2] - O[2]], S.hawk.r, S.hawk.u, S.hawk.f, HAWK_SCALE));
@@ -1337,10 +1337,10 @@ export function createRenderer(gl) {
   // sight. The glare eases toward that, and is added over the whole view as a soft warm bloom.
   const glareQ = { q: null, seen: 0, k: 0, t: 0 };
   function glare(S, vp, w, h) {
-    const sd = S.sunSky || S.sun, day = S.daylight ?? 1, cam = S.cam, q = glareQ;
+    const sd = S.sunSky || S.sun, cam = S.cam, q = glareQ, up = (t => t * t * (3 - 2 * t))(clamp01((sd[1] + .03) / .13));   // (up: the sun above the skyline; daylight itself is a third at sunset)
     const cx = vp[0] * sd[0] + vp[4] * sd[1] + vp[8] * sd[2], cy = vp[1] * sd[0] + vp[5] * sd[1] + vp[9] * sd[2], cw = vp[3] * sd[0] + vp[7] * sd[1] + vp[11] * sd[2];
     const dt = Math.min(.1, Math.max(0, S.time - q.t)); q.t = S.time;
-    const inView = cw > 0 && Math.abs(cx / cw) < 1.4 && Math.abs(cy / cw) < 1.4 && sd[1] > -.03 && day > .02;
+    const inView = cw > 0 && Math.abs(cx / cw) < 1.4 && Math.abs(cy / cw) < 1.4 && up > .01;
     if (q.q) {
       if (gl.getQueryParameter(q.q, gl.QUERY_RESULT_AVAILABLE)) { q.seen = gl.getQueryParameter(q.q, gl.QUERY_RESULT) ? 1 : 0; gl.deleteQuery(q.q); q.q = null; q.stuck = 0; }
       // (a query that never answers, as some drivers do: ask again; after three such, the land walk alone decides)
@@ -1379,7 +1379,7 @@ export function createRenderer(gl) {
     gl.disable(gl.DEPTH_TEST); gl.blendFunc(gl.ONE, gl.ONE);
     gl.uniform2f(glareP.u.uSize, size * h / w, size); gl.uniform1f(glareP.u.uZ, 0);
     gl.uniform3f(glareP.u.uCol, S.sunCol[0] * (1 + .2 * low), S.sunCol[1], S.sunCol[2] * (1 - .25 * low));
-    gl.uniform1f(glareP.u.uA, (.2 + .14 * low) * q.k * day * (1 - .7 * (S.overcast || 0)));
+    gl.uniform1f(glareP.u.uA, (.2 + .14 * low) * q.k * up * (1 - .7 * (S.overcast || 0)));
     gl.drawArrays(gl.TRIANGLES, 0, 6);
     gl.enable(gl.DEPTH_TEST);
   }
