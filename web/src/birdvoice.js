@@ -72,7 +72,7 @@ function template(voice, rnd) {
   }
 }
 
-// B. Distinct voices (Settings > Advanced > Song tests): 86 species share 24 templates, so each
+// Distinct voices (the songs study, B; James, 10-24): 86 species share 24 templates, so each
 // species gets a touch of its own, fixed by its id: big birds (look.size 1.3 and up) sing an octave
 // lower, and each has its own brightness (the second partial), vibrato, attack and pitch jitter.
 const TIM = new Map();
@@ -88,9 +88,6 @@ export function timbre(sp) {
 
 export function createBirdVoice(ctx, dest, noiseBuf) {
   const V = { ...DEFAULT_VOICE };
-  // the song tests (songs.js): stereo places each note where its bird sits; voices gives each
-  // species its own timbre
-  V.tests = { stereo: false, voices: false };
   // the spaces: a dry path, a short valley echo, and a forest of soft reflections
   const input = ctx.createGain(), dry = ctx.createGain(), farLp = ctx.createBiquadFilter();
   farLp.type = 'lowpass'; farLp.frequency.value = 20000;
@@ -118,16 +115,16 @@ export function createBirdVoice(ctx, dest, noiseBuf) {
   V.set({});
 
   // one element: a contour over `dur`, in the chosen engine. `o`: where the bird sits (pan -1..1,
-  // dist 0..1 of earshot) and its species' timbre, for the song tests
+  // dist 0..1 of earshot) and its species' timbre
   function element(t, e, f, vol, o = null) {
     const tm = o?.tim || null;
     const env = ctx.createGain(), atk = (e.atk ?? Math.min(.006, e.dur * .2)) * (tm?.atk ?? 1), end = t + e.dur;
     env.gain.setValueAtTime(0, t); env.gain.linearRampToValueAtTime(vol, t + atk); env.gain.exponentialRampToValueAtTime(.0004, end);
     let out = env;
-    // A. Birds around you: the note comes from where the bird sits, duller and more in the woods'
-    // echo the further off it is (a panner and a filter for this note alone)
+    // birds around you (the songs study, A): the note comes from where the bird sits, duller and
+    // more in the woods' echo the further off it is (a panner and a filter for this note alone)
     let sink = input;
-    if (o?.pan != null && V.tests.stereo && ctx.createStereoPanner) {
+    if (o?.pan != null && ctx.createStereoPanner) {
       const pan = ctx.createStereoPanner(), dl = ctx.createBiquadFilter(), dist = Math.min(1, Math.max(0, o.dist || 0));
       pan.pan.value = o.pan; dl.type = 'lowpass'; dl.frequency.value = 20000 - 17000 * Math.pow(dist, 1.3);
       dl.connect(pan).connect(input); sink = dl;
@@ -142,7 +139,7 @@ export function createBirdVoice(ctx, dest, noiseBuf) {
     const glide = (param, m) => { param.setValueAtTime(f * e.c[0][1] * m, t); for (let i = 1; i < e.c.length; i++) param.exponentialRampToValueAtTime(f * e.c[i][1] * m, t + e.dur * e.c[i][0]); };
     const tone = (m, g, type = 'sine') => {
       const o = ctx.createOscillator(), og = ctx.createGain(); o.type = type; og.gain.value = g; glide(o.frequency, m);
-      // its vibrato, or (B) the species' own on a held note
+      // its vibrato, or the species' own on a held note
       const vib = e.vib || (tm?.vib && e.dur >= .15 && !e.am ? tm.vib : 0), vibF = e.vib ? e.vibF : tm?.vibF;
       if (vib) { const l = ctx.createOscillator(), lg = ctx.createGain(); l.frequency.value = vibF; lg.gain.value = f * vib * m; l.connect(lg).connect(o.frequency); l.start(t); l.stop(end + .02); }
       o.connect(og).connect(out); o.start(t); o.stop(end + .02);
@@ -193,9 +190,9 @@ export function createBirdVoice(ctx, dest, noiseBuf) {
   }
   // one song note at pitch f (the game's pitch for that note), in a species' voice; `kind` picks
   // a syllable shape (left out: the species' own note, as the bird song lab plays it)
-  // `o`: { pan, dist, sp } for the song tests: where the bird sits (A) and its species (B)
+  // `o`: { pan, dist, sp }: where the bird sits (pan and distance) and its species (its timbre)
   V.sing = (f, voice = 0, vol = .16, kind = null, o = null) => {
-    const tm = V.tests.voices ? timbre(o?.sp) : null, at = o && (o.pan != null || tm) ? { pan: o.pan, dist: o.dist, tim: tm } : null;
+    const tm = timbre(o?.sp), at = o && (o.pan != null || tm) ? { pan: o.pan, dist: o.dist, tim: tm } : null;
     const jit = tm ? tm.jit : .03, low = tm && !REG[voice % NV] ? tm.reg : 1;
     if (kind && !OWN[kind]?.has(voice % NV)) {
       const t = ctx.currentTime + LEAD, prev = V.engine, reg = REG[voice % NV], pitch = (reg ? f * reg : f * V.octave * low) * (1 + (Math.random() - .5) * jit);
