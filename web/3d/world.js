@@ -983,22 +983,29 @@ export function ringLoop(gx, gz) {
     const c = Math.cos(turn), sn = Math.sin(turn), at = t => { const [a, b] = f(t, k), [a0, b0] = f(0, k), u = a - a0, v = (b - b0) * flip; return [x0 + c * u - sn * v, z0 + sn * u + c * v]; };
     const pts = [at(0)];
     for (let t = 1; pts.length < n && t < 6000; t++) { const p = at(t), q = pts[pts.length - 1]; if (Math.hypot(p[0] - q[0], p[1] - q[1]) >= gap) pts.push(p); }
-    const id = (gx * 7907 + gz * 31) * 64 + (ringDay % 64), y0 = Math.max(height(x0, z0), WATER) + 10 + h(8) * 10;
-    L = { id, x: x0, z: z0, n: pts.length, shape, level, rings: [] };
+    // the course leads somewhere (R1): its last ring hangs over a landmark near by, else over rising
+    // air (the last ring's lift carries you up into it, sys/rings.js)
+    const lm = landmarksNear(x0, z0, 450).filter(l => l.name && Math.hypot(l.x - x0, l.z - z0) < 450)[0];
+    const th = !lm && thermalsNear(x0, z0, 400).filter(t => !t.volcano).sort((a, c) => Math.hypot(a.x - x0, a.z - z0) - Math.hypot(c.x - x0, c.z - z0))[0];
+    const end = lm ? { kind: 'place', name: lm.name, x: lm.x, z: lm.z } : th ? { kind: 'air', x: th.x, z: th.z } : null;
+    if (end) { const [lx, lz] = pts[pts.length - 1], sx = end.x - lx, sz = end.z - lz; for (const p of pts) { p[0] += sx; p[1] += sz; } }
+    const [sx0, sz0] = pts[0];
+    const id = (gx * 7907 + gz * 31) * 64 + (ringDay % 64), y0 = Math.max(height(sx0, sz0), WATER) + 10 + h(8) * 10;
+    L = { id, x: sx0, z: sz0, n: pts.length, shape, level, end, rings: [] };
     let y = y0;
     for (let i = 0; i < pts.length; i++) {
       const [x, z] = pts[i], g = Math.max(height(x, z), WATER);
       y = Math.max(y0 + i * rise, g + 12, i ? y : 0);
       // the ring's plane faces along the course: its normal (-sin yaw, cos yaw) is the way on
       const q = pts[Math.min(i + 1, pts.length - 1)], p = pts[Math.max(i - 1, 0)], tx = q[0] - p[0], tz = q[1] - p[1];
-      L.rings.push({ x, y, z, yaw: Math.atan2(-tx, tz), r, id: id * 16 + i, circuit: id, k: i, of: pts.length, level });
+      L.rings.push({ x, y, z, yaw: Math.atan2(-tx, tz), r, id: id * 16 + i, circuit: id, k: i, of: pts.length, level, end });
     }
   }
   loopCache.set(key, L); if (loopCache.size > 400) loopCache.delete(loopCache.keys().next().value);
   return L;
 }
 export function ringsNear(x, z, r) {
-  const out = [], m = 950, a = Math.floor((x - r - m) / RING_CELL), b = Math.floor((x + r + m) / RING_CELL), c = Math.floor((z - r - m) / RING_CELL), d = Math.floor((z + r + m) / RING_CELL);
+  const out = [], m = 1400, a = Math.floor((x - r - m) / RING_CELL), b = Math.floor((x + r + m) / RING_CELL), c = Math.floor((z - r - m) / RING_CELL), d = Math.floor((z + r + m) / RING_CELL);
   for (let gz = c; gz <= d; gz++) for (let gx = a; gx <= b; gx++) {
     const L = ringLoop(gx, gz); if (!L) continue;
     for (const q of L.rings) if (Math.abs(q.x - x) < r && Math.abs(q.z - z) < r) out.push(q);

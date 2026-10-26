@@ -130,7 +130,7 @@ export function storySystem(G) {
     if (St.mate) {
       // a mate helps raise the chick, bringing a meal now and then (the last is left to you)
       const n = G.nest;
-      if (n?.chick && n.fed < 4) { St.feedT += dt; if (St.feedT > 120) { St.feedT = 0; n.fed++; G.hud.tally(`Your mate fed the chick: ${n.fed} of 5`, 'nest'); } }
+      if (n?.chick && n.fed < 4) { St.feedT += dt; if (St.feedT > 120) { St.feedT = 0; n.fed++; n.fedAt = G.clock; n.mateFed = (n.mateFed || 0) + 1; G.hud.tally(`Your mate fed the chick: ${n.fed} of 5`, 'nest'); } }
       return;
     }
     const S = St.suitor;

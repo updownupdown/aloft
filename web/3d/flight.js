@@ -9,6 +9,7 @@ export const FLY = {
   best: 12, maxS: 46, cd: .0058, cdTuck: .0024, cdFlare: .03, stall: 7.5, stallFlare: 3.6,
   climb: .55, dive: .9, roll: 1.0, yaw: 1.2, flapS: 3.0, flapUp: 1.3, flapHover: 3.2, flapCost: .065,
   perchR: 1.6, landS: 10.5, landRun: 2.5,
+  shallow: .45,   // water shallower than this stands like ground: land and drink in it, hop through it
   skimH: 2.6, skimDrag: .45,   // ground effect: within skimH metres of water or flat ground, drag falls by up to skimDrag
   // flared with both thumbs up (float): flare drag falls by up to floatDrag, the stall speed by
   // floatStall, and perches are caught from floatReach metres farther and at floatLand m/s more
@@ -256,8 +257,9 @@ function groundHop(b, E, to) {
   const a = to || b.hopAim, d = a ? Math.hypot(a[0] - b.p[0], a[2] - b.p[2]) : 0;
   if (a && d > .2) b.view = b.yaw = Math.atan2(a[0] - b.p[0], -(a[2] - b.p[2]));   // the camera comes round behind
   const step = a ? Math.min(d, 2.5) : 1.4, nx = b.p[0] + Math.sin(b.yaw) * step, nz = b.p[2] - Math.cos(b.yaw) * step;
-  if (height(nx, nz) < WATER) return;
-  b.from = [...b.p]; b.p = [nx, height(nx, nz) + .35, nz];
+  const ny = height(nx, nz);
+  if (WATER - ny >= FLY.shallow) return;   // (the shallows are fine)
+  b.from = [...b.p]; b.p = [nx, Math.max(ny, WATER) + .35, nz];
   b.settle = b.settleT = .32; b.hop = .35; b.flapL = b.flapR = 0; b.ampL = b.ampR = .6;
   E.flap(.4, 0); E.hopped?.();
 }
@@ -419,6 +421,12 @@ function ground(b, E) {
   if (b.p[1] >= floor) return;
   const f = fwd(b), down = -(f[1] * b.s + b.vy + b.lift);
   if (gy < WATER) {
+    // the shallows: wade in to land (and drink where you stand), or skim through in spray
+    if (WATER - gy < FLY.shallow) {
+      b.p[1] = floor;
+      if (groundSpeed(b) < FLY.landS + FLY.landRun && down < 6) { b.state = 'ground'; b.settle = b.settleT = .35; b.from = null; b.landRun = 0; E.splash(b.p, 2); E.land('ground'); return; }
+      b.gamma = Math.max(b.gamma, .2); b.s *= .6; b.vy = Math.max(b.vy, 1); E.splash(b.p, b.s); return;
+    }
     if (b.s < 9 && down > 0 && down < 6 && !(b.noPerch > 1.2)) { b.state = 'swim'; b.p[1] = WATER + .12; b.settle = .5; E.land('water'); }
     else { b.p[1] = floor; b.gamma = Math.max(b.gamma, .12); b.s *= .82; b.vy = Math.max(b.vy, 1); E.splash(b.p, b.s); }
     return;

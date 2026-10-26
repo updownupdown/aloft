@@ -67,7 +67,7 @@ web/3d/action.js        the one action button, bottom right (left of the note pa
 web/src/                audio.js (Web Audio synth; volumes A.vol/A.setVol: music, wind, fx buses), music.js (Valley, the generative music), birdvoice.js, songs.js (songbird species)
 web/birds.html          bird lab: every species side by side (3d/birdlab.js)
 web/icons/, web/fonts/  app icons (tools/icon.html + tools/make-icons.mjs), bundled fonts (SIL OFL)
-web/3d/sys/*.js         systems: air (thermal clouds/motes), rings, food (hunger, thirst, mice), aim, flora (tufts, flowers, stones, reeds), bushes (world.js bushesNear; perch on top),
+web/3d/sys/*.js         systems: air (thermal clouds/motes), rings, food (hunger, thirst, mice; the hunt's reach, mantling, misses), findwater (thirsty: fresh water on the compass), aim, flora (tufts, flowers, stones, reeds), bushes (world.js bushesNear; perch on top),
                         guide (field guide: G.sight(key,x,y,z,r), G.guide.page()), journey (countries and
                         landmarks found, route, years turning with your own spring), map (the Map tab: a globe to spin and zoom, fog of war, paper grain and straight pencil lines; tallies top left; tap to drop a pin (+ Add pin, 12 colours, Fast-travel where explored) or pick a place; only one-of-a-kind places get marks), nest (twigs, egg, chick),
                         story (health -> G.tailRed, keepsakes, tricks, courtship, mate and fledglings),

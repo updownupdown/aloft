@@ -183,10 +183,21 @@ export function faunaSystem(G) {
   const fishOfLive = (gx, gz) => { const o = fishOf(gx, gz); if (!o) return null; const t = caught.get(o.id); return t !== undefined && G.clock - t < 200 ? null : o; };
 
   // kettles: wild hawks circling in the strongest thermals, by day
+  // (and with your wings low, one gathers over the best thermal near you: R5, wake() below)
+  let kettleT = null, kettleWait = 0;
+  function wake(dt) {
+    const tired = b.state === 'fly' && b.stamina / Math.max(.05, b.maxStamina ?? 1) < .35;
+    if (kettleT && (b.stamina / Math.max(.05, b.maxStamina ?? 1) > .7 || b.state !== 'fly' || Math.hypot(kettleT.x - b.p[0], kettleT.z - b.p[2]) > 900)) kettleT = null;
+    if (kettleT || !tired || G.light.daylight < .5 || storm() > .4 || (kettleWait -= dt) > 0) return;
+    kettleWait = .5;
+    kettleT = thermalsNear(b.p[0], b.p[2], 500).filter(t => !t.volcano && Math.hypot(t.x - b.p[0], t.z - b.p[2]) < 500).sort((p, q) => q.w - p.w)[0] || null;
+    if (kettleT) once('lowkettle', 'Birds over the lift', 'Wings tiring? Look for birds circling: they gather where the air rises, and climb with you.', 'thermal');
+  }
+  const strong = t => t.w * env.thermal >= FAUNA.kettleW || t.id === kettleT?.id;
   function kettles() {
     const out = []; if (G.light.daylight < .5 || storm() > .4) return out;
     for (const t of thermalsNear(b.p[0], b.p[2], FAUNA.kettleR)) {
-      if (t.w * env.thermal < FAUNA.kettleW) continue;
+      if (!strong(t)) continue;
       const g = height(t.x, t.z), n = 3 + (t.id % 4);
       out.push({ t, g, n });
     }
@@ -196,7 +207,7 @@ export function faunaSystem(G) {
   env.lifts.push((x, y, z) => {
     if (G.light.daylight < .5 || storm() > .4) return 0;
     for (const t of thermalsNear(x, z, 60)) {
-      if (t.w * env.thermal < FAUNA.kettleW) continue;
+      if (!strong(t)) continue;
       const [cx, cz] = thermalCentre(t, y);
       if (Math.hypot(x - cx, z - cz) < t.r * .8 && y < t.top) return .8;
     }
@@ -214,6 +225,7 @@ export function faunaSystem(G) {
   return {
     id: 'fauna',
     update(dt) {
+      wake(dt);
       fishBoost = Math.max(0, fishBoost - dt);
       if ((refreshT -= dt) <= 0) {
         refreshT = .7; refresh();

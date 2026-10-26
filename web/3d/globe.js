@@ -5,6 +5,7 @@
 // radius in CSS pixels; project()/unproject() go between lat/lon and the screen for the markers.
 import { LL, EARTH, CELL } from './earthdata.js';
 import { coastDist, earthBiome, latLon } from './earth.js';
+import { riverAt } from './world.js';
 import { program } from './gl.js';
 
 const TW = 2048, TH = 1024, FW = 2048, FH = 1024;
@@ -36,6 +37,43 @@ function biomeGrid() {
 // once when the menu first opens (prebake), before the map is shown
 let landPx = null;
 export const prebake = () => { landPx ||= bakeLand(); };
+// the rivers, drawn in afterward a little at a time (D6): world tiles 1.2 km square, nearest the bird
+// first, sampled every 40 m (riverAt; a river within half a pixel colours it), so the map's land shows
+// its rivers within a minute or so of play, the ones round you first. The fog hides those not yet seen
+const RIV = { tile: 1200, step: 40, col: [92, 146, 170], k: .7 };
+let rivDone = null, rivDirty = null, rivTile = null, rivI = 0;
+const rivTiles = Math.ceil(EARTH.W / RIV.tile), rivRows = Math.ceil(EARTH.H / RIV.tile);
+export function riverWork(ms, bx, bz) {
+  if (!landPx) return;
+  rivDone ||= new Uint8Array(rivTiles * rivRows);
+  const end = performance.now() + ms, n = RIV.tile / RIV.step;
+  while (performance.now() < end) {
+    if (!rivTile) {   // the nearest tile not yet drawn
+      const ci = Math.floor((bx - EARTH.X0) / RIV.tile), cj = Math.floor((bz - EARTH.Z0) / RIV.tile);
+      let best = -1, bd = 1e9;
+      for (let j = 0; j < rivRows; j++) for (let i = 0; i < rivTiles; i++) {
+        if (rivDone[j * rivTiles + i]) continue;
+        const di = Math.min(Math.abs(i - ci), rivTiles - Math.abs(i - ci)), d = di * di + (j - cj) ** 2;
+        if (d < bd) { bd = d; best = j * rivTiles + i; }
+      }
+      if (best < 0) return;
+      rivTile = best; rivI = 0;
+    }
+    const ti = rivTile % rivTiles, tj = Math.floor(rivTile / rivTiles), x0 = EARTH.X0 + ti * RIV.tile, z0 = EARTH.Z0 + tj * RIV.tile;
+    for (let c = 0; c < 64 && rivI < n * n; c++, rivI++) {
+      const x = x0 + (rivI % n + .5) * RIV.step, z = z0 + (Math.floor(rivI / n) + .5) * RIV.step;
+      if (z > EARTH.Z0 + EARTH.H) continue;
+      const r = riverAt(x, z);
+      if (!r || r.m < .08 || r.w < 1.5 || r.d > r.w + RIV.step * .6 || coastDist(x, z) < 20) continue;
+      const [lat, lon] = latLon(x, z), u = Math.floor((lon + 180) / 360 * TW) % TW, v = Math.floor((90 - lat) / 180 * TH);
+      if (v < 0 || v >= TH) continue;
+      const k = (v * TW + u) * 4;
+      for (let q = 0; q < 3; q++) landPx[k + q] += (RIV.col[q] - landPx[k + q]) * RIV.k;
+      rivDirty = rivDirty ? [Math.min(rivDirty[0], v), Math.max(rivDirty[1], v)] : [v, v];
+    }
+    if (rivI >= n * n) { rivDone[rivTile] = 1; rivTile = null; }
+  }
+}
 function bakeLand() {
   const px = new Uint8Array(TW * TH * 4), g = biomeGrid(), nx = CELL.nx, nz = CELL.nz, st = CELL.step;
   new Uint32Array(px.buffer).fill(new Uint32Array(new Uint8Array([...ICE, 255]).buffer)[0]);   // past the strip: the polar ice
@@ -153,7 +191,7 @@ export function createGlobe(canvas) {
     gl.generateMipmap(gl.TEXTURE_2D);
     return t;
   };
-  let land = null;
+  let land = null, rivUp = 0;
   const fogPx = new Uint8Array(FW * FH);
   const fogTex = tex(FW, FH, gl.RED, gl.R8, fogPx);
   const M = new Float32Array(9);
@@ -182,7 +220,13 @@ export function createGlobe(canvas) {
     },
     // sun: [lat, lon] of the point the sun stands over
     draw(V, w, h, dpr, veil = .42, sun = [0, 0]) {
-      if (!land) { prebake(); land = tex(TW, TH, gl.RGBA, gl.RGBA8, landPx); }
+      if (!land) { prebake(); land = tex(TW, TH, gl.RGBA, gl.RGBA8, landPx); rivDirty = null; }
+      else if (rivDirty && performance.now() - rivUp > 600) {   // rivers drawn since: send those rows again
+        const [v0, v1] = rivDirty; rivDirty = null; rivUp = performance.now();
+        gl.bindTexture(gl.TEXTURE_2D, land); gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+        gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, v0, TW, v1 - v0 + 1, gl.RGBA, gl.UNSIGNED_BYTE, landPx, v0 * TW * 4);
+        gl.generateMipmap(gl.TEXTURE_2D);
+      }
       gl.viewport(0, 0, canvas.width, canvas.height);
       gl.useProgram(P.p); gl.bindVertexArray(vao);
       gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, land); gl.uniform1i(P.u.land, 0);

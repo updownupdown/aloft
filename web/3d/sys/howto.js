@@ -156,7 +156,7 @@ export function howtoSystem(G) {
     card('song', 'Learning a song', 'Songbirds sing from the trees. Perch near one and tap the notes button, bottom left: copy each note it sings, and the song is yours. Journal > Songs keeps every song you know.'),
     card('song', 'Singing back and calling', 'Perched near a bird whose song you know, sing it: it answers, and some bring gifts. Hold Call, in the day dial, top right, to call out: the longer you hold, the louder.'));
   cards('home',
-    card('nest', 'A nest', 'Twigs lie under some broadleaf trees. Land beside one to pick it up, then perch on a branch to start a nest. Five twigs and there is an egg; when it hatches, bring it food: land at the nest with a catch in your feet and it drops in. Five meals and your chick fledges.'),
+    card('nest', 'A nest', 'Twigs lie under some broadleaf trees. Land beside one to pick it up, then perch on a branch and tap Build here to start a nest; your nest tree’s own dead twigs are a hop away. Five twigs and there is an egg in spring; when it hatches, bring it food: land at the nest with a catch in your feet and it drops in. Five meals and your chick fledges.'),
     card('keepsake', 'Keepsakes', 'Now and then something glints in the grass: land beside it to keep it for your nest.'),
     card('mate', 'A mate', 'Keep well fed and watered and your bird grows healthy: a hawk’s tail turns deep red after its first year. In spring a bird of your kind may come to look you over: a healthy bird, keepsakes, songs and tricks win it as your mate.'));
   cards('well',

@@ -12,7 +12,7 @@ import { esc } from '../journal.js';
 import { createDial } from '../dial.js';
 import { icon } from '../icons.js';
 import { EARTH, wrapX, latLon, toXZ, declination } from '../earth.js';
-import { createGlobe, prebake } from '../globe.js';
+import { createGlobe, prebake, riverWork } from '../globe.js';
 import { FEATHER } from './aims.js';
 
 const CELL = 100;                        // fog cells, metres
@@ -337,7 +337,8 @@ export function mapView(G, J) {
 
   let t = 0;
   return {
-    update(dt) { if ((t -= dt) <= 0) { t = .5; reveal(); } },
+    // (and the rivers drawn into the globe's land, a millisecond a frame: globe.js riverWork)
+    update(dt) { if ((t -= dt) <= 0) { t = .5; reveal(); } riverWork(1, b.p[0], b.p[2]); },
     // runs of seen and unseen cells, alternating from unseen, in base 36
     save() {
       const out = []; let run = 0, cur = 0;

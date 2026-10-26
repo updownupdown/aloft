@@ -78,6 +78,8 @@ export function aimSystem(G) {
       if (d < td) { td = d; to = [px, py, pz]; }
     }
     if (!to) return false;
+    // perched, a tap on a mouse near by drops you on it (H1, the still hunt; food.js resolves the pounce)
+    if (b.state === 'perch') { const m = G.pounceAt?.(to); if (m) { G.part([m.x, m.y + .1, m.z], [0, .5, 0], .5, [1, 1, .95], .1); return hopDown(b, [m.x, m.y, m.z], G.E); } }
     // the water: drink if it is in reach, else go to the nearest dry spot by it, then drink
     const pud = G.water?.puddleAt(to[0], to[2], .3), wet = to[1] <= WATER || pud;
     if (b.state === 'swim') return wet && Math.hypot(to[0] - b.p[0], to[2] - b.p[2]) < 6 ? G.water.drink() : false;
@@ -116,8 +118,10 @@ export function aimSystem(G) {
       A.focus += ((b.state === 'fly' ? b.stoop || 0 : 0) - A.focus) * Math.min(1, dt * 5);
       A.path = []; A.impact = null; A.target = null; A.perch = null; A.ring = null; A.mode = 'ink';
       A.hops = b.state !== 'fly' && b.settle <= 0 && !(b.eating > 0) && !b.asleep && !G.menu?.open ? hopPerches(b) : [];
-      // perch rings show in flight only with the wings spread, looking for somewhere to land
-      A.look = (A.look || 0) + ((b.state === 'fly' && b.flare > .25 ? 1 : 0) - (A.look || 0)) * Math.min(1, dt * 5);
+      // perch rings show in flight with the wings spread, looking for somewhere to land; faintly too
+      // when you come in slow and low (R3), so a perch near by is seen before you brake for it
+      const above = b.p[1] - Math.max(height(b.p[0], b.p[2]), WATER), want = b.state !== 'fly' ? 0 : b.flare > .25 ? 1 : b.s < 14 && above < 15 ? .45 : 0;
+      A.look = (A.look || 0) + (want - (A.look || 0)) * Math.min(1, dt * 5);
       if (b.state !== 'fly' || b.s < 3) { A.perches = []; return; }
       // fly the path ahead with today's bank and pitch held
       const yawRate = clamp(g * Math.tan(b.roll) / Math.max(b.s * (1 - .65 * b.tuck), 5), -1.9, 1.9);

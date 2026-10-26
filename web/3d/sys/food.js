@@ -23,10 +23,14 @@ export const FOOD = {
   worm: .08, wet: 300, worms: 3,             // a worm's fill, seconds the ground stays wet after rain, worms at once
   lowAt: .35, lowMax: .3,                    // below lowAt, hunger and thirst each take up to lowMax off max stamina
   cell: 48, near: 170, respawn: 150,         // mouse cells, simulated radius, seconds to refill
-  catchR: 1.5, catchDive: 1.6, catchH: 2.6,  // reach, extra reach diving, how low to be
-  freeze: 2.5, bolt: 3, burrow: 25, dig: .8,  // a passing shadow freezes a mouse; a stoop sends it bolting home to dig down (gone a while)
+  catchR: 1.9, catchDive: 1.8, catchH: 3,    // reach, extra reach diving, how low to be
+  feet: .8, strike: 1, strikeK: 1.4,         // feet thrown out: up to .8 m more reach at speed; a flare out of a stoop: 1 s of reach x1.4
+  freeze: 2.5, bolt: 3, burrow: 12, dig: .8,  // a passing shadow freezes a mouse; a stoop it sees sends it bolting home to dig down (gone a while)
+  sees: .34, slow: 18,                        // a mouse sees you if it faces you (cos of ~70 deg) or you come in slowly (m/s)
+  call: 60, callFreeze: 3,                    // your call freezes the mice within 60 m for 3 s
+  mantle: 1.4, perchHealth: .03,              // mantling over a catch before you can eat; a branch meal's bit of health
   squeak: .05, squeakHunt: .2,                // chance a mouse squeaks each quarter second; hunting (wings tucked) as often as before
-  meal: 2.4, wormMeal: 1.1, perchMeal: 1.15, cacheDays: 2,   // seconds to eat (a worm); a calm meal on a perch is worth more; a cache keeps two days
+  meal: 2.4, wormMeal: 1.1, perchMeal: 1.5, cacheDays: 2,    // seconds to eat (a worm); a calm meal on a perch is worth half again; a cache keeps two days
 };
 
 // a worm: one rough tapered tube, gently curved, with the pale saddle band near its head
@@ -113,9 +117,10 @@ export function foodSystem(G) {
   };
 
   // which mice live in a cell (fixed by hash, cached), where their burrow is. Mice gather where
-  // people kept grain: thick round the old barns and farmyards, the folds and village gardens
-  // (settle.js mouseRich), thin in the open country but for a few good meadow patches; the
-  // valley where you start keeps plenty so nobody begins hungry
+  // people kept grain: round the old barns and farmyards, the folds and village gardens
+  // (settle.js mouseRich), scarce in the open country but for a few good meadow patches; the
+  // valley where you start keeps some so nobody begins hungry. Fewer than once (James, 10-24):
+  // a mouse takes some finding, and is easier to catch once found
   const cellCache = new Map();
   function cellMice(cx, cz) {
     const key = cx * 100003 + cz; let c = cellCache.get(key); if (c) return c;
@@ -125,8 +130,8 @@ export function foodSystem(G) {
   function cellMiceOf(cx, cz) {
     const x0 = cx * FOOD.cell, z0 = cz * FOOD.cell, mx = x0 + FOOD.cell / 2, mz = z0 + FOOD.cell / 2;
     const rich = mouseRich(mx, mz), patch = smooth(.15, .45, fbm(mx / 400, mz / 400, 73, 2)), home = 1 - smooth(250, 450, Math.hypot(mx, mz + 60));
-    const p = Math.max(.16 + .3 * patch + .75 * rich, .55 * home), r = ih(cx, cz, 71);
-    const out = [], n = r < p ? 1 + (ih(cx, cz, 72) < .3 + rich * .5) + (rich > .6 && ih(cx, cz, 74) < rich - .4) : 0;
+    const p = Math.max(.08 + .16 * patch + .45 * rich, .3 * home), r = ih(cx, cz, 71);
+    const out = [], n = r < p ? 1 + (ih(cx, cz, 72) < .15 + rich * .35) + (rich > .7 && ih(cx, cz, 74) < rich - .5) : 0;
     // a few tries per mouse for a dry, open, fairly flat spot in the cell (glades count)
     for (let k = 0; k < n; k++) for (let tr = 0; tr < 4; tr++) {
       const x = x0 + (.1 + ih(cx, cz, 73 + k * 7 + tr) * .8) * FOOD.cell, z = z0 + (.1 + ih(cx, cz, 75 + k * 7 + tr) * .8) * FOOD.cell;
@@ -138,6 +143,65 @@ export function foodSystem(G) {
     return out;
   }
   G.mouseCells = cellMice;   // sys/fields.js reads the homes for its signs
+  // The still hunt (H1): a pounce from a perch. aim.js asks for the mouse by a tapped spot (in the
+  // open, within 35 m, below you); the hawk drops on it (flight.js hopDown) and the mouse, which hasn't
+  // seen a thing from a still perch, keeps still until the last moment; landing on it is the catch
+  G.pounceAt = to => {
+    if (b.state !== 'perch' || b.settle > 0 || b.carry || b.eating > 0) return null;
+    let best = null, bd = 2.5;
+    for (const m of mice.values()) {
+      if (m.hidden > 0 || m.dig > 0 || m.cover) continue;
+      const d = Math.hypot(m.x - to[0], m.z - to[2]);
+      if (d < bd && Math.hypot(m.x - b.p[0], m.z - b.p[2]) < 35 && m.y < b.p[1] - 1) { bd = d; best = m; }
+    }
+    if (best) G.pounce = { m: best, t: G.t };
+    return best;
+  };
+  function pounce() {
+    const P = G.pounce; if (!P) return;
+    if (b.state !== 'ground') { G.pounce = null; return; }
+    if (b.settle > 0) return;
+    G.pounce = null; const m = P.m, hd = Math.hypot(b.p[0] - m.x, b.p[2] - m.z);
+    if (mice.has(m.id) && !(m.hidden > 0) && hd < FOOD.catchR + .8) { eat(m); return; }
+    if (mice.has(m.id) && !m.bolt) { m.bolt = true; m.flee = 3; m.freeze = 0; }
+    G.hud.tally('It got away', 'prey');
+  }
+  // the feet (H3): thrown out further the faster you come, and a flare out of a stoop strikes,
+  // reaching further and higher for a second. critters.js uses the same reach
+  let stoopT = -9, strikeT = 0;
+  function strike(dt) {
+    const focus = G.aim?.focus || 0;
+    if (b.state === 'fly' && focus > .35) stoopT = G.t;
+    if (b.state === 'fly' && b.flare > .3 && G.t - stoopT < .8 && strikeT <= 0) strikeT = FOOD.strike;
+    strikeT = b.state === 'fly' ? Math.max(0, strikeT - dt) : 0;
+  }
+  G.reach = (catchR = FOOD.catchR, catchDive = FOOD.catchDive, catchH = FOOD.catchH) => {
+    const focus = G.aim?.focus || 0, k = strikeT > 0 ? FOOD.strikeK : 1;
+    return { r: (catchR + catchDive * focus + clamp((b.s - 12) / 18, 0, 1) * FOOD.feet) * k, h: (catchH + focus * 2.5) * k };
+  };
+  // a stoop at a mouse that comes to nothing says why, once a day for each reason (H4)
+  let hunt = null; const told = {};
+  const WHY = {
+    late: 'Too late: it saw you and bolted. Come in from behind it, and fast',
+    high: 'Too high: come in lower over it',
+    wide: 'Too wide: steer onto it',
+  };
+  function missed() {
+    const t = G.aim?.target, focus = G.aim?.focus || 0;
+    if (b.state === 'fly' && focus > .35 && t && mice.get(t.id) === t && hunt?.m !== t) { hunt = { m: t, hd: 1e9, above: 0, r: 2, h: 3 }; }
+    if (!hunt) return;
+    const H = hunt, m = H.m;
+    if (b.state === 'fly' && !b.carry && !(focus < .05 && b.vy > 1.5) && !(t && t !== m)) return;   // still at it
+    hunt = null;
+    if (b.carry || H.hd > 12) return;
+    const k = m.saw ? 'late' : H.hd < H.r * 1.3 && H.above >= H.h ? 'high' : 'wide';
+    if (told[k] === G.day) return;
+    told[k] = G.day; G.hud.tally(WHY[k], 'prey');
+  }
+  // your call (songs.js) stops the mice within 60 m dead for a few seconds (H7): they freeze to listen
+  G.on('call', () => {
+    for (const m of mice.values()) if (!(m.hidden > 0) && !(m.dig > 0) && !m.bolt && Math.hypot(m.x - b.p[0], m.z - b.p[2]) < FOOD.call) { m.freeze = FOOD.callFreeze; m.flee = 0; }
+  });
   function refresh() {
     const r = FOOD.near, c0 = Math.floor((b.p[0] - r) / FOOD.cell), c1 = Math.floor((b.p[0] + r) / FOOD.cell);
     const d0 = Math.floor((b.p[2] - r) / FOOD.cell), d1 = Math.floor((b.p[2] + r) / FOOD.cell), seen = new Set();
@@ -155,7 +219,12 @@ export function foodSystem(G) {
     const dx = m.x - b.p[0], dz = m.z - b.p[2], hd = Math.hypot(dx, dz), hh = b.p[1] - height(b.p[0], b.p[2]), low = hh < 14, air = b.state === 'fly';
     const w = G.wary?.(m.hx, m.hz) || 0;   // a meadow where you missed a few times: its mice are on edge (sys/fields.js)
     if (m.seen > 0) m.seen -= dt;
-    if (m.hidden > 0) { m.hidden -= dt; m.x = m.bx; m.z = m.bz; m.y = height(m.x, m.z); return; }
+    if (m.hidden > 0) {
+      m.hidden -= dt; m.x = m.bx; m.z = m.bz; m.y = height(m.x, m.z);
+      if (m.hidden <= 0) { m.up = true; m.saw = false; m.wait = 2 + Math.random() * 2; }   // back up: it squeaks once (update), and sits a moment
+      return;
+    }
+    if (G.pounce?.m === m && b.settle > .4) { m.y = height(m.x, m.z); return; }   // a pounce on its way: it hasn't seen you yet
     // digging down: a moment of flying earth, then it is gone
     if (m.dig > 0) {
       m.dig -= dt;
@@ -165,19 +234,24 @@ export function foodSystem(G) {
     }
     // you landed (or hopped down) close by: it runs for its burrow
     if ((b.state === 'ground' || b.state === 'perch' && b.p[1] - m.y < 6) && hd < 7 && !m.bolt) { m.bolt = true; m.flee = 3; m.freeze = 0; }
-    if (air && hd < 10 + 12 * w && low && m.flee <= 0 && !G.silent) { m.flee = 1.2; m.yaw = Math.atan2(dx, -dz) + (Math.random() - .5); }
+    // it sees you only if it faces you, or you come in slowly (H2); from behind and fast, your
+    // shadow sweeping over only freezes it where it is. (A wary meadow's mice see more; an owl, silent, is never heard.)
+    const sees = air && !G.silent && (b.s < FOOD.slow || (Math.sin(m.yaw) * -dx - Math.cos(m.yaw) * -dz) / (hd || 1) > FOOD.sees - .6 * w);
+    if (air && hd < 10 + 12 * w && low && m.flee <= 0) {
+      if (sees) { m.flee = 1.2; m.yaw = Math.atan2(dx, -dz) + (Math.random() - .5); } else if (!m.bolt) m.freeze = Math.max(m.freeze || 0, .6);
+    }
     // a shadow sweeping over from high up: it freezes (and stops rustling the grass)
     if (air && hd < 5 + 22 * w && !low && m.flee <= 0) m.freeze = FOOD.freeze;
-    // a stoop at it: it bolts for its burrow, and if it gets there it is gone a while
-    if (air && !G.silent && G.aim?.target === m && G.aim.focus > .35 - .2 * w && hd < 30 + 30 * w && !m.bolt) {
-      m.bolt = true; m.flee = 3; m.freeze = 0;
+    // a stoop at it: if it sees you it bolts for its burrow, and if it gets there it is gone a while
+    if (air && G.aim?.target === m && G.aim.focus > .35 - .2 * w && hd < 30 + 30 * w && !m.bolt) {
+      if (sees) { m.bolt = true; m.flee = 3; m.freeze = 0; m.saw = true; } else if (m.flee <= 0) m.freeze = Math.max(m.freeze || 0, .6);
     }
     if (m.bolt) {
       m.yaw = Math.atan2(m.bx - m.x, -(m.bz - m.z));
       // home (or out of breath, then down any hole): it digs in
       if (Math.hypot(m.x - m.bx, m.z - m.bz) < .4 || m.flee <= 0) {
         m.bolt = false; m.flee = 0; m.dig = FOOD.dig; m.go = 0; G.emit('escaped', m);
-        if (!G.flags.burrow) { G.flags.burrow = 1; G.hud.glint('Into its burrow', 'It dug into its burrow. Mice bolt when they see you stoop or land near: come in fast and low, or from behind.', 'prey'); }
+        if (!G.flags.burrow) { G.flags.burrow = 1; G.hud.glint('Into its burrow', 'It dug into its burrow. A mouse bolts if it sees you: when it faces you, or you come in slowly, or land near. Come in fast and from behind, and it freezes. It comes back up before long.', 'prey'); }
         return;
       }
     }
@@ -202,13 +276,18 @@ export function foodSystem(G) {
   function startMeal() {
     const c = b.carry; if (!c || b.state === 'fly' || b.eating > 0) return;
     const k = b.state === 'perch' ? FOOD.perchMeal : 1;
-    b.carry = null; b.meal = { food: c.food * k, wet: c.wet * k, kind: c.kind };
+    b.carry = null; b.meal = { food: c.food * k, wet: c.wet * k, kind: c.kind, perch: b.state === 'perch' };
     b.eating = b.mealT = c.kind === 'worm' ? FOOD.wormMeal : FOOD.meal;
     G.hud.did('carry'); G.hud.did('eat');
   }
   function finish() {
     const m = b.meal; b.meal = null; if (!m) return;
     G.hunger = Math.min(1, G.hunger + m.food); G.thirst = Math.min(1, G.thirst + m.wet);
+    // on a branch (H6): half as filling again, and a little good to your health
+    if (m.perch && m.kind !== 'worm') {
+      if (G.story) G.story.health = Math.min(1, G.story.health + FOOD.perchHealth);
+      if (!G.flags.perchMeal) { G.flags.perchMeal = 1; G.hud.glint('A calm meal', 'Eaten up on a branch, out of harm’s way, a catch fills you half as much again and does your health good.', 'prey'); }
+    }
     G.emit('ate', m.kind);
   }
   // perched with a catch: Leave it here tucks it into the fork of the branch for later
@@ -246,16 +325,25 @@ export function foodSystem(G) {
   ui.insertAdjacentHTML('beforeend', '<button class="takeoff3 eat3 gone" aria-label="Eat">Eat</button><style>#ui3 .takeoff3.eat3 { right: calc(var(--actr) + 150px); }</style>');
   const eatBtn = ui.querySelector('.eat3');
   eatBtn.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); if (G.actions.eat.when()) startMeal(); else if (G.actions.berries.when()) G.berries.eat(); });
-  (G.actions ||= {}).eat = { run: startMeal, when: () => !!b.carry && b.state !== 'fly' && !(b.settle > 0) && !(b.eating > 0) && !b.asleep };
+  (G.actions ||= {}).eat = { run: startMeal, when: () => !!b.carry && b.state !== 'fly' && !(b.settle > 0) && !(b.eating > 0) && !(b.mantle > 0) && !b.asleep };
   // a bush in fruit under your feet (sys/berries.js)
   G.actions.berries = { run: () => G.berries?.eat(), when: () => !b.carry && !(b.eating > 0) && !b.asleep && !!G.berries?.here() };
   // Drink at the water's edge or afloat on fresh water (the same as a tap on the water)
   G.actions.drink = { run: () => G.water.drink(), when: () => waterBy() && !drinking && G.thirst < .99 && !salt() && !(b.settle > 0) && !(b.eating > 0) && !b.asleep };
   G.actions.leave = { run: leave, when: () => !!b.carry && b.state === 'perch' && !(b.settle > 0) && !(b.eating > 0) };
+  // after a strike the hawk mantles over its catch a moment, wings spread over it (camera.js pose,
+  // the view coming in low), before it can eat (H5); the first of each kind gets its field guide note
+  function mantle(key) {
+    b.mantle = FOOD.mantle; hunt = null;
+    if (G.flags['caught_' + key]) return;
+    G.flags['caught_' + key] = 1;
+    const note = G.guide?.note(key);
+    if (note) setTimeout(() => G.hud.glint(G.guide.name(key), note, 'prey'), 1600);
+  }
   function eat(m) {
     caught.set(m.id, G.clock); mice.delete(m.id);
     b.state = 'ground'; b.from = [...b.p]; b.p = [m.x, Math.max(m.y, WATER) + .35, m.z]; b.settle = .45; b.s = 0;
-    hold(FOOD.mouse, FOOD.mouseWet, 'mouse');
+    hold(FOOD.mouse, FOOD.mouseWet, 'mouse'); mantle('mouse');
     // make it plain: a strike and a squeak, a puff of grass, a rising glint, then the meal
     const A = G.audio;
     A.thump(.6); A.rustle(1.2); A.tone?.({ f: 2400, f2: 3100, dur: .07, vol: .07, delay: .05 }); A.tone?.({ f: 2600, f2: 2100, dur: .06, vol: .05, delay: .16 });
@@ -275,7 +363,7 @@ export function foodSystem(G) {
     if (p.carry) A.feather();
     else {
       b.state = 'ground'; b.from = [...b.p]; b.p = [p.x, Math.max(p.y, WATER) + .35, p.z]; b.settle = .45; b.s = 0;
-      A.thump(.6); A.rustle(1);
+      A.thump(.6); A.rustle(1); mantle(p.page || p.kind);
     }
     for (let i = 0; i < 12; i++) { const a = i / 12 * 6.283; G.part([p.x, p.y + .15, p.z], [Math.cos(a) * 2.2, 1.2 + Math.random() * 1.5, Math.sin(a) * 2.2], .8, [.55, .46, .34], .1); }
     for (let i = 0; i < 6; i++) G.part([p.x + (Math.random() - .5) * .6, p.y + .5, p.z + (Math.random() - .5) * .6], [0, 1.6 + Math.random(), 0], 1.4, [1, .86, .45], .14);
@@ -330,18 +418,23 @@ export function foodSystem(G) {
         b.eatPose = { headPitch: .7 + .35 * Math.max(0, Math.sin(t1 * 11.4)), headYaw: Math.sin(t1 * 3.1) * .2, fluff: .15 };
       } else b.eatPose = null;
       if (b.eating > 0 && b.eating - dt <= 0) finish();
-      arrive();
+      arrive(); pounce();
       eatBtn.classList.toggle('gone', !(G.actions.eat.when() || G.actions.berries.when()) || !!G.menu?.open);
       for (let i = caches.length - 1; i >= 0; i--) if (G.day + G.tod - caches[i].day > FOOD.cacheDays) caches.splice(i, 1);
+      if (b.mantle > 0) b.mantle -= dt;
+      strike(dt);
       let reach = 0;
       for (const m of mice.values()) {
         simulate(m, dt);
+        if (m.up) { m.up = false; if (!squeaks.some(q => q.m === m)) { squeaks.push({ m, t: 0 }); m.seen = 2; } }
         if (b.state !== 'fly' || m.hidden > 0 || b.carry) continue;   // (feet full: a second catch dropped the first)
         const above = b.p[1] - m.y, hd = Math.hypot(b.p[0] - m.x, b.p[2] - m.z);
         if (above < 7 && hd < 7) reach = 1;
-        const focus = G.aim?.focus || 0, r = FOOD.catchR + FOOD.catchDive * focus;
-        if (above < FOOD.catchH + focus * 2.5 && hd < r) { eat(m); break; }
+        const R = G.reach();
+        if (hunt?.m === m && hd < hunt.hd) { hunt.hd = hd; hunt.above = above; hunt.r = R.r; hunt.h = R.h; }
+        if (above < R.h && hd < R.r) { eat(m); break; }
       }
+      missed();
       b.reach = reach;
       if (b.eating > 0) b.eating -= dt;
       // drinking: a tap on the water starts it; it goes on until full, or until you move off
@@ -367,7 +460,15 @@ export function foodSystem(G) {
       if ((rustleT -= dt) <= 0) {
         rustleT = .25;
         const hunt = b.state === 'fly' && (G.aim?.focus || 0) > .35, k = (hunt ? FOOD.squeakHunt : FOOD.squeak) * (BIRD === 'owl' ? 1.5 : 1);
-        for (const m of mice.values()) if (!(m.hidden > 0) && !(m.dig > 0) && !(m.freeze > 0 && m.flee <= 0) && Math.random() < (m.flee > 0 ? .4 : k) && !squeaks.some(q => q.m === m)) { squeaks.push({ m, t: 0 }); m.seen = 2; }
+        // perched and still (the still hunt), the mice within 45 m show themselves as often as to a hunting hawk
+        const still = b.state === 'perch' && b.settle <= 0 && !b.asleep;
+        let near = false;
+        for (const m of mice.values()) {
+          if (m.hidden > 0 || m.dig > 0 || (m.freeze > 0 && m.flee <= 0)) continue;
+          const close = still && Math.hypot(m.x - b.p[0], m.z - b.p[2]) < 45; near ||= close && !m.cover;
+          if (Math.random() < (m.flee > 0 ? .4 : close ? FOOD.squeakHunt : k) && !squeaks.some(q => q.m === m)) { squeaks.push({ m, t: 0 }); m.seen = 2; }
+        }
+        if (near && !G.flags.pounceHint) { G.flags.pounceHint = 1; G.hud.glint('From your perch', 'A mouse in the open below. Tap it to drop on it from your perch.', 'prey'); }
       }
     },
     scene(S) {

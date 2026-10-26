@@ -44,6 +44,7 @@ import { seasonsSystem } from './sys/seasons.js';
 import { glowSystem } from './sys/glow.js';
 import { landAirSystem } from './sys/landair.js';
 import { watersSystem } from './sys/waters.js';
+import { findwaterSystem } from './sys/findwater.js';
 import { crittersSystem } from './sys/critters.js';
 import { huntersSystem } from './sys/hunters.js';
 import { windsSystem } from './sys/winds.js';
@@ -75,7 +76,7 @@ import { nightSeaSystem } from './sys/nightsea.js';
 import { hiddenSystem } from './sys/hidden.js';
 import { createLooks } from './look.js';
 
-const SYSTEMS = [speciesSystem, movesSystem, lifeSystem, clockSystem, weatherSystem, watersSystem, windsSystem, floraSystem, bushesSystem, airSystem, ringsSystem, foodSystem, aimSystem, sleepSystem, feelSystem, batterySystem, songsSystem, momentsSystem,
+const SYSTEMS = [speciesSystem, movesSystem, lifeSystem, clockSystem, weatherSystem, watersSystem, windsSystem, floraSystem, bushesSystem, airSystem, ringsSystem, foodSystem, findwaterSystem, aimSystem, sleepSystem, feelSystem, batterySystem, songsSystem, momentsSystem,
   guideSystem, journeySystem, nestSystem, storySystem, ruinsSystem, howtoSystem, faunaSystem, neighboursSystem, landsSystem, seasonsSystem, glowSystem, landAirSystem, crittersSystem, huntersSystem, aimsSystem,
   fieldsSystem, skyDaysSystem, raptorsSystem, wingcraftSystem, stillSystem, swellsSystem, berriesSystem, cuesSystem, windCuesSystem, polesSystem,
   sealifeSystem, driftSystem, islesSystem, skyRiversSystem, nightSeaSystem, lessonsSystem, hiddenSystem];
@@ -417,7 +418,7 @@ if (qs.has('fps')) G.settings.fpsCap = +qs.get('fps') || 60;
 
     // sound
     const above = b.p[1] - Math.max(height(b.p[0], b.p[2]), WATER), L = G.light;
-    audio.ambience(Math.min(1, b.s / 30 + (G.storm || 0) * .3), G.rain || 0, { height: above * 2, stoop: clamp((b.s - 25) / 18, 0, 1), night: L.night, frogs: L.night * (height(b.p[0], b.p[2]) < 3 ? 1 : 0), falls: G.babble || 0, hush: G.hush || 0 });
+    audio.ambience(Math.min(1, b.s / 30 + (G.storm || 0) * .3), G.rain || 0, { height: above * 2, stoop: clamp((b.s - 25) / 18, 0, 1), night: L.night, frogs: L.night * (height(b.p[0], b.p[2]) < 3 ? 1 : 0), falls: G.babble || 0, brook: G.brook?.amt || 0, brookPan: G.brook?.pan || 0, hush: G.hush || 0 });
     music.hold(false); music.update(dt, { night: L.night, storm: G.storm || 0, learned: G.learned || new Set(), species: G.species || [], speed: b.s * 4, wind: G.windK ?? .3, height: above * 2 });
     pf.lap('Core', 'sound, music');
 
