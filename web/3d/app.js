@@ -8,7 +8,7 @@ export function appRows(G) {
   // so a new version shows in one go instead of after two reloads
   async function update() {
     G.persist();
-    G.hud.reply('Fetching the latest Aloft…', 6);
+    G.hud.reply('Fetching the latest Tiercel…', 6);
     try {
       const reg = await navigator.serviceWorker?.getRegistration();
       if (reg) {
@@ -58,7 +58,7 @@ export function appRows(G) {
   function goodbye() {
     if (document.hidden) return;
     G.menu.set(false); G.paused = true;
-    document.getElementById('ui3').insertAdjacentHTML('beforeend', `<div class="veil3 bye3"><div class="card3"><h1>Aloft</h1>
+    document.getElementById('ui3').insertAdjacentHTML('beforeend', `<div class="veil3 bye3"><div class="card3"><h1>Tiercel</h1>
       <p>Your journey is saved. You can close the app now, or fly on.</p><button class="main3">Fly on</button></div></div>`);
     const el = document.querySelector('.bye3');
     el.querySelector('button').onclick = () => { el.remove(); G.paused = false; quitting = false; };

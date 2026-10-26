@@ -1,5 +1,5 @@
 // The menu's frame: a sheet of frosted glass over the paused world (the look is the .glass3 rules
-// in 3d.css), with Aloft's mark beside the title. The menu calls the function this returns
+// in 3d.css), with the game's mark beside the title. The menu calls the function this returns
 // whenever its layout changes; glass needs no painting.
 import { drawLogo } from './logo.js';
 

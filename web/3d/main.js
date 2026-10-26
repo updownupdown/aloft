@@ -73,12 +73,11 @@ import { islesSystem } from './sys/isles.js';
 import { skyRiversSystem } from './sys/skyrivers.js';
 import { nightSeaSystem } from './sys/nightsea.js';
 import { createLooks } from './look.js';
-import { ctlLabSystem } from './sys/ctllab.js';
 
 const SYSTEMS = [speciesSystem, movesSystem, lifeSystem, clockSystem, weatherSystem, watersSystem, windsSystem, floraSystem, bushesSystem, airSystem, ringsSystem, foodSystem, aimSystem, sleepSystem, feelSystem, batterySystem, songsSystem, momentsSystem,
   guideSystem, journeySystem, nestSystem, storySystem, ruinsSystem, howtoSystem, faunaSystem, neighboursSystem, landsSystem, seasonsSystem, glowSystem, landAirSystem, crittersSystem, huntersSystem, aimsSystem,
   fieldsSystem, skyDaysSystem, raptorsSystem, wingcraftSystem, stillSystem, swellsSystem, berriesSystem, cuesSystem, windCuesSystem, polesSystem,
-  sealifeSystem, driftSystem, islesSystem, skyRiversSystem, nightSeaSystem, lessonsSystem, ctlLabSystem];
+  sealifeSystem, driftSystem, islesSystem, skyRiversSystem, nightSeaSystem, lessonsSystem];
 
 // Where each bird first flies, in its own country (earth.js toXZ: latitude, longitude): the
 // red-tail at a forest edge in the Finger Lakes, the osprey over a Scottish loch, the barn owl in
@@ -96,7 +95,7 @@ export function startOf(bird) {
 
 export function start(canvas, ui) {
   const gl = createGL(canvas, !/[?&]aa=0/.test(location.search));   // (?aa=0: no multisampling, to measure what it costs)
-  if (!gl) { ui.innerHTML = '<div class="card3"><h1>Aloft</h1><p>This browser has no WebGL2, which Aloft needs. Try Chrome or a newer phone browser.</p></div>'; return; }
+  if (!gl) { ui.innerHTML = '<div class="card3"><h1>Tiercel</h1><p>This browser has no WebGL2, which Tiercel needs. Try Chrome or a newer phone browser.</p></div>'; return; }
   const R = createRenderer(gl), input = createInput(canvas);
   const audio = createAudio(), music = createMusic(audio);
   audio.on = store.get('sound', true);

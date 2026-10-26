@@ -1,5 +1,5 @@
 // The pause menu: a sheet of frosted glass (letter.js), tidied (James's pick A, 2026-10-23). On the
-// left, the mark and "Aloft" with Quit beside them, the sections (Today: how am I, what now; Map:
+// left, the mark and "Tiercel" with Quit beside them, the sections (Today: how am I, what now; Map:
 // where have I been; Journal: what has happened; Guide: who lives here; Tutorial; Settings), and
 // Resume, a dark pill, at the bottom. Then the open section's title with its pages down a column of
 // their own (James, 2026-10-23: easier to reach than pills along the top), then the page. Systems add a section with
@@ -29,7 +29,7 @@ const PAGES = { audio: ['Sounds', 10], graphics: ['Graphics', 20], gameplay: ['C
 // 'today' is the row of things to do on Today
 const GROUPS = {
   bird: ['journey', '', 0], journey: ['journey', '', 1],
-  audio: ['audio', '', 0], graphics: ['graphics', '', 0], gameplay: ['gameplay', '', 0], keys: ['gameplay', 'Keyboard', 5], ctllab: ['gameplay', 'Controls lab', 6], dev: ['dev', '', 0], looks: ['dev', 'Look tests', 1], songtests: ['dev', 'Song tests', 2],
+  audio: ['audio', '', 0], graphics: ['graphics', '', 0], gameplay: ['gameplay', '', 0], keys: ['gameplay', 'Keyboard', 5], dev: ['dev', '', 0], looks: ['dev', 'Look tests', 1], songtests: ['dev', 'Song tests', 2],
 };
 // where each Settings row goes: by its label, else by the group it names (OLD names too), else Controls
 const SECTION_OF = {
@@ -55,7 +55,7 @@ export function createMenu(G, ui) {
     <div class="veil3 hidden">
       <div class="card3" role="dialog" aria-label="Paused">
         <aside class="rail3">
-          <div class="top3"><h1 data-act="title"><span>Aloft</span></h1><button data-act="quit" class="icb3" aria-label="Quit" title="Quit (saves your journey)">${icon('quit')}</button></div>
+          <div class="top3"><h1 data-act="title"><span>Tiercel</span></h1><button data-act="quit" class="icb3" aria-label="Quit" title="Quit (saves your journey)">${icon('quit')}</button></div>
           <nav class="tabs3" role="tablist" aria-orientation="vertical"></nav>
           <button data-act="resume" class="resume3">${icon('resume')}<span>Resume</span></button>
         </aside>

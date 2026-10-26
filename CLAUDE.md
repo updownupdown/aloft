@@ -1,6 +1,10 @@
-# Aloft — project conventions
+# Tiercel — project conventions
 
-**2026-10-20: Aloft is 3D** (James's decision); the 2D game was deleted (it is in git history
+**2026-10-25: the game is called Tiercel** (James; "Aloft" was taken on Steam). Everything a player
+reads says Tiercel; the repo, the live URL (/aloft/), the `aloft.` storage keys, the `aloft-vN` cache
+and `__aloft3d` keep the old name on purpose, so installs and saves carry over.
+
+**2026-10-20: the game is 3D** (James's decision); the 2D game was deleted (it is in git history
 before that date). `web/src/` keeps only `audio.js`, `music.js`, `birdvoice.js` and `songs.js`,
 shared by 3D and the labs.
 
@@ -72,8 +76,7 @@ web/3d/sys/*.js         systems: air (thermal clouds/motes), rings, food (hunger
                         aims (a daily aim and feathers (G.feather: each makes the wings last 3% longer, b.endure, up to 20), the lands collection, racing the companion),
                         lessons (the tutorial: the first flight with the HUD hidden and coach.js's ghost thumbs, then the lessons card once and a chain of quiet lessons under Today; Tutorial > Overview lists the chapters with Replay; a feather for the first flight and each chapter, once), poles (the ice edges: pale air, aurora, the pole wall; fly through it to cross to the opposite longitude),
                         sealife (whales to ride, fish boils, flying fish, turtles), drift (icebergs, sea ice, driftwood, bottles; perches via world.js env.solids),
-                        isles (rain pools, seabirds, a sight per archipelago; the sea is salt, food.js), skyrivers (G.skyWind), nightsea (pole star / Southern Cross, plankton),
-                        ctllab (Settings > Controls > Controls lab: the controls study's ideas behind switches, G.ctl; off by default)
+                        isles (rain pools, seabirds, a sight per archipelago; the sea is salt, food.js), skyrivers (G.skyWind), nightsea (pole star / Southern Cross, plankton)
 ```
 
 A system is `(G) => ({ id, update?(dt, c), scene?(S), save?(), load?(o) })`, added to `SYSTEMS` in

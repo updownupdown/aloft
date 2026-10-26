@@ -162,14 +162,6 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .pad3.R { right: calc(40px + env(safe-area-inset-right)); bottom: 40px; }
 .pad3 i { position: absolute; left: 29px; top: 29px; width: 30px; height: 30px; border-radius: 50%; background: rgba(255, 255, 255, .7); box-shadow: 0 2px 8px rgba(40, 30, 20, .18); }
 .pad3.on { opacity: .9; transition: none; }
-/* Controls lab (sys/ctllab.js): marks on the pad for the wing's ways, up and down in the climb blue,
-   in (toward the middle) in the folded berry, out in the spread ochre */
-.pad3 b { display: none; position: absolute; width: 6px; height: 6px; margin: -3px; border-radius: 50%; background: rgb(96, 150, 200); opacity: .85; }
-.pad3.rose b { display: block; }
-.pad3 b.u { left: 50%; top: 7px; } .pad3 b.d { left: 50%; top: calc(100% - 7px); }
-.pad3 b.in, .pad3 b.out { top: 50%; }
-.pad3.L b.in, .pad3.R b.out { left: calc(100% - 7px); } .pad3.L b.out, .pad3.R b.in { left: 7px; }
-.pad3 b.in { background: rgb(196, 84, 64); } .pad3 b.out { background: rgb(216, 160, 64); width: 8px; height: 8px; margin: -4px; }
 
 /* the message line, top centre above the compass (hud.js H.say / H.toast, and the tips): white
    words on a soft, blurred dark backing, with an icon coloured by kind (song, event, tutorial,
@@ -278,7 +270,7 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
   color: #fff; font: inherit; font-size: 15px; font-weight: 700; background: var(--moss); }
 
 /* the pause menu (James's pick A, 2026-10-23, then his playtest): one pale sheet of glass in three
-   columns. The rail: the mark and "Aloft" with Quit beside them, the sections, Resume at the foot.
+   columns. The rail: the mark and "Tiercel" with Quit beside them, the sections, Resume at the foot.
    Then the open section's title with its pages stacked under it (none: the column folds away),
    then the page. It keeps clear of the phone's cut-outs and rounded corners (safe-area insets) */
 .veil3 { pointer-events: auto; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;

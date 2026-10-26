@@ -38,7 +38,7 @@ export function createHud(G, ui, input) {
   ui.insertAdjacentHTML('beforeend', `
     <div class="hud3"><span class="meters"></span><span class="alt"><span class="tape"></span><span class="ptr"></span><span class="nums"><b class="m"></b><b class="v"></b><b class="k"></b></span></span></div>
     <div class="corner3"><div class="fps3 hidden"></div></div>
-    <div class="pad3 L"><i></i><b class="u"></b><b class="d"></b><b class="in"></b><b class="out"></b></div><div class="pad3 R"><i></i><b class="u"></b><b class="d"></b><b class="in"></b><b class="out"></b></div>
+    <div class="pad3 L"><i></i></div><div class="pad3 R"><i></i></div>
     <p class="toast3"><span class="ic3"></span><span class="tx3"></span><button class="set3" aria-label="Choose which messages show">${icon('settings')}</button></p>`);
   const q = s => ui.querySelector(s);
   const hud = q('.hud3'), meters = q('.meters'), toastEl = q('.toast3'), padL = q('.pad3.L'), padR = q('.pad3.R');
@@ -221,18 +221,15 @@ export function createHud(G, ui, input) {
     }
     compass.update(dt, G.menu?.open);
     dial.update(G.tod, G.day, false, G.season, G.forecast || nowOnly);
-    // the pads: by the Controls lab (G.ctl), marks for up, down, in and out (rose), and where a
-    // pad rests between touches: at its corner, where the thumb last landed, or hidden
-    const ctl = G.ctl || {};
     for (const [el, P] of [[padL, input.L], [padR, input.R]]) {
       // perched or standing, a drag turns the bird: no sticks then
       const fly = G.b.state === 'fly', on = P.id !== null && fly;
-      el.style.display = fly && !(ctl.rest === 'none' && !on) ? '' : 'none';
-      el.classList.toggle('on', on); el.classList.toggle('rose', !!ctl.rose);
+      el.style.display = fly ? '' : 'none';
+      el.classList.toggle('on', on);
       if (on) {
         el.style.left = (P.x0 - 45) + 'px'; el.style.top = (P.y0 - 45) + 'px'; el.style.right = el.style.bottom = 'auto';
         el.firstChild.style.transform = `translate(${P.dx * 30}px, ${P.dy * 30}px)`;
-      } else { if (ctl.rest !== 'last') el.style.left = el.style.top = el.style.right = el.style.bottom = ''; el.firstChild.style.transform = ''; }
+      } else { el.style.left = el.style.top = el.style.right = el.style.bottom = ''; el.firstChild.style.transform = ''; }
     }
   };
   return H;
