@@ -1,5 +1,5 @@
 // A linear compass along the top middle: the quarter of the sky ahead and either side, with
-// N, E, S and W, ticks between, and marks for the places that matter (the nest, where you began,
+// N, E, S and W, ticks between, and marks for the places that matter (where you began,
 // landmarks found nearby). Moved only when the heading or the marks change. A Call (songs.js, 'call')
 // lights up for a while what is round you within about ten seconds' flight: thermals, landmarks not
 // yet found and rings of mist (CALLSEE).
@@ -10,7 +10,7 @@ import { icon } from './icons.js';
 const SPAN = Math.PI * .55;          // from the middle to either edge
 const POINTS = [['N', 0], ['NE', 45], ['E', 90], ['SE', 135], ['S', 180], ['SW', 225], ['W', 270], ['NW', 315]];
 // each mark's icon (icons.js)
-const MARK = { nest: 'nest', south: 'south', home: 'home', pin: 'pin', place: 'landmarks', therm: 'thermal', ring: 'ring', find: 'landmarks', song: 'songs', water: 'thirst', course: 'ring' };
+const MARK = { south: 'south', home: 'home', pin: 'pin', place: 'landmarks', therm: 'thermal', ring: 'ring', find: 'landmarks', song: 'songs', water: 'thirst', course: 'ring' };
 // a Call's look round: how far (m, about ten seconds' flight), how long the marks stay (s) and fade
 // at the end, and at most how many of each
 export const CALLSEE = { r: 320, secs: 10, fade: 3, most: 3 };
@@ -40,7 +40,6 @@ export function createCompass(G, ui) {
   // the places to show, refreshed every second or so
   function places() {
     const out = [], J = G.journey, x = b.p[0], z = b.p[2];
-    if (G.nest) out.push(['nest', G.nest.x, G.nest.z, 'Your nest']);
     if (G.home && Math.hypot(G.home[0] - x, G.home[1] - z) < 5000 && Math.hypot(G.home[0] - x, G.home[1] - z) > 300) out.push(['home', G.home[0], G.home[1], 'Where you began']);
     const found = Object.values(J?.found || {}).map(l => [l, Math.hypot(l.x - x, l.z - z)]).filter(([, d]) => d > 60 && d < 3000).sort((a, c) => a[1] - c[1]).slice(0, 3);
     for (const [l] of found) out.push(['place', l.x, l.z, l.name]);

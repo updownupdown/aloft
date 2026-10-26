@@ -1,6 +1,6 @@
 // The Tutorial section of the menu (James, 2026-10-24): an Overview (sys/lessons.js), then one page
 // per chapter of the lessons, in their order (PAGES): Flying (each move as the thumbs doing it beside
-// the hawk doing it, both moving), Food, Water and rest, Rising air, Finding your way, Songs, A home,
+// the hawk doing it, both moving), Food, Water and rest, Rising air, Finding your way, Songs,
 // Flying well and The wide world. Each page opens with its lessons, ticked (lessons.js fills
 // .lchap3), then cards: small animated scenes beside the words. Keep the moves in step with input.js and flight.js. The scenes are SVG, moved by the
 // .how3 keyframes in 3d.css; the hawks in Controls are the bird lab's renderer (birdlab.js), drawn
@@ -10,7 +10,7 @@ import { hintsPage } from '../hints.js';
 
 // the Tutorial's pages after the Overview, in the lessons' order: [page id, title, order]
 export const PAGES = [['controls', 'Flying', 10], ['food', 'Food', 20], ['water', 'Water and rest', 30], ['air', 'Rising air', 40],
-  ['way', 'Finding your way', 50], ['songs', 'Songs', 60], ['home', 'A home', 70], ['well', 'Flying well', 80], ['world', 'The wide world', 90]];
+  ['way', 'Finding your way', 50], ['songs', 'Songs', 60], ['well', 'Flying well', 80], ['world', 'The wide world', 90]];
 
 const INK = '#2a2420';
 const PIG = { water: '#4f7fa6', berry: '#a8483a', ochre: '#b8862f', leaf: '#6f8a4a', indigo: '#4f6f9e', stone: '#8a7a6a' };
@@ -104,10 +104,6 @@ const SCENES = {
   south: `<rect width="160" height="90" fill="#e4ebef"/><polygon points="0,0 160,0 160,22 0,26" fill="#8fae6c"/><polygon points="0,26 160,22 160,62 0,66" fill="#b6c99a"/><polygon points="0,66 160,62 160,90 0,90" fill="#9cc0c8"/>
     <text x="8" y="14" font-size="8" font-weight="700" fill="#2a2420">N  ice</text><text x="8" y="84" font-size="8" font-weight="700" fill="#2a2420">S  ice</text>
     <path class="route3" d="M80 10q-26 18 -6 34t4 36" fill="none" stroke="#2a2420" stroke-width="1.6" stroke-dasharray="3 3"/>${hawk('h south3', 80, 12, 18, 180)}`,
-  nest: `${sky()}${hills(70)}${tree(80, 90, 1.7)}
-    <g class="twigs3" stroke="#8a5a32" stroke-width="1.6" stroke-linecap="round"><path d="M88 62l12 -2"/><path d="M90 64l10 -5"/><path d="M89 60l13 1"/><path d="M91 63l10 0"/></g>
-    <ellipse class="egg3" cx="96" cy="59" rx="2.2" ry="2.8" fill="#eef0e6" stroke="#b8b09c" stroke-width=".5"/>${hawk('h twig3', 30, 74, 18, 60)}`,
-  mate: `${sky('#d6e4ee')}${hills(68)}${hawk('h mateA3', 70, 36, 24, 0)}${hawk('h mateB3', 96, 44, 20, 0)}`,
   keepsake: `${sky()}${hills(56)}<polygon class="glint3" points="100,72 103,66 106,72 103,78" fill="#fff4c2" stroke="#d9a33a" stroke-width=".8"/>${hawk('h keep3', 30, 20, 22, 130)}`,
   night: `<rect width="160" height="90" fill="#2f3a56"/><polygon points="0,0 160,0 0,50" fill="#3a4766"/><circle cx="130" cy="18" r="7" fill="#f4efdc"/><circle cx="127" cy="16" r="6" fill="#3a4766"/>
     <g fill="#f4efdc"><circle cx="30" cy="14" r=".9"/><circle cx="52" cy="26" r=".7"/><circle cx="76" cy="10" r="1"/><circle cx="98" cy="30" r=".7"/><circle cx="18" cy="34" r=".7"/></g>
@@ -137,7 +133,7 @@ export function howtoSystem(G) {
 `);
   cards('food',
     card('mice', 'Hunting mice', 'Mice twitch the grass, thickest round old farms and barns; small white marks over the grass are one squeaking. Fold your wings and dive at it, then come in low: your feet reach for it, and the aim line turns red when you are lined up. A mouse that sees your shadow bolts for its burrow, so come in fast.'),
-    card('perch', 'Eating', 'A catch stays in your feet until you tap Eat on the action button. On a branch it is a calmer meal and fills you more, or swipe the button to Leave it here for later. Fly home with it and it drops into your nest by itself.'),
+    card('perch', 'Eating', 'A catch stays in your feet until you tap Eat on the action button. On a branch it is a calmer meal and fills you more, or swipe the button to Leave it here for later.'),
     card('guide', 'Fish, worms and berries', 'Skim low over water and snatch a fish near the surface. After rain, worms come up on the wet ground. From late summer, perch on a bush in fruit and Eat picks a beakful of berries.'));
   cards('water',
     card('drink', 'Drinking', 'Tap the water to drink: at its edge, floating on it, or a puddle after rain. The sea is salt; on islands, drink from the rain pools in the rock.'),
@@ -155,18 +151,15 @@ export function howtoSystem(G) {
   cards('songs',
     card('song', 'Learning a song', 'Songbirds sing from the trees. Perch near one and tap the notes button, bottom left: copy each note it sings, and the song is yours. Journal > Songs keeps every song you know.'),
     card('song', 'Singing back and calling', 'Perched near a bird whose song you know, sing it: it answers, and some bring gifts. Hold Call, in the day dial, top right, to call out: the longer you hold, the louder.'));
-  cards('home',
-    card('nest', 'A nest', 'Twigs lie under some broadleaf trees. Land beside one to pick it up, then perch on a branch and tap Build here to start a nest; your nest tree’s own dead twigs are a hop away. Five twigs and there is an egg in spring; when it hatches, bring it food: land at the nest with a catch in your feet and it drops in. Five meals and your chick fledges.'),
-    card('keepsake', 'Keepsakes', 'Now and then something glints in the grass: land beside it to keep it for your nest.'),
-    card('mate', 'A mate', 'Keep well fed and watered and your bird grows healthy: a hawk’s tail turns deep red after its first year. In spring a bird of your kind may come to look you over: a healthy bird, keepsakes, songs and tricks win it as your mate.'));
   cards('well',
     card(['in down', 'in down'], 'Stoop', 'Fold your wings and dive: the fastest way down, and the way to a mouse.'),
     card(['in up', 'in up'], 'Zoom', 'Out of a stoop, thumbs in and up: a swept climb that keeps its speed.'),
     card(['out up', 'out up'], 'Hover', 'Slow right down, then thumbs out and up: you hang on beating wings. It tires them fast.'),
-    card(['ccw', 'ccw'], 'Barrel roll', 'Left thumb down and right up, then turn both a full circle anticlockwise together. Tricks like this help win a mate.'));
+    card(['ccw', 'ccw'], 'Barrel roll', 'Left thumb down and right up, then turn both a full circle anticlockwise together.'));
   cards('world',
     card('lands', 'Lands', 'Forest, steppe, tundra, desert, rainforest: the Earth has many lands, each with its own trees and birds. Journal > Places fills in as you cross them.'),
-    card('guide', 'The field guide', 'Fly close by an animal you have not met and it is noted in the Journal: birds under Songs, animals under Things.'));
+    card('guide', 'The field guide', 'Fly close by an animal you have not met and it is noted in the Journal: birds under Songs, animals under Things.'),
+    card('keepsake', 'Keepsakes', 'Now and then something glints in the grass, or by the doorsteps of the old farms: land beside it to take it. Journal > Things keeps them all.'));
   hintsPage(G);
   // the hawks of the Flying page fly only while it shows
   let shown = false, tab = '';

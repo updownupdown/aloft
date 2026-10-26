@@ -1,9 +1,9 @@
 // The empty places people left (settle.js places them, ruinshapes.js builds them): drawing the
 // farmsteads, villages, hamlets, folds and bridges, and the things left lying about them.
 // A glint in the grass by a doorstep, the well, the barn door or up on a lighthouse gallery:
-// land beside it (or skim low over it) and you take it. Trinkets brighten your nest (they are
-// set round its rim when you next land there) and count as keepsakes, for a mate and for the
-// raven's hoard; the treasures are one of a kind, and each tells a little of who lived here.
+// land beside it (or skim low over it) and you take it. Trinkets go on the Journal's keepsake
+// shelf and count for the raven's hoard; the treasures are one of a kind, and each tells a little
+// of who lived here.
 import { settlementsNear, bridgesNear, linesNear, DIM } from '../settle.js';
 import { groundAt, height, ih } from '../world.js';
 import * as M from './ruinshapes.js';
@@ -16,7 +16,7 @@ import { journal, esc, shelf } from '../journal.js';
 import { KEEPSAKES } from './story.js';
 import { NOTES as BOTTLE_NOTES } from './drift.js';
 
-const DRAW = 650, NEST_R = 3.2;
+const DRAW = 650;
 const cap = s => s[0].toUpperCase() + s.slice(1);
 
 export function ruinsSystem(G) {
@@ -58,7 +58,7 @@ export function ruinsSystem(G) {
   const bridgeShape = g => { let m = bridgeOf.get(g.id); if (!m) { m = M.bridge(g); m.shape = 'ru_bridge_' + g.id; R.shape(m.shape, m.tris); bridgeOf.set(g.id, m); } return m; };
 
   // ---- what you have found ------------------------------------------------------------------
-  const St = { found: new Set(), treasures: {}, trinkets: [], kept: [], nest: [] };   // kept: waiting to go in the nest
+  const St = { found: new Set(), treasures: {}, trinkets: [] };
   G.relics = St;
   const TKEYS = Object.keys(M.TRINKETS);
   // the things lying at a settlement's spots (a treasure already found leaves a trinket instead)
@@ -88,32 +88,23 @@ export function ruinsSystem(G) {
       G.hud.name(cap(name.replace(/^(A|An|The) /, '')), 'keepsake'); G.hud.glint(cap(name.replace(/^(A|An|The) /, '')), M.TREASURES[a.kind][2], 'keepsake');
     } else {
       St.trinkets.push(a.kind); G.audio.feather?.();
-      G.hud.glint(cap(name), `${cap(name)}, left by people long gone. ${G.nest ? 'Take it home: it will brighten your nest.' : 'Keep it for a nest one day.'}`, 'keepsake');
+      G.hud.glint(cap(name), `${cap(name)}, left by people long gone. It goes on your shelf of keepsakes in the Journal.`, 'keepsake');
     }
-    St.kept.push(a.kind);
     G.hud.did('relic');
-    // a keepsake too: for a mate's eye (story.js) and the raven's hoard (life.js)
+    // a keepsake too: on the shelf (story.js) and for the raven's hoard (life.js)
     G.story?.keepsakes?.push(a.treasure ? name.toLowerCase() : name.replace(/^an? /, ''));
     G.emit('keepsake', { kind: a.kind, artefact: true });
     G.emit('artefact', a);
     near = near.filter(o => o !== a);
   }
-  // landing at the nest: what you carry is set round its rim
   G.on('land', kind => {
-    const n = G.nest;
-    if (kind === 'perch' && n && St.kept.length && Math.hypot(b.p[0] - n.x, b.p[1] - n.y, b.p[2] - n.z) < NEST_R) {
-      const k = St.kept.splice(0), names = k.map(x => M.TREASURES[x] ? M.TREASURES[x][0].toLowerCase() : M.TRINKETS[x]);
-      St.nest.push(...k);
-      G.hud.tally(`Into your nest: ${names.length > 1 ? names.slice(0, -1).join(', ') + ' and ' + names.at(-1) : names[0]}`, 'nest');
-    }
     if (kind === 'ground') for (const a of near) if (Math.hypot(a.x - b.p[0], a.z - b.p[2]) < 3.5 && Math.abs(a.y - b.p[1]) < 2) { take(a); break; }
   });
-  G.on('newYear', () => { St.nest = []; });   // a new nest each year (the old one's finery is gone)
 
   G.hud.tip('relic', () => near.some(a => {
     const d = Math.hypot(a.x - b.p[0], a.z - b.p[2]);
     return b.state === 'fly' ? d < 45 && b.p[1] - a.y < 35 : d < 18;
-  }), 'Something glints by the old walls: a thing people left. Land beside it, or skim low over it, to take it. Trinkets brighten a nest; some things are treasures.');
+  }), 'Something glints by the old walls: a thing people left. Land beside it, or skim low over it, to take it. Trinkets go on your shelf; some things are treasures.');
 
   // ---- the wonders (wonders.js): drawn from far off, each mesh built when first near ---------
   const WDRAW = 2400, wonderOf = new Map();
@@ -143,8 +134,8 @@ export function ruinsSystem(G) {
   }
 
   // ---- the journal ----------------------------------------------------------------------------
-  // Journal > Things > Keepsakes (James, 2026-10-24): one shelf for everything that ends up on the
-  // rim of a nest: the glinting things in the grass (story.js), the trinkets by the old doorsteps,
+  // Journal > Things > Keepsakes (James, 2026-10-24): one shelf for every keepsake found: the
+  // glinting things in the grass (story.js), the trinkets by the old doorsteps,
   // the one-of-a-kind treasures (starred, with their story), and the notes from bottles (drift.js)
   const sec = journal(G).section(42, 'Keepsakes');
   const capA = n => n.replace(/^(a|an|the) /i, '').replace(/^./, c => c.toUpperCase());
@@ -163,8 +154,7 @@ export function ruinsSystem(G) {
     const got = items.filter(i => i.found).length;
     sec.count(`${got} of ${items.length}`);
     sec.body.innerHTML = shelf(items)
-      + (got ? (St.nest.length || St.kept.length ? `<p class="muted3">${St.nest.length ? `${St.nest.length} of them in your nest.` : ''}${St.kept.length ? ` ${St.kept.length} waiting to go in a nest.` : ''}</p>` : '')
-        : '<p class="muted3">Rare things glint in the grass, and by the doorsteps and wells of the old farms and villages: land beside one to take it. Bottles with notes drift on every ocean. All of it goes to the rim of your nest.</p>');
+      + (got ? '' : '<p class="muted3">Rare things glint in the grass, and by the doorsteps and wells of the old farms and villages: land beside one to take it. Bottles with notes drift on every ocean. All of it is kept here.</p>');
   });
 
   // the feature list (Settings > Advanced): each with a Try it that flies you there
@@ -255,14 +245,8 @@ export function ruinsSystem(G) {
       }
       for (const g of bridges) { const m = bridgeShape(g); (S.props[m.shape] ||= []).push(m.at[0], 0, m.at[1], 1, 0, .5, 0, 0); }
       for (const a of near) if (Math.hypot(a.x - cam[0], a.z - cam[2]) < 160) (S.props['af_' + a.kind] ||= []).push(a.x, a.y + .01, a.z, 1.5, a.yaw, .5, 0, 0);
-      // the nest's finery, round its rim
-      const n = G.nest;
-      if (n && St.nest.length) St.nest.slice(-10).forEach((k, i) => {
-        const ang = i * 2.4 + .5;
-        (S.props['af_' + k] ||= []).push(n.x + Math.cos(ang) * .3, n.y + .1, n.z + Math.sin(ang) * .3, .9, ang, .5, 0, 0);
-      });
     },
-    save: () => ({ found: [...St.found], treasures: St.treasures, trinkets: St.trinkets, kept: St.kept, nest: St.nest, wonders: St.wonders }),
-    load(o) { St.found = new Set(o?.found || []); St.treasures = o?.treasures || {}; St.trinkets = o?.trinkets || []; St.kept = o?.kept || []; St.nest = o?.nest || []; St.wonders = o?.wonders || {}; },
+    save: () => ({ found: [...St.found], treasures: St.treasures, trinkets: St.trinkets, wonders: St.wonders }),
+    load(o) { St.found = new Set(o?.found || []); St.treasures = o?.treasures || {}; St.trinkets = o?.trinkets || []; St.wonders = o?.wonders || {}; },
   };
 }

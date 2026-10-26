@@ -1,52 +1,23 @@
-// Wingcraft (round eight): wet feathers (C3), the wind at landing (C4) and teaching the young to
-// soar (C5).
+// Wingcraft (round eight): wet feathers (C3) and the wind at landing (C4).
 //   C3 rain soaks the feathers (b.wet 0..1; a plunge or a swim soaks them at once): heavier wings,
 //      a higher stall and weaker beats (flight.js FLY.wet*). They dry slowly in the air, faster
 //      in the open, and fastest spread out in the sun (still.js sets b.sunning).
 //   C4 the wind carries the hawk and decides its landings (flight.js); here, the signs of it:
 //      wind lanes on water, the travelling bands in the grass (flora.js reads G.windStreak) and a
 //      word the first time a landing runs on downwind
-//   C5 your fledglings follow you into a thermal and copy your circles; leave them in good air and
-//      they climb on their own a while, a little better each time (skill, kept)
-import { height, WATER, WIND, thermalCentre } from '../world.js';
+import { height, WATER, WIND } from '../world.js';
 import { clamp } from '../util.js';
 
 export const CRAFT = {
   soak: 1 / 50, dryFly: 1 / 200, dryOpen: 1 / 260, drySun: 1 / 30,   // a second's worth, at full rain or of drying
-  learn: 1 / 240, soloFor: 60, soloAfter: 15,                          // skill a second circling with you; solo seconds; seconds with you first
 };
 const WL = Math.hypot(WIND[0], WIND[2]), WX = WIND[0] / WL, WZ = WIND[2] / WL;
 
 export function wingcraftSystem(G) {
   const b = G.b, H = G.hud;
   b.wet = 0;
-  let skill = [], soakSaid = false;
+  let soakSaid = false;
   G.windStreak = { x: WX, z: WZ, k: 0, t: 0 };
-
-  // ---- C5: the young ones' goal (story.js flyKin asks each frame) -------------------------------
-  G.kinGoal = (k, dt) => {
-    if (k.kind !== 'young') return null;
-    const kin = G.systems.story?.kin || [], i = kin.filter(q => q.kind === 'young').indexOf(k), sk = skill[i] || 0;
-    const T = b.state === 'fly' ? b.inThermal : null;
-    if (T) {   // with you in the lift: circle its core a little above you, as you do
-      k.th = T.t; k.with = (k.with || 0) + dt; k.solo = 0;
-      skill[i] = Math.min(1, sk + CRAFT.learn * dt);
-      if (!G.flags.teach) { G.flags.teach = 1; H.glint('Your young one learns', 'Your young one follows you into the thermal and copies your circles.', 'thermal'); }
-      if (sk < .5 && skill[i] >= .5) H.tally('Your young hawk finds the core', 'thermal');
-      const [cx, cz] = thermalCentre(T.t, k.p[1]), r = T.t.r * (.55 - .2 * sk), ang = G.t * (11 / r) + k.phase;
-      return [cx + Math.cos(ang) * r, b.p[1] + 5 + (k.r - 16) * .3, cz + Math.sin(ang) * r];
-    }
-    // you've left: if it had a while in good air with you, it stays and climbs on its own
-    if (k.th && (k.with || 0) > CRAFT.soloAfter && (k.solo || 0) < CRAFT.soloFor * (.6 + sk) && Math.hypot(k.p[0] - b.p[0], k.p[2] - b.p[2]) < 600) {
-      if (!k.solo && !G.flags.teachSolo) { G.flags.teachSolo = 1; H.glint('Climbing alone', 'Left in good air, your young one keeps circling and climbs on its own.', 'thermal'); }
-      k.solo = (k.solo || 0) + dt; skill[i] = Math.min(1, sk + CRAFT.learn * .5 * dt);
-      const [cx, cz] = thermalCentre(k.th, k.p[1]), r = k.th.r * (.6 - .25 * sk), ang = G.t * (11 / r) + k.phase;
-      const climb = (.4 + sk * 1.6) * (k.p[1] - height(cx, cz) < 260 ? 1 : 0);
-      return [cx + Math.cos(ang) * r, k.p[1] + climb, cz + Math.sin(ang) * r];
-    }
-    k.th = null; k.with = 0;
-    return null;
-  };
 
   G.hud.tip('wind', () => b.state === 'fly' && b.flare > .4 && (G.windK ?? 0) > .35 && b.p[1] - Math.max(height(b.p[0], b.p[2]), WATER) < 12,
     'Land into the wind: the bands in the grass and the lanes on the water run the way it blows. Into it you land slow and soft; with it you run on.');
@@ -57,7 +28,6 @@ export function wingcraftSystem(G) {
 
   G.dev?.add({ id: 'r8-wet', area: 'Flight', round: 'R8 C3', title: 'Wet feathers: rain soaks the wings (heavier, weaker beats); they dry in the air and in the sun', how: 'Fly in rain a minute (or land on water): flaps feel weaker. Perch in the sun to dry.', go: () => { b.wet = 1; } });
   G.dev?.add({ id: 'r8-wind', area: 'Flight', round: 'R8 C4', title: 'Land into the wind: the hawk drifts with the wind; landings count ground speed; downwind you run on', how: 'On a windy day land on open ground with the wind behind, then into it. Watch the grass bands and the lanes on water.' });
-  G.dev?.add({ id: 'r8-teach', area: 'Journal and story', round: 'R8 C5', title: 'Teach the fledglings to soar: they copy your circles, then climb alone', how: 'With a fledgling flying with you, circle a thermal 15 s, then glide away: it keeps climbing.' });
 
   return {
     id: 'wingcraft',
@@ -91,7 +61,7 @@ export function wingcraftSystem(G) {
         }
       }
     },
-    save: () => ({ skill: skill.map(v => +v.toFixed(3)), wet: +b.wet.toFixed(2) }),
-    load(o) { skill = o.skill || []; b.wet = o.wet || 0; },
+    save: () => ({ wet: +b.wet.toFixed(2) }),
+    load(o) { b.wet = o?.wet || 0; },
   };
 }

@@ -12,12 +12,10 @@ const ACTS = {
   berries: ['Eat', 'berry'],
   drink: ['Drink', 'thirst'],
   leave: ['Leave it here', 'nest'],
-  build: ['Build here', 'nest'],
-  movenest: ['Move the nest here', 'nest'],
   sleep: ['Sleep', 'sleep'],
   takeoff: ['Take off', 'takeoff'],
 };
-const ORDER = ['build', 'movenest', 'eat', 'berries', 'drink', 'sleep', 'takeoff', 'leave'];   // the first that fits is shown first
+const ORDER = ['eat', 'berries', 'drink', 'sleep', 'takeoff', 'leave'];   // the first that fits is shown first
 
 export function actionButton(G, ui) {
   ui.insertAdjacentHTML('beforeend', `<button class="act3 gone" aria-label=""><i class="ic"></i><span></span><i class="dots"></i></button>`);

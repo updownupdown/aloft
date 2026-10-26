@@ -145,8 +145,8 @@ export function createDev(G, M) {
   // Time of day: jump to where each part of the day starts or ends (sky.js period(): night past
   // 0.8, dawn from 0.2, day from 0.33, dusk from 0.68), for testing the light; the menu closes to show it
   // Dev mode: progress mocked at a level, each system's own share of it (G.on('mock', k): fog,
-  // landmarks, countries, biomes, feathers, lessons, field guide, songs, wonders, bottles, nest and
-  // mate), then saved and the page reloaded. Off keeps the progress as it is; bottles not found show
+  // landmarks, countries, biomes, feathers, lessons, field guide, songs, wonders and
+  // bottles), then saved and the page reloaded. Off keeps the progress as it is; bottles not found show
   const LEVELS = [['off', 'Off'], ['0', '0%'], ['25', '25%'], ['50', '50%'], ['100', '100%']];
   M.choice('play', { label: 'Dev mode', group: 'dev', options: LEVELS, sub: () => 'mock how far the game has come (replaces your progress)',
     get: () => { const v = G.store.get('devMode', 'off'); return LEVELS.some(([k]) => k === v) ? v : 'off'; },
