@@ -10,7 +10,7 @@ import { height, groundAt, groundNormal, blend, treesNear, perchesOf, ih, WATER,
 import { bridgesNear } from '../settle.js';
 import { jackrabbit, lizard, marmot, crab, egret, squirrel, monarch, dragonfly, snake } from './critshapes.js';
 
-export const CRIT = { cell: 90, near: 240, catchR: 1.6, catchDive: 1.6, catchH: 2.2 };
+export const CRIT = { cell: 90, near: 240, catchR: 1.9, catchDive: 1.8, catchH: 2.6 };
 // what lives where: [kind, chance per cell, how many]
 const LIVES = {
   desert: [['jackrabbit', .45, 1], ['lizard', .4, 1]], badlands: [['jackrabbit', .45, 1], ['lizard', .35, 1]], canyon: [['lizard', .45, 1]],
@@ -80,7 +80,7 @@ export function crittersSystem(G) {
     if (!lives) return [];
     const out = [];
     lives.forEach(([kind, p, n], k) => {
-      if (ih(gx, gz, 220 + k) > p) return;
+      if (ih(gx, gz, 220 + k) > p * .6) return;   // (fewer than once: James, 10-24)
       const loc = LOCAL[kind] ? LOCAL[kind](top.cont, top.lat ?? 0, top.name) : [kind];
       if (!loc) return;   // it doesn't live on this continent
       // find a spot that suits it (a few tries round the cell)
@@ -206,14 +206,14 @@ export function crittersSystem(G) {
   }
   function tryCatch() {
     if (b.state !== 'fly' || b.carry) return;   // (feet full)
-    const focus = G.aim?.focus || 0, r = CRIT.catchR + CRIT.catchDive * focus;
+    const R = G.reach?.(CRIT.catchR, CRIT.catchDive, CRIT.catchH) || { r: CRIT.catchR, h: CRIT.catchH };   // food.js: the feet thrown out
     for (const o of live.values()) {
       if (!PREY[o.kind] || o.hidden > 0) continue;
       const above = b.p[1] - o.y, hd = Math.hypot(b.p[0] - o.x, b.p[2] - o.z);
-      if (above < CRIT.catchH + focus * 2.5 && above > -1 && hd < r) {
+      if (above < R.h && above > -1 && hd < R.r) {
         live.delete(o.id); gone.set(o.id, G.clock); G.prey = G.prey.filter(p => p !== o);
         const [food, wet, name0] = PREY[o.kind], name = o.called || name0, high = o.y - groundAt(o.x, o.z) > 1;
-        G.systems.food?.take?.({ x: o.x, y: o.y, z: o.z, kind: o.kind, food, wet, name, carry: high });
+        G.systems.food?.take?.({ x: o.x, y: o.y, z: o.z, kind: o.kind, page: o.page, food, wet, name, carry: high });
         if (o.kind === 'squirrel') once('squirrel', 'Squirrel', high ? 'Snatched off the branch! Carry it to a perch to eat.' : 'A squirrel, caught on the ground.', 'prey');
         return;
       }

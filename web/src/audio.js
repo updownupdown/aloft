@@ -44,6 +44,9 @@ export function createAudio() {
     A.whistle = loop('bandpass', 2600, 9, A.windBus);
     // water tumbling near a waterfall
     A.babble = loop('bandpass', 1500, .8);
+    // a river near by (sys/waters.js G.brook): a softer, lower murmur from its side of you
+    const bp = ctx.createStereoPanner ? ctx.createStereoPanner() : null; if (bp) bp.connect(A.master);
+    A.brook = loop('bandpass', 1100, 1.1, bp || A.master); A.brook.pan = bp;
     // rain pattering on what you sit on: two looping beds of drops (a sparse one, and a dense one
     // that comes in as the rain gets heavier) through one filter for the surface. Two sources for
     // the whole shower: a node per drop (20 a second) overloaded the audio on phones (James, 10-24)
@@ -135,6 +138,9 @@ export function createAudio() {
     A.whistle.g.gain.setTargetAtTime((scene.stoop || 0) * .07 * open, t, .15);
     A.whistle.fl.frequency.setTargetAtTime(2200 + (scene.stoop || 0) * 900, t, .15);
     A.babble.g.gain.setTargetAtTime((scene.falls || 0) * .09 * (.8 + .2 * Math.sin(t * 6.3)) * (.4 + .6 * low) * open, t, .25);
+    A.brook.g.gain.setTargetAtTime((scene.brook || 0) * .07 * (.75 + .25 * Math.sin(t * 3.7 + Math.sin(t * 1.3) * 2)) * open, t, .3);
+    A.brook.fl.frequency.setTargetAtTime(1000 + 180 * Math.sin(t * 2.3 + Math.sin(t * .7) * 3), t, .2);
+    A.brook.pan?.pan.setTargetAtTime(Math.max(-1, Math.min(1, scene.brookPan || 0)) * .8, t, .2);
     A.muffleLp.frequency.setTargetAtTime(20000 - (scene.fog || 0) * 18200, t, .4);
     const frogs = (scene.frogs || 0) * low * (1 - hush), sea = scene.sea || {};
     if (frogs > 0 && t > nextFrog) {

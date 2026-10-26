@@ -44,7 +44,8 @@ export function createCamera(G) {
       // on the ground the view stands back (C.zoom .5: twice as far) to show worms and water round
       // the bird; a pinch sets it from .25 (four times as far) to 1, and it is kept
       if (b.zoomPinch) { C.zoom = Math.max(.25, Math.min(1, C.zoom * b.zoomPinch)); b.zoomPinch = 0; store.set('groundZoom3d', C.zoom); }
-      C.zm += ((b.state === 'ground' ? 1 / C.zoom : 1) - C.zm) * Math.min(1, dt * 4);
+      // mantling over a fresh catch (food.js b.mantle) the view comes in low and close a moment
+      C.zm += ((b.state === 'ground' ? 1 / C.zoom : 1) * (b.mantle > 0 ? .55 : 1) - C.zm) * Math.min(1, dt * 4);
       const zm = C.zm;
       // tipping (lp, radians): the camera dips a little and the view turns up about it, up to ~70°
       // overhead into the boughs, or down toward the ground; at 0 it is the usual view
@@ -103,8 +104,8 @@ export function createCamera(G) {
     };
     const [fl, hl] = beat(b.flapL, b.ampL ?? 1), [fr, hr] = beat(b.flapR, b.ampR ?? 1);
     const settled = b.state !== 'fly' && !(b.hop > 0 && b.settle > .08), pm = G.perchMark, p = b.p;
-    if (b.eating > 0) {   // mantling over the catch: wings half open, hunched, tail spread
-      const m = Math.min(1, b.eating), bob = Math.sin(G.t * 9) * .05;
+    if (b.eating > 0 || b.mantle > 0) {   // mantling over the catch: wings half open, hunched, tail spread
+      const m = Math.min(1, Math.max(b.eating || 0, b.mantle || 0)), bob = Math.sin(G.t * 9) * .05;
       return { flapL: .25 + bob, flapR: .25 + bob, handL: -.2, handR: -.2, fold: .35 * m + (1 - m), flare: .6 * m, legs: 1, tail: .6 * m, tailPitch: .2, t: G.t, tailRed: G.tailRed ?? 1 };
     }
     const out = {

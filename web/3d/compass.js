@@ -10,7 +10,7 @@ import { icon } from './icons.js';
 const SPAN = Math.PI * .55;          // from the middle to either edge
 const POINTS = [['N', 0], ['NE', 45], ['E', 90], ['SE', 135], ['S', 180], ['SW', 225], ['W', 270], ['NW', 315]];
 // each mark's icon (icons.js)
-const MARK = { nest: 'nest', south: 'south', home: 'home', pin: 'pin', place: 'landmarks', therm: 'thermal', ring: 'ring', find: 'landmarks', song: 'songs' };
+const MARK = { nest: 'nest', south: 'south', home: 'home', pin: 'pin', place: 'landmarks', therm: 'thermal', ring: 'ring', find: 'landmarks', song: 'songs', water: 'thirst', course: 'ring' };
 // a Call's look round: how far (m, about ten seconds' flight), how long the marks stay (s) and fade
 // at the end, and at most how many of each
 export const CALLSEE = { r: 320, secs: 10, fade: 3, most: 3 };
@@ -48,8 +48,10 @@ export function createCompass(G, ui) {
     const pins = (J?.pins || []).map(p => [p, Math.hypot(p.x - x, p.z - z)]).filter(([, d]) => d > 40 && d < 4000).sort((a, c) => a[1] - c[1]).slice(0, 2);
     for (const [p] of pins) out.push(['pin', p.x, p.z, p.name || 'Your pin', pinCol(p)]);
     if (seenT > 0) out.push(...seen);
-    // other systems' marks (songs.js: the birds singing near by, in the song tests)
+    // other systems' marks (songs.js: the birds singing near by, in the song tests; G.marks: a list of
+    // functions, each giving [kind, x, z, title]: findwater.js the nearest fresh water, rings.js today's course)
     for (const m of G.compassMarks?.() || []) out.push(m);
+    for (const f of G.marks || []) out.push(...f());
     return out;
   }
   function setMarks(list) {

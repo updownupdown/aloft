@@ -72,7 +72,7 @@ const CHAPTERS = [
   ] },
   { title: 'A home', page: 'home', icon: 'nest', tasks: [
     { id: 'twig', text: 'Pick up a twig', say: 'Twigs lie under some broadleaf trees. Land beside one to pick it up.', poll: () => G0.carry === 'twig' || !!G0.nest },
-    { id: 'nest', text: 'Start a nest', say: 'With a twig in your beak, perch on a branch: your nest begins there.', poll: () => !!G0.nest },
+    { id: 'nest', text: 'Start a nest', say: 'With a twig in your beak, perch on a branch and tap Build here: your nest begins there.', poll: () => !!G0.nest },
     { id: 'keepsake', text: 'Find a keepsake', say: 'Now and then something glints in the grass. Land beside it to keep it for your nest.', on: 'keepsake' },
   ] },
   { title: 'Flying well', page: 'well', icon: 'agility', tasks: [

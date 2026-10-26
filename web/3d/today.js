@@ -28,7 +28,8 @@ export function createToday(G, M) {
     <div class="stack3 tcol3">
       <section class="group3 now3">
         <div class="who3"><span class="bic3"></span><span class="nm3"><b></b><small></small></span></div>
-        <ul class="bars3">${BARS.map(([k, ic, t, c]) => `<li data-k="${k}" style="--bc:${c}"><span class="bi3">${icon(ic)}</span><span class="bt3">${t}</span><span class="bb3"><i></i><s></s></span><em></em></li>`).join('')}</ul>
+        <ul class="bars3">${BARS.map(([k, ic, t, c]) => `<li data-k="${k}" style="--bc:${c}"><span class="bi3">${icon(ic)}</span><span class="bt3">${t}</span><span class="bb3"><i></i><s></s></span><em></em></li>`).join('')}
+          <li data-k="chick" class="chick3" style="--bc:#b0791f" hidden><span class="bi3">${icon('nest')}</span><span class="bt3">Chick</span><span class="bb3"><i></i><s></s></span><em></em></li></ul>
         <div class="foot3"><small class="when3"></small><button class="chg3">Change bird</button></div>
       </section>
       <div class="aims3 tmore3"></div>
@@ -42,7 +43,7 @@ export function createToday(G, M) {
   M.aims = pane.querySelector('.tnext3 .aims3'); M.later = pane.querySelector('.tmore3');
   const next = pane.querySelector('.tnext3'), feat = next.querySelector('.nfeat3 span');
   M.info('today', () => M.date());
-  const who = pane.querySelector('.who3'), rows = Object.fromEntries([...pane.querySelectorAll('.bars3 li')].map(li => [li.dataset.k, li]));
+  const who = pane.querySelector('.who3'), rows = Object.fromEntries([...pane.querySelectorAll('.bars3 li:not(.chick3)')].map(li => [li.dataset.k, li]));
   pane.querySelector('.chg3').addEventListener('click', () => M.set(true, 'play', 'journey'));
   M.onOpen(() => {
     const b = G.b;
@@ -64,6 +65,15 @@ export function createToday(G, M) {
       const s = li.querySelector('s'); s.hidden = k !== 'wings' || cap1 >= .995; s.style.width = `${(1 - cap1) * 100}%`;
       li.querySelector('em').textContent = word(k, v);
       li.classList.toggle('low', k !== 'health' && v < .2);
+    }
+    // the chick in the nest (sys/nest.js): its meals brought, yours and your mate's, and whether it is hungry
+    const n = G.nest, ch = pane.querySelector('.chick3');
+    ch.hidden = !n?.chick;
+    if (n?.chick) {
+      ch.querySelector('i').style.width = `${Math.min(1, n.fed / 5) * 100}%`; ch.querySelector('s').hidden = true;
+      ch.querySelector('em').textContent = n.hungry ? 'hungry' : `${n.fed} of 5`;
+      ch.classList.toggle('low', !!n.hungry);
+      ch.title = n.mateFed ? `Your mate brought ${n.mateFed} of the meals` : '';
     }
   });
   return pane;

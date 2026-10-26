@@ -14,7 +14,7 @@ import { builder, reseed } from '../shapes.js';
 import { clamp, smooth } from '../util.js';
 import { DAY } from '../sky.js';
 
-export const FIELDS = { signs: 130, signsHigh: 260, meadow: 300, misses: 3, farms: 480 };
+export const FIELDS = { signs: 130, signsHigh: 260, meadow: 300, misses: 5, farms: 480 };
 // each farm's paddock in its own frame (settle.js layout: u along the farm, w across)
 const PADDOCK = { u0: -20, u1: 18, w0: -66, w1: -38 };
 

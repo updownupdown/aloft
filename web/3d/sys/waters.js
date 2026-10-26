@@ -55,19 +55,29 @@ export function watersSystem(G) {
       setWater(LEVEL.tide * Math.sin((G.tod || 0) * Math.PI * 4) + LEVEL.rain * wet - LEVEL.summer * summer);
       if (!from || Math.hypot(b.p[0] - from[0], b.p[2] - from[1]) > 25) scan();
       // spray and the rush of the rapids nearby
-      let near = 0;
+      let near = 0, bd = 150, bp = null;
       for (const p of pts) {
-        if (!p.rapid) continue;
         const d = Math.hypot(p.x - b.p[0], p.z - b.p[2]);
+        if (d < bd) { bd = d; bp = p; }
+        if (!p.rapid) continue;
         near = Math.max(near, p.rapid * clamp(1 - d / 90, 0, 1));
         if (d < 70 && Math.random() < dt * p.rapid * .25) G.part([p.x + (Math.random() - .5) * 3, WATER + .2, p.z + (Math.random() - .5) * 3], [p.dx * 2 + (Math.random() - .5), 1.2 + Math.random() * 1.5, p.dz * 2 + (Math.random() - .5)], 1.2, [.95, .97, 1], .5 + Math.random() * .4);
       }
       rush += (near - rush) * Math.min(1, dt * 2);
       G.babble = rush * clamp(1 - (b.p[1] - WATER) / 120, 0, 1);
+      // the murmur of the nearest river, louder close and low down; scene() pans it to its side (D5)
+      const amt = bp ? (1 - bd / 150) ** 2 * clamp(1 - (b.p[1] - Math.max(height(b.p[0], b.p[2]), WATER) - 6) / 80, 0, 1) : 0;
+      G.brook = { amt: (G.brook?.amt || 0) + (amt - (G.brook?.amt || 0)) * Math.min(1, dt * 1.5), pan: G.brook?.pan || 0, p: bp };
       if (pts.length > 30 && b.p[1] - WATER < 60 && G.flags && !G.flags.river) { G.flags.river = 1; H.glint('River', 'A river, running down to the sea. Fish hold in its deep runs.', 'prey'); }
     },
     scene(S) {
       S.water = WATER;
+      const bk = G.brook;
+      if (bk?.p && S.cam && S.look) {   // which side of the view the river is on
+        const fx = S.look[0] - S.cam[0], fz = S.look[2] - S.cam[2], fl = Math.hypot(fx, fz) || 1, wx = bk.p.x - S.cam[0], wz = bk.p.z - S.cam[2], wl = Math.hypot(wx, wz) || 1;
+        const side = (-fz * wx + fx * wz) / fl / wl;   // + to the right
+        bk.pan += (side - bk.pan) * .1;
+      }
       if (!pts.length) return;
       // foam streaks drifting downstream on the surface
       const R = S.surface ||= [], y = WATER + .04, c = S.light?.daylight ?? G.light.daylight;
