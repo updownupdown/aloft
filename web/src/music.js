@@ -166,7 +166,7 @@ export function createMusic(audio) {
         og.gain.setValueAtTime(0, t); og.gain.linearRampToValueAtTime(k, t + .014 + .01 * (1 - v));
         og.gain.setTargetAtTime(k * .32, t + .02, .1);             // the prompt sound falls away
         og.gain.setTargetAtTime(0, t + .3, d);                      // then a quiet, short ring
-        o.connect(og).connect(lp); o.start(t); o.stop(t + .3 + d * 4.5);
+        o.connect(og).connect(lp); o.start(t); o.stop(t + .3 + d * 3.5);   // (by then 40 dB under its peak; longer kept a phone's audio thread busy with near silence)
       }
     }
     // the hammer's felt: a soft, dark thump under the pitch
