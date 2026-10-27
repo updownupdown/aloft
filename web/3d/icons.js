@@ -89,6 +89,7 @@ export const ICONS = {
   // Map pin: Round pin
   pin: '<circle cx="12" cy="8.5" r="4.5"/><path d="M12 13v8"/>',
   // Speed: Stoop
+  wind: '<path d="M3 8h9a2.5 2.5 0 1 0-2.5-2.5M3 12h14a3 3 0 1 1-3 3M3 16h6"/>',
   speed: '<path d="M6 4l12 12M18 9v7h-7M4 11l4 4M10 3l2 2"/>',
   // Glide: Soaring
   glide: '<path d="M3 10c3-.3 5.5 1.3 7.4 4L12 15l1.6-1c1.9-2.7 4.4-4.3 7.4-4M4 19.5h16"/>',

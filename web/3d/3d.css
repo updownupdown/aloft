@@ -55,10 +55,15 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .alt { position: absolute; left: 14px; top: 58px; display: grid; grid-template-columns: 17px auto auto; align-items: center; column-gap: 7px; row-gap: 5px; font-variant-numeric: tabular-nums; filter: var(--halo); }
 .alt .arow3 { display: contents; white-space: nowrap; }
 .alt .ai3 svg { display: block; width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; opacity: .9; }
-.alt b { display: block; font-size: 19px; font-weight: 600; line-height: 1.1; }
+.alt .ai3 { grid-column: 1; }
+.alt b { display: block; white-space: nowrap; font-size: 19px; font-weight: 600; line-height: 1.1; }
 .alt b.v, .alt b.w { display: flex; align-items: center; gap: 3px; margin-left: 4px; font-size: 14px; font-weight: 600; }
 .alt .ar3 { width: 12px; height: 12px; fill: currentColor; }
 .alt .ar3.flat { opacity: 0; }
+.alt b.m, .alt b.k { display: flex; align-items: baseline; }
+.alt small { display: inline; margin-left: 2px; font-size: .62em; font-weight: 500; opacity: .8; }
+.alt .wa3 { display: inline-block; perspective: 30px; margin: -3px 2px -3px 0; }
+.alt .wa3 .ar3 { display: block; width: 20px; height: 20px; filter: drop-shadow(0 2px 0 rgba(0, 0, 0, .5)); }   /* a lit top over its own dark edge */
 .alt b.v.rise { color: #c9f5b0; }
 .alt b.v.sink { color: #ffd0bc; }
 .alt .up3 { width: 18px; height: 18px; color: #ff4136; stroke-width: 2.8; filter: drop-shadow(0 0 3px rgba(255, 65, 54, .45)); }
@@ -66,6 +71,7 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .alt b.v.st { margin-left: 4px; font-weight: 500; }
 .alt b.w.tail { color: #9fcaff; }   /* the wind behind you */
 .alt b.w.head { color: #ff9e8a; }   /* in your face */
+.alt b.w { grid-column: 2 / 4; margin-left: 0; font-size: 16px; }   /* its own row under the speed */
 .alt b:empty { display: none; }
 .alt.still .sp3 { display: none; }
 #ui3 .alt:not(.still) { opacity: 1 !important; }   /* flying: height and speed always show, whatever is open */

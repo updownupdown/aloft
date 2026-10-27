@@ -37,7 +37,7 @@ const LOUD = new Set(['warn', 'reply', 'song', 'tutorial']);
 
 export function createHud(G, ui, input) {
   ui.insertAdjacentHTML('beforeend', `
-    <div class="hud3"><span class="meters"></span><span class="alt"><span class="arow3"><i class="ai3">${icon('height')}</i><b class="m"></b><b class="v"></b></span><span class="arow3 sp3"><i class="ai3">${icon('speed')}</i><b class="k"></b><b class="w"></b></span></span></div>
+    <div class="hud3"><span class="meters"></span><span class="alt"><span class="arow3"><i class="ai3">${icon('height')}</i><b class="m"></b><b class="v"></b></span><span class="arow3 sp3"><i class="ai3">${icon('speed')}</i><b class="k"></b></span><span class="arow3 sp3"><i class="ai3">${icon('wind')}</i><b class="w"></b></span></span></div>
     <div class="corner3"><div class="fps3 hidden"></div></div>
     <div class="pad3 L"><i></i></div><div class="pad3 R"><i></i></div>
     <p class="toast3"><span class="ic3"></span><span class="tx3"></span><button class="set3" aria-label="Choose which messages show">${icon('settings')}</button></p>`);
@@ -53,6 +53,9 @@ export function createHud(G, ui, input) {
   const bar = tipBar(G, ui, H);
   const all = [];   // every meter: { v, low }
   // a small arrow, turned by a (radians clockwise from up)
+  // the wind's arrow lies flat on the ground in perspective, so it points the way the air goes as the camera sees it
+  const flat = a => `<span class="wa3"><svg class="ar3" viewBox="0 0 16 16" style="transform:rotateX(52deg) rotateZ(${a.toFixed(2)}rad)"><path d="M8 1.5 13 8.5H9.6V14.5H6.4V8.5H3Z"/></svg></span>`;
+  const unit = u => `<small>${u}</small>`;
   const arrow = (a, cls = '') => `<svg class="ar3${cls}" viewBox="0 0 16 16" style="transform:rotate(${a.toFixed(2)}rad)"><path d="M8 1.5 13 8.5H9.6V14.5H6.4V8.5H3Z"/></svg>`;
   let toastT = 0, tipNow = null, tipT = 0, altKey = '', upAt = -1e9;
   // play: seconds of play (the menu open stops it); lastInfo: when the last piece of news showed
@@ -211,9 +214,9 @@ export function createHud(G, ui, input) {
       }
     }
     if (!tipNow || tipT <= .3 || H.done[tipNow]) bar.hide();
-    // two rows, top left, no units (James 10-27): the height and the rise or sink (red chevrons in
-    // rising air, more for stronger); the speed and the wind (an arrow the way it blows as the camera
-    // looks: blue behind you, red in your face). Perched or on the ground: the height and what the hawk is doing
+    // three rows, top left, with units (James 10-27): the height and the rise or sink (red chevrons in
+    // rising air, more for stronger); the speed; the wind (an arrow lying on the ground the way it blows
+    // as the camera looks: blue behind you, red in your face). Perched or on the ground: the height and what the hawk is doing
     const y = G.b.p[1];
     if (lastY !== null && dt > 0) vr += ((y - lastY) / dt - vr) * Math.min(1, dt * 2.5);
     lastY = y;
@@ -223,13 +226,13 @@ export function createHud(G, ui, input) {
     if (ak !== altKey) {
       altKey = ak;
       alt.classList.toggle('still', !f);
-      altM.textContent = h;
+      altM.innerHTML = h === '' ? '' : `${h}${unit('m')}`;
       if (f) {
-        altV.innerHTML = `${f.up ? icon('updraft', 'up3 n' + f.up) : arrow(vr < -.05 ? Math.PI : 0, Math.abs(vr) < .05 ? ' flat' : '')}${rate}`;
+        altV.innerHTML = `${f.up ? icon('updraft', 'up3 n' + f.up) : arrow(vr < -.05 ? Math.PI : 0, Math.abs(vr) < .05 ? ' flat' : '')}${rate}${unit('m/s')}`;
         altV.className = 'v' + (f.lift || vr > .3 ? ' rise' : vr < -.3 ? ' sink' : '');
-        altK.textContent = f.kmh;
+        altK.innerHTML = `${f.kmh}${unit('km/h')}`;
         altW.className = 'w ' + (wk.split('|')[2] || '');
-        altW.innerHTML = W ? `${arrow(Math.round(W.a * 12) / 12)}${W.kmh}` : '';
+        altW.innerHTML = W ? `${flat(Math.round(W.a * 12) / 12)}${W.kmh}${unit('km/h')}` : '';
       } else { altV.textContent = H.status; altV.className = 'v st'; altK.textContent = ''; altW.textContent = ''; }
     }
     compass.update(dt, G.menu?.open);
