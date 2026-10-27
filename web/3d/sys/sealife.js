@@ -90,7 +90,6 @@ export function sealifeSystem(G) {
     const hx = w.x + Math.cos(w.yaw) * 5.5, hz = w.z + Math.sin(w.yaw) * 5.5, d = Math.hypot(hx - b.p[0], hz - b.p[2]);
     if (d > 900) return;
     for (let i = 0; i < 26; i++) G.part([hx, w.y + .6, hz], [(Math.random() - .5) * 1.4, 6 + Math.random() * 3, (Math.random() - .5) * 1.4], 1.6 + Math.random() * .6, [.9, .93, .95], .35);
-    if (d < 400) G.audio.burst?.({ f: 900, f2: 300, q: .5, dur: 1.1, vol: .3 * (1 - d / 400) });
   }
   // stand on the whale's back: it is a pillar (world.js solidsNear via env.solids) whose perch moves
   env.solids.push((x, z, r, out) => { for (const w of whales.values()) if (w.up && w.y > -.5 && Math.abs(w.x - x) < r + 8 && Math.abs(w.z - z) < r + 8) out.push(...w.solids); });
@@ -120,7 +119,6 @@ export function sealifeSystem(G) {
       if (g.dive >= 0) { g.dive += dt / 1.6; if (g.dive >= 1) { g.dive = -1; if (near < 120) splash(o.x + Math.cos(g.a) * g.r * .5, o.z + Math.sin(g.a) * g.r * .5, .6); } }
       else if (Math.random() < dt * .12) g.dive = 0;
     }
-    if (near < 300 && Math.random() < dt * .4) G.audio.tone?.({ f: 1250 + Math.random() * 200, f2: 900, dur: .22, vol: .03 * (1 - near / 300), type: 'triangle', lp: 2400 });
     // snatch a fish from it: skim through low, or plunge in (the osprey)
     if (b.state === 'fly' && !b.carry && near < o.r + 2 && (b.plunge > 0 || b.p[1] - WATER < FAUNA.catchH + (G.aim?.focus || 0) * 2.5)) {
       b.state = 'swim'; b.p = [b.p[0], WATER + .35, b.p[2]]; b.s = 0;

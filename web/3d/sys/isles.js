@@ -93,7 +93,6 @@ export function islesSystem(G) {
       const ox = s.x + Math.cos(s.a) * 4, oz = s.z + Math.sin(s.a) * 4;
       if (s.kind === 'blowhole' && (puffT + ih(s.x | 0, 0, 480) * 6) % 7 < dt * 1.01) {   // a wave drives up through the rock
         for (let i = 0; i < 40; i++) G.part([ox, WATER + 1, oz], [(Math.random() - .5) * 2.4, 9 + Math.random() * 6, (Math.random() - .5) * 2.4], 2 + Math.random(), [.9, .94, .96], .3);
-        if (Math.hypot(s.x - b.p[0], s.z - b.p[2]) < 300) G.audio.burst?.({ f: 500, f2: 200, q: .5, dur: 1.2, vol: .25 });
       }
       if (s.kind === 'steam' && Math.random() < dt * 10) G.part([ox + (Math.random() - .5) * 10, WATER + .5, oz + (Math.random() - .5) * 10], [(Math.random() - .5), 2.5 + Math.random() * 2, (Math.random() - .5)], 4, [.86, .86, .88], .6);
     }

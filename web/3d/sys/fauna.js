@@ -138,7 +138,8 @@ export function faunaSystem(G) {
       f.jump += dt / 1.1; if (f.jump >= 1) { f.jump = -1; f.wait = (5 + Math.random() * 14) / rate; ripple(f.x + Math.cos(f.yaw) * 1.6, f.z + Math.sin(f.yaw) * 1.6, 1); }
     } else if ((f.wait -= dt) <= 0) {
       f.up += dt / 1.5;
-      if (f.up > 1.6) { f.up = 0; if (Math.random() < .55) { f.jump = 0; ripple(f.x, f.z, 1); if (near(f.x, f.z, 70)) G.audio.splash(false); } else f.wait = (3 + Math.random() * 10) / rate; }
+      // (a fish jumps in silence: a splash for every one across the water was a sound again and again, James 10-27)
+      if (f.up > 1.6) { f.up = 0; if (Math.random() < .55) { f.jump = 0; ripple(f.x, f.z, 1); } else f.wait = (3 + Math.random() * 10) / rate; }
     } else {
       f.up = Math.max(0, f.up - dt);
       if (Math.random() < dt * .3) { f.yaw += (Math.random() - .5) * 2; }
