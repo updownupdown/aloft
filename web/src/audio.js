@@ -198,6 +198,8 @@ export function createAudio() {
     if (kind === 'tree') { tone({ f: 850, f2: 1250, dur: .07, vol: v * .8, type: 'square', lp: 1800 }); tone({ f: 1150, f2: 780, dur: .1, vol: v * .8, type: 'square', delay: .1, lp: 1800 }); }
   }
   A.flap = () => burst({ f: 420, f2: 260, q: .8, dur: .22, vol: .35 });
+  // a flock of small birds whirring up: a quick flurry of soft wingbeats, falling away
+  A.flurry = (vol = 1) => { if (vol < .02) return; for (let k = 0; k < 6; k++) burst({ f: 700 + Math.random() * 300, f2: 450, q: .9, dur: .07, vol: .12 * vol * (1 - k * .12), delay: k * .055 + Math.random() * .02 }); };
   A.splash = big => { burst({ f: 1800, f2: 500, q: .7, dur: big ? .6 : .35, vol: big ? .45 : .25 }); };
   A.thump = (vol = .5) => { burst({ f: 180, type: 'lowpass', dur: .25, vol }); };
   A.rustle = (vol = 1) => { burst({ f: 3200, q: .6, dur: .3, vol: .15 * vol }); burst({ f: 2400, q: .6, dur: .2, vol: .1 * vol, delay: .08 }); };
