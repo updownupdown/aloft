@@ -1,5 +1,5 @@
 // Rings of mist hang over the land in courses (world.js ringLoop): wreaths of mist, made twice as
-// visible on 2026-10-26 (James: they were too hard to see). Each course starts low and climbs; fly through one for a burst of speed
+// visible on 2026-10-26 and again on 10-27, as puffy cloud rings (James: they were too hard to see). Each course starts low and climbs; fly through one for a burst of speed
 // (RING_BOOST), enough to carry the hawk up to the next, which glows a little brighter. Fly a whole
 // course in one go and it says so ('ringLoop'). The courses are laid afresh each day.
 // Each course leads somewhere (world.js: its last ring over a landmark or rising air), and the last
@@ -41,7 +41,7 @@ export function ringsSystem(G) {
     const to = T.end?.kind === 'place' ? `, ending at ${esc(T.end.name)}` : T.end?.kind === 'air' ? ', ending on rising air' : '';
     sec.body.innerHTML = `<p class="aim3 ${T.done ? 'done' : ''}"><i></i><span>${T.done ? 'Flown: ' : ''}${T.n} rings${T.level === 'hard' ? ', hard' : T.level === 'easy' ? ', easy' : ''}${to}${!T.done && where ? `. ${where}` : ''}.</span></p>`;
   });
-  G.hud.tip('ring', () => b.state === 'fly' && ringsNear(b.p[0], b.p[2], 60).some(r => live(r) && Math.hypot(r.x - b.p[0], r.y - b.p[1], r.z - b.p[2]) < 60), 'A faint ring of mist: fly through it for a burst of speed. The next ring of its course glows, a little higher.');
+  G.hud.tip('ring', () => b.state === 'fly' && ringsNear(b.p[0], b.p[2], 60).some(r => live(r) && Math.hypot(r.x - b.p[0], r.y - b.p[1], r.z - b.p[2]) < 60), 'A ring of cloud: fly through it for a burst of speed. The next ring of its course glows, a little higher.');
   // each ring of a course plays the next note of a rising phrase in the Valley's key, and the last
   // resolves it with a chord as the lift comes (L1 of the gameplay study); a ring alone, the old chime
   const PHRASE = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24];
@@ -106,7 +106,14 @@ export function ringsSystem(G) {
         if (aimed) col = mix3(col, G.aim?.ringCol || [1, .84, .4], .4);
         const al = Math.min(.95, 2 * (.34 + near * .14 + (next ? .1 : 0) + (aimed ? .08 : 0))) * Math.min(1, (360 - d) / 60);   // twice as visible (James, 10-26)
         // (a soft volume of mist, clouds.js ringv, denser for the way on)
-        if (G.R.cloudStyle !== 'poly') { (S.props.ringv ||= []).push(r.x, r.y, r.z, r.r, r.yaw, Math.min(1, .3 + (next ? .4 : 0) + (aimed ? .3 : 0)), 0, 0); continue; }
+        // the way on (a course's first ring, or the next of the one being flown) is drawn twice, the
+        // second a little larger and turned, so it stands out thick and bright (James, 10-27)
+        if (G.R.cloudStyle !== 'poly') {
+          const v = S.props.ringv ||= [], fade = Math.max(0, 1 - (360 - d) / 60);
+          v.push(r.x, r.y, r.z, r.r, r.yaw, Math.min(1, .45 + (next ? .55 : 0) + (aimed ? .3 : 0)), 0, fade);
+          if (next || aimed) v.push(r.x, r.y, r.z, r.r * 1.06, r.yaw + .02, 1, 0, fade);
+          continue;
+        }
         const c = Math.cos(r.yaw), sn = Math.sin(r.yaw), N = 30;
         for (let i = 0; i < N; i++) {
           // gaps where a slow wave along the ring dips, different for each ring
@@ -115,7 +122,7 @@ export function ringsSystem(G) {
           const a = i / N * 6.283 + G.t * .05, w = Math.sin(i * 2.7 + G.t * .4 + r.id) * .35, rr = r.r * (1 + w * .1);
           const lx = Math.cos(a) * rr, ly = Math.sin(a) * rr, lz = Math.sin(i * 1.3 + G.t * .3) * .4;
           const px = r.x + c * lx - sn * lz, py = r.y + ly, pz = r.z + sn * lx + c * lz;
-          const sz = r.r * (.28 + Math.abs(w) * .25) * Math.min(1, (g + 1.1) * 1.4) * (aimed ? 1.12 : 1), pa = al * Math.min(1, (g + 1) * 1.5);
+          const sz = r.r * (.36 + Math.abs(w) * .3) * (next ? 1.2 : 1) * Math.min(1, (g + 1.1) * 1.4) * (aimed ? 1.12 : 1), pa = al * Math.min(1, (g + 1) * 1.5);
           for (let k = 0; k < SIDES; k++) {
             const a0 = k / SIDES * 6.283, a1 = (k + 1) / SIDES * 6.283;
             const e0 = [Math.cos(a0) * sz, Math.sin(a0) * sz], e1 = [Math.cos(a1) * sz, Math.sin(a1) * sz];
