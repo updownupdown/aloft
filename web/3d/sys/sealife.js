@@ -28,6 +28,18 @@ export function sealifeSystem(G) {
   G.guide?.page('flyfish', 'Flying fish', 'Bursts from the water to glide on stiff winglike fins, sometimes for a hundred metres, to escape the tuna below.');
   G.guide?.page('turtle', 'Green sea turtle', 'Crosses whole oceans to lay its eggs on the beach where it hatched, rising every few minutes to breathe.');
   const whales = new Map(), boils = new Map(), turtles = new Map(), flyers = [];
+  G.sea = {
+    boils: () => boils, whales: () => whales,   // the senses (sys/finds.js: the glass float shows boils on the compass)
+    // the whale's song (sys/lore.js): the nearest whale comes up beside you and waits
+    summon(x, z) {
+      let w = null, bd = 4000;
+      for (const o of whales.values()) { const d = Math.hypot(o.x - x, o.z - z); if (d < bd) { bd = d; w = o; } }
+      if (!w) return false;
+      const a = Math.random() * 6.283;
+      Object.assign(w, { x: x + Math.cos(a) * 45, z: z + Math.sin(a) * 45, hx: x, hz: z, up: true, t: 70, dive: 0, y: -3, blowT: 1.5, yaw: a + Math.PI / 2 });
+      return true;
+    },
+  };
   const once = (id, title, msg, ic, how) => { if (!G.flags[id]) { G.flags[id] = 1; G.hud.quietly(how, title, msg, ic); } };
   const sea = (x, z) => oceanAt(x, z);
   let refreshT = 0, flyT = 4;

@@ -6,6 +6,7 @@
 // summer. It is one level for all the water (the sea and the lakes alike), so it stays small.
 import { height, riverAt, WATER, setWater } from '../world.js';
 import { clamp } from '../util.js';
+import { AGE } from '../ages.js';
 import { DAY } from '../sky.js';
 
 const LEVEL = { tide: .32, rain: .35, summer: .3 };   // metres
@@ -52,7 +53,7 @@ export function watersSystem(G) {
       // the level
       wet = clamp(wet + dt / DAY * ((G.rain || 0) * 4 - wet * 1.2), 0, 1);
       const s = G.season || {}, summer = s.i === 0 ? Math.sin(Math.PI * Math.min(1, ((s.d || 0) + (G.tod || 0)) / 8)) : 0;
-      setWater(LEVEL.tide * Math.sin((G.tod || 0) * Math.PI * 4) + LEVEL.rain * wet - LEVEL.summer * summer);
+      setWater(AGE.sea + LEVEL.tide * Math.sin((G.tod || 0) * Math.PI * 4) + LEVEL.rain * wet - LEVEL.summer * summer);
       if (!from || Math.hypot(b.p[0] - from[0], b.p[2] - from[1]) > 25) scan();
       // spray and the rush of the rapids nearby
       let near = 0, bd = 150, bp = null;

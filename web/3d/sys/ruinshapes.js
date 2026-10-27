@@ -285,7 +285,17 @@ export const ARTEFACT_SHAPES = {
   float: B => blob(B, 0, .1, 0, .1, [.42, .62, .5], [.36, .55, .45]),
   sheepbell: B => { prism(B, 0, 0, .07, .05, 0, .1, 6, [.7, .45, .28]); tube(B, [-.06, .11, 0], [.06, .11, 0], .015, [.4, .28, .2]); },
   spyglass: B => { tube(B, [-.18, .03, 0], [.04, .03, 0], .03, BRASS); tube(B, [.04, .03, 0], [.18, .03, 0], .022, BRASS); },
+  // the finds of sys/finds.js and sys/errands.js: a notebook page, a piece of an old chart, a far
+  // sign (glass in a colour the world does not have), the seed tin, a clay jar, a found feather
+  page: B => { quad(B, [-.14, .012, -.1], [.14, .012, -.1], [.14, .02, .1], [-.14, .02, .1], [.9, .87, .78]); quad(B, [-.1, .024, -.06], [.08, .024, -.06], [.08, .024, -.05], [-.1, .024, -.05], [.4, .36, .32]); },
+  chart: B => { quad(B, [-.16, .012, -.12], [.15, .016, -.13], [.17, .02, .11], [-.13, .014, .12], [.86, .78, .6]); quad(B, [-.06, .024, -.04], [.08, .024, .02], [.06, .024, .05], [-.07, .024, 0], [.42, .52, .6]); },
+  sign: B => { blob(B, 0, .07, 0, .07, [.62, .38, .92], [.42, .9, .82], [.7, 1.3, .7]); },
+  tin: B => { box(B, 0, 0, 0, .2, .09, .13, 0, [.55, .32, .2]); box(B, 0, .09, 0, .21, .02, .14, 0, [.45, .28, .2]); },
+  jar: B => { prism(B, 0, 0, .07, .1, 0, .14, 8, [.66, .42, .3]); prism(B, 0, 0, .1, .05, .14, .22, 8, [.6, .38, .28]); },
+  feather: B => { B.tri([-.16, .01, 0], [.16, .012, -.02], [.1, .012, .035], [.52, .32, .22]); B.tri([-.16, .01, 0], [.1, .012, .035], [-.04, .011, .03], [.82, .7, .55]); },
 };
+// the two parts of a lighthouse lamp (sys/errands.js): carried, never one of a kind
+export const PARTS = { lens: 1, lampkey: 1 };
 export function artefactMesh(kind) { reseed(500 + kind.length); const B = builder(); ARTEFACT_SHAPES[kind](B); return B.out(); }
 
 // ---- pole lines (settle.js poleLine) ----------------------------------------------------------

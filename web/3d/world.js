@@ -5,6 +5,7 @@
 // is 96 km round and wraps east to west (main.js moves the bird across the seam). Coordinates:
 // x east, z south, y up, metres-ish. Water level is y = 0.
 import { store } from './util.js';
+import { AGE } from './ages.js';
 import { ih, fbm, smooth, clamp, WORLD, newWorld } from './noise.js';
 import { BIOMES, PAL, blend, weightOf, share, rollBiome, cellsNear, setIsleOf } from './biomes.js';
 import { coastDist, latLon, latAt, oceanKey, regionAt, wrapX, toXZ, EARTH, NORTH, SOUTH, seasonAt, snowLine, dryAt, bakedRiver, lakeAt } from './earth.js';
@@ -36,7 +37,7 @@ export const cellsFor = d => RINGS.find(r => d < r[0])[1];
 setGroundDetail(store.get('ground', 32));
 // The water level: 0 on average, but the tides, the rain and the summer move it (sys/waters.js
 // calls setWater). One level for all water, sea and lakes alike, kept within half a metre or so.
-export let WATER = 0;
+export let WATER = AGE.sea;   // (the age's sea, ages.js)
 export function setWater(y) { WATER = y; }
 
 // what systems change at run time: the snowline (0 summer .. 1 deep winter, chunks must be
@@ -258,8 +259,9 @@ export function groundColour(x, y, z, ny, bl = blend(x, z)) {
   // wood floor darker under the trees
   c = mixc(c, PAL.wood, smooth(.05, .45, forestOf(x, z, bl)) * .45 * (1 - own));
   const marsh = weightOf(bl, 'marsh');
-  if (y < 1.8 && sandy < .5) c = mixc(PAL.sand, c, smooth(.4, 1.8, y) * (marsh > .5 ? .6 : 1) + (marsh > .5 ? .4 : 0));
-  if (y < 0) c = mixc(PAL.mud, PAL.sand, clamp(1 + y / 6, 0, 1));
+  const ys = y - (AGE.sea > -100 ? AGE.sea : 0);   // the shore of the age's sea (ages.js)
+  if (ys < 1.8 && sandy < .5) c = mixc(PAL.sand, c, smooth(.4, 1.8, ys) * (marsh > .5 ? .6 : 1) + (marsh > .5 ? .4 : 0));
+  if (ys < 0) c = mixc(PAL.mud, PAL.sand, clamp(1 + ys / 6, 0, 1));
   c = mixc(c, mixc(PAL.rock, PAL.rock2, ih(x | 0, z | 0, 3)), smooth(.22, .42, steep) * (1 - own));
   // the season on the ground: fresh green in spring; in autumn leaf litter under the trees and
   // tired, bare patches in the open (chunks are rebuilt when the season or snowline moves)
@@ -290,10 +292,11 @@ export function groundColour(x, y, z, ny, bl = blend(x, z)) {
   // snow on the heights, and in winter right down to the meadows (not on cliffs, not below water);
   // lower toward the poles, where the ice and the tundra keep some all year
   const line = snowLine(lat, env.yearFrac);
-  c = mixc(c, PAL.snow, smooth(line - 5, line + 25, y + fbm(x / 40, z / 40, 7, 2) * 12) * smooth(.45, .25, steep) * (y > .3 ? 1 : 0) * (1 - noSnow * .85));
+  c = mixc(c, PAL.snow, smooth(line - 5, line + 25, y + fbm(x / 40, z / 40, 7, 2) * 12) * smooth(.45, .25, steep) * (ys > .3 ? 1 : 0) * (1 - noSnow * .85));
   const rc = realColour(x, y, z, steep); if (rc) c = mixc(c, rc, rc[3]);
   // in a cave's shade: dim rock, blue in the ice, dark and wet where the sea comes in
   const cs = caveShade(x, z, y); if (cs) c = mixc(c, cs.ice ? [.5, .68, .82] : cs.wet ? [.2, .22, .22] : [.26, .24, .22], cs.k);
+  if (AGE.ground) c = mixc(c, AGE.ground, AGE.ground[3]);   // the age's own ground (ages.js: rust in the Red Age)
   const j = .92 + ih(Math.floor(x * 7), Math.floor(z * 7), 5) * .14;   // a little pigment variation per facet
   return [c[0] * j, c[1] * j, c[2] * j];
 }
@@ -549,6 +552,8 @@ const densityOf = (b, f, x, z, w) => {
     default: return f > .32 ? .55 : f > .12 ? .2 : f > -.1 ? .03 : .008;
   }
 };
+// the tree that grows wild at (x, z), by its land and continent (sys/errands.js plants the seed tin's seeds)
+export function treeLookAt(x, z) { const bl = blend(x, z), e = rollBiome(bl, .5); return lookFor(e.name, x, z, groundAt(x, z), .5, forestOf(x, z, bl), e); }
 const treeCache = new Map();
 export function treesIn(cx, cz) {
   const key = cx + ',' + cz; let t = treeCache.get(key); if (t) return t;
@@ -556,11 +561,12 @@ export function treesIn(cx, cz) {
   for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
     const gx = cx * n + i, gz = cz * n + j;
     const x = (gx + .15 + ih(gx, gz, 21) * .7) * G, z = (gz + .15 + ih(gx, gz, 22) * .7) * G;
-    const p = ih(gx, gz, 23); if (p > .55) continue;
+    const p = ih(gx, gz, 23); if (p > .55 * AGE.trees) continue;   // (fewer in the Ice, none in the Red Age)
     const bl = blend(x, z), e = rollBiome(bl, ih(gx, gz, 27)), f = forestOf(x, z, bl);
     if (p > densityOf(e.name, f, x, z, e)) continue;
     const y = groundAt(x, z), wet = e.name === 'swamp';
-    if ((wet ? y < -1.2 || y > 3 : y < 1.2) || y > 140) continue;
+    const ya = y - Math.max(0, AGE.sea);   // (above the age's sea)
+    if ((wet ? ya < -1.2 || ya > 3 : ya < 1.2) || y > 140) continue;
     const nm = normalAt(x, z); if (nm[1] < .82) continue;
     if (roadShade(x, z) > .25 || railNear(x, z) < 6 || nearCave(x, z)) continue;   // nor on the old tracks and the railway, nor over a cave
     const look = lookFor(e.name, x, z, y, ih(gx, gz, 28), f, e);

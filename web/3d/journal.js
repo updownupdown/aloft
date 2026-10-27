@@ -60,7 +60,7 @@ export function shelf(items, peek = 8) {
   const got = items.filter(i => i.found), todo = items.filter(i => !i.found), few = todo.slice(0, peek);
   const star = i => i.star ? '<i class="star3" title="One of a kind">★</i>' : '';
   const slot = i => i.found
-    ? `<li class="found${i.star ? ' star' : ''}${i.note ? ' has' : ''}"><span class="pic">${i.pic ? `<img alt="" src="${i.pic}">` : icon(i.icon || 'keepsake')}</span><b>${star(i)}${esc(i.name)}${i.n > 1 ? ` <small>×${i.n}</small>` : ''}</b>${i.note ? `<small class="note">${esc(i.note)}</small>` : ''}</li>`
+    ? `<li class="found${i.star ? ' star' : ''}${i.note || i.at ? ' has' : ''}"><span class="pic">${i.pic ? `<img alt="" src="${i.pic}">` : icon(i.icon || 'keepsake')}</span><b>${star(i)}${esc(i.name)}${i.n > 1 ? ` <small>×${i.n}</small>` : ''}</b>${i.note || i.at ? `<small class="note">${esc(i.note || '')}${i.at ? ` <button class="at3" data-at="${i.at}">${icon('map')}Where</button>` : ''}</small>` : ''}</li>`
     : `<li class="empty${i.star ? ' star' : ''}"><span class="pic">?</span>${i.hint ? `<small>${esc(i.hint)}</small>` : ''}</li>`;
   return `<ul class="shelf3">${got.map(slot).join('')}${few.map(slot).join('')}</ul>${todo.length > few.length ? `<p class="shelfmore3">and ${todo.length - few.length} more to find.</p>` : ''}`;
 }

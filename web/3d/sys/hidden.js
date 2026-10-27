@@ -141,7 +141,7 @@ export function hiddenSystem(G) {
   // ---- finding them -------------------------------------------------------------------------------
   const found = p => {
     if (St.found[p.id]) return;
-    St.found[p.id] = { day: G.day, kind: p.kind, name: p.name };
+    St.found[p.id] = { day: G.day, kind: p.kind, name: p.name, at: [Math.round(p.x ?? p.mouth?.x ?? b.p[0]), Math.round(p.z ?? p.mouth?.z ?? b.p[2])] };
     G.hud.say(p.name[0].toUpperCase() + p.name.slice(1), { kind: 'event', secs: 4.5, icon: 'landmarks' });
     G.emit('hidden', p); draw();
   };
@@ -150,7 +150,7 @@ export function hiddenSystem(G) {
   function draw() {
     const F = Object.values(St.found);
     sec.el.style.display = on || F.length ? '' : 'none';   // with the switch off and nothing found, the Journal shows nothing of it
-    sec.body.innerHTML = F.length ? `<p>${F.length} found: ${Object.keys(KINDS).filter(k => F.some(f => f.kind === k)).map(k => `${F.filter(f => f.kind === k).length} ${KINDS[k]}`).join(', ')}.</p><ul class="list3">${F.map(f => `<li>${esc(f.name[0].toUpperCase() + f.name.slice(1))} <small>Day ${f.day}</small></li>`).join('')}</ul>`
+    sec.body.innerHTML = F.length ? `<p>${F.length} found: ${Object.keys(KINDS).filter(k => F.some(f => f.kind === k)).map(k => `${F.filter(f => f.kind === k).length} ${KINDS[k]}`).join(', ')}.</p><ul class="list3">${F.map(f => `<li${f.at ? ` data-at="${f.at}"` : ''}>${esc(f.name[0].toUpperCase() + f.name.slice(1))} <small>Day ${f.day}</small></li>`).join('')}</ul>`
       : '<p>Behind the sheer waterfalls, high in the ridges, in the caves and the old tunnels, in the old trees and where palms stand in the desert: places to find and rest in.</p>';
   }
   draw();
@@ -175,7 +175,7 @@ export function hiddenSystem(G) {
   // lands.js asks how far out a fall's curtain hangs; the dev tools and tests reach the rest
   // sys/quests.js: a hidden place you have found, perched on, can be your ledge
   G.hiddenHere = () => b.state === 'perch' ? near.find(p => p.perch && St.found[p.id] && Math.hypot(p.perch.x - b.p[0], p.perch.z - b.p[2]) < 1.6 && Math.abs(p.perch.y - b.p[1]) < 1.5) || null : null;
-  G.hidden = { find: found, get on() { return on; }, curtain: l => (on && ledgeOf(l) ? CURTAIN : 0), go: kind => go(kind)(), nearest, placeOf, ledgeOf, inShelter, local, found: () => St.found, debug: () => ({ near: near.map(p => p.id), inside: inside?.id, on }) };
+  G.hidden = { find: found, near: () => near, get on() { return on; }, curtain: l => (on && ledgeOf(l) ? CURTAIN : 0), go: kind => go(kind)(), nearest, placeOf, ledgeOf, inShelter, local, found: () => St.found, debug: () => ({ near: near.map(p => p.id), inside: inside?.id, on }) };
   G.dev?.add({ id: 'hidden-ledge', title: 'Hidden places: a ledge behind the falls', area: 'World', round: 'study', how: 'Settings > Advanced > Hidden places on. Where a fall drops over a sheer face, its curtain hangs clear of the rock and a ledge waits behind it: fly through the water to land there (spray as you pass), roost there at night. Try it puts you on the nearest one.', go: go('ledge') });
   G.dev?.add({ id: 'hidden-shelter', title: 'Hidden places: shelters in the ridges', area: 'World', round: 'study', how: 'A roof of rock over a dry floor, high on a steep face in the mountain lands, its mouth downhill: a boulder inside to perch and roost on, walls you bump. Try it puts you on the nearest one.', go: go('shelter') });
   G.dev?.add({ id: 'hidden-oasis', title: 'Hidden places: oases', area: 'World', round: 'study', how: 'In the deserts where date palms grow (the Sahara, Arabia, Persia), now and then, a pool under palms with reeds round it: land by it and tap the water to drink (the only fresh water for miles). Try it lands you by the nearest one.', go: go('oasis') });

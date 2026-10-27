@@ -178,7 +178,8 @@ export function foodSystem(G) {
   }
   G.reach = (catchR = FOOD.catchR, catchDive = FOOD.catchDive, catchH = FOOD.catchH) => {
     const focus = G.aim?.focus || 0, k = strikeT > 0 ? FOOD.strikeK : 1;
-    return { r: (catchR + catchDive * focus + clamp((b.s - 12) / 18, 0, 1) * FOOD.feet) * k, h: (catchH + focus * 2.5) * k };
+    const luck = (G.finds?.reachK || 1) * (G.has?.('horseshoe') ? 1.08 : 1);   // the hill farm set and the horseshoe (sys/finds.js)
+    return { r: (catchR + catchDive * focus + clamp((b.s - 12) / 18, 0, 1) * FOOD.feet) * k * luck, h: (catchH + focus * 2.5) * k };
   };
   // a stoop at a mouse that comes to nothing says why, once a day for each reason (H4)
   let hunt = null; const told = {};
@@ -398,7 +399,7 @@ export function foodSystem(G) {
     id: 'food',
     mice, take, hold,
     update(dt) {
-      const k = G.ease ?? 1;   // half speed while the lessons teach eating and drinking (sys/lessons.js)
+      const k = G.timeless ? 0 : G.ease ?? 1;   // none in the other ages (sys/ages.js); half speed while the lessons teach eating and drinking (sys/lessons.js)
       G.hunger = Math.max(0, G.hunger - dt * k / FOOD.hungerTime);
       G.thirst = Math.max(0, G.thirst - dt * k / FOOD.thirstTime);
       if ((refreshT -= dt) <= 0) { refreshT = .5; refresh(); }
@@ -433,7 +434,7 @@ export function foodSystem(G) {
       if (b.wantDrink && b.settle <= 0 && !b.goTo) { b.wantDrink = false; if (b.state === 'ground') G.water.drink(); }
       if (drinking && (G.thirst >= 1 || b.settle > 0 || b.goTo || !waterBy())) drinking = false;
       if (drinking) {
-        G.thirst = Math.min(1, G.thirst + FOOD.drink * dt);
+        G.thirst = Math.min(1, G.thirst + FOOD.drink * (G.has?.('teacup') ? 1.3 : 1) * dt);
         if (G.thirst >= 1) drinking = false;   // full: stop here, as thirst creeps back before the check above next frame
         else if ((sipT -= dt) <= 0) { sipT = 1.1; G.audio.drink(); }
         G.hud.did('drink');

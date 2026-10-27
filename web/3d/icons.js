@@ -140,6 +140,9 @@ export const ICONS = {
   age: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.5 2"/><path d="M3.5 12h2M18.5 12h2"/>',
   lamp: '<path d="M9 21h6M10 21V11h4v10M8.5 11h7l-1-3.5h-5zM12 7.5V5M8 4L6 3M16 4l2-1M7.5 7.5l-3 .5M16.5 7.5l3 .5"/>',
   notebook: '<path d="M6 3.5h11.5v17H6zM6 3.5a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2M9 8h6M9 11.5h6M9 15h3.5"/>',
+  seed: '<path d="M12 21v-8M12 13c0-4.5 3-7 7.5-7 0 4.5-3 7-7.5 7zM12 15.5c0-3.5-2.5-5.5-6.5-5.5 0 3.5 2.5 5.5 6.5 5.5zM8 21h8"/>',
+  sign: '<path d="M12 3l5.5 7L12 21 6.5 10z"/><path d="M6.5 10h11M12 3v18" opacity=".55"/>',
+  paint: '<path d="M4 19c2-5 4-7 6-7s2 3 4 3 3-4 6-6"/><path d="M7 7.5a1.5 1.5 0 1 0 0 .01M13 5.5l1.5 2.5M17 4l-1 3"/>',
   chart: '<path d="M3.5 6.5l5-2 7 2 5-2v13l-5 2-7-2-5 2z"/><path d="M8.5 9.5l2.5 2.5 2-1.5 2.5 2.5" stroke-dasharray="1.2 1.6"/><path d="M15 15.5l1.5 1.5M16.5 15.5L15 17"/>',
 };
 // the playable birds as filled silhouettes, seen from below in flight, faceted like the game: Call

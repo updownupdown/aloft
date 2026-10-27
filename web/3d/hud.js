@@ -227,7 +227,7 @@ export function createHud(G, ui, input) {
       } else { altV.textContent = H.status; altV.className = 'v st'; altK.textContent = ''; }
     }
     compass.update(dt, G.menu?.open);
-    dial.update(G.tod, G.day, false, G.season, G.forecast || nowOnly);
+    dial.update(G.tod, G.day, false, G.season, G.forecast || nowOnly, G.has?.('watch'));
     for (const [el, P] of [[padL, input.L], [padR, input.R]]) {
       // perched or standing, a drag turns the bird: no sticks then
       const fly = G.b.state === 'fly', on = P.id !== null && fly;

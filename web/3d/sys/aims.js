@@ -29,6 +29,20 @@ const AIMS = {
   far: { text: 'Fly two kilometres from where you were at dawn.', on: 'far', lesson: 1 },
 };
 const HIGH = 250;
+// a season's aim (L3 of the gameplay study): one longer aim for each season of your bird's year,
+// beside the day's; done, it earns two feathers
+const SEASON_AIMS = {
+  lands: { text: 'Fly over four lands you have not seen yet.', on: 'newLand', n: 4 },
+  songs: { text: 'Learn three songs.', on: 'learn', n: 3 },
+  cross: { text: 'Cross a sea and make landfall.', on: 'landfall' },
+  lamp: { text: 'Light a dark lighthouse.', on: 'lamp' },
+  hidden: { text: 'Find three hidden places.', on: 'hidden', n: 3 },
+  home: { text: 'Carry a treasure home.', on: 'home' },
+  courses: { text: 'Fly three whole ring courses.', on: 'ringLoop', n: 3 },
+  landmarks: { text: 'Find four landmarks.', on: 'landmark', n: 4 },
+  pages: { text: 'Find two pages of the naturalist\'s notebook.', on: 'find', ok: e => e?.kind === 'page', n: 2 },
+  master: { text: 'Master a song: sing it cleanly three times.', on: 'mastered' },
+};
 
 export function aimsSystem(G) {
   const b = G.b;
@@ -54,6 +68,22 @@ export function aimsSystem(G) {
   // a thermal ride high above the ground: held for a moment and a half; and a few things other
   // systems don't announce (a drink, a night's sleep, two kilometres since dawn)
   let highT = 0, high = false, drank = 0, asleep = false, farFrom = null;
+
+  // ---- the season's aim ----------------------------------------------------------------------
+  const seasonKey = () => `${G.journey?.year ?? 0}:${G.season?.name || ''}`;
+  function pickSeason() {
+    const pool = Object.keys(SEASON_AIMS).filter(k => k !== A.season?.aim);
+    A.season = { key: seasonKey(), aim: pool[Math.floor(Math.random() * pool.length)], count: 0, done: false };
+    const a = SEASON_AIMS[A.season.aim];
+    G.quests?.set('season', { group: 'errand', icon: 'keepsake', title: 'This season', text: `${a.text} Before the season turns, for two feathers.`, n: 0, of: a.n || 1, quiet: true, done: false });
+  }
+  for (const ev of new Set(Object.values(SEASON_AIMS).map(a => a.on))) G.on(ev, e => {
+    const s = A.season, a = s && SEASON_AIMS[s.aim]; if (!a || s.done || a.on !== ev || (a.ok && !a.ok(e))) return;
+    s.count++; G.quests?.set('season', { n: Math.min(s.count, a.n || 1) });
+    if (s.count < (a.n || 1)) return;
+    s.done = true; G.feather('The season\'s aim'); G.feather('The season\'s aim');
+    G.quests?.done('season', `Done in ${G.season?.name || 'the season'}: two feathers.`);
+  });
 
   // ---- racing the companion ----------------------------------------------------------------
   // through the first ring of a course, now and then (more often when it is with you) it races you round
@@ -106,8 +136,10 @@ export function aimsSystem(G) {
   G.menu.onOpen(() => {
     const a = AIMS[A.aim];
     today.el.classList.toggle('hidden', !!G.lessons?.learning);
-    today.body.innerHTML = a ? `<p class="nch3">${icon('keepsake')}<span>Today’s aim</span>${a.n && !A.done ? `<small>${A.count} of ${a.n}</small>` : ''}</p>
-      <p class="ntask3${A.done ? ' done' : ''}">${esc(a.text)}</p><p class="nsay3">${A.done ? 'Done: a feather earned.' : 'If you like: it earns a feather. Tomorrow brings another.'}</p>` : '';
+    const s = A.season, sa = s && SEASON_AIMS[s.aim];
+    today.body.innerHTML = (a ? `<p class="nch3">${icon('keepsake')}<span>Today’s aim</span>${a.n && !A.done ? `<small>${A.count} of ${a.n}</small>` : ''}</p>
+      <p class="ntask3${A.done ? ' done' : ''}">${esc(a.text)}</p><p class="nsay3">${A.done ? 'Done: a feather earned.' : 'If you like: it earns a feather. Tomorrow brings another.'}</p>` : '')
+      + (sa ? `<p class="nch3">${icon('keepsake')}<span>This season</span>${sa.n && !s.done ? `<small>${Math.min(s.count, sa.n)} of ${sa.n}</small>` : ''}</p><p class="ntask3${s.done ? ' done' : ''}">${esc(sa.text)}</p><p class="nsay3">${s.done ? 'Done: two feathers earned.' : 'A longer aim, for two feathers, before the season turns.'}</p>` : '');
     const L = G.life;
     life.el.classList.toggle('hidden', !L);
     if (L) life.body.innerHTML = `<p class="life3t">${esc(L.title)}${L.done ? ' <small>Done.</small>' : ''}</p><ul class="life3">${L.steps.map(s => `<li class="${s.done ? 'done' : ''}"><i></i><span>${esc(s.text)}</span>${s.need > 1 ? ` <small>${Math.min(s.n, s.need)} of ${s.need}</small>` : ''}</li>`).join('')}</ul>`;
@@ -135,6 +167,7 @@ export function aimsSystem(G) {
       // a race left behind (the course broken off) ends quietly
       if (race && G.clock - race.t > 90) { G.companion?.stop?.(); race = null; }
       if (!A.aim || A.day !== G.day) { pick(); if (G.t > 3 && !G.lessons?.learning) offer(); }
+      if (G.season && A.season?.key !== seasonKey() && !G.lessons?.learning) pickSeason();
       if ((landT -= dt) <= 0) {
         landT = 2; line();
         const k = landOf(b.p[0], b.p[2]);

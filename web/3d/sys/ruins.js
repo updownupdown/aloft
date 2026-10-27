@@ -12,9 +12,6 @@ import { railsNear } from '../rail.js';
 import { wondersNear, WONDERS } from '../wonders.js';
 import * as WS from './wondershapes.js';
 import * as SS from './seashapes.js';
-import { journal, esc, shelf } from '../journal.js';
-import { KEEPSAKES } from './story.js';
-import { NOTES as BOTTLE_NOTES } from './drift.js';
 
 const DRAW = 650;
 const cap = s => s[0].toUpperCase() + s.slice(1);
@@ -60,6 +57,7 @@ export function ruinsSystem(G) {
   // ---- what you have found ------------------------------------------------------------------
   const St = { found: new Set(), treasures: {}, trinkets: [] };
   G.relics = St;
+  G.has = k => !!St.treasures[k] && !M.PARTS[k];   // a treasure taken: its sense is on (sys/finds.js)
   const TKEYS = Object.keys(M.TRINKETS);
   // the things lying at a settlement's spots (a treasure already found leaves a trinket instead)
   function artefactsOf(S) {
@@ -70,40 +68,58 @@ export function ruinsSystem(G) {
       const high = p.what === 'gallery' || p.what === 'walk';
       if (!high && ih(hx, hz, 700) > .6) return;
       let kind = null;
-      const cand = Object.keys(M.TREASURES).filter(k => M.TREASURES[k][1].includes(S.kind));
+      // a lighthouse's gallery always holds a part of a lamp (the lens or the key, the one its own lamp
+      // does not need: sys/errands.js), till the lamp is lit; parts are not one of a kind
+      if (p.what === 'gallery') {
+        if (G.lamps?.lit(S.id)) return;
+        out.push({ id, kind: G.lamps?.spare(S.id) || 'lens', treasure: true, part: true, x: p.x, y: p.y, z: p.z, yaw: ih(hx, hz, 705) * 6.283, place: S.name, sk: S.kind, S });
+        return;
+      }
+      // a notebook page, a chart piece (sys/finds.js) may lie up on a lookout's walk
+      const f = high && G.finds?.at(S, p, i); if (f) { out.push({ id, ...f, x: p.x, y: p.y, z: p.z, yaw: ih(hx, hz, 705) * 6.283, place: S.name, sk: S.kind, S }); return; }
+      const cand = Object.keys(M.TREASURES).filter(k => M.TREASURES[k][1].includes(S.kind) && !M.PARTS[k]);
       if (cand.length && ih(hx, hz, 701) < (high ? .85 : .22)) kind = cand[Math.floor(ih(hx, hz, 702) * cand.length)];
       if (kind && St.treasures[kind]) kind = null;
       if (!kind) { if (high && ih(hx, hz, 704) < .5) return; kind = TKEYS[Math.floor(ih(hx, hz, 703) * TKEYS.length)]; }
-      out.push({ id, kind, treasure: !!M.TREASURES[kind], x: p.x, y: high ? p.y : groundAt(p.x, p.z), z: p.z, yaw: ih(hx, hz, 705) * 6.283, place: S.name, sk: S.kind });
+      out.push({ id, kind, treasure: !!M.TREASURES[kind], x: p.x, y: high ? p.y : groundAt(p.x, p.z), z: p.z, yaw: ih(hx, hz, 705) * 6.283, place: S.name, sk: S.kind, S });
     });
     return out;
   }
   const say = (msg, secs = 4.5) => G.hud.say(msg, { kind: 'event', secs, icon: 'keepsake' });
+  // what a find is called, and taking it: a trinket goes on the shelf, a treasure is one of a kind
+  // (sys/finds.js: its sense; sys/errands.js: carried home), a lamp part goes in the talons, a page
+  // or a chart piece to sys/finds.js
+  const nameOf = a => a.name || (a.treasure ? M.TREASURES[a.kind][0] : M.TRINKETS[a.kind]);
   function take(a) {
     St.found.add(a.id);
-    const name = a.treasure ? M.TREASURES[a.kind][0] : M.TRINKETS[a.kind];
-    if (a.treasure) {
-      St.treasures[a.kind] = { day: G.day, place: a.place };
+    const name = nameOf(a), short = cap(name.replace(/^(A|An|The) /, ''));
+    if (a.find) G.finds.take(a);
+    else if (a.treasure) {
+      if (!a.part || !St.treasures[a.kind]) St.treasures[a.kind] = { day: G.day, place: a.place, at: [a.x, a.z] };
       G.audio.learned?.();
-      G.hud.name(cap(name.replace(/^(A|An|The) /, '')), 'keepsake'); G.hud.glint(cap(name.replace(/^(A|An|The) /, '')), M.TREASURES[a.kind][2], 'keepsake');
+      G.hud.name(short, 'keepsake'); if (!a.part) G.hud.glint(short, M.TREASURES[a.kind][2], 'keepsake');
     } else {
-      St.trinkets.push(a.kind); G.audio.feather?.();
+      St.trinkets.push(a.kind); (St.at ||= {})[a.kind] ||= [a.x, a.z]; G.audio.feather?.();
       G.hud.glint(cap(name), `${cap(name)}, left by people long gone. It goes on your shelf of keepsakes in the Journal.`, 'keepsake');
     }
     G.hud.did('relic');
     // a keepsake too: on the shelf (story.js) and for the raven's hoard (life.js)
-    G.story?.keepsakes?.push(a.treasure ? name.toLowerCase() : name.replace(/^an? /, ''));
+    if (!a.find) G.story?.keepsakes?.push(a.treasure ? name.toLowerCase() : name.replace(/^an? /, ''));
     G.emit('keepsake', { kind: a.kind, artefact: true });
     G.emit('artefact', a);
     near = near.filter(o => o !== a);
   }
+  // a treasure or a part waits while the talons are full (set down what you hold, or take it home first)
+  const full = a => (a.treasure || a.carry) && G.held?.();
+  let fullT = 0;
+  const canTake = a => { if (!full(a)) return true; if (G.t - fullT > 20) { fullT = G.t; G.hud.reply(`Your talons are full: set ${G.held().name} down first`, 3); } return false; };
   G.on('land', kind => {
-    if (kind === 'ground') for (const a of near) if (Math.hypot(a.x - b.p[0], a.z - b.p[2]) < 3.5 && Math.abs(a.y - b.p[1]) < 2) { take(a); break; }
+    if (kind === 'ground') for (const a of near) if (Math.hypot(a.x - b.p[0], a.z - b.p[2]) < 3.5 && Math.abs(a.y - b.p[1]) < 2 && canTake(a)) { take(a); break; }
   });
 
   G.hud.tip('relic', () => near.some(a => {
     const d = Math.hypot(a.x - b.p[0], a.z - b.p[2]);
-    return b.state === 'fly' ? d < 45 && b.p[1] - a.y < 35 : d < 18;
+    return b.state === 'fly' ? d < 45 * (G.finds?.glintK || 1) && b.p[1] - a.y < 35 : d < 18;
   }), 'Something glints by the old walls: a thing people left. Land beside it, or skim low over it, to take it. Trinkets go on your shelf; some things are treasures.');
 
   // ---- the wonders (wonders.js): drawn from far off, each mesh built when first near ---------
@@ -133,29 +149,7 @@ export function ruinsSystem(G) {
       St.wonders[W.key] = { day: G.day || 1 };
   }
 
-  // ---- the journal ----------------------------------------------------------------------------
-  // Journal > Things > Keepsakes (James, 2026-10-24): one shelf for every keepsake found: the
-  // glinting things in the grass (story.js), the trinkets by the old doorsteps,
-  // the one-of-a-kind treasures (starred, with their story), and the notes from bottles (drift.js)
-  const sec = journal(G).section(42, 'Keepsakes');
-  const capA = n => n.replace(/^(a|an|the) /i, '').replace(/^./, c => c.toUpperCase());
-  G.menu.onOpen(() => {
-    const K = G.story?.keepsakes || [], kc = {}, tc = {};
-    for (const k of K) if (typeof k === 'number') kc[k] = (kc[k] || 0) + 1;
-    for (const k of St.trinkets) tc[k] = (tc[k] || 0) + 1;
-    const notes = G.bottleNotes?.() || [];
-    const items = [
-      ...KEEPSAKES.map((n, i) => ({ name: capA(n), found: !!kc[i], n: kc[i], icon: 'keepsake' })),
-      ...Object.entries(M.TRINKETS).map(([k, n]) => ({ name: capA(n), found: !!tc[k], n: tc[k], icon: 'keepsake' })),
-      ...Object.entries(M.TREASURES).map(([k, [n, , story]]) => { const f = St.treasures[k]; return { name: capA(n), star: true, found: !!f, icon: 'keepsake', note: f ? `${story} Found on day ${f.day}${f.place ? `, at ${f.place}` : ''}.` : '' }; }),
-      // a bottle's note, named by its first words: “If anyone finds this…”
-      ...BOTTLE_NOTES.map((t, i) => { const f = notes.find(q => q.note === i); return { name: f ? `“${t.split(' ').slice(0, 4).join(' ').replace(/[.,;:]$/, '')}…”` : 'A note in a bottle', found: !!f, icon: 'keepsake', note: f ? `“${t}” ${f.where || ''}` : '' }; }),
-    ];
-    const got = items.filter(i => i.found).length;
-    sec.count(`${got} of ${items.length}`);
-    sec.body.innerHTML = shelf(items)
-      + (got ? '' : '<p class="muted3">Rare things glint in the grass, and by the doorsteps and wells of the old farms and villages: land beside one to take it. Bottles with notes drift on every ocean. All of it is kept here.</p>');
-  });
+  // the Journal's keepsakes shelf, grouped in sets, is sys/finds.js
 
   // the feature list (Settings > Advanced): each with a Try it that flies you there
   const flyTo = (x, z, tx, tz, up = 30) => { b.state = 'fly'; b.p = [x, Math.max(height(x, z), 0) + up, z]; b.yaw = Math.atan2(tx - x, -(tz - z)); b.s = 12; b.gamma = 0; };
@@ -197,13 +191,13 @@ export function ruinsSystem(G) {
       // taking: standing or perched beside it, or plucked up skimming low over it
       for (const a of near) {
         const dx = a.x - b.p[0], dz = a.z - b.p[2], dy = b.p[1] - a.y, d = Math.hypot(dx, dz);
-        if ((b.state === 'ground' || b.state === 'perch') && b.settle <= 0 && d < 1.9 && Math.abs(dy) < 1.5) { take(a); break; }
-        if (b.state === 'fly' && d < 1.6 && dy > -.5 && dy < 2.2 && b.s < 24) { take(a); break; }
+        if ((b.state === 'ground' || b.state === 'perch') && b.settle <= 0 && d < 1.9 && Math.abs(dy) < 1.5 && canTake(a)) { take(a); break; }
+        if (b.state === 'fly' && d < 1.6 && dy > -.5 && dy < 2.2 && b.s < 24 && canTake(a)) { take(a); break; }
       }
       // the sun catches glass and brass: a glint now and then, seen from the air (not at night)
       const day = G.light?.daylight ?? 1;
-      if (day > .35) for (const a of near) if (Math.random() < dt * .9 * day && Math.hypot(a.x - b.p[0], a.z - b.p[2]) < 120)
-        G.part([a.x + (Math.random() - .5) * .3, a.y + .25, a.z + (Math.random() - .5) * .3], [0, .5, 0], .5, [1, .96, .8], a.treasure ? .11 : .08);
+      if (day > .35) for (const a of near) if (Math.random() < dt * .9 * day && Math.hypot(a.x - b.p[0], a.z - b.p[2]) < 120 * (G.finds?.glintK || 1))
+        G.part([a.x + (Math.random() - .5) * .3, a.y + .25, a.z + (Math.random() - .5) * .3], [0, .5, 0], .5, [1, .96, .8], (a.treasure ? .11 : .08) * (G.finds?.glintK || 1));
     },
     scene(S) {
       const cam = S.cam;
@@ -244,7 +238,7 @@ export function ruinsSystem(G) {
         for (const o of T.portals) if (close(o.x, o.z)) (S.props.ru_portal ||= []).push(o.x, o.y, o.z, 1, o.yaw, .5, 0, 0);
       }
       for (const g of bridges) { const m = bridgeShape(g); (S.props[m.shape] ||= []).push(m.at[0], 0, m.at[1], 1, 0, .5, 0, 0); }
-      for (const a of near) if (Math.hypot(a.x - cam[0], a.z - cam[2]) < 160) (S.props['af_' + a.kind] ||= []).push(a.x, a.y + .01, a.z, 1.5, a.yaw, .5, 0, 0);
+      for (const a of near) if (Math.hypot(a.x - cam[0], a.z - cam[2]) < 160) (S.props['af_' + (a.shape || a.kind)] ||= []).push(a.x, a.y + .01, a.z, 1.5, a.yaw, .5, 0, 0);
     },
     save: () => ({ found: [...St.found], treasures: St.treasures, trinkets: St.trinkets, wonders: St.wonders }),
     load(o) { St.found = new Set(o?.found || []); St.treasures = o?.treasures || {}; St.trinkets = o?.trinkets || []; St.wonders = o?.wonders || {}; },
