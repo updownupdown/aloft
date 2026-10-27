@@ -7,7 +7,7 @@
 // get green rings: tap one to hop across. Aiming is forgiving: a dive leans toward its mouse, and a slow
 // approach lined up with a perch is drawn onto it.
 import { height, WATER, treesNear, perchesOf, solidsNear, ringsNear } from '../world.js';
-import { FLY, fwd, hopPerches, hopTo, hopDown } from '../flight.js';
+import { FLY, fwd, hopPerches, hopTo, hopDown, wantsPerch } from '../flight.js';
 import { clamp, smooth } from '../util.js';
 
 const T = 2.6, STEPS = 16, g = 9.8;
@@ -118,9 +118,10 @@ export function aimSystem(G) {
       A.focus += ((b.state === 'fly' ? b.stoop || 0 : 0) - A.focus) * Math.min(1, dt * 5);
       A.path = []; A.impact = null; A.target = null; A.perch = null; A.ring = null; A.mode = 'ink';
       A.hops = b.state !== 'fly' && b.settle <= 0 && !(b.eating > 0) && !b.asleep && !G.menu?.open ? hopPerches(b) : [];
-      // perch rings show in flight with the wings spread, looking for somewhere to land; faintly too
-      // when you come in slow and low (R3), so a perch near by is seen before you brake for it
-      const above = b.p[1] - Math.max(height(b.p[0], b.p[2]), WATER), want = b.state !== 'fly' ? 0 : b.flare > .25 ? 1 : b.s < 14 && above < 15 ? .45 : 0;
+      // perch rings show only when the hawk asks for a branch (flight.js wantsPerch: the wings braking
+      // or floating in, or slow), as a branch only catches it then: fully with the wings, faintly when
+      // just slow (James, 2026-10-27: in a wood they once showed, and caught, on every take-off)
+      const ask = wantsPerch(b), want = !ask ? 0 : (b.brake || 0) + (b.float || 0) > FLY.perchIntent ? 1 : .45;
       A.look = (A.look || 0) + (want - (A.look || 0)) * Math.min(1, dt * 5);
       if (b.state !== 'fly' || b.s < 3) { A.perches = []; return; }
       // fly the path ahead with today's bank and pitch held
@@ -188,7 +189,7 @@ export function aimSystem(G) {
       }
       if (A.target && A.focus > .25) A.mode = 'prey';
       else if (A.ring) A.mode = 'ring';
-      else if (bestP) {
+      else if (bestP && ask) {
         A.mode = 'perch'; A.perch = bestP;
         b.aimPerch = bestP; b.aimPerchT = 1.5;   // flight.js lands only on this one while it holds
         // slow and lined up: drawn gently onto it
