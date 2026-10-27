@@ -211,6 +211,7 @@ export function createMenu(G, ui) {
     return el;
   };
   M.onOpen = fn => M.opens.push(fn);
+  M.refresh = () => { for (const f of M.opens) f(); };   // fill every pane again now (a choice on one changed another)
   M.subtitle = fn => { M.sub = fn; };
   M.date = () => M.sub ? M.sub() : '';
   M.repaint = repaint;

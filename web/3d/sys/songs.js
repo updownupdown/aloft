@@ -37,6 +37,7 @@ import { clamp, dist3, angleTo } from '../util.js';
 import { registerSongbirds, pushBird, songTreesNear, habitat, land, clearSpots } from './songbirds.js';
 import { createSingUI, NOTE_COLS, KINDS, glyph } from './singui.js';
 import { journal } from '../journal.js';
+import { icon } from '../icons.js';
 import { BIRD } from '../hawk.js';
 import { songbirdPic } from '../pics.js';
 
@@ -658,17 +659,18 @@ export function songsSystem(G) {
   H.tip('call', () => b.state === 'fly' && G.clock > 240, 'Hold Call, top right, to scream: the longer you hold, the louder. Mice freeze and far hawks answer.');
   // Journal > Songs, a section a continent (each bird under the first it lives on)
   const CONTS = [['n-america', 'North America'], ['s-america', 'South America'], ['europe', 'Europe'], ['africa', 'Africa'], ['asia', 'Asia'], ['oceania', 'Oceania'], ['shore', 'The Other Shore']];
-  // what Sing is doing, and what starts each, at the top of Journal > Songs
-  const MODES = `<details class="sghow3"><summary>How singing works</summary><dl class="sgmodes3">
+  // what Sing is doing, and what starts each: on Lessons > Songs, a button to it at the top of Journal > Songs (James 10-27)
+  const MODES = `<h3 class="keysh3">How singing works</h3><dl class="sgmodes3">
     <dt class="learn">Learning</dt><dd>Perch within about 45 m of a songbird singing a song you do not know (an amber dot on its logo in the rail), or tap its logo, and tap Sing. Each note it sings lights its row on the pad and its place on the card: copy it with the same swipe or tap. It sings the song at its own speed, then once more slowly, at your pace. Fast or long songs are copied with taps alone. Every note you get right stays found on the card, in any order, and a wrong note just moves on to the next; miss the same note twice and its shape shows. Find every note to learn the song. It stops to listen while you sing and sings again when you stop.</dd>
     <dt class="imitate">Imitating</dt><dd>Tap the logo of a bird whose song you know (or pick a song from the list). Sing it and a bird of that kind near by answers with a gift. Tap the song's name for the next song you know of that bird.</dd>
     <dt>Voice only</dt><dd>A bird you have heard but whose song you do not know, with none of its kind singing near: you sing in its voice, with no song to copy yet.</dd>
     <dt>Free song</dt><dd>Your own bird, at the top of the rail: sing anything you like.</dd>
-    <dt>Learned, Answered</dt><dd>For a moment after you learn a song, or a bird answers yours.</dd></dl></details>`;
+    <dt>Learned, Answered</dt><dd>For a moment after you learn a song, or a bird answers yours.</dd></dl>`;
   // (after the core's own tabs, which main.js adds once the systems are made)
   queueMicrotask(songsTab);
   function songsTab() {
     const pane = journal(G).page('songs');
+    G.menu.page('how', 'songs').insertAdjacentHTML('beforeend', MODES);
     pane.insertAdjacentHTML('beforeend', '<div class="songbook3"></div>');
     const book = pane.querySelector('.songbook3');
     // a song's notes, each at its pitch, as on the card (taps alone for a tap-only song)
@@ -695,13 +697,15 @@ export function songsSystem(G) {
       const here = AGE_ID === 'shore' ? 'shore' : continentAt(b.p[0], b.p[2]), near = sort === 'near' && here;
       const groups = near ? [[here, `Near here: ${CONTS.find(c => c[0] === here)?.[1] || 'this land'}`, sp => sp.cont.includes(here)]] : CONTS.map(([c, t]) => [c, t, sp => sp.cont[0] === c]);
       book.innerHTML = `<div class="sgtop3"><p class="sub"><b>${songCount()}</b> of ${songTotal} songs <span>·</span> <b>${G.learned.size}</b> of ${learnable.length} songbirds</p>
-        <div class="gbar3"><button data-sort="near" class="${sort === 'near' ? 'on' : ''}">Near here</button><button data-sort="cont" class="${sort !== 'near' ? 'on' : ''}">By continent</button></div></div>${MODES}`
+        <div class="gbar3"><button data-sort="near" class="${sort === 'near' ? 'on' : ''}">Near here</button><button data-sort="cont" class="${sort !== 'near' ? 'on' : ''}">By continent</button></div>
+        <button class="sghowbtn3" data-how>${icon('how')}How singing works</button></div>`
         + groups.map(([, title, f]) => { const L = SPECIES.filter(f); return `<h3 class="sgcont3">${title} <small>${L.filter(sp => G.learned.has(sp.id)).length} of ${L.length}</small></h3><ul class="guide3 songs3">${L.map(card).join('')}</ul>`; }).join('')
         + (G.guide?.cards ? G.guide.cards('bird', 'Other birds') : '');
     }
     // a known song played from the book, in its bird's voice (the version you know best)
     let playing = 0, sort = store.get('songSort', 'near');
     book.addEventListener('click', e => {
+      if (e.target.closest('[data-how]')) { G.menu.set(true, 'how', 'songs'); return; }
       const so = e.target.closest('[data-sort]'); if (so) { sort = so.dataset.sort; store.set('songSort', sort); fill(); return; }
       const btn = e.target.closest('[data-play]'); if (!btn) return;
       const [id, k] = btn.dataset.play.split('.').map(Number), t = versionOf(SPECIES[id], k); if (!t) return;

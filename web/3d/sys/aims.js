@@ -150,7 +150,7 @@ export function aimsSystem(G) {
     if (L) life.body.innerHTML = `<p class="life3t">${esc(L.title)}${L.done ? ' <small>Done.</small>' : ''}</p><ul class="life3">${L.steps.map(s => `<li class="${s.done ? 'done' : ''}"><i></i><span>${esc(s.text)}</span>${s.need > 1 ? ` <small>${Math.min(s.n, s.need)} of ${s.need}</small>` : ''}</li>`).join('')}</ul>`;
     const n = KEYS.filter(k => A.seen[k]).length;
     lands.count(`${n} of ${KEYS.length}`);
-    lands.body.innerHTML = `<div class="lands3">${KEYS.map(k => `<figure class="${A.seen[k] ? 'seen' : ''}"><img alt="" src="${pic(k)}"><figcaption>${A.seen[k] ? esc(cap(BIOMES[k].label)) : '?'}</figcaption></figure>`).join('')}</div>`
+    lands.body.innerHTML = `<div class="lands3">${KEYS.slice().sort((p, q) => cap(BIOMES[p].label).localeCompare(cap(BIOMES[q].label))).map(k => `<figure class="${A.seen[k] ? 'seen' : ''}"><img alt="" src="${pic(k)}"><figcaption>${A.seen[k] ? esc(cap(BIOMES[k].label)) : '?'}</figcaption></figure>`).join('')}</div>`
       + (n ? '' : '<p class="muted3">Each land you fly over fills in here: forest, steppe, tundra, desert, rainforest.</p>');
   });
   const cap = t => t.replace(/^the /, '').replace(/^./, c => c.toUpperCase());

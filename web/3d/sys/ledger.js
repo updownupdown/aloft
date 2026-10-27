@@ -19,7 +19,7 @@ export function ledgerSystem(G) {
   const page = journal(G).page('everything');
   // a row: an icon, what, how many of how many (or a count alone), a thin bar, a line of what helps
   const row = (ic, what, n, of, help = '') => `<li class="${of && n >= of ? 'full' : ''}">${icon(ic)}<span><b>${esc(what)}</b>${help ? `<small>${esc(help)}</small>` : ''}</span>
-    <em>${n}${of ? `<s>/${of}</s>` : ''}</em>${of ? `<i><u style="width:${Math.min(100, n / of * 100).toFixed(1)}%"></u></i>` : '<i></i>'}</li>`;
+    <em>${n}${of ? `<s>/${of}</s>` : ''}</em><i><u style="width:${of ? Math.min(100, n / of * 100).toFixed(1) : 0}%"></u></i></li>`;   // (a bar on every row, empty at 0 or with no total: James 10-27)
   const section = (title, rows, note = '') => `<section class="led3"><h3><span>${title}</span></h3>${note ? `<p class="muted3">${note}</p>` : ''}<ul>${rows.join('')}</ul></section>`;
 
   function draw() {

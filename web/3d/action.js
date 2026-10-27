@@ -1,11 +1,9 @@
-// One action button, bottom middle (placed by sys/songs.css): it shows the one action that fits now
-// (Eat with a catch in your feet, Drink by fresh water, Sleep on a roost at night, else Take off; Leave
-// it here with a catch on a branch), and a swipe up or down on it turns to the other when
-// both fit, shown as dots. Keys: T takes off, E runs the action shown (or the first that isn't Take
-// off), Up/Down turn to the other. Each action comes from the system that owns it (G.actions: takeoff in
-// main.js, sleep in sys/sleep.js) as { run(), when() }; one not in ACTS names itself with label and
-// icon (a string or a function: sys/quests.js, Make this your ledge). Settings can turn it off for
-// the separate buttons.
+// The action buttons, bottom right: one pill for each action that fits now (Eat with a catch in your
+// feet, Drink by fresh water, Sleep on a roost at night, Leave it here with a catch on a branch, ...),
+// side by side, Take off always the rightmost (James 10-27: not one button to swipe). Keys: T takes off,
+// E runs the first that isn't Take off. Each action comes from the system that owns it (G.actions:
+// takeoff in main.js, sleep in sys/sleep.js) as { run(), when() }; one not in ACTS names itself with
+// label and icon (a string or a function: sys/quests.js, Make this your ledge).
 import { icon } from './icons.js';
 
 const ACTS = {
@@ -16,53 +14,36 @@ const ACTS = {
   sleep: ['Sleep', 'sleep'],
   takeoff: ['Take off', 'takeoff'],
 };
-const ORDER = ['eat', 'berries', 'drink', 'sleep', 'takeoff', 'leave'];   // the first that fits is shown first (then the others' own, in the order added)
+const ORDER = ['eat', 'berries', 'drink', 'sleep', 'leave'];   // left to right (then the others' own, in the order added, then Take off)
 
 export function actionButton(G, ui) {
-  ui.insertAdjacentHTML('beforeend', `<button class="act3 gone" aria-label=""><i class="ic"></i><span></span><i class="dots"></i></button>`);
-  const btn = ui.querySelector('.act3'), ic = btn.querySelector('.ic'), label = btn.querySelector('span'), dots = btn.querySelector('.dots');
-  G.settings.oneAction = G.store.get('oneAction3d', true);
-  G.menu.toggle('play', { label: 'One action button', sub: 'Take off and Sleep in one; swipe it for the other', get: () => G.settings.oneAction, set: v => { G.settings.oneAction = v; G.store.set('oneAction3d', v); refresh(); } });
-  let shown = null, pick = 0, key = '', y0 = null, swiped = false;
+  ui.insertAdjacentHTML('beforeend', `<div class="acts3"></div>`);
+  ui.classList.add('act3on');   // (the old separate Take off, Eat and Sleep buttons stay hidden)
+  const row = ui.querySelector('.acts3');
+  let key = '';
 
-  function fits() { return [...ORDER, ...Object.keys(G.actions || {}).filter(id => !ORDER.includes(id))].filter(id => G.actions?.[id]?.when?.()); }
+  function fits() {
+    const own = Object.keys(G.actions || {}).filter(id => !ORDER.includes(id) && id !== 'takeoff');
+    return [...ORDER, ...own, 'takeoff'].filter(id => G.actions?.[id]?.when?.());
+  }
   const named = id => { const a = G.actions[id], v = f => typeof f === 'function' ? f() : f; return ACTS[id] || [v(a.label) || id, v(a.icon) || 'keepsake']; };
   function refresh() {
-    const on = G.settings.oneAction;
-    ui.classList.toggle('act3on', on);
-    const list = on && !G.menu?.open ? fits() : [];
-    const k = list.join(',');
-    if (k !== key) { key = k; pick = 0; }   // what fits changed: back to the first
-    shown = list[pick % Math.max(1, list.length)] || null;
-    btn.classList.toggle('gone', !shown);
-    if (!shown) return;
-    const [name, ik] = named(shown);
-    if (label.textContent !== name || btn.dataset.act !== shown) { label.textContent = name; ic.innerHTML = icon(ik); btn.setAttribute('aria-label', name); btn.dataset.act = shown; }
-    dots.innerHTML = list.length > 1 ? list.map((id, i) => `<b class="${i === pick % list.length ? 'on' : ''}"></b>`).join('') : '';
+    const list = !G.menu?.open ? fits() : [];
+    const k = list.map(id => id + named(id).join()).join('|');
+    if (k === key) return; key = k;
+    row.innerHTML = list.map(id => { const [name, ik] = named(id); return `<button class="act3${id === 'takeoff' ? ' go3' : ''}" data-act="${id}" aria-label="${name}"><i class="ic">${icon(ik)}</i><span>${name}</span></button>`; }).join('');
   }
-  // a tap runs it; a swipe up or down turns to the next that fits
-  btn.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); btn.setPointerCapture(e.pointerId); y0 = e.clientY; swiped = false; G.audio.unlock?.(); });
-  btn.addEventListener('pointermove', e => {
-    if (y0 === null || swiped || Math.abs(e.clientY - y0) < 22) return;
-    swiped = true; const n = fits().length; if (n > 1) { pick = (pick + (e.clientY < y0 ? 1 : n - 1)) % n; refresh(); btn.classList.add('turn'); setTimeout(() => btn.classList.remove('turn'), 200); }
+  row.addEventListener('pointerdown', e => { if (e.target.closest('.act3')) { e.preventDefault(); e.stopPropagation(); G.audio.unlock?.(); } });
+  row.addEventListener('pointerup', e => {
+    const id = e.target.closest('.act3')?.dataset.act; if (!id || !G.actions?.[id]) return;
+    e.stopPropagation(); G.actions[id].run(); key = ''; refresh();
   });
-  btn.addEventListener('pointerup', e => {
-    if (y0 === null) return; y0 = null;
-    if (!swiped && shown) { e.stopPropagation(); G.actions[shown].run(); key = ''; refresh(); }
-  });
-  btn.addEventListener('pointercancel', () => { y0 = null; });
-  // keys: T take off, E the action shown (never Take off: that is T), Up/Down turn to the next
+  // keys: T take off, E the first action that isn't Take off
   addEventListener('keydown', e => {
     if (e.repeat || G.menu?.open || G.photo || e.target.closest?.('input, textarea')) return;
     const list = fits(), run = id => { G.actions[id].run(); key = ''; refresh(); };
     if (e.code === 'KeyT' && list.includes('takeoff')) run('takeoff');
-    else if (e.code === 'KeyE') {
-      const cur = list[pick % Math.max(1, list.length)], id = cur && cur !== 'takeoff' ? cur : list.find(i => i !== 'takeoff');
-      if (id) run(id);
-    } else if ((e.code === 'ArrowUp' || e.code === 'ArrowDown') && G.b.state !== 'fly' && list.length > 1) {
-      if (list.join(',') !== key) refresh();
-      pick = (pick + (e.code === 'ArrowUp' ? 1 : list.length - 1)) % list.length; refresh();
-    }
+    else if (e.code === 'KeyE') { const id = list.find(i => i !== 'takeoff'); if (id) run(id); }
   });
   setInterval(refresh, 150);
   refresh();

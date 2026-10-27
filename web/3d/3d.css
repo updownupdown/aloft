@@ -50,29 +50,24 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 /* low: the bar warms and breathes, slowly */
 .m3.low .bar i { background: #ff9a7a; animation: breathe3 3.2s ease-in-out infinite; }
 @keyframes breathe3 { 50% { background: #ffd0bc; } }
-/* the height ladder, under the menu button: a tape of ticks that slides with the height and a small
-   pointer, then the height, the rise or sink and the speed; perched or on the ground the tape dims
-   and the height sits over what the hawk is doing */
-.alt { position: absolute; left: 10px; top: 54px; display: flex; align-items: center; gap: 9px; font-variant-numeric: tabular-nums; filter: var(--halo); }
-.alt .tape { position: relative; flex: none; width: 9px; height: 84px; background: repeating-linear-gradient(to bottom, rgba(255, 255, 255, .85) 0 1.5px, transparent 1.5px 10px);
-  -webkit-mask-image: linear-gradient(transparent, #000 30%, #000 70%, transparent); mask-image: linear-gradient(transparent, #000 30%, #000 70%, transparent); transition: opacity .6s; }
-.alt .ptr { position: absolute; left: 12px; top: 37px; width: 7px; height: 10px; background: #fff; clip-path: polygon(0 50%, 100% 0, 100% 100%); }
-.alt .nums { margin-left: 8px; }
-.alt b { display: block; font-size: 20px; font-weight: 600; line-height: 1.1; white-space: nowrap; }
-.alt b small { display: inline; margin-left: 2px; font-size: 11px; font-weight: 500; color: inherit; opacity: .85; }
-.alt b.v { font-size: 13px; }
+/* height and speed, under the menu button (James 10-27): a row each, an icon, the number, then the rise
+   or sink (or red chevrons in rising air) and the wind with their arrows; no units */
+.alt { position: absolute; left: 14px; top: 58px; display: grid; grid-template-columns: 17px auto auto; align-items: center; column-gap: 7px; row-gap: 5px; font-variant-numeric: tabular-nums; filter: var(--halo); }
+.alt .arow3 { display: contents; white-space: nowrap; }
+.alt .ai3 svg { display: block; width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; opacity: .9; }
+.alt b { display: block; font-size: 19px; font-weight: 600; line-height: 1.1; }
+.alt b.v, .alt b.w { display: flex; align-items: center; gap: 3px; margin-left: 4px; font-size: 14px; font-weight: 600; }
+.alt .ar3 { width: 12px; height: 12px; fill: currentColor; }
+.alt .ar3.flat { opacity: 0; }
 .alt b.v.rise { color: #c9f5b0; }
-.alt .up3 { width: 20px; height: 20px; vertical-align: -4px; color: #ff4136; stroke-width: 2.8; filter: drop-shadow(0 0 3px rgba(255, 65, 54, .45)); }
+.alt b.v.sink { color: #ffd0bc; }
+.alt .up3 { width: 18px; height: 18px; color: #ff4136; stroke-width: 2.8; filter: drop-shadow(0 0 3px rgba(255, 65, 54, .45)); }
 .alt .up3.n1 .u2, .alt .up3.n1 .u3, .alt .up3.n2 .u3 { opacity: .2; }
-.alt b.v.st { font-weight: 500; }
-.alt b.k { font-size: 15px; margin-top: 4px; }
-.alt b.w { font-size: 13px; margin-top: 3px; }
-.alt b.w svg { width: 14px; height: 14px; margin-right: 4px; vertical-align: -2px; fill: currentColor; }
+.alt b.v.st { margin-left: 4px; font-weight: 500; }
 .alt b.w.tail { color: #9fcaff; }   /* the wind behind you */
 .alt b.w.head { color: #ff9e8a; }   /* in your face */
 .alt b:empty { display: none; }
-.alt.still .tape { opacity: .45; }
-.alt.still .ptr { display: none; }
+.alt.still .sp3 { display: none; }
 #ui3 .alt:not(.still) { opacity: 1 !important; }   /* flying: height and speed always show, whatever is open */
 
 /* top middle: the compass, a strip of the sky ahead, its edges fading out */
@@ -139,21 +134,17 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 #ui3:has(.sing3.on:not(.hidden)) { --actl: calc(14px + 96px + 10px + env(safe-area-inset-left)); }
 #ui3:has(.sing3.lefty) .takeoff3, #ui3:has(.sing3.lefty) .act3 { right: auto; left: var(--actl); }
 #ui3:has(.sing3.lefty):has(.takeoff3:not(.sleep3):not(.gone)) .takeoff3.sleep3 { right: auto; left: calc(var(--actl) + 150px); }
-/* the one action button (action.js), bottom right in Take off's place: it stands in for Take off, Sleep and the
-   songs' reopen button, with a dot for each action that fits now when there are more than one */
+/* the action buttons (action.js), bottom right: one pill each, side by side, Take off the rightmost with a moss ring */
 #ui3.act3on .takeoff3 { display: none !important; }
-#ui3 .act3 { pointer-events: auto; position: absolute; right: var(--actr); bottom: var(--actb);
-  display: flex; align-items: center; gap: 8px; min-height: 50px; padding: 0 20px 0 16px; border: 2px solid var(--moss); border-radius: 25px; cursor: pointer; touch-action: none;
+#ui3 .acts3 { position: absolute; right: var(--actr); bottom: var(--actb); display: flex; align-items: center; gap: 10px; pointer-events: none; }
+#ui3:has(.sing3.lefty) .acts3 { right: auto; left: var(--actl); }
+#ui3 .act3 { pointer-events: auto; display: flex; align-items: center; gap: 8px; min-height: 50px; padding: 0 20px 0 16px; border: 1px solid var(--rule); border-radius: 25px; cursor: pointer; touch-action: none;
   font: 700 15px var(--text); letter-spacing: .02em; color: var(--ink); background: var(--glass2); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur);
-  box-shadow: 0 3px 12px rgba(20, 15, 10, .3); transition: opacity .4s, transform .2s; }
+  box-shadow: 0 3px 12px rgba(20, 15, 10, .3); transition: transform .2s; }
+#ui3 .act3.go3 { border: 2px solid var(--moss); }
+#ui3 .act3:active { transform: scale(.95); }
 #ui3 .act3 svg { width: 18px; height: 18px; fill: none; stroke: var(--moss); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 #ui3 .act3 .ic { display: contents; }
-#ui3 .act3 .dots { display: flex; flex-direction: column; gap: 3px; margin-left: 2px; }
-#ui3 .act3 .dots:empty { display: none; }
-#ui3 .act3 .dots b { width: 5px; height: 5px; border-radius: 50%; background: rgba(42, 36, 32, .25); }
-#ui3 .act3 .dots b.on { background: var(--ink); }
-#ui3 .act3.turn { transform: scale(.94); }
-#ui3 .act3.gone { opacity: 0; pointer-events: none; }
 /* a phone held upright: the compass and the toasts drop below the top row */
 @media (max-width: 620px) {
   .hud3 { gap: 10px; padding-right: 12px; }
@@ -419,10 +410,15 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .tnext3 > h3 svg { width: 18px; height: 18px; fill: none; stroke: var(--moss); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .tnext3 .aims3 > section { padding: 0; margin: 0; border: 0; border-radius: 0; background: none; }
 .tnext3 .aims3 > section.later3 { display: none; }
-.tnext3 .nmore3 { margin: 8px 0 0; padding: 6px 14px; border: 1.5px solid var(--btnedge); border-radius: 16px; background: var(--btn); color: var(--ink); font: 600 13px var(--text); cursor: pointer; }
-.tnext3 .nmore3[hidden] { display: none; }
-.tnext3 .aims3 > section:not(.hidden):not(.later3) ~ section:not(.hidden):not(.later3) { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--rule); }
 .tnext3 .aims3 > section > h3 { display: none; }
+/* the rest offered as the focus (today.js), then the quests (section 9) */
+.sugg3:empty { display: none; }
+.sugg3 { display: grid; gap: 6px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--rule); }
+.sugg3 .sugh3 { margin: 0 0 2px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--ink2); }
+.sugg3 button { display: grid; gap: 1px; padding: 8px 12px; text-align: left; border: 1px solid var(--rule); border-radius: 14px; background: var(--btn); color: var(--ink); font: 500 13.5px/1.3 var(--text); cursor: pointer; }
+.sugg3 button small { font-size: 11.5px; font-weight: 600; color: var(--moss); }
+.tnext3 .aims3 > section[data-order="9"] { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--rule); }
+.tnext3 .aims3 > section[data-order="9"] > h3 { display: flex; }
 .nch3 { display: flex; align-items: center; gap: 7px; margin: 0 0 4px; font-size: 12.5px; font-weight: 600; color: var(--ink2); }
 .nch3 svg { flex: none; width: 18px; height: 18px; fill: none; stroke: var(--moss); stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
 .nch3 small { margin-left: auto; font-size: 12px; white-space: nowrap; font-variant-numeric: tabular-nums; }
@@ -632,12 +628,11 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .pips3s { display: flex; gap: 3px; margin-top: 3px; }
 .pips3s i { flex: 1; height: 5px; border-radius: 3px; background: rgba(42, 36, 32, .13); }
 .pips3s i.on { background: var(--sc); }
-.mapbtn3 { position: absolute; right: 12px; bottom: 12px; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; pointer-events: none; }   /* the column is as wide as the place name: only its buttons take touches */
-.mapbtn3 > * { pointer-events: auto; }
-/* where you are, on the button that centres on you: the name left of the mark */
-.mapbtn3 .mapme3 { width: auto; max-width: min(340px, 44vw); gap: 8px; padding: 0 10px 0 14px; border-radius: 24px; }
-.mapme3 span { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; font: 600 13px/1.25 var(--text); text-align: right; }
-.mapme3 span:empty { display: none; } .mapbtn3 .mapme3:has(span:empty) { width: 48px; padding: 0; }
+.mapbtn3 { position: absolute; right: 12px; bottom: 12px; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.mapbtn3 .mapme3 { margin-bottom: 6px; border-radius: 50%; }
+/* Dev: every place, tagged (map.js devDraw), top middle */
+.mapdev3 { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); height: 32px; padding: 0 14px; border: 0; border-radius: 999px; background: var(--glass2); color: var(--ink2); font: 600 12.5px var(--text); box-shadow: 0 1px 4px rgba(40, 30, 20, .15); cursor: pointer; }
+.mapdev3.on { background: var(--moss); color: #fff; }   /* where you are: above the zoom */
 .mapbtn3 button { width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: 14px; background: var(--glass2); box-shadow: 0 1px 4px rgba(40, 30, 20, .15); cursor: pointer; }
 .mapbtn3 svg { width: 28px; height: 28px; fill: none; stroke: var(--ink); stroke-width: 2; stroke-linecap: round; }
 .mapbtn3 svg .dot { fill: var(--ink); stroke: none; }
@@ -787,8 +782,8 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 
 /* the lessons (sys/lessons.js, coach.js): the first flight shows only the bird, the coach, the thumb
    pads, Take off and the menu button; after it the whole HUD, and the lessons card once */
-#ui3.learn3 > :not(.coach3):not(.ghost3):not(.skip3):not(.pad3):not(.edge3):not(.therm3):not(.thermc3):not(.windv3):not(.windh3):not(.act3):not(.takeoff3):not(.menu3):not(.veil3):not(.fade3) { display: none !important; }
-#ui3.learn3 .act3:not(.gone), #ui3.learn3 .takeoff3:not(.gone) { animation: pulse3 1.8s ease-in-out infinite; }
+#ui3.learn3 > :not(.coach3):not(.ghost3):not(.skip3):not(.pad3):not(.edge3):not(.therm3):not(.thermc3):not(.windv3):not(.windh3):not(.acts3):not(.takeoff3):not(.menu3):not(.veil3):not(.fade3) { display: none !important; }
+#ui3.learn3 .act3, #ui3.learn3 .takeoff3:not(.gone) { animation: pulse3 1.8s ease-in-out infinite; }
 @keyframes pulse3 { 0%, 100% { box-shadow: var(--shadow), 0 0 0 0 rgba(63, 90, 53, .55); } 60% { box-shadow: var(--shadow), 0 0 0 12px rgba(63, 90, 53, 0); } }
 /* the coach: the thumbs doing the move, its name, one line, a bar while it is held, a tick when done */
 .coach3 { position: absolute; left: 50%; top: calc(14px + env(safe-area-inset-top)); transform: translateX(-50%); width: min(470px, calc(100vw - 170px));
@@ -1018,15 +1013,14 @@ details.lgrp3[open] .lchev3 { transform: rotate(180deg); }
 .ledhead3 b { display: block; font-size: 17px; color: var(--ink); }
 .ledhead3 small { display: block; font-size: 12.5px; line-height: 1.35; margin-top: 2px; }
 .led3 ul { list-style: none; margin: 0; padding: 0; }
-.led3 li { display: grid; grid-template-columns: 22px 1fr auto; gap: 2px 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--rule); }
-.led3 li:last-child { border-bottom: 0; }
+.led3 ul { display: grid; gap: 14px; }
+.led3 li { display: grid; grid-template-columns: 22px 1fr auto; gap: 3px 10px; align-items: center; }
 .led3 li > svg { width: 20px; height: 20px; color: var(--ink2); }
 .led3 li.full > svg { color: var(--moss); }
 .led3 li b { display: block; font-size: 14px; font-weight: 600; color: var(--ink); }
 .led3 li small { display: block; font-size: 12px; color: var(--ink2); line-height: 1.3; }
 .led3 li em { font-style: normal; font-weight: 700; font-size: 14px; color: var(--ink); font-variant-numeric: tabular-nums; }
 .led3 li em s { text-decoration: none; font-weight: 500; color: var(--ink2); }
-.led3 li > i { grid-column: 2 / 4; height: 3px; border-radius: 2px; background: var(--rule); overflow: hidden; }
-.led3 li > i:empty { display: none; }
+.led3 li > i { grid-column: 2 / 4; height: 4px; border-radius: 2px; background: rgba(42, 36, 32, .1); overflow: hidden; }
 .led3 li > i u { display: block; height: 100%; background: var(--clay); }
 .led3 li.full > i u { background: var(--moss); }
