@@ -30,7 +30,6 @@ const SHORT = {
   skim: ['glide', 'Skim low: the air cushions you'],
   gust: ['glide', 'A gust: meet it nose up'],
   canopy: ['dot', 'Under the trees: thread the trunks'],
-  slip: ['glide', 'Tuck in beside the wild hawk'],
   kite: ['flare', 'Into the wind: flare to kite'],
   plunge: ['tuck', 'Over water: dive in feet first'],
   silent: ['glide', 'Glide silent: mice can’t hear you'],
@@ -41,7 +40,7 @@ const SHORT = {
 // [id, title, icon, tip ids]; a tip not listed falls in 'other'
 export const TIP_GROUPS = [
   ['flying', 'Flying', 'flap', ['flap', 'bank', 'climb', 'tuck', 'flare', 'aim', 'kite', 'plunge', 'silent']],
-  ['air', 'The air', 'thermal', ['ride', 'ring', 'skim', 'gust', 'canopy', 'slip']],
+  ['air', 'The air', 'thermal', ['ride', 'ring', 'skim', 'gust', 'canopy']],
   ['ground', 'Perched and on the ground', 'takeoff', ['hop', 'ground', 'sleep']],
   ['food', 'Food and water', 'prey', ['hunt', 'drink', 'worms', 'berries', 'carry']],
   ['songs', 'Songs and calls', 'songs', ['song', 'imitate', 'call']],

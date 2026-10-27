@@ -26,7 +26,7 @@
 // Learned and heard songs and the song log keep their own keys (aloft.learned, aloft.heard,
 // aloft.songlog), as in 2D, so a new journey keeps them. G.learned is a Set of species ids
 // (the music and courtship read it). Gifts that other systems can make real (calm weather,
-// berries, fish, a companion) are announced on the bus as G.emit('gift', ev): set ev.handled
+// berries, fish, a thread of light) are announced on the bus as G.emit('gift', ev): set ev.handled
 // and this system skips its own stand-in. G.gifts holds each running gift's seconds left.
 import { SPECIES, active, timeOfDay, songOf as songN, songKey, TAP_GAP } from '../../src/songs.js';
 import { continentAt } from '../earth.js';
@@ -46,7 +46,7 @@ export const SONG = {
   hearR: 90,        // a songbird is heard (and joins the left pools) within this
   nearR: 45,        // close enough to learn from, sitting or standing (any tree near by, not only yours)
   simR: 140,        // songbirds simulated around the hawk
-  powerCD: 40,      // seconds before a song's gift works again (a companion's, four times that)
+  powerCD: 40,      // seconds before a song's gift works again (the thread of light's, four times that)
   chorus: 150,      // how long the dawn chorus lasts
   chorusSpread: 5,  // m/s: how fast a chorus you started spreads from your tree
   alarmAbove: [12, 70], // a hawk this high over a songbird (m) is seen; lower slips by
@@ -59,7 +59,7 @@ export const SONG = {
 // what each gift does in 3D, where it differs from songs.js
 const GIFT_TEXT = {
   worms: 'grubs stir in the bark, and you eat a few',
-  companion: 'it shows you the way to rising air',
+  way: 'a thread of light leads you to rising air',
   night: 'the night grows bright (and once you know it, you see better at night)',
   warm: 'a warm glow: your wings recover faster',
   glint: 'it scolds toward a songbird whose song you do not know yet',
@@ -515,7 +515,7 @@ export function songsSystem(G) {
     const text = gift(sp, scale);
     say(`The ${sp.name} answers: ${text}.${how}`, 4);
   }
-  const cd = sp => sp.powerKey === 'companion' ? SONG.powerCD * 4 : SONG.powerCD;
+  const cd = sp => sp.powerKey === 'way' ? SONG.powerCD * 4 : SONG.powerCD;
   // a song's gift; k scales how long it lasts. Returns the words for the toast.
   function gift(sp, k = 1) {
     const key = sp.powerKey, ev = { key, k, sp, handled: false };
@@ -529,7 +529,7 @@ export function songsSystem(G) {
       case 'fish': G.hunger = Math.min(1, (G.hunger ?? 1) + .25 * k); break;
       case 'flock': run(60); makeFlock(sp); break;
       case 'calm': run(120); break;
-      case 'companion': run(60); break;
+      case 'way': run(60); break;
       case 'tailwind': run(45); break;
       case 'night': run(90); break;
       case 'lark': b.stamina = 1; G.thirst = Math.min(1, (G.thirst ?? 1) + .15 * k); break;
@@ -861,11 +861,11 @@ export function songsSystem(G) {
       if ((trailT -= dt) <= 0) {
         trailT = .35;
         // a trail of motes: toward rising air (thrush), toward an unknown songbird (jay)
-        const to = g.companion > 0 ? (thermalsNear(b.p[0], b.p[2], 500).sort((p, q) => Math.hypot(p.x - b.p[0], p.z - b.p[2]) - Math.hypot(q.x - b.p[0], q.z - b.p[2]))[0]) : null;
+        const to = g.way > 0 ? (thermalsNear(b.p[0], b.p[2], 500).sort((p, q) => Math.hypot(p.x - b.p[0], p.z - b.p[2]) - Math.hypot(q.x - b.p[0], q.z - b.p[2]))[0]) : null;
         const aim = to ? [to.x, Math.max(height(to.x, to.z), WATER) + 20, to.z] : g.glint > 0 ? glintAt : g.bells > 0 ? bellAt : null;
         if (aim) {
           const dx = aim[0] - b.p[0], dy = aim[1] - b.p[1], dz = aim[2] - b.p[2], d = Math.hypot(dx, dy, dz) || 1;
-          for (const r of [6, 12, 18]) if (r < d) G.part([b.p[0] + dx / d * r, b.p[1] + dy / d * r + .5, b.p[2] + dz / d * r], [dx / d * 2, 1.2, dz / d * 2], .9, g.companion > 0 ? [1, .9, .6] : g.glint > 0 ? [.45, .6, .9] : [1, .95, .7], .12);
+          for (const r of [6, 12, 18]) if (r < d) G.part([b.p[0] + dx / d * r, b.p[1] + dy / d * r + .5, b.p[2] + dz / d * r], [dx / d * 2, 1.2, dz / d * 2], .9, g.way > 0 ? [1, .9, .6] : g.glint > 0 ? [.45, .6, .9] : [1, .95, .7], .12);
         }
         // a meadowlark's gift: golden flecks over every mouse near you
         if (g.mice > 0) for (const m of G.systems.food?.mice?.values() || []) G.part([m.x, m.y + .5, m.z], [0, 2.5, 0], 1, [1, .8, .3], .16);

@@ -193,36 +193,28 @@ export function questsSystem(G) {
     if (a === 'stop') { Q.tracked = null; nextSec.el.classList.add('hidden'); }
     if (a === 'show' && q) showMe(q);
   });
-  // Show me (M of the review): the companion flies ahead toward the quest you follow, a km and a half or
-  // to the place if nearer, low over the land, and you ride along behind it
-  const SHOW = { far: 1500, step: 250, up: 30, v: 14 };
-  let showing = null;
+  // Show me (M of the review): a thread of light (sys/way.js) leads toward the quest you follow
   function showMe(q) {
     G.menu.set(false);
-    if (b.state !== 'fly') { showing = q.id; H.reply('Take off: your companion will show the way', 3); return; }
-    const dx = wrapX(q.x - b.p[0]), dz = q.z - b.p[2], d = Math.hypot(dx, dz), go = Math.min(d, SHOW.far), pts = [];
-    for (let s = SHOW.step; s <= go + 1; s += SHOW.step) { const x = b.p[0] + dx / d * Math.min(s, go), z = b.p[2] + dz / d * Math.min(s, go); pts.push([x, Math.max(height(x, z), WATER) + SHOW.up, z]); }
-    if (!pts.length) { H.reply('It is here, close by', 2.5); return; }
-    G.companion.fly(pts, SHOW.v, () => H.reply(d > SHOW.far ? `Your companion circles: on ${whereTo(b, q.x, q.z)}` : 'Your companion circles over it', 3.5));
-    H.reply('Your companion shows the way: follow it', 3);
+    G.way.show(q.x, null, q.z, { title: q.title, beacon: true, done: () => H.reply('Here it is', 2.5) });
+    H.reply(b.state !== 'fly' ? 'Take off: a thread of light shows the way' : 'Follow the thread of light', 3);
   }
   G.menu.onOpen(() => {
     const q = Q.list[Q.tracked], show = q && !q.done && !G.lessons?.learning;
     nextSec.el.classList.toggle('hidden', !show);
     if (show) nextSec.body.innerHTML = `<p class="nch3">${icon(q.icon || 'quest')}<span>Following</span>${q.of ? `<small>${q.n || 0} of ${q.of}</small>` : ''}</p>
       <p class="ntask3">${esc(q.title)}</p><p class="nsay3">${esc([q.text, here(q) ? whereTo(b, q.x, q.z) : ''].filter(Boolean).join(' '))}</p>
-      <div class="nbtns3">${here(q) && G.companion ? `<button data-q="show" class="main3">Show me</button>` : ''}${here(q) ? `<button data-q="map"${G.companion ? '' : ' class="main3"'}>Show on map</button>` : ''}<button data-q="stop">Stop following</button><button data-q="all" class="nall3">All quests</button></div>`;
+      <div class="nbtns3">${here(q) ? `<button data-q="show" class="main3">Show me</button><button data-q="map">Show on map</button>` : ''}<button data-q="stop">Stop following</button><button data-q="all" class="nall3">All quests</button></div>`;
   });
 
   // ---- the frame --------------------------------------------------------------------------------
   let lineT = 0, glintT = 0;
-  G.dev?.add({ id: 'questshow', area: 'Menu and map', round: 'Gameplay review M', title: 'Show me: the companion flies ahead toward the quest you follow', how: 'Follow a quest with a place, open Today: Show me. Your companion flies ahead (1.5 km, or to the place if nearer) low over the land; follow it. Grounded, it waits for you to take off.' });
+  G.dev?.add({ id: 'questshow', area: 'Menu and map', round: 'Gameplay review M', title: 'Show me: a thread of light leads toward the quest you follow', how: 'Follow a quest with a place, open Today: Show me. Fly: warm motes lead off toward it, a mark on the compass, and a column of light rises over the place as you near it.' });
   G.dev?.add({ id: 'quests', area: 'Menu and map', round: 'Gameplay 10-26', title: 'Quests: Journal > Quests, one followed on the compass and under it, all on the Map', how: 'Learn a song or pick up a treasure: it shows under Journal > Quests. Follow one: a mark on the compass, the next step under it, a circle or a mark on the Map.' });
   G.dev?.add({ id: 'ledge', area: 'Ground and perch', round: 'Gameplay 10-26 K1', title: 'Your ledge: make a favourite perch or a hidden place yours, and keep things there', how: 'Perch on a favourite perch or in a hidden place you found: the action button offers Make this your ledge. Carry a treasure there: Leave it here.' });
   return {
     id: 'quests',
     update(dt) {
-      if (showing && b.state === 'fly') { const q = Q.list[showing]; showing = null; if (q && !q.done && q.id === Q.tracked) showMe(q); }
       // the next step under the compass: the quest you follow, how far and which way
       if ((lineT -= dt) <= 0) {
         lineT = 1;

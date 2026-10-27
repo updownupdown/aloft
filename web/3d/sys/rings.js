@@ -73,11 +73,11 @@ export function ringsSystem(G) {
         b.s = Math.min(46, b.s + RING_BOOST); G.rings++; got.set(r.id, G.clock);
         G.hud.did('ring'); G.emit('ring', r);
         // a loop flown ring after ring, without a long pause between
-        if (run && run.circuit === r.circuit && G.clock - run.t < 25) { run.count++; run.t = G.clock; } else run = { circuit: r.circuit, count: 1, t: G.clock };
+        if (run && run.circuit === r.circuit && G.clock - run.t < 25) { run.count++; run.t = G.clock; } else run = { circuit: r.circuit, count: 1, t: G.clock, t0: G.clock };
         run.next = r.k + 1;
         tune(run.count, r.of);
         if (run.count >= r.of) {
-          run = null; G.emit('ringLoop', { circuit: r.circuit, n: r.of, level: r.level });
+          const secs = G.clock - run.t0; run = null; G.emit('ringLoop', { circuit: r.circuit, n: r.of, level: r.level, secs });
           lift = COURSE.liftT; b.stamina = Math.min(b.maxStamina ?? 1, b.stamina + COURSE.wings);
           if (today?.circuit === r.circuit) { today.done = true; G.offerDone?.('course'); G.hud.nextDone?.('course'); }
           const to = r.end?.kind === 'place' ? `, to ${r.end.name}` : r.end?.kind === 'air' ? ', onto rising air' : '';

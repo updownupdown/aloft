@@ -10,7 +10,7 @@ import { icon } from './icons.js';
 const SPAN = Math.PI * .55;          // from the middle to either edge
 const POINTS = [['N', 0], ['NE', 45], ['E', 90], ['SE', 135], ['S', 180], ['SW', 225], ['W', 270], ['NW', 315]];
 // each mark's icon (icons.js)
-const MARK = { south: 'south', home: 'home', pin: 'pin', place: 'landmarks', therm: 'thermal', ring: 'ring', find: 'landmarks', song: 'songs', water: 'thirst', course: 'ring',
+const MARK = { way: 'aim', south: 'south', home: 'home', pin: 'pin', place: 'landmarks', therm: 'thermal', ring: 'ring', find: 'landmarks', song: 'songs', water: 'thirst', course: 'ring',
   quest: 'quest', rumour: 'rumour', ledge: 'ledge', door: 'door', lamp: 'lamp', shore: 'lands', rest: 'twig', road: 'ring' };   // (sys/quests.js, ages.js, ocean.js)
 // a Call's look round: how far (m, about ten seconds' flight), how long the marks stay (s) and fade
 // at the end, and at most how many of each
@@ -18,7 +18,7 @@ export const CALLSEE = { r: 320, secs: 10, fade: 3, most: 3 };
 // at most this many marks at once (a Call's are on top, for their ten seconds): the quest you follow
 // and the way home first, then water when thirsty and Today's course, then the nearest of the rest
 export const MOST = 4;
-const FIRST = { quest: 0, rumour: 0, door: 1, water: 1, course: 2 };
+const FIRST = { way: 0, quest: 0, rumour: 0, door: 1, water: 1, course: 2 };
 
 export function createCompass(G, ui) {
   ui.insertAdjacentHTML('beforeend', `<div class="compass3" aria-hidden="true"><div class="strip"></div><i class="mid"></i></div>`);
