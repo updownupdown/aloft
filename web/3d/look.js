@@ -1,22 +1,19 @@
 // Look tests (Settings > Advanced > Look tests): ideas on trial, a switch each with its price in
-// the sub; each with `def` compiles a #define into the shaders (render.js R.relook). On trial
-// (10-26): M L X J, the study's recommended ideas. T mirror reflections follows Ultra (app.js) and
-// C shore foam High and Ultra (James 10-25), with no switch. Kept for good, no switch: D layered blue ridges,
-// E sunset undersides, G the glory (10-24), and from the performance study (10-26) V the ground's
-// light per vertex, N noise from a picture, K trees one-sided, O trees before the ground, H your
-// shadow has your shape, S sun glare, W soft dark corners (render.js, look.js grade()); taken out
-// A wind waves, B dew, F dappled light, real shadows, smooth shading, land detail, the grain choice.
+// the sub (an entry with `sub` gets a switch; with `def` it compiles a #define into the shaders,
+// render.js R.relook). None on trial now. T mirror reflections follows Ultra (app.js) and C shore
+// foam High and Ultra (James 10-25), with no switch. Kept for good, no switch: D layered blue
+// ridges, E sunset undersides, G the glory (10-24); from the performance study V the ground's light
+// per vertex, N noise from a picture, K trees one-sided, O trees before the ground, H your shadow
+// has your shape, S sun glare, W soft dark corners (10-26), M half-precision colours (LP_GLSL),
+// L cheaper far clouds (clouds.js), X far horizons (render.js rings[2], the layered haze) (10-27).
+// Taken out: A wind waves, B dew, F dappled light, J long evening shadows, real shadows, smooth
+// shading, land detail, the grain choice.
 // ?look=foam (or ?look=all) tries them for one visit without saving.
 import { store } from './util.js';
 
 export const LOOKS = [
   { id: 'reflect', letter: 'T', def: 'L_REFLECT', ultra: true, label: 'Mirror reflections' },
   { id: 'foam', letter: 'C', def: 'L_FOAM', high: true, label: 'Shore foam' },
-  // the study's ideas on trial (James 10-26), off by default. Measure with ?full=1&res=1 and Show frame rate
-  { id: 'mediump', letter: 'M', def: 'L_MEDIUMP', label: 'Half-precision colours', sub: 'the colour maths (light, haze colour, grade) in half floats, which a phone\'s GPU works about twice as fast; positions stay full. Should look the same; watch for banding in skies and fog' },
-  { id: 'cloudlod', letter: 'L', def: 'L_CLOUDLOD', label: 'Cheaper far clouds', sub: 'a far cloud is worked out from its big lobes only, its small lobes fading out with distance (no pop). Should look the same; saves cloud work on cloudy days' },
-  { id: 'farx', letter: 'X', def: 'L_FARX', label: 'Far horizons', sub: 'a third ring of coarse land out to 8 km, so far ranges and peaks stand on the skyline instead of the land ending at 2.4 km, and fade into the haze at the edge. Costs some triangles and a little ground work' },
-  { id: 'longshadow', letter: 'J', label: 'Long evening shadows', sub: 'as the sun goes low, the shadows under ruins and animals stretch away from it, and your own slides off to the side the light comes from. Cost: nothing to speak of' },
 ];
 
 export function createLooks(G, R) {
@@ -31,22 +28,17 @@ export function createLooks(G, R) {
     R.relook?.(); G.emit('look', R.look);
   };
   for (const L of LOOKS.filter(l => l.sub)) G.menu.toggle('play', { label: `${L.letter}. ${L.label}`, sub: L.sub, group: 'looks', get: () => R.look[L.id], set: v => set(L.id, v) });
-  G.dev?.add({ id: 'look-tests-mlxj', area: 'Settings and performance', title: 'Look tests: M half-precision colours, L cheaper far clouds (should look the same, measure); X far horizons, J long evening shadows', how: 'Settings > Advanced > Look tests. M and L: open ?full=1&res=1 with Show frame rate on, same view switch off and on. X: fly high over a range. J: evening, near ruins or animals.' });
   G.on('gfx', () => { if (!forced) { set('reflect', ultra()); set('foam', high()); } });
   G.dev?.add({ id: 'look-tests-ag', area: 'Settings and performance', title: 'Shore foam at High and Ultra (no switch); blue ridges, sunset undersides and the glory kept', how: 'Settings > Graphics > High, then a lake shore or coast. Far hills by day, sunset clouds, mist below you with the sun behind.' });
 }
 
 // The colour grade, shared by every shader that writes the screen (render.js, clouds.js): a soft
 // shoulder on the highlights, a warm lift in the shadows, and a tint for the time of day (uGradeT)
-// LP: the precision colours are worked in; M (look test) makes it mediump (half floats, about
-// twice as fast on a phone's GPU), while positions and distances stay highp
+// LP: the precision colours are worked in, mediump (half floats, about twice as fast on a phone's
+// GPU; M, James 10-27), while positions and distances stay highp
 export const LP_GLSL = `
 #ifndef LP
-#ifdef L_MEDIUMP
 #define LP mediump
-#else
-#define LP highp
-#endif
 #endif`;
 export const GRADE_GLSL = `${LP_GLSL}
 uniform LP vec3 uGradeT;
