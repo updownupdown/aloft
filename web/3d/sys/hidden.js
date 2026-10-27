@@ -1,7 +1,7 @@
 // Hidden places, on by default, switch in Settings > Advanced > Hidden places (or ?hidden=1): a ledge behind
 // the sheer waterfalls (fly through the curtain), rock shelters high in the ridges (a roof over a
-// dry perch; roost there), oases where date palms grow (a pool to drink from, reeds round it) and a hollow at the
-// foot of the great oaks and redwoods (perch on its sill); the caves are sys/caves.js, found here too. All
+// dry perch; roost there) and oases where date palms grow (a pool to drink from, reeds round it); the caves
+// are sys/caves.js, found here too. All
 // are pure functions of position, with no new terrain: the ledge and the shelter are hard shapes
 // (world.js env.solids) the hawk lands on, the pool is drunk from like a rain pool (G.oases,
 // food.js). What is found is kept under aloft.save3d, and listed in Journal > Places.
@@ -53,24 +53,6 @@ function ledgeMesh(k) {
   return B.out();
 }
 const rockOf = c => (c[0] + c[1] + c[2] < 1.05 ? 0 : c[0] - c[2] > .1 ? 1 : 2);
-// a hollow in an old tree's trunk at its foot (option H9): a dark doorway with a lip of bark, unit
-// height, facing +x; a bird can perch on its sill
-function hollowMesh(lean) {
-  reseed(73); const B = builder(), BARK = [.32, .24, .18], BARK2 = [.26, .19, .14], IN = [.07, .06, .05];
-  const P = [[0, -.32], [.62, -.36], [.96, -.2], [1, 0], [.96, .2], [.62, .36], [0, .32]];   // [height, across]
-  for (let i = 0; i + 1 < P.length; i++) {
-    const [h0, w0] = P[i], [h1, w1] = P[i + 1];
-    // leaning back with the trunk's taper
-    const x0 = -h0 * lean, x1 = -h1 * lean, ha = h0 * 1.12 - .02, hb = h1 * 1.12 - .02;
-    B.tri([.02, .02, 0], [x0 + .02, h0, w0], [x1 + .02, h1, w1], IN);
-    // the lip, a little proud of the bark
-    B.tri([x0, h0, w0], [.09 - ha * lean, ha, w0 * 1.3], [.09 - hb * lean, hb, w1 * 1.3], i & 1 ? BARK : BARK2, (rnd() - .5) * .2);
-    B.tri([x0, h0, w0], [.09 - hb * lean, hb, w1 * 1.3], [x1, h1, w1], i & 1 ? BARK2 : BARK);
-  }
-  return B.out();
-}
-// door height (m); the trunk's radius at the ground and how fast it narrows, from shapes.js (per metre of tree height, per metre up)
-const HOLLOW = { giant: { h: 3.4, r0: .0633, taper: .233, sill: .25 }, oak: { h: 2.2, r0: .0818, taper: .364, sill: .2 } };
 
 export function hiddenSystem(G) {
   const b = G.b, R = G.R;
@@ -98,14 +80,18 @@ export function hiddenSystem(G) {
         const d = Math.hypot(best.n[0], best.n[2]) || 1, dx = best.n[0] / d, dz = best.n[2] / d, x = best.x + dx * 1.2, z = best.z + dz * 1.2, y = height(x, z) + .3;
         p = { kind: 'shelter', id: 'sh' + key, x, y, z, dx, dz, yaw: Math.atan2(dz, dx), perch: { x: x + dx * 1.5 - dz * 1.5, y: y + .9, z: z + dz * 1.5 + dx * 1.5 }, name: `a shelter in the rock, ${placeName(x, z)}` };
       }
-    } else if (land === 'desert' && ih(gxw, gz, 903) < .12 && palmLands(cx, cz)) {
-      for (let i = 0; i < 40 && !p; i++) {
+    } else if (land === 'desert' && ih(gxw, gz, 903) < .5 && palmLands(cx, cz)) {   // one desert cell in two where palms grow (few cells: the strip is small)
+      for (let i = 0; i < 60 && !p; i++) {
         const a = i * 2.39996, r = 30 + i * 22, x = cx + Math.cos(a) * r, z = cz + Math.sin(a) * r;
-        if (normalAt(x, z)[1] > .965 && height(x, z) > WATER + 1.5) {
-          const y = height(x, z), palms = [], n = 6 + Math.floor(ih(gxw, gz, 904) * 3);
+        // level ground: the pool is flat, so the ground under and round it must be too (on a slope
+        // one side of it hung in the air): within 20 cm of the middle out to 6 m
+        const y0 = height(x, z); let flat = normalAt(x, z)[1] > .965 && y0 > WATER + 1.5;
+        for (let k = 0; k < 24 && flat; k++) { const rr = 2 + (k % 3) * 2, ra = k / 24 * TAU; if (Math.abs(height(x + Math.cos(ra) * rr, z + Math.sin(ra) * rr) - y0) > .2) flat = false; }
+        if (flat) {
+          const y = y0 - .02, palms = [], n = 6 + Math.floor(ih(gxw, gz, 904) * 3);
           reseed(1000 + key % 977);
           for (let k = 0; k < n; k++) { const pa = k / n * TAU + rnd() * .5, pr = 5.5 + rnd() * 3.5, px = x + Math.cos(pa) * pr, pz = z + Math.sin(pa) * pr; palms.push([px, height(px, pz) - .1, pz, 5 + rnd() * 2.5, rnd() * TAU]); }
-          const reeds = []; for (let k = 0; k < 9; k++) { const ra = k / 9 * TAU + rnd() * .4, rr = 3.6 + rnd() * .9; reeds.push([x + Math.cos(ra) * rr, z + Math.sin(ra) * rr, .8 + rnd() * .5, rnd() * TAU]); }
+          const reeds = []; for (let k = 0; k < 9; k++) { const ra = k / 9 * TAU + rnd() * .4, rr = 3.6 + rnd() * .9; const rx = x + Math.cos(ra) * rr, rz = z + Math.sin(ra) * rr; reeds.push([rx, height(rx, rz) - .05, rz, .8 + rnd() * .5, rnd() * TAU]); }
           p = { kind: 'oasis', id: 'oa' + key, x, y, z, r: 4, palms, reeds, name: `an oasis, ${placeName(x, z)}` };
         }
       }
@@ -129,27 +115,10 @@ export function hiddenSystem(G) {
     ledges.set(l.id, g);
     return g;
   }
-  // a hollow at the foot of one old tree in two (always the one called hollow), its door away from the weather
-  const hollows = new Map();
-  function hollowOf(l) {
-    if (hollows.has(l.id)) return hollows.get(l.id);
-    let g = null;
-    if (/Hollow/.test(l.name) || ih(Math.round(l.x), Math.round(l.z), 905) < .5) {
-      const H = HOLLOW[l.kind], a = ih(Math.round(l.x), Math.round(l.z), 906) * TAU, dx = Math.cos(a), dz = Math.sin(a), y = height(l.x, l.z);
-      const r = H.r0 * l.h + .04, x = l.x + dx * r, z = l.z + dz * r;
-      g = { kind: 'hollow', id: 'ho' + l.id, l, x, y, z, yaw: a, h: H.h, form: 'hid_hollow_' + l.kind, perch: { x: l.x + dx * (r - .4), y: y + H.sill, z: l.z + dz * (r - .4) }, name: `the hollow in ${l.name}` };
-    }
-    if (hollows.size > 200) hollows.delete(hollows.keys().next().value);
-    hollows.set(l.id, g);
-    return g;
-  }
   const placesNear = (x, z, r) => {
     const out = [], g0 = Math.floor((x - r) / CELL), g1 = Math.floor((x + r) / CELL), h0 = Math.floor((z - r) / CELL), h1 = Math.floor((z + r) / CELL);
     for (let gz = h0; gz <= h1; gz++) for (let gx = g0; gx <= g1; gx++) { const p = placeOf(gx, gz); if (p && Math.hypot(p.x - x, p.z - z) < r + 20) out.push(p); }
-    for (const l of landmarksNear(x, z, r + 40)) {
-      if (l.kind === 'falls') { const g = ledgeOf(l); if (g) out.push(g); }
-      if (l.kind === 'giant' || l.kind === 'oak') { const g = hollowOf(l); if (g) out.push(g); }
-    }
+    for (const l of landmarksNear(x, z, r + 40)) if (l.kind === 'falls') { const g = ledgeOf(l); if (g) out.push(g); }
     return out;
   };
   // the shelter's frame: s out of the mouth, w across
@@ -161,7 +130,6 @@ export function hiddenSystem(G) {
     if (!on) return;
     for (const p of placesNear(x, z, r)) {
       if (p.kind === 'ledge') out.push({ x: p.x, z: p.z, r: 1.6, y0: p.y - .8, top: p.y, perch: { ...p.perch, top: true } });
-      if (p.kind === 'hollow') out.push({ x: p.perch.x, z: p.perch.z, r: .45, y0: p.y - 1, top: p.perch.y, perch: { ...p.perch, top: true } });
       if (p.kind === 'shelter') {
         const c = Math.cos(p.yaw), s = Math.sin(p.yaw), at = (ls, lw) => [p.x + ls * c - lw * s, p.z + ls * s + lw * c];
         for (const [ls, lw] of [[-.8, -SH.half + .6], [-.8, SH.half - .6]]) { const [wx, wz] = at(ls, lw); out.push({ x: wx, z: wz, r: 1.4, y0: p.y - 1, top: p.y + SH.roofTop, perch: { x: wx, y: p.y + SH.roofTop, z: wz, top: true } }); }
@@ -177,7 +145,7 @@ export function hiddenSystem(G) {
     G.hud.say(p.name[0].toUpperCase() + p.name.slice(1), { kind: 'event', secs: 4.5, icon: 'landmarks' });
     G.emit('hidden', p); draw();
   };
-  const KINDS = { ledge: 'ledges behind the falls', shelter: 'shelters in the rock', oasis: 'oases', hollow: 'hollow trees', ...CAVE_KINDS };
+  const KINDS = { ledge: 'ledges behind the falls', shelter: 'shelters in the rock', oasis: 'oases', ...CAVE_KINDS };
   const sec = journal(G).section(44, 'Hidden places');
   function draw() {
     const F = Object.values(St.found);
@@ -188,11 +156,11 @@ export function hiddenSystem(G) {
   draw();
 
   // ---- settings and dev -------------------------------------------------------------------------
-  G.menu.toggle('play', { label: 'Hidden places', sub: 'ledges behind the sheer falls, shelters in the ridges, oases, hollow trees', group: 'looks', get: () => on, set: v => { on = v; store.set('hidden', v); draw(); } });
+  G.menu.toggle('play', { label: 'Hidden places', sub: 'ledges behind the sheer falls, shelters in the ridges, oases', group: 'looks', get: () => on, set: v => { on = v; store.set('hidden', v); draw(); } });
   // the nearest of a kind, for Try it
   const nearest = kind => {
     let best = null, bd = 1e9;
-    if (kind === 'ledge' || kind === 'hollow') { for (const l of landmarksNear(b.p[0], b.p[2], 30000)) if (kind === 'ledge' ? l.kind === 'falls' : l.kind === 'oak' || l.kind === 'giant') { const g = kind === 'ledge' ? ledgeOf(l) : hollowOf(l), d = g && Math.hypot(g.x - b.p[0], g.z - b.p[2]); if (g && d < bd) { bd = d; best = g; } } }
+    if (kind === 'ledge') { for (const l of landmarksNear(b.p[0], b.p[2], 30000)) if (l.kind === 'falls') { const g = ledgeOf(l), d = g && Math.hypot(g.x - b.p[0], g.z - b.p[2]); if (g && d < bd) { bd = d; best = g; } } }
     else {
       const gx0 = Math.floor(b.p[0] / CELL), gz0 = Math.floor(b.p[2] / CELL);
       for (let ring = 0; ring < 18 && !best; ring++) for (let gz = gz0 - ring; gz <= gz0 + ring; gz++) for (let gx = gx0 - ring; gx <= gx0 + ring; gx++) {
@@ -210,7 +178,6 @@ export function hiddenSystem(G) {
   G.hidden = { find: found, get on() { return on; }, curtain: l => (on && ledgeOf(l) ? CURTAIN : 0), go: kind => go(kind)(), nearest, placeOf, ledgeOf, inShelter, local, found: () => St.found, debug: () => ({ near: near.map(p => p.id), inside: inside?.id, on }) };
   G.dev?.add({ id: 'hidden-ledge', title: 'Hidden places: a ledge behind the falls', area: 'World', round: 'study', how: 'Settings > Advanced > Hidden places on. Where a fall drops over a sheer face, its curtain hangs clear of the rock and a ledge waits behind it: fly through the water to land there (spray as you pass), roost there at night. Try it puts you on the nearest one.', go: go('ledge') });
   G.dev?.add({ id: 'hidden-shelter', title: 'Hidden places: shelters in the ridges', area: 'World', round: 'study', how: 'A roof of rock over a dry floor, high on a steep face in the mountain lands, its mouth downhill: a boulder inside to perch and roost on, walls you bump. Try it puts you on the nearest one.', go: go('shelter') });
-  G.dev?.add({ id: 'hidden-hollow', title: 'Hidden places: hollow trees', area: 'World', round: 'study', how: 'One in two of the great oaks and redwoods has a dark hollow at its foot: perch on its sill to find it. Try it puts you there.', go: go('hollow') });
   G.dev?.add({ id: 'hidden-oasis', title: 'Hidden places: oases', area: 'World', round: 'study', how: 'In the deserts where date palms grow (the Sahara, Arabia, Persia), now and then, a pool under palms with reeds round it: land by it and tap the water to drink (the only fresh water for miles). Try it lands you by the nearest one.', go: go('oasis') });
 
   return {
@@ -245,7 +212,6 @@ export function hiddenSystem(G) {
           if (b.state === 'perch' && Math.hypot(b.p[0] - p.x, b.p[2] - p.z) < 2.2 && Math.abs(b.p[1] - p.y) < 1) found(p);
         }
         if (p.kind === 'oasis' && d < 9 && b.state === 'ground') found(p);
-        if (p.kind === 'hollow' && b.state === 'perch' && Math.hypot(b.p[0] - p.perch.x, b.p[2] - p.perch.z) < 1.2 && Math.abs(b.p[1] - p.perch.y) < 1.2) found(p);
         // mist drifting from the fall's foot past the ledge
         if (p.kind === 'ledge' && d < 70 && Math.random() < dt * 4) { const w = (Math.random() - .5) * 6, c = Math.cos(p.yaw), s = Math.sin(p.yaw), o = CURTAIN + Math.random() * 3; G.part([p.l.x + c * o - s * w, p.y - 3 + Math.random() * 6, p.l.z + s * o + c * w], [(Math.random() - .5) * .5, .3 + Math.random() * .4, (Math.random() - .5) * .5], 3.5, [.9, .93, .95], .5 + Math.random() * .4); }
       }
@@ -254,17 +220,16 @@ export function hiddenSystem(G) {
     },
     scene(S) {
       if (!on || !near.length) return;
-      if (!shaped) { shaped = true; R.shape('hid_shelter', shelterMesh()); LEDGE_ROCK.forEach((_, k) => R.shape('hid_ledge' + k, ledgeMesh(k))); for (const k in HOLLOW) R.shape('hid_hollow_' + k, hollowMesh(HOLLOW[k].taper * HOLLOW[k].h)); R.shape('hid_pool', pool()); R.shape('hid_palm', palm()); }
+      if (!shaped) { shaped = true; R.shape('hid_shelter', shelterMesh()); LEDGE_ROCK.forEach((_, k) => R.shape('hid_ledge' + k, ledgeMesh(k))); R.shape('hid_pool', pool()); R.shape('hid_palm', palm()); }
       const cam = S.cam;
       for (const p of near) {
         if (Math.abs(p.x - cam[0]) > 900 || Math.abs(p.z - cam[2]) > 900) continue;
         if (p.kind === 'shelter') (S.props.hid_shelter ||= []).push(p.x, p.y, p.z, 1, p.yaw, .5, 0, 0);
         if (p.kind === 'ledge') (S.props['hid_ledge' + p.rock] ||= []).push(p.x, p.y, p.z, 1, p.yaw, .5, 0, 0);
-        if (p.kind === 'hollow') (S.props[p.form] ||= []).push(p.x, p.y - .05, p.z, p.h, p.yaw, .5, 0, 0);
         if (p.kind === 'oasis') {
           (S.props.hid_pool ||= []).push(p.x, p.y + .04, p.z, p.r, 0, .5, 0, 0);
           for (const [x, y, z, s, yaw] of p.palms) (S.props.hid_palm ||= []).push(x, y, z, s, yaw, .5, 0, 0);
-          for (const [x, z, s, yaw] of p.reeds) (S.props.reeds ||= []).push(x, p.y, z, s, yaw, .5, 0, 0);
+          for (const [x, y, z, s, yaw] of p.reeds) (S.props.reeds ||= []).push(x, y, z, s, yaw, .5, 0, 0);
         }
       }
     },

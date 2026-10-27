@@ -748,7 +748,12 @@ function fallsSpot(x, z) {
     const a = i * 2.39996, r = 20 + i * 14, px = x + Math.cos(a) * r, pz = z + Math.sin(a) * r, n = normalAt(px, pz);
     if (n[1] > .5) continue;
     const dl = Math.hypot(n[0], n[2]), dx = n[0] / dl, dz = n[2] / dl, top = height(px - dx * 6, pz - dz * 6), bot = height(px + dx * 14, pz + dz * 14);
-    if (top - bot > 18 && (!best || top - bot > best.drop)) best = { x: px - dx * 6, z: pz - dz * 6, drop: top - bot, dx, dz };
+    if (top - bot <= 18 || (best && top - bot <= best.drop)) continue;
+    // the water needs somewhere to come from: high ground going on behind the lip and to both
+    // sides of it (an upland or a valley), not a lone peak or a narrow spur falling away
+    const lx = px - dx * 6, lz = pz - dz * 6, at = (s, w) => height(lx - dx * s - dz * w, lz - dz * s + dx * w);
+    if (at(40, 0) < top - 8 || at(90, 0) < top - 14 || at(30, 30) < top - 12 || at(30, -30) < top - 12) continue;
+    best = { x: lx, z: lz, drop: top - bot, dx, dz };
   }
   return best;
 }
