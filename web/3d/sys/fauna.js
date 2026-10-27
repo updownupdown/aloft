@@ -36,7 +36,10 @@ export function faunaSystem(G) {
   function flockOf(gx, gz) {
     if (ih(gx, gz, 101) > .45) return null;
     const x = (gx + .5) * FAUNA.flockCell, z = (gz + .5) * FAUNA.flockCell, k = bands(x, z);
-    const open = forest(x, z) < .15 && height(x, z) > 1;
+    // (over land only: finches and starlings do not flock far out over the sea; a flock there scared
+    // up again and again as you flew over open water, James 10-27)
+    if (height(x, z) < 1) return null;
+    const open = forest(x, z) < .15;
     const dusk = tod() > .66 && tod() < .8;
     const kind = dusk && open && ih(gx, gz, 102) < .6 + k.marsh * .4 ? 'starling' : tod() > .24 && tod() < .76 ? 'finch' : null;
     if (!kind || storm() > .6) return null;
@@ -71,7 +74,7 @@ export function faunaSystem(G) {
     for (const id of into.keys()) if (!seen.has(id)) into.delete(id);
   }
   function refresh() {
-    cells(FAUNA.flockCell, FAUNA.flockR, flockOf, flocks, o => ({ ...o, cx: o.hx, cz: o.hz, cy: height(o.hx, o.hz) + 14, vx: 0, vz: 0, scare: 0, t: Math.random() * 100,
+    cells(FAUNA.flockCell, FAUNA.flockR, flockOf, flocks, o => ({ ...o, cx: o.hx, cz: o.hz, cy: height(o.hx, o.hz) + 14, vx: 0, vz: 0, scare: -99, t: Math.random() * 100,
       birds: Array.from({ length: o.n }, (_, i) => ({ p: [o.hx, height(o.hx, o.hz) + 14, o.hz], v: [0, 0, 0], ph: ih(o.id, i, 104) * 6.28, o: [ih(o.id, i, 105) - .5, ih(o.id, i, 106) - .5, ih(o.id, i, 107) - .5] })) }));
     cells(FAUNA.heronCell, FAUNA.heronR, heronOf, herons, o => ({ ...o, y: WATER - .3, yaw: ih(o.id, 1, 123) * 6.28, state: 'stand', t: 0, to: null }));
   }
@@ -80,7 +83,9 @@ export function faunaSystem(G) {
   function flockStep(F, dt) {
     F.t += dt;
     const hd = Math.hypot(F.cx - b.p[0], F.cz - b.p[2]), close = b.state === 'fly' && hd < 30 && Math.abs(F.cy - b.p[1]) < 25;
-    if (close && F.scare <= 0) { F.scare = 4; G.audio.rustle(.4); }
+    // a flock you come at whirrs up, the first time (a flurry of wings, not leaves); chased on, it
+    // flees in silence until it has settled a while
+    if (close && F.scare <= 0) { if (F.scare < -12) G.audio.flurry?.(.4 * Math.max(0, 1 - Math.hypot(hd, F.cy - b.p[1]) / 40)); F.scare = 4; }
     F.scare -= dt;
     // the flock's centre wanders round its home; a hawk sends it away
     const wx = F.hx + fbm(F.t * .02, F.id, 108, 2) * 160, wz = F.hz + fbm(F.id, F.t * .02, 109, 2) * 160;
