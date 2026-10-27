@@ -337,9 +337,9 @@ export function foodSystem(G) {
     caught.set(m.id, G.clock); mice.delete(m.id);
     b.state = 'ground'; b.from = [...b.p]; b.p = [m.x, Math.max(m.y, WATER) + .35, m.z]; b.settle = .45; b.s = 0;
     hold(FOOD.mouse, FOOD.mouseWet, 'mouse'); mantle('mouse');
-    // make it plain: a strike and a squeak, a puff of grass, a rising glint, then the meal
+    // make it plain: a strike, a puff of grass, a rising glint, then the meal (no squeak: James 10-27)
     const A = G.audio;
-    A.thump(.6); A.rustle(1.2); A.tone?.({ f: 2400, f2: 3100, dur: .07, vol: .07, delay: .05 }); A.tone?.({ f: 2600, f2: 2100, dur: .06, vol: .05, delay: .16 });
+    A.thump(.6); A.rustle(1.2);
     setTimeout(() => A.feather(), 350);
     for (let i = 0; i < 18; i++) { const a = i / 18 * 6.283; G.part([m.x, m.y + .15, m.z], [Math.cos(a) * 2.6, 1.2 + Math.random() * 1.5, Math.sin(a) * 2.6], .8, i % 3 ? [.6, .7, .34] : [.55, .44, .3], .1); }
     for (let i = 0; i < 8; i++) G.part([m.x + (Math.random() - .5) * .6, m.y + .5, m.z + (Math.random() - .5) * .6], [0, 1.6 + Math.random(), 0], 1.4, [1, .86, .45], .14);

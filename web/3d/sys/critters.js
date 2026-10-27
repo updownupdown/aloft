@@ -177,12 +177,11 @@ export function crittersSystem(G) {
     const sn = o.kind === 'snake', stooped = G.aim?.target === o && (G.aim.focus || 0) > .35 && (!sn || hd < 20), nearLow = b.state === 'fly' && hd < (sn ? 10 : 22) && above < 16;
     if ((stooped || nearLow) && o.flee <= 0) {
       o.flee = 3;
-      if (o.kind === 'marmot') { G.audio.tone?.({ f: 2900, f2: 2500, dur: .3, vol: .05 }); o.hide = 1.2; }
+      if (o.kind === 'marmot') o.hide = 1.2;
       if (o.kind === 'lizard') o.hide = 1;
       if (o.kind === 'snake') { o.hide = .7; once('snake', 'Grass snake', 'A grass snake, basking on the warm stone: it pours into the cracks at your shadow. Come in fast and low.', 'prey'); }
       if (o.kind === 'crab') o.hide = 1.5;
       if (o.kind === 'egret') o.hide = .6;
-      if (o.kind === 'squirrel' && !o.climb) { G.audio.tone?.({ f: 3400, f2: 2800, dur: .08, vol: .04 }); G.audio.tone?.({ f: 3400, f2: 2800, dur: .08, vol: .04, delay: .12 }); }
     }
     if (o.hide !== undefined && o.flee > 0) { if ((o.hide -= dt) <= 0) { o.hidden = o.kind === 'snake' ? 45 : 8; o.hide = undefined; if (o.kind === 'egret') G.part([o.x, .8, o.z], [0, 3, 0], .8, [.95, .95, .93], .3); return; } }
     const away = Math.atan2(o.z - b.p[2], o.x - b.p[0]);
