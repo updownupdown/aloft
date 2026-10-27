@@ -6,6 +6,7 @@
 //   natural: fast frequency sweeps with a little overtone, the way small birds actually sing
 //   syrinx:  natural, plus the second side of the syrinx singing its own quieter line
 //   breathy: the contour carried by a narrow band of air noise, like a far, soft recording
+import { monoVerb } from './reverb.js';
 export const ENGINES = [['whistle', 'Whistle (as before)'], ['natural', 'Natural'], ['syrinx', 'Two-voice syrinx'], ['breathy', 'Breathy']];
 export const PITCHES = [[1, 'As before'], [2, 'An octave up'], [4, 'Two octaves up']];
 export const SPACES = [['dry', 'Dry'], ['valley', 'Valley echo'], ['forest', 'Forest']];
@@ -95,8 +96,8 @@ export function createBirdVoice(ctx, dest, noiseBuf) {
   const echo = ctx.createGain(), dl = ctx.createDelay(1), fb = ctx.createGain(), elp = ctx.createBiquadFilter();
   dl.delayTime.value = .19; fb.gain.value = .26; elp.type = 'lowpass'; elp.frequency.value = 3600;
   farLp.connect(echo); echo.connect(dl); dl.connect(elp); elp.connect(fb); fb.connect(dl); elp.connect(dest);
-  const forest = ctx.createGain(), conv = ctx.createConvolver();
-  conv.buffer = forestIR(ctx); farLp.connect(forest); forest.connect(conv); conv.connect(dest);
+  const forest = ctx.createGain(), woods = monoVerb(ctx, 1.6, forestIR), conv = woods.input;
+  farLp.connect(forest); forest.connect(conv); woods.out.connect(dest);
   // a rock-walled place (a canyon, a fjord, under sea cliffs): a long echo off the far wall,
   // coming back two or three times, duller each time. `place` 0..1 fades it in.
   const wall = ctx.createGain(), wdl = ctx.createDelay(1.5), wfb = ctx.createGain(), wlp = ctx.createBiquadFilter();
@@ -227,17 +228,14 @@ export function createBirdVoice(ctx, dest, noiseBuf) {
   return V;
 }
 
-// a forest's reverb: soft early reflections, then a decaying tail that loses its highs
-function forestIR(ctx) {
-  const n = Math.floor(ctx.sampleRate * 1.6), buf = ctx.createBuffer(2, n, ctx.sampleRate);
-  for (let ch = 0; ch < 2; ch++) {
-    const d = buf.getChannelData(ch); let lp = 0;
-    for (let i = 0; i < n; i++) {
-      const s = i / ctx.sampleRate, k = Math.min(1, s * 40);
-      lp += (Math.random() * 2 - 1 - lp) * (.5 - .4 * Math.min(1, s / 1.2));
-      d[i] = lp * k * Math.exp(-s * 3.4) * .6;
-    }
-    for (const at of [.013, .021, .034, .047]) d[Math.floor(at * ctx.sampleRate) + ch * 7] += .35;
+// a forest's reverb: soft early reflections, then a decaying tail that loses its highs (mono, in
+// reverb.js: half the work of the stereo one)
+function forestIR(d, rate) {
+  let lp = 0;
+  for (let i = 0; i < d.length; i++) {
+    const s = i / rate, k = Math.min(1, s * 40);
+    lp += (Math.random() * 2 - 1 - lp) * (.5 - .4 * Math.min(1, s / 1.2));
+    d[i] = lp * k * Math.exp(-s * 3.4) * .6;
   }
-  return buf;
+  for (const at of [.013, .021, .034, .047]) d[Math.floor(at * rate)] += .35;
 }

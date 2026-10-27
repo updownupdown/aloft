@@ -15,6 +15,8 @@
 //   a song you learned, and a few moments of a flight get a soft answer (M.moment).
 // The numbers are VALLEY_TUNE; a tune kept from the old music lab (removed 10-24, James: the
 // music is right as it is) under aloft.musicTune2 still plays.
+import { monoVerb } from './reverb.js';
+
 const ROOT = 220; // A3: semitones below are relative to it
 const LANE = [12, 14, 16, 19, 21]; // a learned song's staff lines, an octave above the root
 
@@ -62,12 +64,12 @@ export function createMusic(audio) {
     const wow = ctx.createDelay(.05), wl = ctx.createOscillator(), wg = ctx.createGain();
     wow.delayTime.value = .012; wl.frequency.value = .37; wg.gain.value = .0006; wl.connect(wg).connect(wow.delayTime); wl.start();
     const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1800; lp.Q.value = .3;
-    const rv = ctx.createConvolver(); rv.buffer = roomIR(ctx);
-    M.wet = ctx.createGain(); M.wet.gain.value = T.room;
+    const room = monoVerb(ctx, ROOM_SECS, roomIR), rv = room.input;
+    M.wet = ctx.createGain(); M.wet.gain.value = T.room * ROOM_LOUD;
     M.out.connect(wow).connect(lp); lp.connect(audio.musicBus || audio.master);
     // the strings (M.out) fill the room; the piano sits closer, with less of it
-    lp.connect(M.wet); M.wet.connect(rv); rv.connect(audio.musicBus || audio.master);
-    pianoBus = ctx.createGain(); M.pwet = ctx.createGain(); M.pwet.gain.value = T.pianoRoom;
+    lp.connect(M.wet); M.wet.connect(rv); room.out.connect(audio.musicBus || audio.master);
+    pianoBus = ctx.createGain(); M.pwet = ctx.createGain(); M.pwet.gain.value = T.pianoRoom * ROOM_LOUD;
     const plp = ctx.createBiquadFilter(); plp.type = 'lowpass'; plp.frequency.value = 2400; plp.Q.value = .2;
     pianoBus.connect(plp); plp.connect(audio.musicBus || audio.master); plp.connect(M.pwet); M.pwet.connect(rv);
     M.pgain = pianoBus;
@@ -80,7 +82,7 @@ export function createMusic(audio) {
   }
   M.setTune = o => {
     Object.assign(M.tune, o);
-    if (M.wet) { const t = audio.ctx.currentTime; M.wet.gain.setTargetAtTime(M.tune.room, t, .3); M.pwet.gain.setTargetAtTime(M.tune.pianoRoom, t, .3); }
+    if (M.wet) { const t = audio.ctx.currentTime; M.wet.gain.setTargetAtTime(M.tune.room * ROOM_LOUD, t, .3); M.pwet.gain.setTargetAtTime(M.tune.pianoRoom * ROOM_LOUD, t, .3); }
   };
   M.log = () => {};   // the lab listens here: what Valley just played
   // how loud the strings (and, with piano, the piano) are now: off, under the menu, or thinned while
@@ -116,7 +118,19 @@ export function createMusic(audio) {
     o.connect(out); o.start(t); o.stop(end + .1); l.start(t); l.stop(end + .1);
     return o;
   }
-  // a bowed section: three detuned saws per note, each wandering on its own, through a filter that
+  // two saws a few cents apart, both wandering on one slow drift, one up as the other goes down, so
+  // their beating comes and goes as a section's does (three saws with a drift each was twice the
+  // oscillators for the same sound; 10-27, the audio thread overloaded on phones)
+  function pair(f, t, end, out, vib) {
+    const ctx = audio.ctx, l = ctx.createOscillator(), up = ctx.createGain(), dn = ctx.createGain();
+    l.frequency.value = .08 + Math.random() * .22; up.gain.value = 5; dn.gain.value = -5; l.connect(up); l.connect(dn);
+    for (const [det, drift] of [[-7 + (Math.random() - .5) * 3, up], [7 + (Math.random() - .5) * 3, dn]]) {
+      const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f; o.detune.value = det;
+      drift.connect(o.detune); vib.connect(o.detune); o.connect(out); o.start(t); o.stop(end + .1);
+    }
+    l.start(t); l.stop(end + .1);
+  }
+  // a bowed section: two detuned saws per note, wandering, through a filter that
   // opens with the swell and a wooden body (a hump in the low mids, the fizz rolled off), with a
   // vibrato that comes in only once the note is sounding and a breath of rosin as the bows bite.
   // Each note swells on its own a moment apart, so a chord blooms rather than switches on.
@@ -129,8 +143,9 @@ export function createMusic(audio) {
     vib.frequency.value = 4.4 + Math.random() * .6; vg.gain.setValueAtTime(0, t); vg.gain.linearRampToValueAtTime(4, t + dur * .5); vib.connect(vg);
     freqs.forEach((f, i) => {
       const g = ctx.createGain(), s = t + i * dur * .04 * Math.random(), v = vol;
-      g.gain.setValueAtTime(0, s); g.gain.linearRampToValueAtTime(v * .7, s + dur * .4); g.gain.setValueAtTime(v * .7, t + dur * .55); g.gain.linearRampToValueAtTime(0, t + dur);
-      for (const det of [-8, 0, 7]) vg.connect(voice(f, det + (Math.random() - .5) * 4, s, t + dur, g).detune);
+      // (.86 = .7 x the square root of 3/2: two saws as loud as the three were)
+      g.gain.setValueAtTime(0, s); g.gain.linearRampToValueAtTime(v * .86, s + dur * .4); g.gain.setValueAtTime(v * .86, t + dur * .55); g.gain.linearRampToValueAtTime(0, t + dur);
+      pair(f, s, t + dur, g, vg);
       g.connect(lp);
     });
     lp.connect(body).connect(hs).connect(M.out); vib.start(t); vib.stop(t + dur + .1);
@@ -312,16 +327,17 @@ export function createMusic(audio) {
   return M;
 }
 
-// a warm room: soft early reflections, then a long tail (about five seconds) that darkens as it dies
-function roomIR(ctx) {
-  const n = Math.floor(ctx.sampleRate * 5.5), buf = ctx.createBuffer(2, n, ctx.sampleRate);
-  for (let ch = 0; ch < 2; ch++) {
-    const d = buf.getChannelData(ch); let lp = 0, lp2 = 0;
-    for (let i = 0; i < n; i++) {
-      const s = i / ctx.sampleRate, k = Math.min(1, s * 12);
-      lp += (Math.random() * 2 - 1 - lp) * (.3 - .26 * Math.min(1, s / 3)); lp2 += (lp - lp2) * .5;
-      d[i] = lp2 * k * Math.exp(-s * 1.2) * .6;
-    }
+// a warm room: soft early reflections, then a long tail that darkens as it dies. It was 5.5 s and
+// stereo; 3.5 s and mono (reverb.js) is a third of the work, the last of the tail (already 36 dB
+// down) faded out, and ROOM_LOUD keeps the room as loud (a normalised convolver's level goes
+// with the square root of its length)
+const ROOM_SECS = 3.5, ROOM_LOUD = Math.sqrt(5.5 / ROOM_SECS);
+function roomIR(d, rate) {
+  let lp = 0, lp2 = 0;
+  const fadeAt = (ROOM_SECS - .8) * rate;
+  for (let i = 0; i < d.length; i++) {
+    const s = i / rate, k = Math.min(1, s * 12), f = i > fadeAt ? 1 - (i - fadeAt) / (d.length - fadeAt) : 1;
+    lp += (Math.random() * 2 - 1 - lp) * (.3 - .26 * Math.min(1, s / 3)); lp2 += (lp - lp2) * .5;
+    d[i] = lp2 * k * Math.exp(-s * 1.2) * .6 * f;
   }
-  return buf;
 }
