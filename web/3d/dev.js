@@ -56,7 +56,7 @@ const SHIPPED = [
   ['seasons-ground', 'World', 119, 'Real winter, spring and autumn on the ground', 'Play through a season change (8 days).'],
   ['bird-goals', 'Birds', 117, 'Each bird’s own move and life goal', 'Fly as the osprey (plunge), owl (silent glide), raven (tumble), red-tail (kite).'],
   ['song-places', 'Songs and music', 116, 'Songs that open places; teach a young bird your song', 'Sing at a summit cairn, under arches, at redwoods, at falls.'],
-  ['race', 'Journal and story', 113, 'Race the companion round a ring course', 'Wait for the companion to start a race; finish first for a mouse.'],
+  ['race', 'Journal and story', 113, 'Race your own best round a ring course', 'Fly a whole course faster, ring for ring, than ever before: a mouse.'],
   ['new-singers', 'Songs and music', 112, 'Birds of the new lands, night singers, rock-wall echoes', 'Sing in the desert, the mountains, at night, by a cliff.'],
   ['daily-aim', 'Journal and story', 111, 'A daily aim with feathers; the lands collection', 'Today: the day’s aim; Journal > Places: the lands you have found.'],
   ['species', 'Birds', 74, 'Fly as the red-tail, osprey, barn owl, raven or albatross', 'Settings > Your bird: swipe the card.'],

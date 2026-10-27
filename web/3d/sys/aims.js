@@ -1,8 +1,8 @@
 // Soft aims: an intention for each day, the bird's life goal on the Log (sys/life.js), the lands
-// collection and racing the companion. Each dawn the Journal offers one optional aim (fly a ring
+// collection and racing your own best round a ring course. Each dawn the Journal offers one optional aim (fly a ring
 // course, sing with a songbird, see a land you haven't, ...); doing it earns a feather. The lands
 // collection is a shelf of small faceted tiles, one for each land of the world, that fill in as you
-// fly over them (Journal > Places > Lands). Now and then the companion races you round a ring course.
+// fly over them (Journal > Places > Lands). A course flown faster than ever, ring for ring, brings a mouse.
 import * as W from '../world.js';
 import { BIOMES, blend } from '../biomes.js';
 import { facets } from '../facet.js';
@@ -49,7 +49,7 @@ export function aimsSystem(G) {
   const A = { day: 0, aim: null, done: false, count: 0, feathers: 0, seen: {}, sights: {}, last: [] };
 
   // ---- the day's offers (P of the review): at most three a day of the day's aim, Today's ring course,
-  // the companion's ask and the season's aim, picked from what you have not done lately --------------
+  // a gleam to fly to (visitors.js) and the season's aim, picked from what you have not done lately --------------
   const OFFERS = ['aim', 'course', 'ask', 'season'], MOST = 3;
   A.lastDone ||= {};
   function planDay() {
@@ -102,27 +102,13 @@ export function aimsSystem(G) {
     G.quests?.done('season', `Done in ${G.season?.name || 'the season'}: two feathers.`);
   });
 
-  // ---- racing the companion ----------------------------------------------------------------
-  // through the first ring of a course, now and then (more often when it is with you) it races you round
-  // the rest (sys/fauna.js G.companion.fly). Finish the course first and it brings you a mouse
-  let race = null;   // { circuit, them: done?, t }
-  const RACE = { odds: .5, join: .2, speed: 15, gift: FOOD.mouse };   // odds when it is with you, or must fly in to join
-  G.on('ring', r => {
-    const C = G.companion;
-    if (race || r.k !== 0 || !C || C.busy || Math.random() > (C.here ? RACE.odds : RACE.join)) return;
-    const course = W.ringsNear(r.x, r.z, 900).filter(q => q.circuit === r.circuit && q.k > 0).sort((a, c) => a.k - c.k);
-    if (!course.length) return;
-    race = { circuit: r.circuit, them: false, t: G.clock };
-    C.fly(course.map(q => [q.x, q.y, q.z]), RACE.speed, () => { if (race?.circuit === r.circuit) race.them = true; });
-    G.hud.toast('Your companion calls and races you round the course.', 3);
-  });
+  // ---- racing your own best (in place of the companion's races, gone 10-27) ------------------
+  // a whole course flown faster, ring for ring, than ever before brings a mouse
   G.on('ringLoop', e => {
-    if (!race || e.circuit !== race.circuit) return;
-    if (!race.them) {
-      G.hunger = Math.min(1, G.hunger + RACE.gift);
-      G.hud.tally('Round first! A mouse for you', 'ring'); G.emit('raceWon');
-    } else G.hud.tally('Your companion was first', 'ring');
-    race = null;
+    if (!e.secs || !e.n) return;
+    const per = e.secs / e.n, best = A.bestRing;
+    A.bestRing = Math.min(best ?? 1e9, per);
+    if (best && per < best) { G.hunger = Math.min(1, G.hunger + FOOD.mouse); G.hud.tally(`Your fastest course yet, ${Math.round(e.secs)} s: a mouse for you`, 'ring'); G.emit('raceWon'); }
   });
 
   // ---- the lands ----------------------------------------------------------------------------
@@ -183,8 +169,6 @@ export function aimsSystem(G) {
   return {
     id: 'aims',
     update(dt) {
-      // a race left behind (the course broken off) ends quietly
-      if (race && G.clock - race.t > 90) { G.companion?.stop?.(); race = null; }
       if (!A.aim || A.day !== G.day) { pick(); if (G.t > 3 && !G.lessons?.learning) offer(); }
       if (G.season && A.season?.key !== seasonKey() && !G.lessons?.learning) pickSeason();
       if ((landT -= dt) <= 0) {

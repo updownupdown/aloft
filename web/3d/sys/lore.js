@@ -25,7 +25,7 @@ const CONT = { 'n-america': 'North America', 's-america': 'South America', europ
 const LAND = { meadow: 'meadows', forest: 'forests', lakeland: 'lakelands', swamp: 'swamps', marsh: 'marshes', coast: 'coasts', desert: 'deserts', steppe: 'steppes', savanna: 'savannas', mountains: 'mountains', alpine: 'high peaks', tundra: 'tundra', taiga: 'taiga', rainforest: 'rainforests', redwood: 'redwood groves', canyon: 'canyons', karst: 'karst', moor: 'moors', maquis: 'scrub', birch: 'birch woods', badlands: 'badlands', saltflat: 'salt flats', fjord: 'fjords', cliffs: 'cliffs', volcano: 'fire mountains', ice: 'ice' };
 // a mastered song's growth, by what its gift does
 const STAT = { worms: 'recovery', ripen: 'recovery', fish: 'recovery', juice: 'recovery', clear: 'recovery', moths: 'recovery', fireflies: 'recovery', dew: 'stamina', lark: 'stamina', hardy: 'stamina',
-  tailwind: 'speed', companion: 'speed', flock: 'speed', lift: 'lift', updraft: 'lift', warm: 'lift', calm: 'height', night: 'height', dusk: 'height', glint: 'climb', bells: 'climb', mice: 'climb', sing: 'climb', hush: 'climb' };
+  tailwind: 'speed', way: 'lift', flock: 'speed', lift: 'lift', updraft: 'lift', warm: 'lift', calm: 'height', night: 'height', dusk: 'height', glint: 'climb', bells: 'climb', mice: 'climb', sing: 'climb', hush: 'climb' };
 const LORE = { tellR: 7000, clean: .85, master: 3, per: 5, whale: 40, gannet: 15 };   // per: songs mastered for each step of strength (H of the review)
 const cap = s => s[0].toUpperCase() + s.slice(1);
 const hash = s => { let h = 7; for (let i = 0; i < String(s).length; i++) h = (h * 31 + String(s).charCodeAt(i)) | 0; return h; };

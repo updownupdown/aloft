@@ -1,7 +1,6 @@
 // Wildlife: flocks of small birds (finches by day, a starling murmuration at dusk over open
 // land), herons fishing in the shallows, fish that
-// rise and jump in lakes and the sea, wild hawks circling in the strongest thermals (a kettle),
-// and a companion hawk that joins you for a while (the thrush's gift).
+// rise and jump in lakes and the sea, wild hawks circling in the strongest thermals (a kettle).
 // Everything is placed by hash in cells; only what is near the hawk is simulated, and its
 // state is forgotten when the hawk leaves. Fish can be caught: skim low over one as it rises,
 // the same forgiving reach as for mice (a tucked dive reaches further).
@@ -25,19 +24,7 @@ export function faunaSystem(G) {
   R.shape('heron', heronStanding()); R.shape('heronU', heronFlying(true)); R.shape('heronD', heronFlying(false));
   R.shape('fish', fish()); R.shape('soar', soaringHawk()); R.shape('soarFar', soaringHawkFar());
   const flocks = new Map(), herons = new Map(), fishes = new Map();
-  let refreshT = 0, fishBoost = 0, companion = null, route = null;
-  // the companion hawk for other systems: where it is, and fly(points, speed, done) sends it
-  // along [x, y, z] points (it joins you first if it isn't with you) and calls done() at the last
-  G.companion = {
-    get here() { return !!companion; }, get busy() { return !!route; },
-    get x() { return companion?.p[0]; }, get y() { return companion?.p[1]; }, get z() { return companion?.p[2]; },
-    fly(points, speed = 13, done) {
-      if (!points?.length) return;
-      companion ||= { t: 150, a: 0, p: [b.p[0] - 20, b.p[1] + 10, b.p[2]] };
-      route = { pts: points, i: 0, v: speed, done };
-    },
-    stop() { route = null; },
-  };
+  let refreshT = 0, fishBoost = 0;
   G.wild = { fish: [], flocks, herons };
   const once = (id, title, msg, ic, how) => { if (!G.flags[id]) { G.flags[id] = 1; G.hud.quietly(how, title, msg, ic); } };
   const sight = (key, x, y, z, r) => G.sight?.(key, x, y, z, r);
@@ -216,10 +203,6 @@ export function faunaSystem(G) {
 
   G.on('gift', ev => {
     if (ev.key === 'fish') { fishBoost = 120 * (ev.k || 1); ev.handled = true; H.glint('Fish rising', 'Fish are rising in the lakes.', 'prey'); }
-    if (ev.key === 'companion') {
-      ev.handled = true; companion = { t: 150 * (ev.k || 1), a: 0, p: [b.p[0] - 20, b.p[1] + 10, b.p[2]] };
-      H.glint('A wild hawk', 'A wild hawk comes to fly beside you for a while. Tuck in beside it: in its wake your wings rest.', 'bird_hawk'); G.audio.scream?.(true);
-    }
   });
 
   return {
@@ -237,25 +220,6 @@ export function faunaSystem(G) {
       for (const f of fishes.values()) fishStep(f, dt);
       tryCatch();
       G.wild.fish = [...fishes.values()].map(f => ({ id: f.id, x: f.x, y: fishY(f), z: f.z, up: f.jump >= 0 ? 1 : Math.min(1, f.up) }));
-      if (companion && route) {
-        // flying a course (G.companion.fly): straight at the next point at a steady speed
-        const p = companion.p, q = route.pts[route.i], d = Math.hypot(q[0] - p[0], q[1] - p[1], q[2] - p[2]);
-        companion.yaw = Math.atan2(q[2] - p[2], q[0] - p[0]); companion.t = Math.max(companion.t, 30);
-        const step = Math.min(d, route.v * dt);
-        if (d > 0) for (let i = 0; i < 3; i++) p[i] += (q[i] - p[i]) / d * step;
-        if (d < 3 && ++route.i >= route.pts.length) { const done = route.done; route = null; done?.(); }
-      } else if (companion && G.slipLead) {
-        // leading you (feel.js steers it, so you can ride its wake)
-        companion.p = [...G.slipLead.p]; companion.yaw = G.slipLead.ang;
-      } else if (companion) {
-        companion.t -= dt; companion.a += dt * .45;
-        const tx = b.p[0] + Math.cos(companion.a) * 16, tz = b.p[2] + Math.sin(companion.a) * 16, ty = b.p[1] + 4 + Math.sin(companion.a * .7) * 3;
-        const p = companion.p, k = Math.min(1, dt * 1.5);
-        companion.yaw = Math.atan2(tz - p[2], tx - p[0]);
-        p[0] += (tx - p[0]) * k; p[1] += (ty - p[1]) * k; p[2] += (tz - p[2]) * k;
-        if (b.state !== 'fly') p[1] = Math.max(p[1], height(p[0], p[2]) + 8);
-        if (companion.t <= 0) companion = null;
-      }
     },
     scene(S) {
       const cam = S.cam, vis = (x, z, r) => Math.hypot(x - cam[0], z - cam[2]) < r;
@@ -295,7 +259,6 @@ export function faunaSystem(G) {
         }
         if (Math.hypot(t.x - b.p[0], t.z - b.p[2]) < 200) once('kettle', 'A kettle of hawks', 'A kettle of wild hawks circles in that thermal. Join them: they show you the core.', 'thermal');
       }
-      if (companion) so.push(...companion.p, .85, companion.yaw, .9, 0, 0);
     },
     // debug: __aloft3d.G.systems.fauna.go('heron' | 'fish' | 'flock' | 'kettle')
     go(kind) {
@@ -312,7 +275,7 @@ export function faunaSystem(G) {
       b.state = 'fly'; b.p = [at[0], Math.max(height(at[0], at[1]), WATER) + at[2], at[1] + 45]; b.yaw = 0; b.s = 12;
       refreshT = 0; return at;
     },
-    save: () => ({ caught: [...caught].slice(-100), companion }),
-    load(o) { for (const [k, v] of o.caught || []) caught.set(k, v); companion = o.companion || null; },
+    save: () => ({ caught: [...caught].slice(-100) }),
+    load(o) { for (const [k, v] of o.caught || []) caught.set(k, v); },
   };
 }

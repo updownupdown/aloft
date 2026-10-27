@@ -5,15 +5,12 @@
 //   air along it, the trees tossing as it passes. Meet it nose-up and it lifts you; side-on it
 //   rocks you; from behind it pushes. G.gust = { x, z, dx, dz, w, k } while one travels (grass waves).
 // - Under the canopy (flight.js sets b.under): leaves drift past, small birds flush ahead.
-// - Slipstream: fly up behind the wild companion hawk and it leads; tuck in just behind and
-//   beside its wingtip and your wings rest. G.slipLead = { p, ang } steers it (fauna.js).
 import { height, WATER, WIND } from '../world.js';
 import { fwd } from '../flight.js';
 import { clamp, smooth } from '../util.js';
 
 export const FEEL = {
   gustEvery: [25, 60], gustSpeed: 9, gustWidth: 150, gustFar: 170, gustLift: 9,
-  slipBehind: [-9, -2.5], slipSide: [.6, 4.5], slipRest: .12, leadTime: 45,
 };
 const WL = Math.hypot(WIND[0], WIND[2]), WX = WIND[0] / WL, WZ = WIND[2] / WL;
 
@@ -36,12 +33,11 @@ function streak(S, x, y, z, len, w, a) {
 export function feelSystem(G) {
   const b = G.b, H = G.hud;
   const ripples = [];
-  let wakeT = 0, gust = null, gustT = 20, leafT = 0, flushT = 3, lead = null, slipSaid = false;
-  G.gust = null; G.skim = null; G.slipLead = null; G.gustWind = 0;
+  let wakeT = 0, gust = null, gustT = 20, leafT = 0, flushT = 3;
+  G.gust = null; G.skim = null; G.gustWind = 0;
   H.tip('skim', () => b.state === 'fly' && b.skim > .5, 'Skimming low over water or a flat field, the air cushions your wings and carries you farther.');
   H.tip('gust', () => !!gust && Math.abs(gustAlong()) < 60, 'A gust is coming: see the wind lines and the grass? Meet it nose up for a free lift.');
   H.tip('canopy', () => b.state === 'fly' && b.under > .7, 'Under the trees now: thread the trunks. Clip a crown and you lose speed.');
-  H.tip('slip', () => !!lead, 'The wild hawk leads. Tuck in just behind and beside its wingtip: its wake rests your wings.');
 
   const gustAlong = () => gust ? (b.p[0] - gust.x) * WX + (b.p[2] - gust.z) * WZ : 1e9;
 
@@ -105,34 +101,7 @@ export function feelSystem(G) {
         }
       }
 
-      // slipstream: the companion leads while you follow
-      const C = G.companion;
-      if (!lead && flying && C?.here && !C.busy) {
-        const dx = C.x - b.p[0], dy = C.y - b.p[1], dz = C.z - b.p[2], d = Math.hypot(dx, dy, dz);
-        if (d < 30 && d > 4 && (dx * f[0] + dy * f[1] + dz * f[2]) / d > .6) {
-          lead = { p: [C.x, C.y, C.z], yaw: b.yaw, v: Math.max(10, b.s), t: FEEL.leadTime, slip: 0 };
-          slipSaid = false;
-        }
-      }
-      b.slip = 0;
-      if (lead) {
-        lead.t -= dt;
-        lead.yaw += Math.sin(G.t * .21) * .12 * dt;
-        lead.v += (clamp(b.s, 9, 16) - lead.v) * Math.min(1, dt * .3);
-        const lf = [Math.sin(lead.yaw), -Math.cos(lead.yaw)], p = lead.p;
-        p[0] += lf[0] * lead.v * dt; p[2] += lf[1] * lead.v * dt;
-        p[1] += (Math.max(b.p[1], height(p[0], p[2]) + 12) - p[1]) * Math.min(1, dt * .4);
-        const rx = b.p[0] - p[0], rz = b.p[2] - p[2], along = rx * lf[0] + rz * lf[1], side = Math.abs(rx * -lf[1] + rz * lf[0]), dy = b.p[1] - p[1];
-        const inWake = along > FEEL.slipBehind[0] && along < FEEL.slipBehind[1] && side > FEEL.slipSide[0] && side < FEEL.slipSide[1] && Math.abs(dy) < 3;
-        lead.slip += ((inWake ? 1 : 0) - lead.slip) * Math.min(1, dt * 3);
-        b.slip = lead.slip;
-        if (b.slip > .5) {
-          b.stamina = Math.min(b.maxStamina ?? 1, b.stamina + FEEL.slipRest * dt);
-          if (!slipSaid) { slipSaid = true; H.tally('In its wake: wings rest', 'glide'); H.did('slip'); }
-        }
-        G.slipLead = { p: [...p], ang: Math.atan2(lf[1], lf[0]) };
-        if (lead.t <= 0 || !flying || !C?.here || C.busy || Math.hypot(rx, dy, rz) > 45) { lead = null; G.slipLead = null; b.slip = 0; }
-      }
+      b.slip = 0;   // (ocean.js: a wake to ride)
     },
     scene(S) {
       for (const r of ripples) {

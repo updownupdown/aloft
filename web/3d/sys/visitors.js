@@ -3,8 +3,9 @@
 //   low over the sea, blown off course (vagrants after storms are real). Fly close and it falls in
 //   behind you; lead it, at its pace, to land. Safe, it sings its song for you to learn (songs.js
 //   callVisitor), and a feather if this is its own continent. Lose it and it waits on the water.
-// - The companion's asks (Q6): some dawns your companion hawk flies off to something and waits: a
-//   hidden place, a ring course, water. Join it there that day and it brings you a mouse or a feather.
+// - A gleam (Q6; was the companion's asks till 10-27): some mornings a column of light rises over
+//   something worth seeing, a hidden place, a ring course, water, and a thread of light leads there
+//   (sys/way.js). Reach it that day for a mouse or a feather.
 import { height, WATER, wrapX, ringsNear } from '../world.js';
 import { coastDist, continentAt } from '../earth.js';
 import { SPECIES } from '../../src/songs.js';
@@ -67,9 +68,9 @@ export function visitorsSystem(G) {
     if (V.lost) { const q = G.quests.get('lost'); if (q && (Math.abs(q.x - o.x) > 30 || Math.abs(q.z - o.z) > 30)) G.quests.set('lost', { x: o.x, z: o.z }); }
   }
 
-  // ---- the companion's asks -----------------------------------------------------------------------
+  // ---- a gleam over something worth seeing ---------------------------------------------------------
   function ask() {
-    const C = G.companion; if (!C || V.ask || G.lessons?.learning) return;
+    if (V.ask || G.lessons?.learning || G.way?.busy) return;
     const found = G.hidden?.found?.() || {};
     const opts = [];
     for (const p of G.hidden?.near?.() || []) if (!found[p.id] && p.perch && d2(p.x, p.z) < 3000) opts.push({ x: p.perch.x, y: p.perch.y, z: p.perch.z, what: 'somewhere hidden', id: p.id });
@@ -78,15 +79,14 @@ export function visitorsSystem(G) {
     if (!opts.length) return;
     const o = opts[Math.floor(Math.random() * opts.length)];
     V.ask = { ...o, day: G.day, gift: V.asks++ % 2 ? 'feather' : 'mouse' };
-    const go = () => { if (V.ask) C.fly([[o.x, o.y + 6, o.z], [o.x + 6, o.y + 8, o.z], [o.x, o.y + 6, o.z + 6]], 13, go); };
-    go();
-    G.quests.set('ask', { group: 'errand', icon: 'quest', title: 'Your companion waits', text: `It flew off to ${o.what} and waits there for you, today.`, x: o.x, z: o.z });
-    H.say('Your companion calls and flies off, then waits, circling: it has found something to show you.', { kind: 'event', secs: 5, icon: 'quest' });
+    G.way.show(o.x, o.y + 6, o.z, { title: 'A gleam', beacon: true, secs: 900 });
+    G.quests.set('ask', { group: 'errand', icon: 'quest', title: 'A gleam', text: `Light rises over ${o.what}, today. Fly to it.`, x: o.x, z: o.z });
+    H.say('A gleam of light rises in the distance: something to see. Follow the thread of light.', { kind: 'event', secs: 5, icon: 'quest' });
   }
   G.on('newDay', () => { V.ask = null; if (G.quests.get('ask') && !G.quests.get('ask').done) G.quests.drop('ask'); if (G.offered?.('ask') !== false && Math.random() < .7) setTimeout(ask, 30000); });   // (on the days it is one of the three offers: aims.js)
 
   G.dev?.add({ id: 'lostbird', area: 'Songs', round: 'Gameplay 10-26 Q3', title: 'A lost bird after a storm', how: 'Near the coast after a storm (or one day in four), a songbird of another land circles over the water: fly close, it follows; lead it to land, slowly, and it sings for you. Go makes one now.', go: () => { V.lost = null; spawnLost(); } });
-  G.dev?.add({ id: 'asks', area: 'Ground and perch', round: 'Gameplay 10-26 Q6', title: 'Your companion\'s asks', how: 'Some dawns your companion flies off to a hidden place, a ring course or water, and waits: join it there that day for a mouse or a feather. Go sends it now.', go: () => { V.ask = null; G.quests.drop('ask'); ask(); } });
+  G.dev?.add({ id: 'asks', area: 'Ground and perch', round: 'Gameplay 10-26 Q6', title: 'A gleam over something worth seeing', how: 'Some mornings a column of light rises over a hidden place, a ring course or water, a thread of light leading there: reach it that day for a mouse or a feather. Go sends it now.', go: () => { V.ask = null; G.way?.stop(); G.quests.drop('ask'); ask(); } });
 
   return {
     id: 'visitors',
@@ -96,13 +96,13 @@ export function visitorsSystem(G) {
       if (st > .5) stormWas = 1;
       else if (stormWas && st < .15) { stormWas = 0; if (coastDist(b.p[0], b.p[2]) < 400) spawnLost(); }
       lostStep(dt);
-      // the companion's ask: joined
+      // the gleam: reached
       const a = V.ask;
       if (a && d2(a.x, a.z) < 30 && Math.abs(b.p[1] - a.y) < 25) {
-        V.ask = null; G.companion?.stop(); G.offerDone?.('ask');
-        G.quests.done('ask', 'You found it together.');
-        if (a.gift === 'mouse') { G.hunger = Math.min(1, (G.hunger ?? 1) + FOOD.mouse); H.tally('Your companion brings you a mouse', 'prey'); }
-        else { G.feather?.('Your companion'); }
+        V.ask = null; if (G.way?.title === 'A gleam') G.way.stop(); G.offerDone?.('ask');
+        G.quests.done('ask', 'You found it.');
+        if (a.gift === 'mouse') { G.hunger = Math.min(1, (G.hunger ?? 1) + FOOD.mouse); H.tally('A mouse waits there for you', 'prey'); }
+        else { G.feather?.('A gleam'); }
       }
     },
     scene(S) {
