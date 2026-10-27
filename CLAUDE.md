@@ -78,7 +78,7 @@ web/3d/sys/*.js         systems: air (thermal clouds/motes), rings, food (hunger
                         aims (a daily aim and feathers (G.feather: each makes the wings last 3% longer, b.endure, up to 20), the lands collection, racing the companion),
                         lessons (the tutorial: the first flight with the HUD hidden and coach.js's ghost thumbs, then the lessons card once and a chain of quiet lessons: the next one in Today's Next card and as the next-step line under the compass; Lessons > All lessons lists the chapters with Replay; a feather for the first flight and each chapter, once), poles (the ice edges: pale air, aurora, the pole wall; fly through it to cross to the opposite longitude),
                         sealife (whales to ride, fish boils, flying fish, turtles), drift (icebergs, sea ice, driftwood, bottles; perches via world.js env.solids),
-                        isles (rain pools, seabirds, a sight per archipelago; the sea is salt, food.js), skyrivers (G.skyWind), nightsea (pole star / Southern Cross, plankton), hidden (ledges behind the sheer falls, rock shelters, oases where date palms grow, hollow old trees; Journal > Places > Hidden places, with the caves), caves (cave roofs, tarns), nature (the real wonders' meshes)
+                        isles (rain pools, seabirds, a sight per archipelago; the sea is salt, food.js), skyrivers (G.skyWind), nightsea (pole star / Southern Cross, plankton), hidden (ledges behind the sheer falls, rock shelters, oases where date palms grow; Journal > Places > Hidden places, with the caves), caves (cave roofs, tarns), nature (the real wonders' meshes)
 ```
 
 A system is `(G) => ({ id, update?(dt, c), scene?(S), save?(), load?(o) })`, added to `SYSTEMS` in

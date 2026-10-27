@@ -93,8 +93,31 @@ export function byGrain(x, z, f) {
 }
 // The rivers' segments in buckets of RB metres (each one in every bucket within RM of it), so a
 // point finds the near ones in one look
-const RB = 500, RM = 320, RNX = Math.ceil(W / RB);
-export const RIVER_LINES = RIVERS.map(([name, rank, p], id) => {
+const RB = 250, RM = 320, RNX = Math.ceil(W / RB);
+// The baked lines step from grid cell to grid cell (turns of 50 to 140 degrees, a zig-zag on the
+// ground): smoothed once here into curves, a weighted average along the line (twice), then a
+// round of corner cutting (Chaikin). The ends stay put.
+function smoothLine(p) {
+  let q = p;
+  for (let r = 0; r < 2; r++) {
+    const o = q.slice(), n = q.length / 2;
+    for (let i = 1; i < n - 1; i++) for (let c = 0; c < 2; c++) {
+      let s = 0, w = 0;
+      for (let k = -2; k <= 2; k++) { const j = Math.min(n - 1, Math.max(0, i + k)), wt = 3 - Math.abs(k); s += q[j * 2 + c] * wt; w += wt; }
+      o[i * 2 + c] = s / w;
+    }
+    q = o;
+  }
+  for (let r = 0; r < 1; r++) {
+    const o = [q[0], q[1]];
+    for (let k = 0; k + 3 < q.length; k += 2) o.push(q[k] * .75 + q[k + 2] * .25, q[k + 1] * .75 + q[k + 3] * .25, q[k] * .25 + q[k + 2] * .75, q[k + 1] * .25 + q[k + 3] * .75);
+    o.push(q[q.length - 2], q[q.length - 1]);
+    q = o;
+  }
+  return q;
+}
+export const RIVER_LINES = RIVERS.map(([name, rank, p0], id) => {
+  const p = p0.length > 4 ? smoothLine(p0) : p0;
   const cum = [0]; for (let k = 0; k + 3 < p.length; k += 2) cum.push(cum[cum.length - 1] + Math.hypot(p[k + 2] - p[k], p[k + 3] - p[k + 1]));
   return { id, name, rank, p, cum, len: cum[cum.length - 1], openA: false, openB: false };
 });

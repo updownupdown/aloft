@@ -105,6 +105,9 @@ function tarn(gx, gz, cx, cz) {
     const a = i * 2.39996 + ih(gx, gz, 957), r = 40 + i * 13, x = cx + Math.cos(a) * r, z = cz + Math.sin(a) * r, y = H0(x, z);
     if (y < 70 || slope(x, z)[1] < .86) continue;
     const R = 18 + ih(gx, gz, 958) * 10, f = y - 5;
+    // the pool's rim must hold: the ground all round it above the water (on a slope it would hang)
+    let rim = true; for (let k = 0; k < 16 && rim; k++) { const t = k / 16 * 6.283; if (H0(x + Math.cos(t) * R * .8, z + Math.sin(t) * R * .8) < f + 3.1) rim = false; }
+    if (!rim) continue;
     return finish({ kind: 'tarn', id: `cvn${gx}_${gz}`, open: true, bowl: 5, mouth: { x, z, y: f + 2.6, dx: 1, dz: 0 }, pool: { x, z, y: f + 2.6, r: R * .72 }, pts: [pt(x, z, R, 0, f)] });
   }
   return null;
