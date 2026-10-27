@@ -9,7 +9,8 @@ import * as W from '../world.js';
 import { PIG, C, shade, poly } from '../facet.js';
 import { clamp, store } from '../util.js';
 import { esc } from '../journal.js';
-import { createDial } from '../dial.js';
+import { createDial, clockOf } from '../dial.js';
+import { isReal, listed } from './journey.js';
 import { icon } from '../icons.js';
 import { EARTH, wrapX, latLon, toXZ, declination } from '../earth.js';
 import { createGlobe, prebake, riverWork } from '../globe.js';
@@ -40,7 +41,7 @@ function countLandmarks(G, more) {
     if (!G.menu.open) return;
     for (const t = performance.now(); lmK < nx * nz && performance.now() - t < 12; lmK++) {
       const i = lmK % nx, j = Math.floor(lmK / nx);
-      for (const l of W.landmarksNear(EARTH.X0 + (i + .5) * LM_TILE, EARTH.Z0 + (j + .5) * LM_TILE, LM_TILE / 2 + 1)) if (W.isNotable(l)) lmIds.add(l.id);
+      for (const l of W.landmarksNear(EARTH.X0 + (i + .5) * LM_TILE, EARTH.Z0 + (j + .5) * LM_TILE, LM_TILE / 2 + 1)) if (isReal(l) && W.isNotable(l)) lmIds.add(l.id);
     }
     if (lmK < nx * nz) { setTimeout(step, 40); return; }
     lmTotal = lmIds.size + (G.isleSights?.() || 0) + 2;   // (+ the two ice edges, poles.js) lmIds.clear();
@@ -130,7 +131,7 @@ export function mapView(G, J) {
   const SHOW = { places: true, quests: true, ways: true, finds: true, pins: true, ...store.get('mapShow', {}) };
   const catOf = p => p.pin ? 'pins' : p.cat || (p.cache || p.home ? 'places' : 'finds');
   const tally = () => {
-    const pct = explored() * 100, L = G.collection?.(), found = Object.keys(J.found || {}).length;
+    const pct = explored() * 100, L = G.collection?.(), found = listed(J).length;
     const row = (ic, n, of, word, go) => `<li${go ? ` data-go="${go}" role="button"` : ''}>${icon(ic)}<span>${word}</span><b>${n}${of ? `<span>/${of}</span>` : ''}</b></li>`;
     sum.innerHTML = `<div class="far3"><span><i style="width:${Math.max(2, Math.round(pct))}%"></i></span><small>${pct < .1 ? 'Nothing explored yet' : `${pct < 1 ? pct.toFixed(1) : Math.round(pct)}% of the world explored`}</small></div>
       <ul class="tally3">${L ? row('lands', L.lands, L.of, 'Lands', 'places') : ''}${row('landmarks', found, lmTotal, 'Landmarks', 'places')}</ul>
@@ -143,7 +144,7 @@ export function mapView(G, J) {
     dial.update(G.tod, G.day, false, null, G.forecast || null);
     const cap = t => t[0].toUpperCase() + t.slice(1);
     seasonEl.className = `mapseason3 ${G.season.name}`;
-    seasonEl.innerHTML = `<b>${G.date?.text ? `${G.date.text}, ` : ''}${cap(G.season.tropic ? 'tropical summer' : G.season.name)}</b>`;
+    seasonEl.innerHTML = `<b>${G.has?.('watch') ? `${clockOf(G.tod)} · ` : ''}${G.date?.text ? `${G.date.text}, ` : ''}${cap(G.season.tropic ? 'tropical summer' : G.season.name)}</b>`;
     yearEl.textContent = `${J.year || 1} ${J.year > 1 ? 'years' : 'year'}`;
     // where the hawk is, on the button that finds it
     hereEl.textContent = cap(G.placeWhere());

@@ -25,8 +25,6 @@ export function journal(G) {
   if (G.journal) return G.journal;
   const pane = G.menu.tab('journal', 'Journal');
   const page = id => { const [tab, title, order] = PAGES[id] || ['journal', id[0].toUpperCase() + id.slice(1), 80]; return G.menu.page(tab, id, title, order); };
-  // a found thing on a shelf opens its note (where and when) on a tap
-  pane.addEventListener('click', e => { const li = e.target.closest('.shelf3 li.has'); if (li) li.classList.toggle('open'); });
   G.journal = {
     pane, page,
     section(order, title = '') {
@@ -52,15 +50,15 @@ export function journal(G) {
 }
 export const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
-// A shelf of slots (James, 2026-10-24): the things found, each with its picture or icon and its name
-// (and a count when you hold several), the rest grey with a question mark, at most `peek` of them
-// and then "and N more". A found thing with a note opens it on a tap. An item:
+// A shelf (James, 2026-10-24; a row each, 10-27): the things found, each with its picture or icon, its name
+// (and a count when you hold several) and its whole note, the rest grey with a question mark, at most
+// `peek` of them and then "and N more". An item:
 // { name, found, pic (a data URL) or icon (icons.js), note, star (one of a kind), hint (for a slot not yet found), n }
 export function shelf(items, peek = 8) {
   const got = items.filter(i => i.found), todo = items.filter(i => !i.found), few = todo.slice(0, peek);
   const star = i => i.star ? '<i class="star3" title="One of a kind">★</i>' : '';
   const slot = i => i.found
-    ? `<li class="found${i.star ? ' star' : ''}${i.note || i.at ? ' has' : ''}"><span class="pic">${i.pic ? `<img alt="" src="${i.pic}">` : icon(i.icon || 'keepsake')}</span><b>${star(i)}${esc(i.name)}${i.n > 1 ? ` <small>×${i.n}</small>` : ''}</b>${i.note || i.at ? `<small class="note">${esc(i.note || '')}${i.at ? ` <button class="at3" data-at="${i.at}">${icon('map')}Where</button>` : ''}</small>` : ''}</li>`
+    ? `<li class="found${i.star ? ' star' : ''}"><span class="pic">${i.pic ? `<img alt="" src="${i.pic}">` : icon(i.icon || 'keepsake')}</span><b>${star(i)}${esc(i.name)}${i.n > 1 ? ` <small>×${i.n}</small>` : ''}</b>${i.note || i.at ? `<span class="note">${esc(i.note || '')}${i.at ? ` <button class="at3" data-at="${i.at}">${icon('map')}Where</button>` : ''}</span>` : ''}</li>`
     : `<li class="empty${i.star ? ' star' : ''}"><span class="pic">?</span>${i.hint ? `<small>${esc(i.hint)}</small>` : ''}</li>`;
   return `<ul class="shelf3">${got.map(slot).join('')}${few.map(slot).join('')}</ul>${todo.length > few.length ? `<p class="shelfmore3">and ${todo.length - few.length} more to find.</p>` : ''}`;
 }

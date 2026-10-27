@@ -4,7 +4,7 @@
 //   the village, the hill farm, the sea notes...). The shelf shows each with its count and named gaps;
 //   a finished set gives the bird that finishes it a step of growth and the whole journey a sense.
 // - Treasures are senses (K3): taking one turns on one small lasting thing (G.has(kind), ruins.js):
-//   the spyglass finds landmarks from twice as far, the watch tells the hour on the dial, the handbell
+//   the spyglass finds landmarks from twice as far, the watch tells the hour on the Map and Today, the handbell
 //   carries your Call farther, the float shows fish boils on the compass, the locket marks where you
 //   began, the teacup quenches faster, the horseshoe brings luck in the hunt, the whistle sounds before
 //   a gust, the sheep bell gives a stronger morning.
@@ -314,7 +314,7 @@ export function findsSystem(G) {
 
   // ---- dev ------------------------------------------------------------------------------------------
   G.dev?.add({ id: 'sets', area: 'Menu and map', round: 'Gameplay 10-26 K2 K8', title: 'Keepsakes in sets; tap a find for the Map', how: 'Journal > Things > Keepsakes: each set with its count and its gaps; a whole set gives a step of growth and a sense. Tap a found thing: the Map opens where it was.' });
-  G.dev?.add({ id: 'senses', area: 'World', round: 'Gameplay 10-26 K3', title: 'Treasures are senses', how: 'Spyglass: landmarks found from twice as far. Watch: the hour by the date. Handbell: Call reaches farther. Float: fish boils on the compass at sea. Locket: where you began on the compass. Teacup: drink faster. Horseshoe: a longer reach in the hunt. Whistle: a note before a gust. Sheep bell: a stronger morning.' });
+  G.dev?.add({ id: 'senses', area: 'World', round: 'Gameplay 10-26 K3', title: 'Treasures are senses', how: 'Spyglass: landmarks found from twice as far. Watch: the hour by the date on the Map and Today. Handbell: Call reaches farther. Float: fish boils on the compass at sea. Locket: where you began on the compass. Teacup: drink faster. Horseshoe: a longer reach in the hunt. Whistle: a note before a gust. Sheep bell: a stronger morning.' });
   G.dev?.add({ id: 'caches', area: 'World', round: 'Gameplay 10-26 K4 K5 K6 K7', title: 'Things in hidden places: painted walls, notebook pages, chart pieces, far signs', how: 'Find a shelter (a painted wall), a ledge behind the falls, an oasis; caves keep pages, sea caves chart pieces, deep caves far signs; four far wonders keep a sign. Go gives you the next page.',
     go: () => G.finds.take({ kind: 'page', x: b.p[0], z: b.p[2] }) });
 

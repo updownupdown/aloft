@@ -49,7 +49,7 @@ export function createDial(parent, { hub = false } = {}) {
   return {
     // tod runs 0 (midnight) to 1; the disc turns so that tod sits under the bead.
     // forecast(seconds ahead) gives the weather due then: clear, cloud, fog, rain, snow or storm
-    update(tod, dayN, hide, season = null, forecast = null, clock = false) {
+    update(tod, dayN, hide, season = null, forecast = null) {
       const k = Math.round(tod * 400) + ',' + dayN + ',' + hide + ',' + season?.name;
       if (k === key) return; key = k;
       el.classList.toggle('hidden', hide);
@@ -66,12 +66,14 @@ export function createDial(parent, { hub = false } = {}) {
       if (season) {
         // the date, the same the world over, and the season here (earth.js: by latitude)
         seasonEl.className = 'season ' + season.name;
-        seasonEl.textContent = (clock ? `${Math.floor(tod * 24)}:${String(Math.floor(tod * 24 % 1 * 12) * 5).padStart(2, '0')} · ` : '') + (season.date ? `${season.date}, ${season.tropic ? 'Tropical summer' : season.name[0].toUpperCase() + season.name.slice(1)}` : `${season.name[0].toUpperCase()}${season.name.slice(1)}, day ${(season.d ?? 0) + 1} of ${SEASON_DAYS}`);   // the pocket watch (sys/finds.js) tells the hour
+        seasonEl.textContent = (season.date ? `${season.date}, ${season.tropic ? 'Tropical summer' : season.name[0].toUpperCase() + season.name.slice(1)}` : `${season.name[0].toUpperCase()}${season.name.slice(1)}, day ${(season.d ?? 0) + 1} of ${SEASON_DAYS}`);   // the pocket watch (sys/finds.js) tells the hour
       }
       el.title = `Day ${dayN}, ${h}${season ? ', ' + season.name : ''}${now ? `. ${SAY[now][0].toUpperCase()}${SAY[now].slice(1)} now${next ? `, then ${SAY[next]}` : ''}` : ''}`;
     },
   };
 }
+// the time on a clock, to five minutes (shown on the Map and Today, not in flight: James 10-27)
+export const clockOf = tod => `${Math.floor(tod * 24)}:${String(Math.floor(tod * 24 % 1 * 12) * 5).padStart(2, '0')}`;
 // the hour in words, for the dial's title and for anything else that wants to say what time it is
 export function hourName(tod) {
   return tod < .2 || tod >= .8 ? 'night' : tod < .3 ? 'dawn' : tod < .45 ? 'morning' : tod < .55 ? 'midday' : tod < .7 ? 'afternoon' : 'dusk';

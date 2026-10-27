@@ -26,12 +26,12 @@ export function ledgerSystem(G) {
     const J = G.journey || {}, f = G.finds?.ledger?.() || {}, e = G.errands, a = G.ages?.ledger?.() || { sights: [] }, L = G.collection?.(), gd = G.guide?.count?.();
     const lm = G.store.get('lmTotal', null)?.n || 0, hid = Object.keys(G.hidden?.found?.() || {}).length, signs = f.signs || 0;
     // the share of everything with a known end, for the heading
-    const ends = [[G.learned?.size || 0, SONGS], [Object.keys(J.found || {}).length, lm], [L?.lands || 0, L?.of || 0], [gd?.n || 0, gd?.of || 0],
+    const ends = [[G.learned?.size || 0, SONGS], [Object.values(J.found || {}).filter(f => f.real).length, lm], [L?.lands || 0, L?.of || 0], [gd?.n || 0, gd?.of || 0],
       [f.sets || 0, f.setsOf || 0], [f.pages || 0, f.pagesOf || 0], [f.paints || 0, f.paintsOf || 0], [signs, 7], [f.charts || 0, 4], [e?.homes() || 0, e?.homesOf || 0], [a.been || 0, a.of || 0]].filter(([, o]) => o);
     const all = ends.reduce((s, [n, o]) => s + Math.min(1, n / o), 0) / Math.max(1, ends.length);
     const world = [
       row('songs', 'Songs learned', G.learned?.size || 0, SONGS, 'Copy a songbird’s song.'),
-      row('landmarks', 'Landmarks', Object.keys(J.found || {}).length, lm, 'Fly close to the named places.'),
+      row('landmarks', 'Landmarks', Object.values(J.found || {}).filter(f => f.real).length, lm, 'Fly close to the wonders, volcanoes and great natural sights.'),
       row('lands', 'Lands seen', L?.lands || 0, L?.of || 0, 'Fly over every kind of land.'),
       row('guide', 'Field guide pages', gd?.n || 0, gd?.of || 0, 'Look at creatures and birds up close.'),
       row('door', 'Hidden places and caves', hid, 0, 'Ledges behind falls, rock shelters, oases, caves.'),

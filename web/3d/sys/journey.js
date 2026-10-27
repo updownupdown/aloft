@@ -8,9 +8,15 @@ import { YEAR_DAYS, REGIONS, EARTH } from '../earth.js';
 import { WONDERS } from '../wonders.js';
 import { journal, esc } from '../journal.js';
 import { mapView } from './map.js';
-import { hourName } from '../dial.js';
+import { hourName, clockOf } from '../dial.js';
 
 // a name inside a sentence: 'You found the Ridge Pass'
+// the landmarks Journal > Places lists and the Map counts: one of a kind, real (a wonder, a volcano,
+// a real natural wonder; poles.js the ice edges and isles.js the named islands mark theirs real too).
+// The rest (a stack, a cairn, falls) are still found, as their land's sight (James 10-27: too many, too generic)
+const REAL = new Set(['wonder', 'volcano', 'nature']);
+export function isReal(l) { return REAL.has(l.kind); }
+export function listed(J) { return Object.values(J.found || {}).filter(f => f.real); }
 export const inSentence = n => String(n).replace(/^The /, 'the ');
 const FIND_R = 150, ROUTE_STEP = 60, ROUTE_MAX = 900;
 const placeName = (x, z) => W.placeName(x, z);
@@ -34,7 +40,7 @@ export function journeySystem(G) {
   // (landmarks and lands, nearest first: the whole Earth's list takes a few seconds)
   G.on('mock', k => {
     const all = W.landmarksNear(0, EARTH.Z0 + EARTH.H / 2, 5e4).filter(W.isNotable).sort((p, q) => Math.hypot(p.x - b.p[0], p.z - b.p[2]) - Math.hypot(q.x - b.p[0], q.z - b.p[2]));
-    J.found = Object.fromEntries(all.slice(0, Math.round(k * all.length)).map(l => [l.id, { name: l.name, x: Math.round(l.x), z: Math.round(l.z), note: 'Found in a dev mock.' }]));
+    J.found = Object.fromEntries(all.slice(0, Math.round(k * all.length)).map(l => [l.id, { real: isReal(l) ? 1 : 0, name: l.name, x: Math.round(l.x), z: Math.round(l.z), note: 'Found in a dev mock.' }]));
     J.regions = Object.fromEntries(REGIONS.slice(0, Math.round(k * REGIONS.length)).map(r => [r[0], { name: r[1], day: G.day, date: '' }]));
     J.year = 1 + Math.round(k * 3);
   });
@@ -59,7 +65,7 @@ export function journeySystem(G) {
     for (const l of W.landmarksNear?.(b.p[0], b.p[2], FIND_R * 2 + 400) || []) {
       if (J.found[l.id] || passed.has(l.id) || Math.hypot(l.x - b.p[0], l.z - b.p[2]) > FIND_R * (G.has?.('spyglass') ? 2 : 1) + (l.r || 0)) continue;   // the spyglass (sys/finds.js) sees twice as far
       if (!W.isNotable(l)) { passed.add(l.id); G.emit('sight', l); continue; }
-      J.found[l.id] = { name: l.name, x: Math.round(l.x), z: Math.round(l.z), note: `Found on ${G.date?.text || `day ${G.day}`}, in ${G.season.name}, in ${inSentence(placeName(l.x, l.z))}.` };
+      J.found[l.id] = { real: isReal(l) ? 1 : 0, name: l.name, x: Math.round(l.x), z: Math.round(l.z), note: `Found on ${G.date?.text || `day ${G.day}`}, in ${G.season.name}, in ${inSentence(placeName(l.x, l.z))}.` };
       G.hud.name(l.name, 'landmarks'); G.audio.learned?.();
       G.emit('landmark', l);
     }
@@ -100,14 +106,14 @@ export function journeySystem(G) {
   const lmSec = journal(G).section(43, 'Landmarks');
   const wonderOf = name => Object.keys(WONDERS).find(k => WONDERS[k][0] === name);
   G.menu.onOpen(() => {
-    const lms = Object.values(J.found).reverse(), W = Object.keys(WONDERS), nw = W.filter(k => G.relics?.wonders?.[k]).length;
+    const lms = listed(J).reverse(), W = Object.keys(WONDERS), nw = W.filter(k => G.relics?.wonders?.[k]).length;
     lmSec.count(`${lms.length} found`);
     const row = l => { const w = wonderOf(l.name); return `<li${w ? ' class="star"' : ''}>${w ? '<i class="star3" title="A wonder">★</i>' : ''}${esc(l.name)} <small>${w ? esc(WONDERS[w][5]) + ' ' : ''}${esc(l.note)}</small></li>`; };
     lmSec.body.innerHTML = `<p class="muted3">${nw} of ${W.length} wonders found: people built them, long ago, where the old maps put them. ★ marks one.</p>`
-      + (lms.length ? `<ul class="list3">${lms.map(row).join('')}</ul>` : '<p class="muted3">None found yet. Rare sights wait in every land: an old oak, a waterfall, a tower, a light.</p>')
+      + (lms.length ? `<ul class="list3">${lms.map(row).join('')}</ul>` : '<p class="muted3">None found yet. The great sights wait across the Earth: the wonders people built, the volcanoes, the great falls and rocks, the ice at each end.</p>')
       + (Object.keys(J.waters || {}).length ? `<p class="muted3">Great waters: ${esc(Object.keys(J.waters).join(', '))}.</p>` : '');
   });
-  G.menu.subtitle(() => { const h = hourName(G.tod); return `${h[0].toUpperCase()}${h.slice(1)} on ${G.date?.text || `day ${G.day}`}, ${G.season.name}.`; });
+  G.menu.subtitle(() => { const h = hourName(G.tod); return `${G.has?.('watch') ? `${clockOf(G.tod)}, ${h}` : h[0].toUpperCase() + h.slice(1)} on ${G.date?.text || `day ${G.day}`}, ${G.season.name}.`; });
 
   return {
     id: 'journey',
