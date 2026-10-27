@@ -56,6 +56,7 @@ import { speciesSystem } from './sys/species.js';
 import { aimsSystem } from './sys/aims.js';
 import { movesSystem } from './sys/moves.js';
 import { lifeSystem } from './sys/life.js';
+import { ledgerSystem } from './sys/ledger.js';
 import { neighboursSystem } from './sys/neighbours.js';
 import { lessonsSystem } from './sys/lessons.js';
 import { fieldsSystem } from './sys/fields.js';
@@ -89,7 +90,7 @@ import { createLooks } from './look.js';
 const SYSTEMS = [speciesSystem, movesSystem, lifeSystem, clockSystem, weatherSystem, watersSystem, windsSystem, floraSystem, bushesSystem, airSystem, ringsSystem, foodSystem, findwaterSystem, aimSystem, sleepSystem, feelSystem, batterySystem, songsSystem, momentsSystem,
   guideSystem, journeySystem, storySystem, ruinsSystem, howtoSystem, faunaSystem, neighboursSystem, landsSystem, seasonsSystem, glowSystem, landAirSystem, crittersSystem, huntersSystem, aimsSystem,
   fieldsSystem, skyDaysSystem, raptorsSystem, wingcraftSystem, stillSystem, swellsSystem, berriesSystem, cuesSystem, windCuesSystem, polesSystem,
-  sealifeSystem, driftSystem, islesSystem, skyRiversSystem, nightSeaSystem, lessonsSystem, hiddenSystem, natureSystem, cavesSystem, growthSystem, questsSystem, findsSystem, errandsSystem, loreSystem, oceanSystem, visitorsSystem, agesSystem];
+  sealifeSystem, driftSystem, islesSystem, skyRiversSystem, nightSeaSystem, lessonsSystem, hiddenSystem, natureSystem, cavesSystem, growthSystem, questsSystem, findsSystem, errandsSystem, loreSystem, oceanSystem, visitorsSystem, agesSystem, ledgerSystem];
 
 // Where each bird first flies, in its own land (earth.js toXZ: latitude, longitude): the
 // red-tail at a forest edge in the Finger Lakes, the osprey over a Scottish loch, the barn owl in

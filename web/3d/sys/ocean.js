@@ -95,13 +95,19 @@ export function oceanSystem(G) {
   }
   // the songs of the sea birds tell where a course starts (sys/lore.js)
   G.ocean = {
-    roads: R,
+    roads: R, crossed: () => Object.keys(O.crossed).length, courses: () => Object.keys(O.courses).length,
     tell() {
       let best = null, bd = 15000;
       for (const c of coursesNear(b.p[0], b.p[2], 15000)) { if (O.revealed[c.id] || O.courses[c.id]) continue; const d = d2(c.x, c.z); if (d < bd) { bd = d; best = c; } }
       return best && { id: 'course:' + best.id, x: best.x, z: best.z, what: `a ring course over the sea, along ${best.road.name}`, road: best.id };
     },
     reveal(id) { O.revealed[String(id).replace(/^course:/, '')] = G.day || 1; },
+    // the road nearest a point (within reach), and points along it out to sea (a lit lamp's road, errands.js)
+    near(x, z, reach) {
+      let best = null;
+      for (const r of R()) { const o = onRoad(r, x, z); if (o.d < reach && (!best || o.d < best.d)) best = { r, s: o.s, d: o.d }; }
+      return best && { name: best.r.name, end: best.r.end, s: best.s, len: best.r.len, at: s => at(best.r, s), wet: (x, z) => wet(x, z) };
+    },
   };
 
   // perched on a road's log: a hard rim and a spot to stand

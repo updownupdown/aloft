@@ -413,8 +413,11 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .tnext3[hidden] { display: none; }
 .tnext3 > h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--mossink); }
 .tnext3 > h3 svg { width: 18px; height: 18px; fill: none; stroke: var(--moss); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.tnext3 .aims3 > section { padding: 0; margin: 0; border: 0; background: none; }
-.tnext3 .aims3 > section + section:not(.hidden) { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--rule); }
+.tnext3 .aims3 > section { padding: 0; margin: 0; border: 0; border-radius: 0; background: none; }
+.tnext3 .aims3 > section.later3 { display: none; }
+.tnext3 .nmore3 { margin: 8px 0 0; padding: 6px 14px; border: 1.5px solid var(--btnedge); border-radius: 16px; background: var(--btn); color: var(--ink); font: 600 13px var(--text); cursor: pointer; }
+.tnext3 .nmore3[hidden] { display: none; }
+.tnext3 .aims3 > section:not(.hidden):not(.later3) ~ section:not(.hidden):not(.later3) { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--rule); }
 .tnext3 .aims3 > section > h3 { display: none; }
 .nch3 { display: flex; align-items: center; gap: 7px; margin: 0 0 4px; font-size: 12.5px; font-weight: 600; color: var(--ink2); }
 .nch3 svg { flex: none; width: 18px; height: 18px; fill: none; stroke: var(--moss); stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
@@ -592,6 +595,9 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
    menu (James, 2026-10-24; dark till then) */
 .mapsum3 { position: absolute; left: 12px; top: 12px; width: 196px; max-width: calc(100% - 200px); display: flex; flex-direction: column; gap: 9px; padding: 12px 12px 10px 14px; border-radius: 18px;
   background: var(--glass2); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); box-shadow: var(--shadow); color: var(--ink2); }
+.mapsum3 .mapfil3 { display: flex; flex-wrap: wrap; gap: 4px; margin: 0 -4px; }
+.mapsum3 .mapfil3 button { padding: 3px 9px; border-radius: 12px; border: 1px solid var(--rule); background: transparent; color: var(--ink2); font: 600 11.5px var(--text); cursor: pointer; }
+.mapsum3 .mapfil3 button.on { background: var(--moss); border-color: var(--moss); color: #fff; }
 .mapsum3 .tally3 { grid-template-columns: 1fr; gap: 1px; margin: 0 -6px; }
 .mapsum3 .tally3 li { align-items: center; gap: 8px; padding: 3px 6px; border-radius: 10px; font-size: 12.5px; }
 .mapsum3 .tally3 li[data-go] { cursor: pointer; } .mapsum3 .tally3 li[data-go]:active { background: var(--mosstint); }
@@ -960,6 +966,10 @@ details.lgrp3[open] .lchev3 { transform: rotate(180deg); }
 .grow3 .gx3 small { display: block; font-size: 12px; color: var(--ink2); line-height: 1.35; }
 .grow3 .gx3 ul { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 2px; }
 .grow3 .gx3 li { display: flex; gap: 8px; font-size: 12.5px; font-weight: 400; }
+.gways3 { margin: 6px 0 0; display: flex; flex-wrap: wrap; gap: 4px 6px; font-size: 12px; color: var(--ink2); line-height: 1.3; }
+.gways3 b { width: 100%; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--mossink); }
+.gways3 span { padding: 2px 8px; border-radius: 10px; background: var(--mosstint); }
+.gways3.gany3 { margin: 10px 0 0; }
 .grow3 .gx3 li span { flex: 1; min-width: 0; }
 .grow3 .gx3 li b { font-weight: 600; font-variant-numeric: tabular-nums; }
 .grow3 .gx3 li.cond { color: var(--ink2); font-style: italic; }
@@ -998,3 +1008,21 @@ details.lgrp3[open] .lchev3 { transform: rotate(180deg); }
 .glass3 [data-at] { cursor: pointer; }
 .shelf3 .at3 { display: inline-flex; align-items: center; gap: 4px; margin: 6px auto 0; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--rule); background: var(--btn); color: var(--moss); font: inherit; font-size: 12px; font-weight: 600; }
 .shelf3 .at3 svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+/* Journal > Everything (sys/ledger.js): a row per count, a thin clay bar under it */
+.ledhead3 { display: flex; gap: 10px; align-items: flex-start; margin: 0 0 12px; color: var(--ink2); }
+.ledhead3 svg { width: 26px; height: 26px; flex: none; color: var(--moss); }
+.ledhead3 b { display: block; font-size: 17px; color: var(--ink); }
+.ledhead3 small { display: block; font-size: 12.5px; line-height: 1.35; margin-top: 2px; }
+.led3 ul { list-style: none; margin: 0; padding: 0; }
+.led3 li { display: grid; grid-template-columns: 22px 1fr auto; gap: 2px 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--rule); }
+.led3 li:last-child { border-bottom: 0; }
+.led3 li > svg { width: 20px; height: 20px; color: var(--ink2); }
+.led3 li.full > svg { color: var(--moss); }
+.led3 li b { display: block; font-size: 14px; font-weight: 600; color: var(--ink); }
+.led3 li small { display: block; font-size: 12px; color: var(--ink2); line-height: 1.3; }
+.led3 li em { font-style: normal; font-weight: 700; font-size: 14px; color: var(--ink); font-variant-numeric: tabular-nums; }
+.led3 li em s { text-decoration: none; font-weight: 500; color: var(--ink2); }
+.led3 li > i { grid-column: 2 / 4; height: 3px; border-radius: 2px; background: var(--rule); overflow: hidden; }
+.led3 li > i:empty { display: none; }
+.led3 li > i u { display: block; height: 100%; background: var(--clay); }
+.led3 li.full > i u { background: var(--moss); }

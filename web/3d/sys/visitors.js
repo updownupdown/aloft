@@ -83,7 +83,7 @@ export function visitorsSystem(G) {
     G.quests.set('ask', { group: 'errand', icon: 'quest', title: 'Your companion waits', text: `It flew off to ${o.what} and waits there for you, today.`, x: o.x, z: o.z });
     H.say('Your companion calls and flies off, then waits, circling: it has found something to show you.', { kind: 'event', secs: 5, icon: 'quest' });
   }
-  G.on('newDay', () => { V.ask = null; if (G.quests.get('ask') && !G.quests.get('ask').done) G.quests.drop('ask'); if (Math.random() < .35) setTimeout(ask, 30000); });
+  G.on('newDay', () => { V.ask = null; if (G.quests.get('ask') && !G.quests.get('ask').done) G.quests.drop('ask'); if (G.offered?.('ask') !== false && Math.random() < .7) setTimeout(ask, 30000); });   // (on the days it is one of the three offers: aims.js)
 
   G.dev?.add({ id: 'lostbird', area: 'Songs', round: 'Gameplay 10-26 Q3', title: 'A lost bird after a storm', how: 'Near the coast after a storm (or one day in four), a songbird of another land circles over the water: fly close, it follows; lead it to land, slowly, and it sings for you. Go makes one now.', go: () => { V.lost = null; spawnLost(); } });
   G.dev?.add({ id: 'asks', area: 'Ground and perch', round: 'Gameplay 10-26 Q6', title: 'Your companion\'s asks', how: 'Some dawns your companion flies off to a hidden place, a ring course or water, and waits: join it there that day for a mouse or a feather. Go sends it now.', go: () => { V.ask = null; G.quests.drop('ask'); ask(); } });
@@ -99,7 +99,7 @@ export function visitorsSystem(G) {
       // the companion's ask: joined
       const a = V.ask;
       if (a && d2(a.x, a.z) < 30 && Math.abs(b.p[1] - a.y) < 25) {
-        V.ask = null; G.companion?.stop();
+        V.ask = null; G.companion?.stop(); G.offerDone?.('ask');
         G.quests.done('ask', 'You found it together.');
         if (a.gift === 'mouse') { G.hunger = Math.min(1, (G.hunger ?? 1) + FOOD.mouse); H.tally('Your companion brings you a mouse', 'prey'); }
         else { G.feather?.('Your companion'); }

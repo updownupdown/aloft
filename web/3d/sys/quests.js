@@ -36,12 +36,14 @@ export function questsSystem(G) {
 
   // ---- the quests ---------------------------------------------------------------------------------
   const api = {
-    // add or change a quest (a new one is tracked when none is); returns it
+    // add or change a quest (only your very first is followed for you: after that a new quest never
+    // takes the compass, pick C of the review); returns it
     set(id, o) {
       const was = Q.list[id], q = Q.list[id] = { ...(was || { t: G.day || 0 }), ...o, id };
       if (!was && q.x != null && q.age == null) q.age = age();   // (where it is: sys/ages.js)
       if (!was && !q.done) {
-        if (!Q.tracked && q.x != null && !o.quiet) Q.tracked = id;
+        if (!Q.tracked && !Q.ever && q.x != null && !o.quiet) Q.tracked = id;
+        if (Q.tracked) Q.ever = true;
         if (!o.quiet) H.tally(`${q.group === 'rumour' ? 'A rumour' : 'New'}: ${q.title}`, q.icon || 'quest');
         G.emit('quest', q);
       }
@@ -51,23 +53,22 @@ export function questsSystem(G) {
     done(id, note) {
       const q = Q.list[id]; if (!q || q.done) return;
       q.done = G.day || 1; if (note) q.note = note;
-      if (Q.tracked === id) Q.tracked = next();
+      if (Q.tracked === id) Q.tracked = null;
       H.nextDone?.('quest');
       G.emit('questDone', q);
     },
-    drop(id) { delete Q.list[id]; if (Q.tracked === id) Q.tracked = next(); },
-    track(id) { Q.tracked = Q.tracked === id ? null : id; H.reply(Q.tracked ? `Following: ${Q.list[id].title}` : 'Not following a quest', 2.5); },
+    drop(id) { delete Q.list[id]; if (Q.tracked === id) Q.tracked = null; },
+    track(id) { Q.tracked = Q.tracked === id ? null : id; Q.ever = true; H.reply(Q.tracked ? `Following: ${Q.list[id].title}` : 'Not following a quest', 2.5); },
     tracked: () => Q.list[Q.tracked],
     open: () => Object.values(Q.list).filter(q => !q.done),
     all: () => Object.values(Q.list),
   };
   G.quests = api;
-  // the next to follow when one ends: the nearest open quest with a place, in this age
-  function next() {
-    let best = null, bd = 1e9;
-    for (const q of api.open()) if (q.x != null && (q.age || 'earth') === age()) { const d = Math.hypot(wrapX(q.x - b.p[0]), q.z - b.p[2]); if (d < bd) { bd = d; best = q.id; } }
-    return best;
-  }
+  // a rumour you have not followed fades after a few days (B of the review): kept under Done, faded
+  const FADE = 5;
+  G.on('newDay', () => {
+    for (const q of api.open()) if (q.group === 'rumour' && q.id !== Q.tracked && (G.day || 0) - (q.t || 0) > FADE) { q.done = G.day || 1; q.faded = true; q.note = 'Faded: you never went to see.'; }
+  });
 
   // ---- holding a thing ---------------------------------------------------------------------------
   // item: { id, kind (an artefact shape: af_<kind>), name, goes (where it belongs, in words), quest }
@@ -144,8 +145,8 @@ export function questsSystem(G) {
   });
   const COL = { hold: '#b8862f', wait: '#b8862f', errand: '#c0533f', rumour: '#5f7fae', find: '#8a6fc0', sea: '#3f8fd0', way: '#3fb0a8' };
   G.mapPlaces = (prev => () => [...(prev?.() || []),
-    ...api.open().filter(here).map(q => ({ x: q.x, z: q.z, r: q.r, name: q.title, note: [q.text, q.where].filter(Boolean).join(' '), col: COL[q.group] || '#5f7fae', quest: q.id, tracked: q.id === Q.tracked, rank: 1 })),
-    ...(Q.ledge ? [{ x: Q.ledge.x, z: Q.ledge.z, name: 'Your ledge', note: cap(Q.ledge.name) + '.', col: '#b8862f', rank: 1 }] : []),
+    ...api.open().filter(here).map(q => ({ x: q.x, z: q.z, r: q.r, name: q.title, note: [q.text, q.where].filter(Boolean).join(' '), col: COL[q.group] || '#5f7fae', quest: q.id, tracked: q.id === Q.tracked, rank: 1, cat: q.group === 'way' ? 'ways' : 'quests' })),
+    ...(Q.ledge ? [{ x: Q.ledge.x, z: Q.ledge.z, name: 'Your ledge', note: cap(Q.ledge.name) + '.', col: '#b8862f', rank: 1, cat: 'places' }] : []),
   ])(G.mapPlaces);
   // the Map opened on a place (the Quests page, Show on map)
   G.showOnMap = (x, z) => { G.mapFocus = [x, z]; G.menu.set(true, 'map'); };
@@ -190,22 +191,38 @@ export function questsSystem(G) {
     if (a === 'map' && q) G.showOnMap(q.x, q.z);
     if (a === 'all') G.menu.set(true, 'journal', 'quests');
     if (a === 'stop') { Q.tracked = null; nextSec.el.classList.add('hidden'); }
+    if (a === 'show' && q) showMe(q);
   });
+  // Show me (M of the review): the companion flies ahead toward the quest you follow, a km and a half or
+  // to the place if nearer, low over the land, and you ride along behind it
+  const SHOW = { far: 1500, step: 250, up: 30, v: 14 };
+  let showing = null;
+  function showMe(q) {
+    G.menu.set(false);
+    if (b.state !== 'fly') { showing = q.id; H.reply('Take off: your companion will show the way', 3); return; }
+    const dx = wrapX(q.x - b.p[0]), dz = q.z - b.p[2], d = Math.hypot(dx, dz), go = Math.min(d, SHOW.far), pts = [];
+    for (let s = SHOW.step; s <= go + 1; s += SHOW.step) { const x = b.p[0] + dx / d * Math.min(s, go), z = b.p[2] + dz / d * Math.min(s, go); pts.push([x, Math.max(height(x, z), WATER) + SHOW.up, z]); }
+    if (!pts.length) { H.reply('It is here, close by', 2.5); return; }
+    G.companion.fly(pts, SHOW.v, () => H.reply(d > SHOW.far ? `Your companion circles: on ${whereTo(b, q.x, q.z)}` : 'Your companion circles over it', 3.5));
+    H.reply('Your companion shows the way: follow it', 3);
+  }
   G.menu.onOpen(() => {
     const q = Q.list[Q.tracked], show = q && !q.done && !G.lessons?.learning;
     nextSec.el.classList.toggle('hidden', !show);
     if (show) nextSec.body.innerHTML = `<p class="nch3">${icon(q.icon || 'quest')}<span>Following</span>${q.of ? `<small>${q.n || 0} of ${q.of}</small>` : ''}</p>
       <p class="ntask3">${esc(q.title)}</p><p class="nsay3">${esc([q.text, here(q) ? whereTo(b, q.x, q.z) : ''].filter(Boolean).join(' '))}</p>
-      <div class="nbtns3">${here(q) ? `<button data-q="map" class="main3">Show on map</button>` : ''}<button data-q="stop">Stop following</button><button data-q="all" class="nall3">All quests</button></div>`;
+      <div class="nbtns3">${here(q) && G.companion ? `<button data-q="show" class="main3">Show me</button>` : ''}${here(q) ? `<button data-q="map"${G.companion ? '' : ' class="main3"'}>Show on map</button>` : ''}<button data-q="stop">Stop following</button><button data-q="all" class="nall3">All quests</button></div>`;
   });
 
   // ---- the frame --------------------------------------------------------------------------------
   let lineT = 0, glintT = 0;
+  G.dev?.add({ id: 'questshow', area: 'Menu and map', round: 'Gameplay review M', title: 'Show me: the companion flies ahead toward the quest you follow', how: 'Follow a quest with a place, open Today: Show me. Your companion flies ahead (1.5 km, or to the place if nearer) low over the land; follow it. Grounded, it waits for you to take off.' });
   G.dev?.add({ id: 'quests', area: 'Menu and map', round: 'Gameplay 10-26', title: 'Quests: Journal > Quests, one followed on the compass and under it, all on the Map', how: 'Learn a song or pick up a treasure: it shows under Journal > Quests. Follow one: a mark on the compass, the next step under it, a circle or a mark on the Map.' });
   G.dev?.add({ id: 'ledge', area: 'Ground and perch', round: 'Gameplay 10-26 K1', title: 'Your ledge: make a favourite perch or a hidden place yours, and keep things there', how: 'Perch on a favourite perch or in a hidden place you found: the action button offers Make this your ledge. Carry a treasure there: Leave it here.' });
   return {
     id: 'quests',
     update(dt) {
+      if (showing && b.state === 'fly') { const q = Q.list[showing]; showing = null; if (q && !q.done && q.id === Q.tracked) showMe(q); }
       // the next step under the compass: the quest you follow, how far and which way
       if ((lineT -= dt) <= 0) {
         lineT = 1;

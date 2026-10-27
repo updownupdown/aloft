@@ -6,6 +6,7 @@ import { SPECIES } from '../../src/songs.js';
 import { forest, treesNear, perchesOf, ih, biomeAt, rocksNear, landmarksNear, groundAt, WATER } from '../world.js';
 import { builder, blob, reseed } from '../shapes.js';
 import { continentAt } from '../earth.js';
+import { AGE_ID } from '../ages.js';
 
 const c01 = c => c.map(v => v / 255);
 const dark = (c, k) => c.map(v => v * k);
@@ -89,8 +90,9 @@ function pickW(pool, u) {
 // too, where there are no rocks), cached by continent, land and spot
 const owners = new Map();
 function own(x, z, spot) {
-  const c = continentAt(x, z), raw = land(x, z), k = c + raw + spot;
-  if (!owners.has(k)) owners.set(k, c ? SPECIES.filter(q => q.cont.includes(c) && q.lands.includes(raw) && ((q.spot || 'tree') === spot || spot === 'ground' && q.spot === 'rock')) : []);
+  // (the Other Shore has birds of its own, in any land: src/songs.js cont 'shore')
+  const shore = AGE_ID === 'shore', c = shore ? 'shore' : continentAt(x, z), raw = land(x, z), k = c + raw + spot;
+  if (!owners.has(k)) owners.set(k, c ? SPECIES.filter(q => q.cont.includes(c) && (shore || q.lands.includes(raw)) && ((q.spot || 'tree') === spot || spot === 'ground' && q.spot === 'rock')) : []);
   return owners.get(k);
 }
 function treeSpot(t) {

@@ -34,7 +34,7 @@ export function guideSystem(G) {
   const page = (key, name, note = '', hint = '') => { const p = pages.get(key); pages.set(key, { key, name: name || p?.name || key, note: note || p?.note || '', hint: hint || p?.hint || '' }); };
   for (const sp of SPECIES) page('sp' + sp.id, sp.name, SONG[sp.name] || '', `A songbird. ${sp.hint}.`);
   for (const [k, [n, t]] of Object.entries(NOTES)) page(k, n, t);
-  G.guide = { page, seen: key => !!seen[key], name: key => pages.get(key)?.name || key, note: key => pages.get(key)?.note || '' };
+  G.guide = { page, count: () => ({ n: [...pages.keys()].filter(k => seen[k]).length, of: pages.size }), seen: key => !!seen[key], name: key => pages.get(key)?.name || key, note: key => pages.get(key)?.note || '' };
 
   // Settings > Advanced > Dev mode: progress mocked at k (0, .25, .5 or 1; dev.js), then saved and reloaded
   // (no portraits: the cards show their name and note)

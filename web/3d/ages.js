@@ -13,7 +13,7 @@ export const AGES = {
   drowned: { name: 'The Drowned', short: 'Drowned', sea: 9, snow: 40, trees: 1, tint: [.96, 1, 1.03], desat: .05, sky: [.68, .8, .84], skyK: .25,
     note: 'The sea up into every valley: the lowlands gone, the hills made islands, the old villages under the water.', col: '#4f8f96' },
   red: { name: 'The Red Age', short: 'Red', sea: -900, snow: 5000, trees: 0, tint: [1.12, .9, .78], desat: .45, sky: [.86, .6, .5], skyK: .6, ground: [.62, .34, .22, .55],
-    note: 'An Earth long dry: no sea, no snow, no trees, only rust and the shape of the land; the beds of the oceans open to fly across.', col: '#b25a3a',
+    note: 'An Earth long dry: no sea, no snow, no trees, only rust and the shape of the land; the beds of the oceans open to fly across, and two small moons cross its nights.', col: '#b25a3a',
     skip: ['sealifeSystem', 'driftSystem', 'islesSystem', 'nightSeaSystem', 'oceanSystem', 'floraSystem', 'bushesSystem', 'berriesSystem', 'crittersSystem', 'faunaSystem', 'huntersSystem', 'raptorsSystem', 'neighboursSystem', 'fieldsSystem'] },
   shore: { name: 'The Other Shore', short: 'Other Shore', sea: 22, snow: 60, trees: 1, tint: [1, .95, 1.08], desat: -.08, sky: [.6, .55, .86], skyK: .4, ground: [.42, .6, .62, .22], aurora: .8,
     note: 'Through the gap in the aurora: a shore of small hills standing out of a high, still sea, in colours the world has not got, the lights burning every night.', col: '#8a6fc0' },
