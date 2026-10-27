@@ -176,24 +176,40 @@ export function cavesNear(x, z, r) {
 
 // ---- the shape of one ----------------------------------------------------------------------------
 // where (x, z) is in a cave: d from the path, and the path's w, c, f there (interpolated)
-const Q = { d: 0, w: 0, c: 0, f: 0, t: 0 };
+// (ux, uz: the way along the path there; the natural caves' sides wander in and out, by noise)
+const Q = { d: 0, w: 0, c: 0, f: 0, t: 0, ux: 1, uz: 0 };
+const ROUGH = { cave: .22, icecave: .2, seacave: .2, tube: .12 };
 export function local(cv, x, z) {
   x = wrapX(x);
   const P = cv.pts;
-  if (P.length === 1) { const p = P[0]; Q.d = Math.hypot(x - p.x, z - p.z); Q.w = p.w; Q.c = p.c; Q.f = p.f; Q.t = 0; return Q; }
-  let best = 1e9;
+  if (P.length === 1) { const p = P[0]; Q.d = Math.hypot(x - p.x, z - p.z); Q.w = p.w; Q.c = p.c; Q.f = p.f; Q.t = 0; Q.ux = 1; Q.uz = 0; return Q; }
+  let best = 1e9, bk = 0;
   for (let k = 0; k + 1 < P.length; k++) {
     const a = P[k], b = P[k + 1], ux = b.x - a.x, uz = b.z - a.z, l2 = ux * ux + uz * uz || 1;
     const t = clamp(((x - a.x) * ux + (z - a.z) * uz) / l2, 0, 1), d = Math.hypot(x - a.x - ux * t, z - a.z - uz * t), w = a.w + (b.w - a.w) * t;
-    if (d - w < best) { best = d - w; Q.d = d; Q.w = w; Q.c = a.c + (b.c - a.c) * t; Q.f = a.f + (b.f - a.f) * t; Q.t = (k + t) / (P.length - 1); }
+    if (d - w < best) { best = d - w; bk = k; Q.d = d; Q.w = w; Q.c = a.c + (b.c - a.c) * t; Q.f = a.f + (b.f - a.f) * t; Q.t = (k + t) / (P.length - 1); }
   }
+  const a = P[bk], b = P[bk + 1], l = Math.hypot(b.x - a.x, b.z - a.z) || 1; Q.ux = (b.x - a.x) / l; Q.uz = (b.z - a.z) / l;
+  const r = ROUGH[cv.kind]; if (r) Q.w *= 1 + r * fbm(x / 7, z / 7, 968, 2);
   return Q;
+}
+// the roof's underside: a vault, highest along the middle, lumpy in the natural caves
+export const vault = (cv, q, x, z) => q.f + q.c * (.78 + .22 * (1 - Math.min(1, q.d / q.w) ** 2)) + (ROUGH[cv.kind] ? fbm(x / 3.5, z / 3.5, 969, 2) * q.c * .1 : 0);
+// the floor: a little uneven, and in the natural caves it curves up into the walls (the hollow's
+// cross-section an oval, not a box), strewn with fallen rock toward the sides
+export function floorAt(cv, q, x, z) {
+  if (cv.bowl) return q.f + cv.bowl * (q.d / q.w) ** 2;
+  if (cv.kind === 'cenote') return q.f;
+  const s = q.d / q.w, r = ROUGH[cv.kind];
+  if (!r) return q.f + Math.abs(fbm(x / 6, z / 6, 967, 1)) * .5;
+  const up = smooth(.3, 1, s) ** 1.5, rub = Math.abs(fbm(x / 2.5, z / 2.5, 970, 2)) * smooth(.3, .9, s) * .9;
+  return q.f + (cv.kind === 'seacave' ? 0 : Math.abs(fbm(x / 6, z / 6, 967, 1)) * .5) + q.c * .66 * up + rub;
 }
 const inHole = (cv, x, z) => { for (const h of cv.holes) if (Math.hypot(wrapX(x) - h.x, z - h.z) < h.r) return true; return false; };
 // the roof's underside over (x, z), or null where there is none (open sky, the mouth, a hole)
 export function roofUnder(cv, x, z, q = local(cv, x, z)) {
   if (cv.open || inHole(cv, x, z) || q.d > q.w + ROOF_OUT) return null;
-  const k = Math.min(1, q.d / q.w), under = cv.lip ? H0(x, z) - cv.lip : q.f + q.c * (.78 + .22 * (1 - k * k));
+  const under = cv.lip ? H0(x, z) - cv.lip : vault(cv, q, x, z);
   return H0(x, z) > under + .8 ? under : null;
 }
 // the ground with the caves cut out (world.js height)
@@ -201,9 +217,7 @@ export function cut(x, z, h) {
   if (building || !cutting) return h;
   for (const cv of cavesAt(x, z)) {
     const q = local(cv, x, z); if (q.d >= q.w) continue;
-    let fl = q.f + Math.abs(fbm(x / 6, z / 6, 967, 1)) * .5;
-    if (cv.bowl) fl = q.f + cv.bowl * (q.d / q.w) ** 2;
-    else if (cv.kind === 'cenote' || cv.kind === 'seacave') fl = q.f;
+    const fl = floorAt(cv, q, x, z);
     if (h > fl) h = fl;
   }
   return h;
@@ -217,6 +231,11 @@ export function roofAt(x, z) {
 // near enough to a cave's hollow that no tree or bush should stand there
 export function nearCave(x, z) {
   for (const cv of cavesAt(x, z)) { const q = local(cv, x, z); if (q.d < q.w + 3) return true; }
+  return false;
+}
+// in a cave's hollow (cut or not): no rocks or grass there, it is dark
+export function inHollow(x, z) {
+  for (const cv of cavesAt(x, z)) { const q = local(cv, x, z); if (q.d < q.w + 1) return true; }
   return false;
 }
 // how dim the ground is in a cave's shade (0 open .. 1 deep inside), and whether it is ice

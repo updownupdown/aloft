@@ -1091,7 +1091,7 @@ export function createRenderer(gl) {
     const hm = R.hawkMesh;
     const hp = S.hawk.p, O = R.O;
     gl.uniformMatrix4fv(solid.u.uModel, false, basis([hp[0] - O[0], hp[1] - O[1], hp[2] - O[2]], S.hawk.r, S.hawk.u, S.hawk.f, HAWK_SCALE));
-    gl.bindVertexArray(hawk.vao); gl.drawArrays(gl.TRIANGLES, 0, hm.length / 12); S_.tris += hm.length / 36;
+    if (!S.hideHawk) { gl.bindVertexArray(hawk.vao); gl.drawArrays(gl.TRIANGLES, 0, hm.length / 12); S_.tris += hm.length / 36; }   // (hidden with the view in its head, camera.js)
     gl.uniformMatrix4fv(solid.u.uModel, false, R.TO); gl.uniform4fv(solid.u.uFrost, S.frost || NOFROST); gl.uniform1f(solid.u.uClass, 0);
 
     // props: anything instanced that a system adds (rings, mice, flora, marks...)

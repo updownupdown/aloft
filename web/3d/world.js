@@ -8,11 +8,12 @@ import { store } from './util.js';
 import { ih, fbm, smooth, clamp, WORLD, newWorld } from './noise.js';
 import { BIOMES, PAL, blend, weightOf, share, rollBiome, cellsNear, setIsleOf } from './biomes.js';
 import { coastDist, latLon, latAt, oceanKey, regionAt, wrapX, toXZ, EARTH, NORTH, SOUTH, seasonAt, snowLine, dryAt, bakedRiver, lakeAt } from './earth.js';
-import { cut as caveCut, roofAt, nearCave, caveShade, setCutting } from './caves.js';
+import { cut as caveCut, roofAt, nearCave, inHollow, caveShade, setCutting } from './caves.js';
 import { realPlaces, shapeAt, colourAt as realColour, volcanoName } from './realplaces.js';
 import { railCut, railShade, railNear, railSolids, railLandmarks } from './rail.js';
 import { settlementsNear, buildingsNear, bridgesNear, roadShade, buildingSolids, bridgeSolids, polesNear, poleSolids, clearOf, saplingIn } from './settle.js';
 export { ih, fbm, WORLD, newWorld, PAL, blend };
+export { inHollow } from './caves.js';
 export { coastDist, latLon, latAt, regionAt, wrapX, toXZ, EARTH, NORTH, SOUTH } from './earth.js';
 
 export const CHUNK = 96;
@@ -960,7 +961,7 @@ function rockAt(gx, gz) {
   if (kind) {
     const y = groundAt(x, z), s = ROCK_S[kind] * (.7 + ih(gx, gz, 154) * .7), yaw = ih(gx, gz, 155) * 6.283, id = gx * 9973 + gz;
     if (kind === 'skerry') { if (y < -.4 && y > -5 && coastDist(x, z) > -220) o = { x, y, z, kind, s: -y + 1 + ih(gx, gz, 157) * 3.5, yaw, id }; }   // just off the shore, 1 to 4.5 m out of the water
-    else if (y > 1 && groundNormal(x, z)[1] > (kind === 'arch' ? .92 : .82)) o = { x, y, z, kind, s, yaw, id };
+    else if (y > 1 && groundNormal(x, z)[1] > (kind === 'arch' ? .92 : .82) && !inHollow(x, z)) o = { x, y, z, kind, s, yaw, id };   // (none in a cave)
   }
   rockCache.set(key, o); if (rockCache.size > 4000) rockCache.delete(rockCache.keys().next().value);
   return o;
