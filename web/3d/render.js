@@ -237,13 +237,11 @@ LP vec3 aerial(LP vec3 c, vec3 p) {
   LP vec3 dir = normalize(p - uCam); float dd = length(p - uCam), ap = 1. - exp(-dd * .0006);
   LP float l = dot(c, vec3(.3, .55, .15)); c = mix(c, mix(vec3(l), uZenith * 1.1, .35), ap * .3);
   float d = dd * mix(1., .2, smoothstep(20., 250., p.y));
-#ifdef L_FARX
-  // X: the haze as a layer thinning with height (120 m to thin by e), integrated along the ray,
-  // so from high up the far ranges show clear over it; never hazier than without
+  // the haze as a layer thinning with height (120 m to thin by e), integrated along the ray, so
+  // from high up the far ranges show clear over it (X, James 10-27); never hazier than the old rule
   { float y0 = max(uCam.y, 0.), y1 = max(p.y, 0.), e0 = exp(-y0 / 120.), e1 = exp(-y1 / 120.);
     float f = abs(y1 - y0) > 1. ? 120. * (e0 - e1) / (y1 - y0) : e0;
     d = dd * min(d / max(dd, 1e-3), max(f, .05)); }
-#endif
   return mix(c, hazeCol(dir), 1. - exp(-pow(d * uFogDen * .7, 1.6)));
 }
 LP vec3 haze(LP vec3 c, vec3 p) {
@@ -258,10 +256,8 @@ LP vec3 haze(LP vec3 c, vec3 p) {
   { float dd = length(p - uCam), l = dot(o, vec3(.3, .55, .15));
     float k = smoothstep(300., 1500., dd) * .5 * smoothstep(.05, .3, uSun.y) * smoothstep(uWater + 5., uWater + 60., p.y) * exp(-pow(dd * uFogDen * .7, 1.6));
     o = mix(o, vec3(l) * vec3(.84, .93, 1.1) + uFogCol * .12, k); }
-#ifdef L_FARX
-  // X: the land fades wholly into the haze before the far ring's edge (uEdge), so it never ends on the sky
+  // the land fades wholly into the haze before the far rings' edge (uEdge), so it never ends on the sky
   o = mix(o, hazeCol(normalize(p - uCam)), smoothstep(uEdge * .72, uEdge * .95, length(p.xz - uCam.xz)));
-#endif
   // the rainbow hangs in the rain in front of what is far off
   return uBow.w > 0. ? o + bow(normalize(p - uCam)) * smoothstep(80., 450., length(p - uCam)) : o;
 }
@@ -603,10 +599,9 @@ void main() {
 // the hawk's shadow as its own shape, the hawk's mesh laid flat on the ground under it (wings,
 // tail, feet and all): the cue for landing
 const SHADOW_VS = `#version 300 es
-layout(location=0) in vec3 aPos; uniform mat4 uVP, uModel; uniform vec3 uFoot, uN; uniform float uGrow; uniform vec2 uShift;
+layout(location=0) in vec3 aPos; uniform mat4 uVP, uModel; uniform vec3 uFoot, uN; uniform float uGrow;
 void main() {
   vec3 p = (uModel * vec4(aPos, 1.)).xyz;                    // the hawk, relative to uO (LIT_VS)
-  p.xz += uShift;                                            // (J: slid away from a low sun)
   p.xz = uFoot.xz + (p.xz - uFoot.xz) * uGrow;               // spread a little when high: a softer patch
   p.y = uFoot.y - (uN.x * (p.x - uFoot.x) + uN.z * (p.z - uFoot.z)) / max(uN.y, .3);   // laid on the slope
   gl_Position = uVP * vec4(p, 1.);
@@ -808,7 +803,7 @@ export function createRenderer(gl) {
   // Far tiles: past the near ground, out to R.farView, the land in big coarse tiles (FAR_TILE
   // metres, FAR_CELLS a side) sunk a little under the near ground, which they give way to inside
   // the near view (uCut). The haze thins over high ground, so it is the far hills and peaks that show.
-  // X (look.js, on trial): a second ring past that, coarser still, out to FAR2_VIEW (8 km), sunk a
+  // A second ring past that (X, James 10-27), coarser still, out to FAR2_VIEW (8 km), sunk a
   // little more, giving way to the first ring inside R.farView and fading into the haze at its edge.
   const FAR_TILE = 384, FAR_CELLS = 12, FAR_DROP = 2, FAR2_VIEW = 8000;
   R.farView = 2400;
@@ -876,7 +871,7 @@ export function createRenderer(gl) {
     updateFar(1, cam, view, R.farView);
     // (X: the second ring only where the haze doesn't hide it all before the first ring ends)
     const fv2 = Math.min(FAR2_VIEW, (R.fogView || 1e9) * 16);   // (the layered haze lets the view reach up to 20 times as far from high up)
-    if (R.look?.farx && fv2 > R.farView) updateFar(2, cam, R.farView, fv2); else for (const k of [...rings[2].map.keys()]) dropTile(rings[2], k);
+    if (fv2 > R.farView) updateFar(2, cam, R.farView, fv2); else for (const k of [...rings[2].map.keys()]) dropTile(rings[2], k);
     return want.length;
   }
   // tree instances are rebuilt when the hawk has moved a little: near ones detailed, far ones simple
@@ -1034,18 +1029,8 @@ export function createRenderer(gl) {
   // a soft dark patch on the ground under each ruin and animal near by, fading out with distance
   // (far off, the faceted ground pokes through the flat disc and leaves dark slivers; stones get
   // none, their foot is the hollow light's)
-  // J (look.js, on trial): where a shadow falls per metre of height, away from the sun along its
-  // light ([0, 0] straight down: J off, or the sun gone); no more than 4 m a metre, so a sunset
-  // doesn't throw them off across the valley, and easing back under as the sun sets
-  function sunSlide(S) {
-    const s = S.sun; if (!R.look.longshadow || !s) return [0, 0];
-    const hz = Math.hypot(s[0], s[2]), k = Math.min(1, Math.max(0, (s[1] + .02) / .1));
-    if (hz < 1e-4 || k <= 0) return [0, 0];
-    const per = Math.min(4, hz / Math.max(s[1], .01)) * k;
-    return [-s[0] / hz * per, -s[2] / hz * per];
-  }
   function contactVerts(S) {
-    const out = [], cam = S.cam, N = 8, sl = sunSlide(S), sll = Math.hypot(sl[0], sl[1]), sd = sll ? [sl[0] / sll, sl[1] / sll] : [1, 0];
+    const out = [], cam = S.cam, N = 8;
     let n = 0;
     for (const key in S.props) {
       const k = classOf(key), m = shapes.get(key);
@@ -1058,12 +1043,9 @@ export function createRenderer(gl) {
         const above = y - g; if (above > r * 1.5 || above < -r) continue;
         const fade = Math.min(1, (reach - dist) / (reach * .4));
         const a = (k === 2 ? .3 : .34) * fade * (1 - Math.max(0, above) / (r * 1.5)), nn = normalAt(x, z), ny = Math.max(nn[1], .3); n++;
-        // laid on the slope's plane; J stretches it away from a low sun by the thing's height (its
-        // radius, roughly), the middle moved half way along, lighter the longer it is
-        const L = sll * m.rad * d[i + 3], A = r + L * .5, cx_ = x + sd[0] * L * .5, cz_ = z + sd[1] * L * .5, ak = a * Math.sqrt(r / A);
-        const at = (ang) => { const u = Math.cos(ang) * A, v = Math.sin(ang) * r, dx = cx_ - x + sd[0] * u - sd[1] * v, dz = cz_ - z + sd[1] * u + sd[0] * v; return [x + dx, g + .05 - (dx * nn[0] + dz * nn[2]) / ny, z + dz]; };
-        const cy = g + .05 - ((cx_ - x) * nn[0] + (cz_ - z) * nn[2]) / ny;
-        for (let q = 0; q < N; q++) out.push(cx_, cy, cz_, .08, .07, .05, ak, ...at(q / N * 6.283), .08, .07, .05, 0, ...at((q + 1) / N * 6.283), .08, .07, .05, 0);
+        // laid on the slope's plane
+        const at = (ang) => { const dx = Math.cos(ang) * r, dz = Math.sin(ang) * r; return [x + dx, g + .05 - (dx * nn[0] + dz * nn[2]) / ny, z + dz]; };
+        for (let q = 0; q < N; q++) out.push(x, g + .05, z, .08, .07, .05, a, ...at(q / N * 6.283), .08, .07, .05, 0, ...at((q + 1) / N * 6.283), .08, .07, .05, 0);
       }
     }
     return out;
@@ -1144,8 +1126,8 @@ export function createRenderer(gl) {
       if (!boxIn(P, t.tx * FAR_TILE, t.y0 - 30, t.tz * FAR_TILE, (t.tx + 1) * FAR_TILE, t.y1, (t.tz + 1) * FAR_TILE)) continue;
       gl.bindVertexArray(t.m.vao); gl.drawArrays(gl.TRIANGLES, 0, t.m.count); S_.tris += t.m.count / 3; nf++;
     }
-    if (R.look.farx && rings[2].map.size) {
-      // X: the second ring, giving way to the first inside R.farView (less a little, so they overlap)
+    if (rings[2].map.size) {
+      // the second ring, giving way to the first inside R.farView (less a little, so they overlap)
       const T = rings[2].tile;
       gl.uniform1f(lit.u.uCut, R.farView - 150); gl.uniform1f(lit.u.uLift, rings[2].drop);
       for (const t of rings[2].map.values()) {
@@ -1223,7 +1205,7 @@ export function createRenderer(gl) {
   R.draw = (S, W, cw, ch) => {
     const w = cw, h = ch;
     R.vh = h; R.vw = w;
-    const proj = perspective(S.fov, w / h, .15, (R.look.farx ? FAR2_VIEW : R.farView) + 300), view = lookAt(S.cam, S.look, S.camUp);
+    const proj = perspective(S.fov, w / h, .15, FAR2_VIEW + 300), view = lookAt(S.cam, S.look, S.camUp);
     const vp = mul(proj, view);
     R.vp = vp;
     // the same view relative to O, a point by the camera (whole 16 m, y 0), for drawing (LIT_VS);
@@ -1330,17 +1312,13 @@ export function createRenderer(gl) {
     // (the drawn facets' height, so it never sinks under them; over shallow water it lies on the
     // bottom you see through it, fading as the water deepens: on the surface it seemed to float off
     // from the bird, James 10-24)
-    // (J: slid away from the sun along its light, once round to find the ground it falls on)
-    const p = S.hawk.p, sl = sunSlide(S);
-    let fx = p[0], fz = p[2], g = groundAt(fx, fz);
-    if (sl[0] || sl[1]) for (let q = 0; q < 2; q++) { const up = Math.max(0, p[1] - g); fx = p[0] + sl[0] * up; fz = p[2] + sl[1] * up; g = groundAt(fx, fz); }
-    const deep = Math.max(0, -g), above = p[1] - g;
+    const p = S.hawk.p, g = groundAt(p[0], p[2]), deep = Math.max(0, -g), above = p[1] - g;
     if (above > 45 || above < -1 || deep > 3.5) return;
-    const a = .24 * (1 - above / 45) * (1 - deep / 3.5), n = groundNormal(fx, fz), hm = R.hawkMesh;
+    const a = .24 * (1 - above / 45) * (1 - deep / 3.5), n = groundNormal(p[0], p[2]), hm = R.hawkMesh;
     gl.useProgram(shadowP.p);
     gl.uniformMatrix4fv(shadowP.u.uVP, false, vpO);
     gl.uniformMatrix4fv(shadowP.u.uModel, false, basis([p[0] - O[0], p[1] - O[1], p[2] - O[2]], S.hawk.r, S.hawk.u, S.hawk.f, HAWK_SCALE));
-    gl.uniform3f(shadowP.u.uFoot, fx - O[0], g + .06, fz - O[2]); gl.uniform3fv(shadowP.u.uN, n); gl.uniform2f(shadowP.u.uShift, fx - p[0], fz - p[2]);
+    gl.uniform3f(shadowP.u.uFoot, p[0] - O[0], g + .06, p[2] - O[2]); gl.uniform3fv(shadowP.u.uN, n);
     gl.bindVertexArray(hawk.vao);
     gl.enable(gl.POLYGON_OFFSET_FILL);
     const blur = Math.min(1, above / 30), copies = blur > .05 ? [[1, 1 - blur * .4], [1 + blur * .5, .45], [1 + blur * 1.1, .25]] : [[1, 1]];

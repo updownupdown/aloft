@@ -75,7 +75,7 @@ uniform vec3 uCam, uSun; uniform LP vec3 uSunCol, uSkyAmb, uGndAmb, uFogCol, uCo
 uniform float uFogDen, uTime, uStyle;
 uniform vec4 uFlash;   // lightning inside the clouds: where, how bright
 uniform vec4 uK;   // lobes, base, sigma, the light's strength (0 at night .. 1)
-uniform float uKeep;   // how many of the lobes (biggest first) are big ones (L)
+uniform float uKeep;   // how many of the lobes (biggest first) are big ones
 uniform vec4 uC[${MAXL}], uR[${MAXL}];
 uniform sampler3D uNoise;
 in vec3 vPos; flat in vec4 vI; flat in vec4 vY;
@@ -94,12 +94,10 @@ void main() {
   if (tB <= tA) discard;
   float tau = 0., tn = 1e9, wsum = 0., tw = 0.; vec3 n = vec3(0.);
   int N = int(uK.x);
-#ifdef L_CLOUDLOD
-  // L: far off, a cloud's small lobes (the lobes come biggest first) fade out, a few pixels each,
+  // far off, a cloud's small lobes (the lobes come biggest first) fade out, a few pixels each,
   // and past that are not worked out at all
   float lodW = 1. - smoothstep(20., 36., length(vI.xyz - uCam) / vI.w);
   if (lodW <= 0.) N = min(N, int(uKeep));
-#endif
   for (int i = 0; i < ${MAXL}; i++) {
     if (i >= N) break;
     vec3 iv = uR[i].xyz, q = (lo - uC[i].xyz) * iv, e = ld * iv;
@@ -110,9 +108,7 @@ void main() {
     if (t2 <= t1) continue;
     // the integral of 1 - |q + e t|² from t1 to t2
     float I = -(cc * (t2 - t1) + b * (t2 * t2 - t1 * t1) + a * (t2 * t2 * t2 - t1 * t1 * t1) / 3.);
-#ifdef L_CLOUDLOD
     if (i >= int(uKeep)) I *= lodW;
-#endif
     tau += I;
     // the lobe's outward normal where the ray goes in; the nearer lobes show
     vec3 nl = (fromBelow && t1 <= tA + 1e-4) ? vec3(0., -1., 0.) : normalize((q + e * t1) * iv);
@@ -238,7 +234,7 @@ export function createClouds(gl) {
   const kinds = {};
   for (const [k, K] of Object.entries(KINDS)) {
     const C = new Float32Array(MAXL * 4), Rr = new Float32Array(MAXL * 4);
-    // the lobes biggest first, so L can leave off the small ones far away (the sum is the same in any order)
+    // the lobes biggest first, so the small ones can be left off far away (the sum is the same in any order)
     const lobes = [...K.lobes].sort((a, b) => b[3] * b[4] * b[5] - a[3] * a[4] * a[5]);
     lobes.forEach(([x, y, z, a, b, c], i) => { C.set([x, y, z, 0], i * 4); Rr.set([1 / a, 1 / b, 1 / c, 0], i * 4); });
     kinds[k] = { K, C, Rr, keep: Math.ceil(lobes.length / 2), m: mesh(gl, box(K.lobes, K.base), LAYOUT, { instLayout: ILAYOUT }) };
