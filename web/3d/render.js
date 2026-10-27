@@ -485,21 +485,27 @@ void main() {
     c += vec3(.55, .6, .75) * mw * .07 * uNight * uStarK * (1. - cl) * smoothstep(-.02, .2, d.y);
   }
   // the moon: a lit ball, its bright limb toward the sun, the dark part only faintly lit (earthshine),
-  // grey seas on its face
+  // grey seas on its face. Over the Red Age two small moons instead, ruddy grey, the near one crossing
+  // the sky quickly and the far one slow (R of the gameplay review; ages.js)
   if (uMoonK > 0.) {
-    vec3 m = uMoon.xyz, mr = normalize(cross(m, vec3(0., 1., 0.))), mu = cross(mr, m);
-    vec2 uv = vec2(dot(d, mr), dot(d, mu)) / .045; float r = length(uv);
+    for (int i = 0; i < ${AGE_ID === 'red' ? 2 : 1}; i++) {
+    ${AGE_ID === 'red' ? `float fi = float(i), sp = mix(.012, .003, fi), an = uTime * sp + fi * 2.1;
+    vec3 m = normalize(uMoon.xyz + vec3(cos(an) * .55, mix(.05, .22, fi) + sin(an) * .12, sin(an) * .55)); float sz = mix(.017, .011, fi);
+    vec3 tone = vec3(.86, .78, .7);` : `vec3 m = uMoon.xyz; float sz = .045; vec3 tone = vec3(.97, .95, .88);`}
+    vec3 mr = normalize(cross(m, vec3(0., 1., 0.))), mu = cross(mr, m);
+    vec2 uv = vec2(dot(d, mr), dot(d, mu)) / sz; float r = length(uv);
     if (dot(d, m) > 0. && r < 6.) {
       float fw = fwidth(r), disc = 1. - smoothstep(1. - fw, 1. + fw, r);
       vec3 n = vec3(uv, sqrt(max(0., 1. - r * r)));
       vec2 s2 = vec2(0., 1.);   // the sun is down behind you, over the top of the sky: the bright limb is the top (from the sun's place it swung about as the sky raced round in sleep)
       float ph = uMoon.w * 6.2832, lit = smoothstep(-.04, .08, dot(n, vec3(s2 * sin(ph), -cos(ph))));
       float sea = vn(uv * 1.7 + 3.) * .7 + vn(uv * 3.9 + 9.) * .3;
-      vec3 face = vec3(.97, .95, .88) * mix(1., .76, smoothstep(.42, .72, sea)) * (.78 + .22 * n.z);
+      vec3 face = tone * mix(1., .76, smoothstep(.42, .72, sea)) * (.78 + .22 * n.z);
       vec3 dark = c * .9 + vec3(.025, .03, .04);
       c = mix(c, mix(dark, face, lit), disc * uMoonK);
       float full = .5 - .5 * cos(ph);
-      c += vec3(.55, .6, .68) * exp(-max(r - 1., 0.) * 1.3) * (1. - disc) * .16 * full * uMoonK;
+      c += vec3(.55, .6, .68) * exp(-max(r - 1., 0.) * 1.3) * (1. - disc) * .16 * full * uMoonK * (sz / .045);
+    }
     }
   }
   // northern lights: thin curtains high in the north, added to the sky (stars show through). The

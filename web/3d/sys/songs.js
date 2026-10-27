@@ -30,6 +30,7 @@
 // and this system skips its own stand-in. G.gifts holds each running gift's seconds left.
 import { SPECIES, active, timeOfDay, songOf as songN, songKey, TAP_GAP } from '../../src/songs.js';
 import { continentAt } from '../earth.js';
+import { AGE_ID } from '../ages.js';
 import { period, DAY } from '../sky.js';
 import { height, WATER, treesNear, perchesOf, thermalsNear, landmarksNear } from '../world.js';
 import { clamp, dist3, angleTo } from '../util.js';
@@ -258,7 +259,7 @@ export function songsSystem(G) {
   const borrowed = {}; let borrowSaid = -99;
   function medley(o) {
     // (the songs of its own continent's birds)
-    const c = continentAt(o.x, o.z), d = dist3([o.x, o.y, o.z], b.p), v = .15 * clamp(1 - d / SONG.hearR, 0, 1), pool = learnable.filter(q => !q.look.owl && q.spot !== 'falls' && (!c || q.cont.includes(c)));
+    const c = AGE_ID === 'shore' ? 'shore' : continentAt(o.x, o.z), d = dist3([o.x, o.y, o.z], b.p), v = .15 * clamp(1 - d / SONG.hearR, 0, 1), pool = learnable.filter(q => !q.look.owl && q.spot !== 'falls' && (!c || q.cont.includes(c)));
     const unknown = pool.filter(q => !G.learned.has(q.id)), known = pool.filter(q => G.learned.has(q.id));
     const any = a => a[(Math.random() * a.length) | 0];
     const picks = [known.length && Math.random() < .7 ? any(known) : any(pool), unknown.length ? any(unknown) : any(pool), S.target?.base || S.target || picked || any(pool)];
@@ -656,7 +657,7 @@ export function songsSystem(G) {
   H.tip('imitate', () => b.state === 'perch' && G.learned.size && !picked && perchT > 3, 'Tap the notes button, then the song card (bottom left), and pick a song to imitate. Sing it right and its bird answers with a gift.');
   H.tip('call', () => b.state === 'fly' && G.clock > 240, 'Hold Call, top right, to scream: the longer you hold, the louder. Mice freeze and far hawks answer.');
   // Journal > Songs, a section a continent (each bird under the first it lives on)
-  const CONTS = [['n-america', 'North America'], ['s-america', 'South America'], ['europe', 'Europe'], ['africa', 'Africa'], ['asia', 'Asia'], ['oceania', 'Oceania']];
+  const CONTS = [['n-america', 'North America'], ['s-america', 'South America'], ['europe', 'Europe'], ['africa', 'Africa'], ['asia', 'Asia'], ['oceania', 'Oceania'], ['shore', 'The Other Shore']];
   // what Sing is doing, and what starts each, at the top of Journal > Songs
   const MODES = `<details class="sghow3"><summary>How singing works</summary><dl class="sgmodes3">
     <dt class="learn">Learning</dt><dd>Perch within about 45 m of a songbird singing a song you do not know (an amber dot on its logo in the rail), or tap its logo, and tap Sing. Each note it sings lights its row on the pad and its place on the card: copy it with the same swipe or tap. It sings the song at its own speed, then once more slowly, at your pace. Fast or long songs are copied with taps alone. Every note you get right stays found on the card, in any order, and a wrong note just moves on to the next; miss the same note twice and its shape shows. Find every note to learn the song. It stops to listen while you sing and sings again when you stop.</dd>
@@ -691,7 +692,7 @@ export function songsSystem(G) {
       };
       // the top: what you know, how to sort (the birds of this continent, or every continent in turn),
       // and how singing works, folded away; then the songbirds; then the other birds the field guide keeps
-      const here = continentAt(b.p[0], b.p[2]), near = sort === 'near' && here;
+      const here = AGE_ID === 'shore' ? 'shore' : continentAt(b.p[0], b.p[2]), near = sort === 'near' && here;
       const groups = near ? [[here, `Near here: ${CONTS.find(c => c[0] === here)?.[1] || 'this land'}`, sp => sp.cont.includes(here)]] : CONTS.map(([c, t]) => [c, t, sp => sp.cont[0] === c]);
       book.innerHTML = `<div class="sgtop3"><p class="sub"><b>${songCount()}</b> of ${songTotal} songs <span>·</span> <b>${G.learned.size}</b> of ${learnable.length} songbirds</p>
         <div class="gbar3"><button data-sort="near" class="${sort === 'near' ? 'on' : ''}">Near here</button><button data-sort="cont" class="${sort !== 'near' ? 'on' : ''}">By continent</button></div></div>${MODES}`

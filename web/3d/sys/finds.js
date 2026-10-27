@@ -50,6 +50,13 @@ const PAGES = [
 const PAINTS = ['running horses', 'a hand, pressed in ochre', 'a hawk with its wings open', 'deer crossing a river', 'the sun and a row of birds', 'a whale', 'cranes dancing', 'a herd under the stars'];
 const SIGNS = ['violet', 'sea-glass gold', 'deep rose', 'ice green', 'night blue', 'ember', 'pearl'];
 const SIGN_WONDERS = ['giza', 'picchu', 'angkor', 'moai'];   // the far wonders that each keep a sign (the rest are in deep caves)
+// one keepsake from each other age (N of the review), found at its first sight (sys/ages.js)
+const AGE_KEEPS = {
+  ice: ['An ice-polished stone', 'A pebble the glaciers rubbed smooth as glass, from a land the sea later took.'],
+  drowned: ['A drowned bell', 'A small green bell from a village under the water. It still rings, faintly.'],
+  red: ['A piece of red glass', 'Glass the colour of the dry age, from an ocean floor gone to rust and sand.'],
+  shore: ['A violet feather', 'A feather from no bird of this world, the colour of the lights over the Other Shore.'],
+};
 const ISLAND = { name: 'Tristan da Cunha', lat: -37.1, lon: -12.3 };   // the chart's island, real and remote
 
 // the sets: each item 'tr:' a treasure, 'tk:' a trinket, 'note:' a bottle note, 'grass:' a keepsake in the grass,
@@ -65,6 +72,7 @@ const SETS = [
   { id: 'signs', title: 'The far signs', items: SIGNS.map((_, i) => 'sign:' + i), stat: 'height' },
   { id: 'trinkets', title: 'Trinkets', items: Object.keys(TRINKETS).map(k => 'tk:' + k), stat: 'speed' },
   { id: 'grass', title: 'Things in the grass', items: KEEPSAKES.map((_, i) => 'grass:' + i), stat: 'recovery' },
+  { id: 'ages', title: 'From the other ages', items: Object.keys(AGE_KEEPS).map(k => 'age:' + k), stat: 'lift', sense: 'The doors of light you found show on your compass within 4 km.' },
   { id: 'notes', title: 'Other notes', items: [7, 8, 14, 15].map(i => 'note:' + i) },
 ];
 
@@ -81,8 +89,16 @@ function paintMesh() {
 
 export function findsSystem(G) {
   const b = G.b, H = G.hud, R = G.R;
-  const F = { pages: {}, paints: {}, charts: {}, signs: {}, caches: {}, sets: {}, taken: {}, island: false };
-  G.finds = { glintK: 1, reachK: 1, signs: () => Object.keys(F.signs).length };
+  const F = { pages: {}, paints: {}, charts: {}, signs: {}, caches: {}, sets: {}, taken: {}, ages: {}, island: false };
+  G.finds = { glintK: 1, reachK: 1, signs: () => Object.keys(F.signs).length,
+    // the keepsake of an age, at its first sight there
+    ageKeep(id, x, z, place) {
+      if (!AGE_KEEPS[id] || (F.ages ||= {})[id]) return;
+      F.ages[id] = { day: G.day || 1, at: [Math.round(x), Math.round(z)], place };
+      H.glint(AGE_KEEPS[id][0], `${AGE_KEEPS[id][1]} For the shelf.`, 'age');
+      G.emit('keepsake', AGE_KEEPS[id][0]);
+    },
+    ledger: () => ({ sets: Object.keys(F.sets).length, setsOf: SETS.length, pages: Object.keys(F.pages).length, pagesOf: PAGES.length, paints: Object.keys(F.paints).length, paintsOf: PAINTS.length, charts: Object.keys(F.charts).length, island: !!F.island, signs: Object.keys(F.signs).length }) };
 
   // ---- what is found, by item key ---------------------------------------------------------------
   const notes = () => G.bottleNotes?.() || [];
@@ -97,6 +113,7 @@ export function findsSystem(G) {
     if (t === 'paint') { const f = F.paints[i]; return { name: f ? cap(PAINTS[i]) : 'A painted wall', found: !!f, at: f?.at, icon: 'paint', note: f ? `Painted on the back wall of ${f.place || 'a rock shelter'}.` : '' }; }
     if (t === 'chart') { const f = F.charts[i]; return { name: f ? `Chart piece ${i + 1}` : 'A piece of a chart', found: !!f, at: f?.at, icon: 'chart' }; }
     if (t === 'sign') { const f = F.signs[i]; return { name: f ? `${cap(SIGNS[i])} glass` : 'A far sign', star: true, found: !!f, at: f?.at, icon: 'sign', note: f ? 'Glass in a colour the world does not have. Holding it, the sky changed for a moment.' : '' }; }
+    if (t === 'age') { const f = F.ages?.[k], [n, story] = AGE_KEEPS[k]; return { name: f ? n : 'From another age', star: true, found: !!f, at: f?.at, icon: 'age', note: f ? `${story} Found on day ${f.day}${f.place ? `, at ${f.place}` : ''}.` : '' }; }
     return { name: key, found: false };
   }
   const count = s => s.items.filter(k => info(k).found).length;
@@ -104,7 +121,7 @@ export function findsSystem(G) {
   // ---- sets: finishing one -------------------------------------------------------------------------
   const SENSE = {
     village: () => { G.finds.glintK = 2; }, farm: () => { G.finds.reachK = 1.12; },
-    paint: () => { G.finds.hiddenK = 2; },
+    paint: () => { G.finds.hiddenK = 2; }, ages: () => { G.finds.doors = true; },
   };
   function checkSets(quiet = false) {
     for (const s of SETS) {
@@ -242,6 +259,20 @@ export function findsSystem(G) {
     G.emit('island');
   }
 
+  let ledgeT = 0;
+  function atLedge() {
+    const l = G.ledge?.(); if (!l || b.state !== 'perch' || Math.hypot(wrapX(l.x - b.p[0]), l.z - b.p[2]) > 4) return;
+    let n = 0;
+    for (const s of SETS) if (s.stat && F.sets[s.id] && G.gift(s.stat, s.title, 'set:' + s.id)) n++;
+    PAGES.forEach(([kind, title, , what], i) => { if (kind === 'skill' && F.pages[i] && G.gift(what, `Notebook: ${title.toLowerCase()}`, 'page:' + i)) n++; });
+    if (n) H.say('At your ledge your bird goes over what was gathered there, and learns from it.', { kind: 'event', secs: 5, icon: 'ledge' });
+  }
+  // the ways to grow they still hold for this bird (growth.js, F of the review)
+  const ways = G.ways ||= [];
+  for (const s of SETS) if (s.stat) ways.push({ stat: s.stat, get text() { return F.sets[s.id] ? `${s.title}: whole; perch on your ledge` : `${s.title}: complete the set`; }, left: () => G.gifted?.('set:' + s.id) ? 0 : 1 });
+  PAGES.forEach(([kind, title, , what], i) => { if (kind === 'skill') ways.push({ stat: what, get text() { return F.pages[i] ? `Notebook, ${title.toLowerCase()}: read it at your ledge` : `A notebook page (${title.toLowerCase()})`; }, left: () => G.gifted?.('page:' + i) ? 0 : 1 }); });
+  ways.push({ stat: 'stamina', text: `The chart's island, ${ISLAND.name}`, left: () => G.gifted?.('island') ? 0 : 2 });
+
   // ---- the hidden places' things (K4) -------------------------------------------------------------
   function cache(p) {
     if (F.caches[p.id]) return;
@@ -269,7 +300,7 @@ export function findsSystem(G) {
     for (const s of SETS) {
       const items = s.items.map(info), n = items.filter(i => i.found).length;
       got += n; all += items.length;
-      if (!n && (s.id === 'signs' || s.id === 'chart' || s.id === 'notes')) continue;   // the strange ones show once one is found
+      if (!n && (s.id === 'signs' || s.id === 'chart' || s.id === 'notes' || s.id === 'ages')) continue;   // the strange ones show once one is found
       html += `<div class="set3${F.sets[s.id] ? ' whole' : ''}"><h4>${esc(s.title)} <small>${F.sets[s.id] ? 'whole' : `${n} of ${items.length}`}</small></h4>${shelf(items, 12)}${F.sets[s.id] && s.sense ? `<p class="muted3">${esc(s.sense)}</p>` : ''}</div>`;
     }
     sec.count(`${got} of ${all}`);
@@ -301,7 +332,10 @@ export function findsSystem(G) {
       if (G.has?.('whistle') && (G.gustWind || 0) > .15 && gustWas <= .15) G.audio.tone?.({ f: G.audio.hz?.(19) || 1900, dur: 1.1, vol: .018, lp: 6000 });
       gustWas = G.gustWind || 0;
       // the chart's island
-      if (Object.keys(F.charts).length >= 4 && !F.island) { const [x, z] = toXZ(ISLAND.lat, ISLAND.lon); if (Math.hypot(wrapX(x - b.p[0]), z - b.p[2]) < 900 && b.state !== 'fly') reachIsland(); }
+      if (Object.keys(F.charts).length >= 4 && (!F.island || !G.gifted?.('island'))) { const [x, z] = toXZ(ISLAND.lat, ISLAND.lon); if (Math.hypot(wrapX(x - b.p[0]), z - b.p[2]) < 900 && b.state !== 'fly') { if (!F.island) reachIsland(); else { G.gift('stamina', `Reached ${ISLAND.name}`, 'island', 2); G.feather?.(ISLAND.name); } } }
+      // the world remembers, the bird learns (G of the review): at your ledge, the bird flying now
+      // takes in what was gathered there before it, the whole sets and the notebook's lessons
+      if ((ledgeT -= dt) <= 0) { ledgeT = 1; atLedge(); }
       // unfound hidden places glint, to lead you in (brighter with the painted walls whole)
       const day = G.light?.daylight ?? 1, hk = G.finds.hiddenK || 1;
       if (day > .3 && Math.random() < dt * 2) for (const p of G.hidden?.near?.() || []) {

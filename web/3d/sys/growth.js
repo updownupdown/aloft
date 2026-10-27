@@ -181,6 +181,11 @@ export function growthSystem(G) {
 
   // ---- Today > Strength --------------------------------------------------------------------------
   const sec = journal(G).section(7, 'Strength');
+  // the ways still open to this bird (F of the review): systems add { stat ('any' for whichever),
+  // text, left: () => steps still to earn for the bird flying now (Infinity: no end) }
+  const ways = G.ways ||= [];
+  ways.push({ stat: 'any', text: 'Moults: good days, two to a moult, into what you do most', left: () => Infinity });
+  const open = k => ways.filter(w => w.stat === k && (w.left() || 0) > 0);
   const pct = v => `+${Math.round(v * 100)}%`;
   let openK = null;
   sec.body.addEventListener('click', e => { const li = e.target.closest('li[data-k]'); if (!li) return; openK = openK === li.dataset.k ? null : li.dataset.k; draw(); });
@@ -194,11 +199,13 @@ export function growthSystem(G) {
         <span class="gb3"><i style="width:${(L / M * 100).toFixed(1)}%"></i>${lv ? `<u style="left:${(L / M * 100).toFixed(1)}%;width:${(Math.min(lv, M) / M * 100).toFixed(1)}%"></u>` : ''}</span>
         <em>${pct(L + lv)}</em>
         <div class="gx3"><small>${esc(g.what)}. Grown ${pct(L)} of the most it can, ${pct(M)}.</small>
-          <ul>${P.map(p => `<li><span>${esc(p.what)}</span><b>${pct(p.v)}</b></li>`).join('')}${lv ? `<li class="cond"><span>Today’s condition (health)</span><b>${pct(lv)}</b></li>` : ''}${!P.length && !lv ? '<li><span>Nothing yet</span></li>' : ''}</ul></div>
+          <ul>${P.map(p => `<li><span>${esc(p.what)}</span><b>${pct(p.v)}</b></li>`).join('')}${lv ? `<li class="cond"><span>Today’s condition (health)</span><b>${pct(lv)}</b></li>` : ''}${!P.length && !lv ? '<li><span>Nothing yet</span></li>' : ''}</ul>
+          ${!full(k, o) && open(k).length ? `<p class="gways3"><b>Still to earn</b>${open(k).map(w => `<span>${esc(w.text)}</span>`).join('')}</p>` : ''}</div>
       </li>`;
     }).join('')}</ul>
     <p class="gday3">${icon('strength')}<span>${o.prime ? 'Every strength is grown as far as it goes.' : `Today: ${acts.length ? acts.map(a => ACTS[a]).join(', ') : 'nothing yet'} (${Math.min(acts.length, DAY.good)} of ${DAY.good} for a good day). Good days toward a moult: ${o.notches} of ${DAY.moult}.`}
-      ${c > 0 ? ` Your health adds to recovery, speed, climb and lift while it lasts.` : ''} Each bird grows on its own.</span></p>`;
+      ${c > 0 ? ` Your health adds to recovery, speed, climb and lift while it lasts.` : ''} Each bird grows on its own; a step past a full strength goes to the least grown.</span></p>
+    ${o.prime ? '' : `<p class="gways3 gany3"><b>Any strength</b>${open('any').map(w => `<span>${esc(w.text)}</span>`).join('')}</p>`}`;
   }
   G.menu.onOpen(draw);
   // for Settings > Your bird: how far each bird has grown

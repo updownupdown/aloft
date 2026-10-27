@@ -35,19 +35,29 @@ export function createToday(G, M) {
       <section class="group3 todo3" data-group="today"></section>
     </div>
     <div class="tmain3">
-      <section class="tnext3"><h3>${icon('aim')}Next</h3><div class="aims3"></div><p class="nfeat3">${icon('feather')}<span></span></p></section>
+      <section class="tnext3"><h3>${icon('aim')}Next</h3><div class="aims3"></div><button class="nmore3" hidden></button><p class="nfeat3">${icon('feather')}<span></span></p></section>
     </div>
   </div>`;
   M.todo = pane.querySelector('.todo3');
   M.aims = pane.querySelector('.tnext3 .aims3'); M.later = pane.querySelector('.tmore3');
-  const next = pane.querySelector('.tnext3'), feat = next.querySelector('.nfeat3 span');
+  const next = pane.querySelector('.tnext3'), feat = next.querySelector('.nfeat3 span'), more = next.querySelector('.nmore3');
+  // one thing at a time (D of the review): the top of the ladder (lesson, quest, aim, season, course),
+  // the rest behind "N more"
+  let all = false;
+  more.addEventListener('click', () => { all = true; ladder(); });
+  function ladder() {
+    const vis = [...M.aims.children].filter(s => !s.classList.contains('hidden') && s.textContent.trim());
+    next.hidden = !vis.length;
+    vis.forEach((s, i) => s.classList.toggle('later3', i > 0 && !all));
+    more.hidden = all || vis.length < 2; more.textContent = `${vis.length - 1} more`;
+  }
   M.info('today', () => M.date());
   const who = pane.querySelector('.who3'), rows = Object.fromEntries([...pane.querySelectorAll('.bars3 li')].map(li => [li.dataset.k, li]));
   pane.querySelector('.chg3').addEventListener('click', () => M.set(true, 'play', 'journey'));
   M.onOpen(() => {
     const b = G.b;
     // Next shows while it holds a lesson or an aim (after the systems' own refresh)
-    setTimeout(() => { next.hidden = ![...M.aims.children].some(s => !s.classList.contains('hidden') && s.textContent.trim()); });
+    all = false; setTimeout(ladder);
     // the feathers so far (sys/aims.js): each makes the wings last longer
     const nf = G.feathers?.() || 0;
     feat.textContent = nf ? `${nf} ${nf === 1 ? 'feather' : 'feathers'} for this bird: stamina +${Math.round(Math.min(nf, 20) * 3)}%. Lessons and the day’s aim earn them.` : 'No feathers yet for this bird. Each lesson chapter and each day’s aim earns one, and each makes its stamina last longer.';

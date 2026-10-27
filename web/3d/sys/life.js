@@ -56,6 +56,7 @@ const ROOSTS = new Set(['barn', 'chapel', 'tower', 'oak']);
 export function lifeSystem(G) {
   const b = G.b, prog = {};   // prog[bird][step] = count
   const goal = () => GOALS[BIRD] ? BIRD : 'hawk';
+  (G.ways ||= []).push({ stat: 'stamina', get text() { return `Your life goal: ${GOALS[goal()].title.toLowerCase()}`; }, left: () => G.gifted?.('life:' + goal()) ? 0 : 2 });   // (growth.js, F of the review)
   function view() {
     const id = goal(), g = GOALS[id], p = prog[id] || {};
     const steps = g.steps.map(([sid, text, need = 1]) => ({ id: sid, text, n: Math.min(need, p[sid] || 0), need, done: (p[sid] || 0) >= need }));

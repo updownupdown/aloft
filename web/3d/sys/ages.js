@@ -29,7 +29,9 @@ const SIGHTS = {
   ice: { stat: 'recovery', list: [['dogger', 'The dry Dogger Bank', 54.7, 2], ['channel', 'The Channel valley', 50.2, -1], ['sunda', 'The dry Sunda shelf', 3, 107], ['sahul', 'The land bridge to New Guinea', -10, 142]] },
   drowned: { stat: 'lift', villages: 5 },
   red: { stat: 'height', list: [['atlantic', 'The floor of the Atlantic', 30, -40], ['pacific', 'The floor of the Pacific', 0, -150], ['indian', 'The floor of the Indian Ocean', -20, 75], ['middle', 'The bed of the Middle Sea', 36, 18]] },
-  shore: { stat: 'speed', list: [] },
+  // the Other Shore's own sights (Q of the review): rings of standing stones on the high ground the
+  // still sea left, a pale light over each at night
+  shore: { stat: 'speed', stones: true, list: [['singing', 'The Singing Stones', 57.1, -4.6], ['lantern', 'The Lantern Hills', 9.6, 39.2], ['violet', 'The Violet Tablelands', 5.3, -61.2], ['still', 'The Still Peaks', -43.6, 170.3]] },
 };
 const DREAM = { up: 240, rings: 9, gap: 64, rise: 3.5, r: 8, secs: 150 };
 const DREAMS = [[.55, .45, .8], [.85, .6, .45], [.4, .65, .75], [.75, .5, .7]];
@@ -53,6 +55,13 @@ export function agesSystem(G) {
     c?.insertAdjacentHTML('beforeend', `<div class="age3" style="--ac:${AGE.col}">${esc(AGE.name)}</div>`);
   }
   const arrived = store.get('ageGo', null); store.set('ageGo', null);
+  // the ways to grow the ages hold for this bird (growth.js, F of the review)
+  const ways = G.ways ||= [];
+  for (const id of Object.keys(AGES)) if (id !== 'earth') {
+    ways.push({ stat: 'stamina', text: `Reach ${AGES[id].name}`, left: () => G.gifted?.('visit:' + id) ? 0 : 1 });
+    if (SIGHTS[id]?.list?.length || SIGHTS[id]?.villages) ways.push({ stat: SIGHTS[id].stat, text: `The sights of ${AGES[id].name}`, left: () => G.gifted?.('sights:' + id) ? 0 : 2 });
+  }
+  ways.push({ stat: 'height', text: 'The far dream: all seven far signs, then sleep somewhere that matters', left: () => G.gifted?.('fardream') ? 0 : 2 });
   let first = true;
 
   // ---- going -------------------------------------------------------------------------------------
@@ -89,6 +98,20 @@ export function agesSystem(G) {
         : ok ? `At the back of ${d.name}: the light is warm. Fly into it${been ? ` to go back to ${AGES[d.to].name}` : ''}.`
         : `At the back of ${d.name}: the light is cold and shut. It opens to one holding ${d.need} far ${d.need === 1 ? 'sign' : 'signs'} (you have ${signs()}).` });
   }
+  // the gates up front (J of the review): once one far sign is held, Quests lists the three doors and
+  // what opens each, before you meet one; done when that age is reached
+  function gates() {
+    if (AGE_ID !== 'earth' || signs() < 1) return;
+    for (const to of TO) {
+      const id = 'gate:' + to, q = G.quests.get(id), need = DOOR.need[to], ok = signs() >= need;
+      if (q?.done) continue;
+      if (A.been[to]) { if (q) G.quests.done(id, `Reached ${AGES[to].name}.`); continue; }
+      const seen = Object.values(A.doors).find(d => d.to === to && d.age === 'earth');
+      G.quests.set(id, { group: 'way', icon: 'door', title: `The door to ${AGES[to].name}`, quiet: true, n: Math.min(signs(), need), of: need,
+        text: `${ok ? 'Open to you now' : `Opens with ${need} far ${need === 1 ? 'sign' : 'signs'}`}. ${seen ? `You found one at the back of ${seen.name}.` : 'Its doors are walls of light at the back of deep caves, in the hills or in the ice.'}` });
+    }
+  }
+  G.on('find', gates); G.on('door', gates); G.on('age', gates);
   function seeDoor(d) {
     if (d.told === signs()) return; d.told = signs();
     if (A.doors[d.id]) { doorQuest(d); return; }
@@ -180,11 +203,13 @@ export function agesSystem(G) {
     H.name(name, 'age'); G.audio.learned?.();
     sightQuest();
     if (got() >= of()) { G.quests.done('age:' + AGE_ID, `All of them: ${AGE.name} seen.`); G.gift?.(SG.stat, `The sights of ${AGE.name}`, 'sights:' + AGE_ID, 2); }
+    G.finds?.ageKeep?.(AGE_ID, x, z, name);
     G.emit('find', { kind: 'age', id, name });
   }
   let sightT = 0;
   function sightsStep(dt) {
     if (!SG || (sightT -= dt) > 0) return; sightT = 1.5;
+    if (of() && got() >= of() && !G.gifted?.('sights:' + AGE_ID)) G.gift?.(SG.stat, `The sights of ${AGE.name}`, 'sights:' + AGE_ID, 2);   // (another bird, back in an age seen whole)
     for (const s of sightList) if (Math.hypot(wrapX(s.x - b.p[0]), s.z - b.p[2]) < 900) sight(s.id, s.name, s.x, s.z);
     if (SG.villages) for (const v of settlementsNear(b.p[0], b.p[2], 120, false)) if (v.kind !== 'drowned' && height(v.x, v.z) < WATER - .5 && Math.hypot(wrapX(v.x - b.p[0]), v.z - b.p[2]) < 90) sight(v.id, `${v.name}, under the sea`, v.x, v.z);
   }
@@ -196,6 +221,8 @@ export function agesSystem(G) {
       if (q && Math.hypot(wrapX(q.x - b.p[0]), q.z - b.p[2]) > 60) out.push(['door', q.x, q.z, 'The way home']);
       for (const s of sightList) if (!A.sights[AGE_ID]?.[s.id] && Math.hypot(wrapX(s.x - b.p[0]), s.z - b.p[2]) < 6000) out.push(['find', s.x, s.z, s.name]);
     }
+    // with the set from the other ages whole (finds.js), the doors you found, within 4 km
+    if (G.finds?.doors) for (const d of Object.values(A.doors)) { const k = Math.hypot(wrapX(d.x - b.p[0]), d.z - b.p[2]); if (d.age === AGE_ID && k > 60 && k < 4000) out.push(['door', d.x, d.z, d.to === 'earth' ? 'A door home' : `A door to ${AGES[d.to].name}`]); }
     return out;
   });
 
@@ -210,7 +237,7 @@ export function agesSystem(G) {
   G.on('wake', early => {
     if (early || AGE_ID !== 'earth' || dream) return;
     const s = special(); if (!s) return;
-    const far = signs() >= 7 && !A.far;
+    const far = signs() >= 7 && !G.gifted?.('fardream');   // (each bird dreams it once: G of the review)
     if (A.dreamt[s.id] && !far) return;
     setTimeout(() => startDream(s, far), 3500);
   });
@@ -259,6 +286,7 @@ export function agesSystem(G) {
   // ---- the gap in the aurora (asked by poles.js before it crosses) ---------------------------------------
   G.ages = {
     go, doors: () => doors, here: AGE_ID,
+    ledger: () => ({ been: Object.keys(A.been).length, of: Object.keys(AGES).length - 1, doors: Object.keys(A.doors).length, dreams: Object.keys(A.dreamt).length, sights: Object.keys(SIGHTS).map(id => [id, Object.keys(A.sights[id] || {}).length, SIGHTS[id].villages || SIGHTS[id].list.length]) }),
     gap() {
       if (first || going) return true;   // (not before the arrival has moved you off the wall)
       if (AGE_ID === 'shore') { go('earth', { via: 'aurora' }); return true; }
@@ -288,17 +316,24 @@ export function agesSystem(G) {
   for (const id of Object.keys(AGES)) G.dev?.add({ id: 'age-' + id, area: 'World', round: 'Gameplay 10-26 W1', title: id === 'earth' ? 'Back to the present' : `Go to ${AGES[id].name}`, how: `${AGES[id].note || 'The present.'} Go reloads into it where you are (?age=${id} too).`, go: () => go(id, { via: 'dev' }) });
   G.dev?.add({ id: 'doors', area: 'World', round: 'Gameplay 10-26 W4', title: 'Doors of light in the deep caves', how: 'About one cave in the hills or the ice in six ends in a wall of light: to The Ice (1 far sign), The Drowned (3) or The Red Age (5); from other ages every door leads home. Go takes you to the nearest door.',
     go: () => { const all = cavesNear(b.p[0], b.p[2], 9000).map(doorOf).filter(Boolean).sort((p, q) => Math.hypot(p.x - b.p[0], p.z - b.p[2]) - Math.hypot(q.x - b.p[0], q.z - b.p[2])); const d = all[0]; if (!d) { H.reply('No door within 9 km', 2); return; } Object.assign(b, { state: 'fly', p: [d.x + d.dx * 30, d.f + d.c * .5, d.z + d.dz * 30], yaw: yawTo(-d.dx, -d.dz), s: 6, perch: null, snapCam: true }); scanT = 0; } });
-  G.dev?.add({ id: 'dream', area: 'Ground and perch', round: 'Gameplay 10-26 W2', title: 'Dreams in special places', how: 'Sleep on your ledge, at a hidden place you found or under the aurora: at first light you dream a short flight through rings, then wake with a feather (once a place). All seven far signs: the far dream. Go dreams now (perched).', go: () => { if (b.state === 'perch') startDream({ id: 'dev' + G.t, name: 'here' }, signs() >= 7 && !A.far); else H.reply('Perch first', 2); } });
+  G.dev?.add({ id: 'ages-own', area: 'World', round: 'Gameplay review J N Q R', title: 'The ages, each its own: gates in Quests, a keepsake per age, the Other Shore\'s birds and standing stones, two moons over the Red Age', how: 'Hold one far sign: Journal > Quests > Ways lists the three doors and what opens each. The first sight in each age gives its keepsake (Journal > Things > Keepsakes, From the other ages). On the Other Shore: the aurora finch, the glass wren and the night chime, and four rings of standing stones (a pale light over each at night). The Red Age at night: two small moons.' });
+  G.dev?.add({ id: 'dream', area: 'Ground and perch', round: 'Gameplay 10-26 W2', title: 'Dreams in special places', how: 'Sleep on your ledge, at a hidden place you found or under the aurora: at first light you dream a short flight through rings, then wake with a feather (once a place). All seven far signs: the far dream. Go dreams now (perched).', go: () => { if (b.state === 'perch') startDream({ id: 'dev' + G.t, name: 'here' }, signs() >= 7 && !G.gifted?.('fardream')); else H.reply('Perch first', 2); } });
 
   return {
     id: 'ages',
     update(dt) {
-      if (first) { first = false; arrive(); sightQuest(); if (arrived && arrived.to === AGE_ID) { veil.classList.add('on'); requestAnimationFrame(() => { veil.classList.remove('on'); veil.classList.add('back'); setTimeout(() => veil.classList.remove('back'), 2600); }); } }
+      if (first) { first = false; arrive(); sightQuest(); gates(); if (arrived && arrived.to === AGE_ID) { veil.classList.add('on'); requestAnimationFrame(() => { veil.classList.remove('on'); veil.classList.add('back'); setTimeout(() => veil.classList.remove('back'), 2600); }); } }
       if (going) return;
       doorsStep(dt); sightsStep(dt); dreamStep(dt);
     },
     scene(S) {
       drawDoors(S);
+      if (SG?.stones) for (const st of sightList) {
+        const dx = wrapX(st.x - S.cam[0]), dz = st.z - S.cam[2]; if (Math.abs(dx) > 3000 || Math.abs(dz) > 3000) continue;
+        st.y ??= Math.max(height(st.x, st.z), WATER);
+        (S.props.lm_stones ||= []).push(st.x, st.y - .3, st.z, 1.6, st.x * .001, .5, 0, 0);
+        const night = G.light?.night || 0; if (night > .1) S.motes.push(st.x, st.y + 9, st.z, .8, .7, 1, 6 + night * 10);
+      }
       const dk = dream ? Math.min(1, dream.t / 3) * (dream.ending ? 0 : 1) : 0;
       if (AGE.sky) { const k = AGE.skyK * (.35 + .65 * (G.light?.daylight ?? 1)); S.horizon = mix3(S.horizon, AGE.sky, k); S.zenith = mix3(S.zenith, AGE.sky.map(v => v * .8), k * .7); if (S.cloud) S.cloud = mix3(S.cloud, AGE.sky.map(v => .5 + v * .5), k * .5); }
       if (AGE.aurora && S.aurora != null) S.aurora = Math.max(S.aurora, AGE.aurora * (G.light?.night || 0));

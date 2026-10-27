@@ -19,10 +19,10 @@ export function ringsSystem(G) {
   G.rings = 0;
   let run = null;   // the loop being flown: { circuit, n, k, count, t }
   const live = G.ringLive = r => { const t = got.get(r.id); return t === undefined || G.clock - t > DAY; };
-  let lift = 0, today = null, todayT = 0;   // the last ring's lift (seconds left); Today's course { circuit, n, level, end, rings, day, done }
+  let lift = 0, today = null, todayT = 0, lineT = 0;   // the last ring's lift (seconds left); Today's course { circuit, n, level, end, rings, day, done }
   function pickToday() {
     const firsts = ringsNear(b.p[0], b.p[2], COURSE.today).filter(r => r.k === 0 && live(r)).map(r => [r, Math.hypot(r.x - b.p[0], r.z - b.p[2])]).filter(([, d]) => d < COURSE.today).sort((a, c) => a[1] - c[1]);
-    if (!firsts.length) return null;
+    if (!firsts.length || G.offered?.('course') === false) return null;   // (not every day: aims.js, P)
     const r = firsts[0][0];
     return { circuit: r.circuit, n: r.of, level: r.level, end: r.end, day: G.day, done: false };
   }
@@ -32,7 +32,7 @@ export function ringsSystem(G) {
     if (!today || today.done || today.day !== G.day) return [];
     const r = nextOf(today); return r && live(r) ? [['course', r.x, r.z, 'Today’s course']] : [];
   });
-  const sec = journal(G).section(8, 'A course of rings');
+  const sec = journal(G).section(6.5, 'A course of rings');   // (in Today's Next, after the aims)
   G.menu.onOpen(() => {
     const T = today?.day === G.day ? today : null, r = T && nextOf(T);
     sec.el.classList.toggle('hidden', !T);
@@ -57,6 +57,8 @@ export function ringsSystem(G) {
     update(dt) {
       setRingDay(G.day || 0);
       if ((!today || today.day !== G.day) && (todayT -= dt) <= 0) { todayT = 30; today = pickToday(); }
+      // the course on the next-step ladder (quiet.js), last after the lesson, the quest and the aims
+      if ((lineT -= dt) <= 0) { lineT = 2; const T = today?.day === G.day && !today.done ? today : null, r = T && nextOf(T); G.hud.next?.('course', r && !G.lessons?.learning ? `Today’s course: ${T.n} rings` : null, r ? `its ${run?.circuit === T.circuit ? 'next' : 'first'} ring ${Math.round(Math.hypot(r.x - b.p[0], r.z - b.p[2]) / 50) * 50} m ${way(r.x - b.p[0], r.z - b.p[2])}` : ''); }
       // the last ring's lift: up and away, wings refreshed
       if (lift > 0) { lift -= dt; if (b.state === 'fly') { const k = Math.min(1, lift / COURSE.liftT); b.p[1] += COURSE.lift * k * dt; b.vy = Math.max(b.vy || 0, 0); } }
       if (run && G.clock - run.t > 25) run = null;
@@ -77,7 +79,7 @@ export function ringsSystem(G) {
         if (run.count >= r.of) {
           run = null; G.emit('ringLoop', { circuit: r.circuit, n: r.of, level: r.level });
           lift = COURSE.liftT; b.stamina = Math.min(b.maxStamina ?? 1, b.stamina + COURSE.wings);
-          if (today?.circuit === r.circuit) today.done = true;
+          if (today?.circuit === r.circuit) { today.done = true; G.offerDone?.('course'); G.hud.nextDone?.('course'); }
           const to = r.end?.kind === 'place' ? `, to ${r.end.name}` : r.end?.kind === 'air' ? ', onto rising air' : '';
           G.hud.tally(`${today?.circuit === r.circuit ? 'Today’s course' : 'A whole course'}: ${r.of} rings${r.level === 'hard' ? ', hard' : ''}${to}`, 'ring');
         }

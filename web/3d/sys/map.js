@@ -120,12 +120,21 @@ export function mapView(G, J) {
   });
   // top left: how much is known, the lands and the landmarks found, each of how many (a way to
   // their Journal page); the feathers are Today's and the Lessons' (James, 2026-10-24)
-  sum.addEventListener('click', e => { const b = e.target.closest('[data-go]'); if (b) G.menu.set(true, 'journal', b.dataset.go); });
+  sum.addEventListener('click', e => {
+    const f = e.target.closest('[data-fil]'); if (f) { SHOW[f.dataset.fil] = !SHOW[f.dataset.fil]; store.set('mapShow', SHOW); tally(); draw(); return; }
+    const b = e.target.closest('[data-go]'); if (b) G.menu.set(true, 'journal', b.dataset.go);
+  });
+  // what the Map shows (E of the review): the places you found, quests, the ways between the ages,
+  // other finds (lamps, your favourite perches...), your pins; each a chip to turn off
+  const FILS = [['places', 'Places'], ['quests', 'Quests'], ['ways', 'Ways'], ['finds', 'Finds'], ['pins', 'Pins']];
+  const SHOW = { places: true, quests: true, ways: true, finds: true, pins: true, ...store.get('mapShow', {}) };
+  const catOf = p => p.pin ? 'pins' : p.cat || (p.cache || p.home ? 'places' : 'finds');
   const tally = () => {
     const pct = explored() * 100, L = G.collection?.(), found = Object.keys(J.found || {}).length;
     const row = (ic, n, of, word, go) => `<li${go ? ` data-go="${go}" role="button"` : ''}>${icon(ic)}<span>${word}</span><b>${n}${of ? `<span>/${of}</span>` : ''}</b></li>`;
     sum.innerHTML = `<div class="far3"><span><i style="width:${Math.max(2, Math.round(pct))}%"></i></span><small>${pct < .1 ? 'Nothing explored yet' : `${pct < 1 ? pct.toFixed(1) : Math.round(pct)}% of the world explored`}</small></div>
-      <ul class="tally3">${L ? row('lands', L.lands, L.of, 'Lands', 'places') : ''}${row('landmarks', found, lmTotal, 'Landmarks', 'places')}</ul>`;
+      <ul class="tally3">${L ? row('lands', L.lands, L.of, 'Lands', 'places') : ''}${row('landmarks', found, lmTotal, 'Landmarks', 'places')}</ul>
+      <div class="mapfil3">${FILS.map(([k, t]) => `<button data-fil="${k}" class="${SHOW[k] ? 'on' : ''}" aria-pressed="${!!SHOW[k]}">${t}</button>`).join('')}</div>`;
   };
   G.on('menuTab', id => {
     open = id === 'map';
@@ -167,15 +176,15 @@ export function mapView(G, J) {
   // salt pan): those are only named when close, and only once in a stretch of map
   const SIGHTS = new Set(['The Singing Dunes', 'The Golden Sea', 'The Stone Forest', 'The Hundred Towers', 'The White Pan', 'The Salt Mirror', 'The Painted Hills', 'The Striped Hills']);
   function places() {
-    const out = G.home ? [{ x: G.home[0], z: G.home[1], name: 'Where you began', note: 'Your first flight started here.', col: PIG.wood, rank: 1 }] : [];
+    const out = G.home ? [{ x: G.home[0], z: G.home[1], name: 'Where you began', note: 'Your first flight started here.', col: PIG.wood, rank: 1, cat: 'places' }] : [];
     const names = {};
     for (const l of Object.values(J.found)) names[l.name] = (names[l.name] || 0) + 1;
-    for (const l of Object.values(J.found)) out.push({ x: l.x, z: l.z, name: l.name, note: l.note, col: PIG.ring, rank: SIGHTS.has(l.name) ? 4 : names[l.name] > 1 ? 3 : 2, plain: SIGHTS.has(l.name) || names[l.name] > 1 });
+    for (const l of Object.values(J.found)) out.push({ x: l.x, z: l.z, name: l.name, note: l.note, col: PIG.ring, rank: SIGHTS.has(l.name) ? 4 : names[l.name] > 1 ? 3 : 2, plain: SIGHTS.has(l.name) || names[l.name] > 1, cat: 'places' });
     // food left on a branch (flight thread's G.caches), till it spoils
     for (const c of G.caches || []) out.push({ x: c.x, z: c.z, name: `A ${c.kind || 'catch'} left on a branch`, note: `Left on day ${Math.floor(c.day)}. It keeps two days.`, cache: c, rank: 1 });
     for (const p of J.pins || []) out.push({ x: p.x, z: p.z, name: p.name || 'Your pin', note: '', pin: p, rank: 0 });
     for (const p of G.mapPlaces?.() || []) out.push({ rank: 2, ...p });   // places other systems add (the neighbours' valley)
-    return out;
+    return out.filter(p => SHOW[catOf(p)] !== false);
   }
   let shown = [];   // the markers drawn, for taps
 

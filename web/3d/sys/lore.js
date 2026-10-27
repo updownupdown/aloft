@@ -3,8 +3,8 @@
 // - Songs tell you where (S1): learning a song, the singer tells one true thing about here: a hidden
 //   place, a cave, a landmark not yet found (sea birds: a sea cave). A rumour: a soft circle on the Map
 //   and a line in Journal > Quests, never an exact pin; close by, the place glints (sys/finds.js).
-// - Mastered songs (S2): sing a species' song cleanly three times and it gives the bird singing it a
-//   lasting step of growth (sys/growth.js G.gift: each bird masters its own).
+// - Mastered songs (S2): sing a species' song cleanly three times and the bird singing it masters it;
+//   every five mastered give it a lasting step of growth (sys/growth.js G.gift: each bird its own).
 // - Songs as keys (S3): sing in a cave and the hill sings back what it keeps; sing in a rock shelter
 //   you found at dusk and the owl there answers with a feather (the notebook's riddles say so).
 // - A land's chorus (S4): learn every songbird of one land of a continent and its chorus is yours: a
@@ -26,7 +26,7 @@ const LAND = { meadow: 'meadows', forest: 'forests', lakeland: 'lakelands', swam
 // a mastered song's growth, by what its gift does
 const STAT = { worms: 'recovery', ripen: 'recovery', fish: 'recovery', juice: 'recovery', clear: 'recovery', moths: 'recovery', fireflies: 'recovery', dew: 'stamina', lark: 'stamina', hardy: 'stamina',
   tailwind: 'speed', companion: 'speed', flock: 'speed', lift: 'lift', updraft: 'lift', warm: 'lift', calm: 'height', night: 'height', dusk: 'height', glint: 'climb', bells: 'climb', mice: 'climb', sing: 'climb', hush: 'climb' };
-const LORE = { tellR: 7000, clean: .85, master: 3, whale: 40, gannet: 15 };
+const LORE = { tellR: 7000, clean: .85, master: 3, per: 5, whale: 40, gannet: 15 };   // per: songs mastered for each step of strength (H of the review)
 const cap = s => s[0].toUpperCase() + s.slice(1);
 const hash = s => { let h = 7; for (let i = 0; i < String(s).length; i++) h = (h * 31 + String(s).charCodeAt(i)) | 0; return h; };
 const chorusKey = (c, l) => c + ':' + l;
@@ -62,6 +62,11 @@ export function loreSystem(G) {
   }
   const later = (s, f) => setTimeout(f, s * 1000);
   G.on('learn', sp => { tell(sp); chorus(sp); });
+  G.lore = { mastered: () => Object.values(L.clean[BIRD] || {}).filter(v => v >= LORE.master).length, choruses: () => Object.keys(L.chorus).length, chorusOf: Object.keys(CHORUS).length, seaSongs: () => (L.whaleSong ? 1 : 0) + (L.gannetSong ? 1 : 0) };
+  // the ways to grow they hold for this bird (growth.js, F of the review)
+  const ways = G.ways ||= [], MOST_M = Math.floor(SPECIES.length / LORE.per);
+  ways.push({ stat: 'any', get text() { const m = Object.values(L.clean[BIRD] || {}).filter(v => v >= LORE.master).length; return `Mastered songs: ${LORE.per - m % LORE.per} more for the next step`; }, left: () => MOST_M - Math.floor(Object.values(L.clean[BIRD] || {}).filter(v => v >= LORE.master).length / LORE.per) });
+  ways.push({ stat: 'lift', get text() { const n = Object.keys(L.chorus).filter(k => !G.gifted?.('chorus:' + k)).length; return n ? `Fly in a land whose chorus you hold (${n})` : 'A land\'s chorus: learn all its songbirds'; }, left: () => Object.keys(CHORUS).filter(k => !G.gifted?.('chorus:' + k)).length });
   G.on('song', (t, q) => { if (q === undefined && t?.base) tell(t.base); });
   G.on('landmark', l => { const q = G.quests.get('tell:' + l.id); if (q && !q.done) G.quests.done(q.id, `Found on day ${G.day}.`); });
 
@@ -71,8 +76,12 @@ export function loreSystem(G) {
     sp = sp.base || sp;
     if (q >= LORE.clean) {
       const C = L.clean[BIRD] ||= {}, n = C[sp.id] = (C[sp.id] || 0) + 1;
-      if (n === LORE.master) { G.gift(STAT[sp.powerKey] || 'stamina', `Mastered the ${sp.name.toLowerCase()}'s song`, 'master:' + sp.id); G.emit('mastered', sp); }
-      else if (n < LORE.master && !G.flags.masterTold) { G.flags.masterTold = 1; H.glint('A clean song', `Sing a song cleanly three times and your bird masters it: a little lasting strength. ${n} of ${LORE.master} for the ${sp.name.toLowerCase()}.`, 'songs'); }
+      if (n === LORE.master) {
+        const m = Object.values(C).filter(v => v >= LORE.master).length;
+        if (m % LORE.per === 0) G.gift(STAT[sp.powerKey] || 'stamina', `${m} songs mastered`, 'master5:' + m);
+        else H.tally(`Mastered the ${sp.name.toLowerCase()}'s song: ${m % LORE.per} of ${LORE.per} toward a strength`, 'songs');
+        G.emit('mastered', sp);
+      } else if (n < LORE.master && !G.flags.masterTold) { G.flags.masterTold = 1; H.glint('A clean song', `Sing a song cleanly three times and your bird masters it; every ${LORE.per} songs mastered give a little lasting strength. ${n} of ${LORE.master} for the ${sp.name.toLowerCase()}.`, 'songs'); }
     }
     if (q >= .45) keys();
   });
@@ -154,12 +163,12 @@ export function loreSystem(G) {
     box.innerHTML = `<h3><span>What the songs give</span></h3>
       ${now && !L.chorus[here] ? `<p>The chorus of ${esc(chorusName(here))}: ${nowN} of ${now.length} songbirds learned.</p>` : ''}
       <p>${done.length ? `Choruses that are yours: ${esc(done.join(', '))}.` : 'Learn every songbird of one land (the meadows of Europe, the forests of Asia...) and its chorus is yours.'}</p>
-      <p>${mastered.length ? `Mastered by this bird: ${esc(mastered.join(', '))}.` : 'Sing a song cleanly three times and your bird masters it, and grows a little.'}</p>
+      <p>${mastered.length ? `Mastered by this bird (${mastered.length}; a strength for every ${LORE.per}): ${esc(mastered.join(', '))}.` : 'Sing a song cleanly three times and your bird masters it; every five mastered, it grows a little.'}</p>
       ${L.whaleSong || L.gannetSong ? `<p>Sea songs: ${[L.whaleSong && 'the whale\'s (sing it from a perch at sea)', L.gannetSong && 'the gannets\' call (the islands near, for a day)'].filter(Boolean).join('; ')}.</p>` : ''}`;
   });
 
   G.dev?.add({ id: 'tells', area: 'Songs', round: 'Gameplay 10-26 S1', title: 'Songs tell you where', how: 'Learn a song: the singer tells you of a hidden place, a cave or a landmark near (a circle on the Map, Journal > Quests > Rumours).' });
-  G.dev?.add({ id: 'mastery', area: 'Songs', round: 'Gameplay 10-26 S2 S3 S4', title: 'Mastered songs, songs as keys, a land\'s chorus', how: 'Sing a learned song cleanly 3 times: your bird grows. Sing in a cave: the hill gives something back. Sing at a found rock shelter at dusk: an owl\'s feather. Learn every songbird of one land: its chorus (Journal > Songs).' });
+  G.dev?.add({ id: 'mastery', area: 'Songs', round: 'Gameplay 10-26 S2 S3 S4', title: 'Mastered songs, songs as keys, a land\'s chorus', how: 'Sing a learned song cleanly 3 times: it is mastered; every 5 mastered, your bird grows. Sing in a cave: the hill gives something back. Sing at a found rock shelter at dusk: an owl\'s feather. Learn every songbird of one land: its chorus (Journal > Songs).' });
   G.dev?.add({ id: 'seasongs', area: 'Songs', round: 'Gameplay 10-26 S5', title: 'Sea songs: the whale and the gannets', how: 'Ride a whale 40 s: you learn its song; sing it (action button) from a perch at sea and a whale comes. Rest 15 s by a gannet colony: their call shows the islands near on the compass for a day. Go teaches both.',
     go: () => { L.whaleSong = L.gannetSong = true; H.reply('Whale song and gannet call learned', 2.5); } });
 
@@ -167,7 +176,7 @@ export function loreSystem(G) {
     id: 'lore',
     update(dt) {
       whaleCd -= dt; gannetCd -= dt;
-      if ((hereT -= dt) <= 0) { hereT = 2; here = hereKey(); }
+      if ((hereT -= dt) <= 0) { hereT = 2; here = hereKey(); if (L.chorus[here] && !G.gifted?.('chorus:' + here)) G.gift('lift', `The chorus of ${chorusName(here)}`, 'chorus:' + here); }   // (each bird, in that land: G of the review)
       if ((islesT -= dt) <= 0) { islesT = 4; isles = L.gannetDay >= (G.day || 0) ? islesNear(b.p[0], b.p[2], 20000).filter(I => I.r > 60).slice(0, 12) : []; }
       // riding a whale, you learn its song
       if (!L.whaleSong && b.state === 'perch' && b.perch?.ride) {
