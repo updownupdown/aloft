@@ -47,9 +47,15 @@ export const KINDS = {
     lobes: [[0, 0, 0, 1.7, .16, 1], [.1, .13, 0, 1.2, .09, .71], [-.05, -.1, .05, 1.2, .1, .8]] },
   puff: { base: -9, sigma: .06, col: [.97, .96, .94], under: [.86, .86, .88],
     lobes: [[0, 0, 0, .7, .22, .7], [.45, .05, .2, .45, .18, .45], [-.4, .04, -.25, .5, .2, .5]] },
-  // a ring of mist (sys/rings.js, its radius the scale); twice as dense since 10-26 (James: twice as visible)
-  ringv: { base: -9, sigma: .32, col: [1, 1, .98], under: [.92, .92, .94],
-    lobes: Array.from({ length: 16 }, (_, i) => { const a = i / 16 * Math.PI * 2, w = .17 + .05 * Math.sin(i * 2.3); return [Math.cos(a), Math.sin(a), Math.sin(i * 1.7) * .05, w, w, w * .9]; }) },
+  // a ring of mist (sys/rings.js, its radius the scale): a puffy wreath of cloud, 16 round billows
+  // of two sizes round the hoop and 8 small ones bulging out, in and to the sides (James 10-27:
+  // twice as visible again, puffy cloud rings; 10-26 had doubled the density once). keep: the
+  // billows round the hoop never thin out far away, only the small ones
+  ringv: { base: -9, sigma: .6, col: [1, 1, .99], under: [.9, .9, .93], keep: 16,
+    lobes: [
+      ...Array.from({ length: 16 }, (_, i) => { const a = i / 16 * Math.PI * 2, w = (i % 2 ? .26 : .32) + .03 * Math.sin(i * 2.3); return [Math.cos(a), Math.sin(a), Math.sin(i * 1.7) * .06, w, w, w * .85]; }),
+      ...Array.from({ length: 8 }, (_, i) => { const a = (i + .5) / 8 * Math.PI * 2 + .2, o = i % 2 ? 1.2 : .95, w = .15 + .03 * Math.sin(i * 3.1); return [Math.cos(a) * o, Math.sin(a) * o, (i % 3 - 1) * .18, w, w, w]; }),
+    ] },
   // a dust devil (sys/landair.js, its height the scale): a twisting column of grit widening upward
   // from a skirt of dust on the ground (the instance's yaw spins it)
   devil: { base: -9, sigma: .09, col: [.9, .8, .64], under: [.74, .63, .5],
@@ -237,7 +243,7 @@ export function createClouds(gl) {
     // the lobes biggest first, so the small ones can be left off far away (the sum is the same in any order)
     const lobes = [...K.lobes].sort((a, b) => b[3] * b[4] * b[5] - a[3] * a[4] * a[5]);
     lobes.forEach(([x, y, z, a, b, c], i) => { C.set([x, y, z, 0], i * 4); Rr.set([1 / a, 1 / b, 1 / c, 0], i * 4); });
-    kinds[k] = { K, C, Rr, keep: Math.ceil(lobes.length / 2), m: mesh(gl, box(K.lobes, K.base), LAYOUT, { instLayout: ILAYOUT }) };
+    kinds[k] = { K, C, Rr, keep: K.keep ?? Math.ceil(lobes.length / 2), m: mesh(gl, box(K.lobes, K.base), LAYOUT, { instLayout: ILAYOUT }) };
   }
   let sorted = new Float32Array(1024);
   const CL = {
