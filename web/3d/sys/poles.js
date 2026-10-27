@@ -48,7 +48,7 @@ export function polesSystem(G) {
   function find(key, z) {
     const J = G.journey; if (!J || J.found['ice-' + key]) return;
     const e = EDGES[key], l = { id: 'ice-' + key, name: e.name, kind: 'sight', x: b.p[0], y: Math.max(height(b.p[0], z), WATER), z };
-    J.found[l.id] = { name: e.name, x: Math.round(l.x), z: Math.round(z), note: `${e.note} Reached on ${G.date?.text || `day ${G.day}`}.` };
+    J.found[l.id] = { real: 1, name: e.name, x: Math.round(l.x), z: Math.round(z), note: `${e.note} Reached on ${G.date?.text || `day ${G.day}`}.` };
     G.hud.name(e.name, 'south'); G.hud.glint(e.name, e.note, 'south'); G.audio.learned?.();
     G.emit('landmark', l);
   }

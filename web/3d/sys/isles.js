@@ -37,7 +37,7 @@ export function islesSystem(G) {
     if (I.real !== undefined) {
       const [name, kind] = REAL[I.real] || ['the island', 'colony'];
       if (REAL.findIndex(r => r[0] === name) !== I.real) return null;
-      return { kind, name: `${SIGHT[kind][0].toUpperCase()}${SIGHT[kind].slice(1)} of ${name}`.replace('The ', 'The '), group: name };
+      return { kind, name: `${SIGHT[kind][0].toUpperCase()}${SIGHT[kind].slice(1)} of ${name}`.replace('The ', 'The '), group: name, real: 1 };
     }
     const gx = Math.floor(I.x / ISLES.group), gz = Math.floor(I.z / ISLES.group);
     const all = islesNear((gx + .5) * ISLES.group, (gz + .5) * ISLES.group, ISLES.group / 2).filter(J => J.real === undefined && Math.floor(J.x / ISLES.group) === gx && Math.floor(J.z / ISLES.group) === gz);
@@ -49,7 +49,7 @@ export function islesSystem(G) {
   }
   // how many archipelagos hold a sight, for the Map's count of landmarks (map.js, counted once)
   G.isleNear = () => near;   // (sys/lore.js: the gannets' colony)
-  G.isleSights = () => islesNear(0, 0, 1e5).filter(sightOf).length;
+  G.isleSights = () => islesNear(0, 0, 1e5).filter(I => sightOf(I)?.real).length;   // (the named ones: Journal > Places > Landmarks lists only those)
   function infoOf(I) {
     const k = keyOf(I); let o = info.get(k); if (o) return o;
     const seed = I.real !== undefined ? I.real * 13 + 1 : Math.abs(Math.round(I.x * .013 + I.z * .029));
@@ -80,7 +80,7 @@ export function islesSystem(G) {
     const J = G.journey; if (!J) return;
     for (const o of near) {
       const s = o.sight; if (!s || J.found[s.id] || Math.hypot(s.x - b.p[0], s.z - b.p[2]) > 160) continue;
-      J.found[s.id] = { name: s.name, x: Math.round(s.x), z: Math.round(s.z), note: `Found on ${G.date?.text || `day ${G.day}`}, in ${G.season.name}, in ${inSentence(G.placeName?.(s.x, s.z) || 'the sea')}.` };
+      J.found[s.id] = { real: s.real || 0, name: s.name, x: Math.round(s.x), z: Math.round(s.z), note: `Found on ${G.date?.text || `day ${G.day}`}, in ${G.season.name}, in ${inSentence(G.placeName?.(s.x, s.z) || 'the sea')}.` };
       H.name(s.name, 'landmarks'); G.audio.learned?.();
       G.emit('landmark', { id: s.id, name: s.name, x: s.x, z: s.z });
     }

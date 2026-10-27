@@ -37,14 +37,14 @@ const LOUD = new Set(['warn', 'reply', 'song', 'tutorial']);
 
 export function createHud(G, ui, input) {
   ui.insertAdjacentHTML('beforeend', `
-    <div class="hud3"><span class="meters"></span><span class="alt"><span class="tape"></span><span class="ptr"></span><span class="nums"><b class="m"></b><b class="v"></b><b class="k"></b></span></span></div>
+    <div class="hud3"><span class="meters"></span><span class="alt"><span class="tape"></span><span class="ptr"></span><span class="nums"><b class="m"></b><b class="v"></b><b class="k"></b><b class="w"></b></span></span></div>
     <div class="corner3"><div class="fps3 hidden"></div></div>
     <div class="pad3 L"><i></i></div><div class="pad3 R"><i></i></div>
     <p class="toast3"><span class="ic3"></span><span class="tx3"></span><button class="set3" aria-label="Choose which messages show">${icon('settings')}</button></p>`);
   const q = s => ui.querySelector(s);
   const hud = q('.hud3'), meters = q('.meters'), toastEl = q('.toast3'), padL = q('.pad3.L'), padR = q('.pad3.R');
   const dial = createDial(q('.corner3'), { hub: true }), compass = createCompass(G, ui);
-  const alt = q('.alt'), tape = q('.alt .tape'), altM = q('.alt .m'), altV = q('.alt .v'), altK = q('.alt .k');
+  const alt = q('.alt'), tape = q('.alt .tape'), altM = q('.alt .m'), altV = q('.alt .v'), altK = q('.alt .k'), altW = q('.alt .w');
   let vr = 0, lastY = null;   // the rise or sink, m/s, smoothed
   q('.corner3').prepend(q('.corner3 .dial'));
   // off: the groups of tips and kinds of message turned off on Journal > Messages ('tip:food',
@@ -214,7 +214,9 @@ export function createHud(G, ui, input) {
     if (lastY !== null && dt > 0) vr += ((y - lastY) / dt - vr) * Math.min(1, dt * 2.5);
     lastY = y;
     const f = H.flight, h = f ? f.m : H.height ?? '', rate = Math.abs(vr) < .05 ? '0.0' : Math.abs(vr).toFixed(1);
-    const ak = f ? `${h}|${f.kmh}|${f.lift}|${f.up}|${rate}|${vr > 0}` : `${h}|${H.status}`;
+    // the wind, under the speed: an arrow the way it blows as the camera looks, and how hard; blue behind you, red in your face
+    const W = f && H.wind, wk = W ? `${Math.round(W.a * 12)}|${W.kmh}|${W.tail > .35 ? 'tail' : W.tail < -.35 ? 'head' : 'side'}` : '';
+    const ak = f ? `${h}|${f.kmh}|${f.lift}|${f.up}|${rate}|${vr > 0}|${wk}` : `${h}|${H.status}`;
     if (ak !== altKey) {
       altKey = ak;
       alt.classList.toggle('still', !f);
@@ -224,10 +226,12 @@ export function createHud(G, ui, input) {
         altV.innerHTML = `${f.up ? icon('updraft', 'up3 n' + f.up) : vr > .05 ? '↑' : vr < -.05 ? '↓' : ''} ${rate}<small>m/s</small>`;   // in rising air: red chevrons, more for stronger
         altV.className = 'v' + (f.lift || vr > .3 ? ' rise' : vr < -.3 ? ' sink' : '');
         altK.innerHTML = `${f.kmh}<small>km/h</small>`;
-      } else { altV.textContent = H.status; altV.className = 'v st'; altK.textContent = ''; }
+        altW.className = 'w ' + (wk.split('|')[2] || '');
+        altW.innerHTML = W ? `<svg viewBox="0 0 16 16" style="transform:rotate(${(Math.round(W.a * 12) / 12).toFixed(2)}rad)"><path d="M8 1.5 13 8.5H9.6V14.5H6.4V8.5H3Z"/></svg>${W.kmh}<small>km/h wind</small>` : '';
+      } else { altV.textContent = H.status; altV.className = 'v st'; altK.textContent = ''; altW.textContent = ''; }
     }
     compass.update(dt, G.menu?.open);
-    dial.update(G.tod, G.day, false, G.season, G.forecast || nowOnly, G.has?.('watch'));
+    dial.update(G.tod, G.day, false, G.season, G.forecast || nowOnly);
     for (const [el, P] of [[padL, input.L], [padR, input.R]]) {
       // perched or standing, a drag turns the bird: no sticks then
       const fly = G.b.state === 'fly', on = P.id !== null && fly;

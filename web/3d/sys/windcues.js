@@ -1,10 +1,11 @@
-// Wind cues: the winds that help you, seen as well as heard, in cool blue (thermals are warm, cues.js).
+// Wind cues: the winds that help you, seen as well as heard.
 // - Rising wind (ridge lift on a windward slope or cliff, mountain waves, the swells' faces, any
-//   other lift that is not a thermal): pale streaks of air run up past the bird, and a soft blue
-//   glow rises from the bottom edge of the screen, stronger for stronger lift.
-// - A carrying wind (a sky river, sys/skyrivers.js: the westerlies, the trades): streaks run along
-//   with it, and a blue glow sits on the screen edge toward where it carries you (top: on your
-//   way; bottom: against you).
+//   other lift that is not a thermal): pale streaks of air run up past the bird, and a soft warm
+//   glow rises from the bottom edge of the screen, stronger for stronger lift (rising air is warm,
+//   as the thermals are, cues.js).
+// - The wind itself (the weather's, a sky river: sys/skyrivers.js): streaks run along with it, and
+//   G.hud.wind says, under the speed, where it blows (an arrow, as the camera looks) and how hard,
+//   blue when it is behind you, red when it is in your face (James 10-27).
 import { height, normalAt, WIND, env, WATER } from '../world.js';
 import { smooth } from '../util.js';
 
@@ -13,15 +14,13 @@ const WL = Math.hypot(WIND[0], WIND[2]), WX = WIND[0] / WL, WZ = WIND[2] / WL;
 
 export function windCuesSystem(G) {
   const b = G.b, ui = document.getElementById('ui3') || document.body;
-  ui.insertAdjacentHTML('beforeend', `<div class="windv3"></div><div class="windh3"><div class="blob3"></div></div>
+  ui.insertAdjacentHTML('beforeend', `<div class="windv3"></div>
   <style>
-    .windv3, .windh3 { position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: 0; overflow: hidden; }
-    .windv3 { background: linear-gradient(to top, rgba(110, 170, 255, .7), rgba(110, 170, 255, .2) 20%, transparent 36%); }
-    .windh3 .blob3 { position: absolute; width: 70vmax; height: 70vmax; margin: -35vmax 0 0 -35vmax; border-radius: 50%;
-      background: radial-gradient(circle, rgba(120, 180, 255, .7) 0%, rgba(120, 176, 255, .28) 30%, transparent 62%); }
+    .windv3 { position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: 0; overflow: hidden;
+      background: linear-gradient(to top, rgba(255, 170, 90, .6), rgba(255, 170, 90, .18) 20%, transparent 36%); }
   </style>`);
-  const vEl = ui.querySelector('.windv3'), hEl = ui.querySelector('.windh3'), blob = hEl.firstChild;
-  let vK = 0, hK = 0, ang = 0;
+  const vEl = ui.querySelector('.windv3');
+  let vK = 0, hK = 0, camYaw = b.yaw;
   const streaks = [];
   // the lift here that isn't a thermal's: the windward slope (as world.js airLift) and env.lifts
   const windLift = (x, y, z) => {
@@ -43,20 +42,17 @@ export function windCuesSystem(G) {
       const v = fly && !b.inThermal ? smooth(WINDCUE.lift, WINDCUE.liftFull, Math.min(up, b.lift ?? up)) : 0;
       vK += (v - vK) * Math.min(1, dt * (v > vK ? 2.5 : 1.2));
       vEl.style.opacity = (vK * WINDCUE.glow).toFixed(3);
-      // a carrying wind: toward where it takes you
+      // a carrying wind (a sky river): the streaks run with it
       const sw = G.skyWind || [0, 0], sv = Math.hypot(sw[0], sw[1]);
       const h = fly ? smooth(WINDCUE.carry, WINDCUE.carryFull, sv) : 0;
-      if (h > .01) {
-        const f = [Math.sin(b.yaw), -Math.cos(b.yaw)], r = [Math.cos(b.yaw), Math.sin(b.yaw)];
-        const a = Math.atan2((sw[0] * r[0] + sw[1] * r[1]) / sv, (sw[0] * f[0] + sw[1] * f[1]) / sv);
-        ang += Math.atan2(Math.sin(a - ang), Math.cos(a - ang)) * Math.min(1, dt * 3);
-      }
       hK += (h - hK) * Math.min(1, dt * 1.5);
-      hEl.style.opacity = (hK * WINDCUE.glow * .8).toFixed(3);
-      if (hK > .005) {
-        const x = 50 + Math.sin(ang) * 58, y = 50 - Math.cos(ang) * 62;
-        blob.style.left = `${Math.max(-6, Math.min(106, x))}%`; blob.style.top = `${Math.max(-8, Math.min(108, y))}%`;
-      }
+      // the wind under the speed: its way as the camera looks (0: straight ahead, into the screen),
+      // and how much of it is behind the bird (1) or in its face (-1)
+      const w = b.wind || [0, 0], wl = Math.hypot(w[0], w[1]);
+      if (G.hud) G.hud.wind = fly && wl > .3 ? {
+        a: Math.atan2(w[0] * Math.cos(camYaw) + w[1] * Math.sin(camYaw), w[0] * Math.sin(camYaw) - w[1] * Math.cos(camYaw)),
+        kmh: Math.round(wl * 3.6), tail: (w[0] * Math.sin(b.yaw) - w[1] * Math.cos(b.yaw)) / wl,
+      } : null;
       // streaks of moving air round the bird, while either wind is on
       const on = Math.max(vK, hK);
       const vel = [(G.skyWind?.[0] || 0) + WX * 3, 0, (G.skyWind?.[1] || 0) + WZ * 3];
@@ -74,8 +70,10 @@ export function windCuesSystem(G) {
       }
     },
     scene(S) {
+      const cam = S.cam;
+      if (Math.hypot(b.p[0] - cam[0], b.p[2] - cam[2]) > .5) camYaw = Math.atan2(b.p[0] - cam[0], -(b.p[2] - cam[2]));   // the way the camera looks (yaw as b.yaw: 0 north, x east)
       if (!streaks.length) return;
-      const R = S.ribbon ||= [], cam = S.cam;
+      const R = S.ribbon ||= [];
       for (const s of streaks) {
         const vl = Math.hypot(...s.v) || 1, len = Math.min(5, 1 + vl * .4), d = s.v.map(q => q / vl);
         const q = [s.p[0] - d[0] * len, s.p[1] - d[1] * len, s.p[2] - d[2] * len];
