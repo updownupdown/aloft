@@ -33,10 +33,10 @@ web/index.html          entry; loads 3d/main.js
 web/3d/main.js          boot, the frame loop, save/resume, the SYSTEMS list, flight events, core menu rows
 web/3d/flight.js        hawk flight model (energy, tuck/flare, flaps, thermal ride, trees, perching, ground, water)
 web/3d/input.js         two thumbs = two wings (floating sticks, paired taps), keyboard
-web/3d/camera.js        chase camera, hawk frame, pose (wing beats with per-wing amplitude)
+web/3d/camera.js        chase camera (clear(): it comes in along the line to the bird before rock, a cave roof or a ruin, looks along a cave's passage, swings to open ground when perched, and looks from the bird's head with no room), hawk frame, pose (wing beats with per-wing amplitude)
 web/3d/world.js         terrain height(x,z) (with the caves cut in; height0 without, surface(x,z,y) the roof's top when above it) (coasts from earth.js, islands, pack ice), colours, trees + perches, thermals, airLift, rings
 web/3d/realplaces.js    the real natural wonders (Uluru, the great falls, tepuis, basalt columns...) shaped into the ground (shapeAt), and VOLCANOES' names; sys/nature.js their meshes, geysers, columns
-web/3d/caves.js         caves you fly into (cave, icecave, seacave, tube, cenote, tarn, adit, rail tunnel): paths cut into the ground under a roof; cut(), roofAt(), caveShade(); sys/caves.js draws the roofs, the bird and camera keep under them (flight.js cave(), camera.js), found with the hidden places
+web/3d/caves.js         caves you fly into (cave, icecave, seacave, tube, cenote, tarn, adit, rail tunnel): paths cut into the ground under a roof, the natural ones with wandering sides, a vaulted lumpy roof (vault()) and a floor curving up into the walls (floorAt()); cut(), roofAt(), inHollow() (no rocks or grass inside), caveShade(); sys/caves.js draws the roofs, stalactites, stalagmites and glow-worms, the bird and camera keep under them (flight.js cave(), camera.js), found with the hidden places
 web/3d/earth.js         the Earth under the world: coastDist, earthBiome, continentAt, latLon/toXZ, oceanAt (each ocean's way across), regionAt, lakeAt (the great lakes, fresh or salt), bakedRiver (the great rivers, Natural Earth lines), byGrain (the ranges' ridge bearing), calendar (yearFrac, dateOf, seasonAt, snowLine)
 web/3d/earthdata.js     baked grids for earth.js (made by tools/earth/bake.py from Natural Earth; do not edit by hand)
 web/3d/render.js        WebGL2 renderer: sky, chunks, instanced trees and named shapes, hawk, water, points

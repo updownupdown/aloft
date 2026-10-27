@@ -3,7 +3,7 @@
 // Scattered by hash in 8 m cells (so the same tuft is always in the same place), cached per
 // cell, drawn instanced within FLORA.near metres of the camera. They make height and speed
 // readable close to the ground, which the big facets alone don't.
-import { height, groundAt, groundNormal, forest, bands, ih, fbm, PAL, WATER, env } from '../world.js';
+import { height, groundAt, groundNormal, forest, bands, ih, fbm, PAL, WATER, env, inHollow } from '../world.js';
 import { rollBiome } from '../biomes.js';
 import { smooth } from '../util.js';
 import { builder, blob, reseed, rnd } from '../shapes.js';
@@ -97,6 +97,7 @@ export function floraSystem(G) {
       if (y < WATER - .2) continue;
       const r = ih(cx, cz, 220 + i), n = groundNormal(x, z)[1];
       if (n < .6) continue;                                                   // nothing clings to a crag
+      if (inHollow(x, z)) continue;                                           // nor grows in the dark of a cave
       const scree = smooth(.1, .45, fbm(x / 120, z / 120, 271, 2));            // stones lie in patches
       const f = forest(x, z), sc = .8 + ih(cx, cz, 230 + i) * .6, yaw = ih(cx, cz, 240 + i) * 6.283;
       const tint = ih(cx, cz, 250 + i); let gold = 0;
