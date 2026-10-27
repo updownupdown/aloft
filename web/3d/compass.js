@@ -29,7 +29,7 @@ export function createCompass(G, ui) {
   let marks = [], key = '', markT = 0, seen = [], seenT = 0;
   // a Call: what is round you, for a while (fixed where it was at the call)
   G.on('call', () => {
-    const x = b.p[0], z = b.p[2], R = CALLSEE.r, near = (list, f = () => true) => list.map(o => [o, Math.hypot(o.x - x, o.z - z)])
+    const x = b.p[0], z = b.p[2], R = CALLSEE.r * (G.has?.('bell') ? 1.6 : 1), near = (list, f = () => true) => list.map(o => [o, Math.hypot(o.x - x, o.z - z)])
       .filter(([o, d]) => d < R + (o.r || 0) && d > 25 && f(o)).sort((a, c) => a[1] - c[1]).slice(0, CALLSEE.most).map(([o]) => o);
     seen = [
       ...near(thermalsNear(x, z, R + 80)).map(t => ['therm', t.x, t.z, 'Rising air']),

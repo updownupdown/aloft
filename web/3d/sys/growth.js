@@ -167,7 +167,7 @@ export function growthSystem(G) {
   // H3: a good evening, a strong morning
   G.on('wake', early => {
     if (early || !fedAtSleep) return;
-    b.over = DAY.over * (.5 + .5 * cond());
+    b.over = DAY.over * (.5 + .5 * cond()) * (G.has?.('sheepbell') ? 1.4 : 1);   // the sheep bell (sys/finds.js)
     if (!G.flags.over) { G.flags.over = 1; H.glint('A strong morning', 'You roosted well fed and watered, so your wings start the day past full: the gold tip is spent first.', 'strength'); }
   });
 

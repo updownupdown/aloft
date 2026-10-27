@@ -22,13 +22,21 @@ export const NOTES = [
   'If found, please return to the sea. It has further to go.',
   'Tide tables, 1 to 30 June. Low water at dawn, all month. The best month for shells.',
   'We counted a thousand albatross today and then gave up counting.',
+  // the answers (sys/errands.js G.noteFor): a bottle carries one of these when its thread is due
+  'Ana here. Your bottle found me, at the other end of the world. I am well. Write again, and I will watch the sea.',
+  'From the keeper of the North Light: the spare parts are kept on the galleries. A lamp missing its lens can borrow one from the next light along.',
+  'The seed tin is by the cairn on the high hill, where the last fjords end. Plant them only where they grew wild.',
+  'I tore the chart in four and gave the pieces to the sea. The island on it was ours. Let it be yours now.',
 ];
+const RANDOM_NOTES = 12;   // a bottle rolls only these; the rest come when a thread is due
 
 export function driftSystem(G) {
   const b = G.b, R = G.R, H = G.hud;
   R.shape('bergT', berg(false)); R.shape('bergP', berg(true)); R.shape('floe', floe()); R.shape('drift', driftwood()); R.shape('bottle', bottle());
   const found = new Set(G.store.get('bottles3d', [])), notes = G.store.get('bottleNotes3d', []);
-  G.bottleNotes = () => notes;   // [{ note: an index into NOTES, where }] for the keepsakes shelf
+  G.bottleNotes = () => notes;   // [{ note: an index into NOTES, where, at }] for the keepsakes shelf
+  G.bottles = () => list.bottles;   // the sea notes set (sys/finds.js) puts the near ones on the compass
+  G.driftList = () => list;   // (sys/ocean.js: the nearest rest ahead)
   // Settings > Advanced > Dev mode: progress mocked at k (0, .25, .5 or 1; dev.js), then saved and reloaded
   G.on('mock', k => { notes.length = 0; for (let i = 0; i < Math.round(k * NOTES.length); i++) notes.push({ note: i, where: 'Found in a dev mock' }); G.store.set('bottleNotes3d', notes); });
   const once = (id, title, msg, ic, how) => { if (!G.flags[id]) { G.flags[id] = 1; G.hud.quietly(how, title, msg, ic); } };
@@ -58,7 +66,7 @@ export function driftSystem(G) {
   function bottleAt(gx, gz) {
     const x = (gx + .2 + ih(gx, gz, 461) * .6) * DRIFT.bottleCell, z = (gz + .2 + ih(gx, gz, 462) * .6) * DRIFT.bottleCell, id = `b${gx},${gz}`;
     if (ih(gx, gz, 463) > .3 || found.has(id) || height(x, z) > -2 || !oceanAt(x, z)) return null;
-    return { id, x, z, note: Math.floor(ih(gx, gz, 464) * NOTES.length) };
+    return { id, x, z, note: Math.floor(ih(gx, gz, 464) * RANDOM_NOTES) };
   }
   const scan = (cell, r, at, x0, z0) => {
     const out = [], a = Math.floor((x0 - r) / cell), c = Math.floor((x0 + r) / cell), d = Math.floor((z0 - r) / cell), e = Math.floor((z0 + r) / cell);
@@ -99,11 +107,12 @@ export function driftSystem(G) {
   // ---- bottles -----------------------------------------------------------------------------
   function pick(o) {
     found.add(o.id); G.store.set('bottles3d', [...found]);
-    notes.push({ note: o.note, where: G.placeNote?.(o.x, o.z) || '' }); G.store.set('bottleNotes3d', notes);
+    const n = G.noteFor?.(o) ?? o.note;
+    notes.push({ note: n, where: G.placeNote?.(o.x, o.z) || '', at: [o.x, o.z] }); G.store.set('bottleNotes3d', notes);
     list.bottles = list.bottles.filter(q => q !== o);
     G.story?.keepsakes?.push('message in a bottle');
-    G.audio.feather?.(); G.emit('keepsake', { kind: 'bottle' });
-    H.glint('A bottle', `A bottle, with a note curled inside: “${NOTES[o.note]}”`, 'keepsake');
+    G.audio.feather?.(); G.emit('keepsake', { kind: 'bottle' }); G.emit('note', { note: n, x: o.x, z: o.z });
+    H.glint('A bottle', `A bottle, with a note curled inside: “${NOTES[n]}”`, 'keepsake');
   }
 
   G.dev?.add({ id: 'drift', title: 'Icebergs, sea ice, driftwood and bottles', area: 'World', how: 'Bergs in the cold seas and down the North Atlantic, pans of ice near the poles, logs and bottles on every ocean. Stand on a berg, a pan or a log; skim low over a bottle for its note (Journal > Things). Go puts you by the nearest berg, else log, else bottle.',

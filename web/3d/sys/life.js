@@ -17,27 +17,38 @@ export const GOALS = {
     ['stoop', 'Stoop at full speed, wings tucked, three times', 3],
     ['wingover', 'Three wingovers: bank hard one way, then the other', 3],
     ['barrel', 'A barrel roll: both wings round together'],
+    ['lamp', 'Relight a lighthouse lamp'],
+    ['prime', 'Grow into your prime: every strength grown'],
   ] },
   osprey: { title: 'The fishing coasts', steps: [
     ['plunge', 'Plunge feet first for three fish', 3],
     ['fish', 'Catch ten fish', 10],
     ['songs', 'Learn three songs from the shore birds', 3],
+    ['road', 'Cross a sea along a sea road'],
+    ['prime', 'Grow into your prime: every strength grown'],
   ] },
   owl: { title: 'The old barn', steps: [
     ['moon', 'Catch three mice by moonlight', 3],
     ['silent', 'Glide in silently on five mice, never flapping', 5],
     ['home', 'Claim a roost: perch on an old barn, a chapel tower, a ruined tower or a great oak'],
+    ['paint', 'Find three painted walls in the rock shelters', 3],
+    ['owl', 'Trade a song with the owl in a rock shelter, at dusk'],
+    ['prime', 'Grow into your prime: every strength grown'],
   ] },
   albatross: { title: 'Wanderer of the southern seas', steps: [
     ['soar', 'Ride the sea wind: two minutes of dynamic soaring, weaving low over the swells', 4, 'quiet'],
     ['fish', 'Snatch three fish from the open sea', 3],
     ['sea', 'Fly 30 km over open sea', 30, 'quiet'],
+    ['oceans', 'Cross three oceans', 3],
+    ['prime', 'Grow into your prime: every strength grown'],
   ] },
   raven: { title: 'A hoard and the wind', steps: [
     ['hoard', 'Gather five shiny things for your hoard', 5],
     ['tumble', 'Tumble three times: flick a bank twice the same way', 3],
     ['wind', 'Tumble while rising air carries you'],
     ['mimic', 'Learn three songbirds’ songs to copy', 3],
+    ['ledge', 'Keep three things on your ledge', 3],
+    ['prime', 'Grow into your prime: every strength grown'],
   ] },
 };
 const ROOSTS = new Set(['barn', 'chapel', 'tower', 'oak']);
@@ -59,7 +70,7 @@ export function lifeSystem(G) {
     view();
     if (p[sid] >= need) {
       G.audio.learned?.();
-      if (G.life.done) G.hud.toast(`Your life goal is complete: ${GOALS[id].title.toLowerCase()}.`, 4.5); else G.hud.tally(`Life goal: ${step[1].split(':')[0].toLowerCase()}. Done!`, 'check');
+      if (G.life.done) { G.hud.toast(`Your life goal is complete: ${GOALS[id].title.toLowerCase()}.`, 4.5); G.gift?.('stamina', 'A life goal', 'life:' + id, 2); } else G.hud.tally(`Life goal: ${step[1].split(':')[0].toLowerCase()}. Done!`, 'check');
       G.emit('life', G.life);
     } else if (need > 1 && !step[3]) G.hud.tally(`${step[1].split(':')[0]}: ${p[sid]} of ${need}`, 'check');
   }
@@ -84,6 +95,13 @@ export function lifeSystem(G) {
   G.on('learn', () => { if (BIRD === 'raven') tick('mimic'); if (BIRD === 'osprey') tick('songs'); });
   G.on('land', kind => { if (BIRD === 'owl' && kind === 'perch' && nearKind(b.p[0], b.p[2], ROOSTS, 45)) tick('home'); });
   G.on('bird', () => { view(); G.emit('life', G.life); });
+  // the newer things (10-26): lamps, sea roads, painted walls, the owl's trade, oceans, the ledge, growth
+  G.on('lamp', () => tick('lamp'));
+  G.on('landfall', e => { if (e.road) tick('road'); if (BIRD === 'albatross') tick('oceans', e.oceans, true); });
+  G.on('find', p => { if (p?.kind === 'shelter') tick('paint'); });
+  G.on('opened', k => { if (k === 'owl') tick('owl'); });
+  G.on('kept', () => tick('ledge'));
+  G.on('prime', () => tick('prime'));
 
   view();
   return {

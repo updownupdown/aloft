@@ -39,6 +39,7 @@ export function questsSystem(G) {
     // add or change a quest (a new one is tracked when none is); returns it
     set(id, o) {
       const was = Q.list[id], q = Q.list[id] = { ...(was || { t: G.day || 0 }), ...o, id };
+      if (!was && q.x != null && q.age == null) q.age = age();   // (where it is: sys/ages.js)
       if (!was && !q.done) {
         if (!Q.tracked && q.x != null && !o.quiet) Q.tracked = id;
         if (!o.quiet) H.tally(`${q.group === 'rumour' ? 'A rumour' : 'New'}: ${q.title}`, q.icon || 'quest');

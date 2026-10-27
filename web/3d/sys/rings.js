@@ -42,6 +42,15 @@ export function ringsSystem(G) {
     sec.body.innerHTML = `<p class="aim3 ${T.done ? 'done' : ''}"><i></i><span>${T.done ? 'Flown: ' : ''}${T.n} rings${T.level === 'hard' ? ', hard' : T.level === 'easy' ? ', easy' : ''}${to}${!T.done && where ? `. ${where}` : ''}.</span></p>`;
   });
   G.hud.tip('ring', () => b.state === 'fly' && ringsNear(b.p[0], b.p[2], 60).some(r => live(r) && Math.hypot(r.x - b.p[0], r.y - b.p[1], r.z - b.p[2]) < 60), 'A faint ring of mist: fly through it for a burst of speed. The next ring of its course glows, a little higher.');
+  // each ring of a course plays the next note of a rising phrase in the Valley's key, and the last
+  // resolves it with a chord as the lift comes (L1 of the gameplay study); a ring alone, the old chime
+  const PHRASE = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24];
+  function tune(n, of) {
+    const A = G.audio; if (!A.tone || !A.hz || !of || of < 2) { A.ring?.(); return; }
+    if (n < of) { const f = A.hz(PHRASE[Math.min(n - 1, PHRASE.length - 1)] - 12); A.tone({ f, dur: 1.1, vol: .11, type: 'triangle' }); A.tone({ f: f * 2, dur: .5, vol: .03 }); return; }
+    const top = PHRASE[Math.min(n - 1, PHRASE.length - 1)] - 12;
+    [top - 12, top - 5, top, top + 4].forEach((st, i) => A.tone({ f: A.hz(st), dur: 2.2, vol: .09, delay: i * .06, type: 'triangle' }));
+  }
   return {
     id: 'rings',
     live,
@@ -60,10 +69,11 @@ export function ringsSystem(G) {
         const rad = Math.hypot(b.p[0] - r.x - n[0] * d1, b.p[1] - r.y, b.p[2] - r.z - n[2] * d1);
         if (rad > r.r) continue;
         b.s = Math.min(46, b.s + RING_BOOST); G.rings++; got.set(r.id, G.clock);
-        G.audio.ring(); G.hud.did('ring'); G.emit('ring', r);
+        G.hud.did('ring'); G.emit('ring', r);
         // a loop flown ring after ring, without a long pause between
         if (run && run.circuit === r.circuit && G.clock - run.t < 25) { run.count++; run.t = G.clock; } else run = { circuit: r.circuit, count: 1, t: G.clock };
         run.next = r.k + 1;
+        tune(run.count, r.of);
         if (run.count >= r.of) {
           run = null; G.emit('ringLoop', { circuit: r.circuit, n: r.of, level: r.level });
           lift = COURSE.liftT; b.stamina = Math.min(b.maxStamina ?? 1, b.stamina + COURSE.wings);

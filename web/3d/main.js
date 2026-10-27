@@ -77,12 +77,19 @@ import { natureSystem } from './sys/nature.js';
 import { cavesSystem } from './sys/caves.js';
 import { growthSystem } from './sys/growth.js';
 import { questsSystem } from './sys/quests.js';
+import { findsSystem } from './sys/finds.js';
+import { errandsSystem } from './sys/errands.js';
+import { loreSystem } from './sys/lore.js';
+import { oceanSystem } from './sys/ocean.js';
+import { visitorsSystem } from './sys/visitors.js';
+import { agesSystem } from './sys/ages.js';
+import { AGE_ID, AGE_SKIP, ageName } from './ages.js';
 import { createLooks } from './look.js';
 
 const SYSTEMS = [speciesSystem, movesSystem, lifeSystem, clockSystem, weatherSystem, watersSystem, windsSystem, floraSystem, bushesSystem, airSystem, ringsSystem, foodSystem, findwaterSystem, aimSystem, sleepSystem, feelSystem, batterySystem, songsSystem, momentsSystem,
   guideSystem, journeySystem, storySystem, ruinsSystem, howtoSystem, faunaSystem, neighboursSystem, landsSystem, seasonsSystem, glowSystem, landAirSystem, crittersSystem, huntersSystem, aimsSystem,
   fieldsSystem, skyDaysSystem, raptorsSystem, wingcraftSystem, stillSystem, swellsSystem, berriesSystem, cuesSystem, windCuesSystem, polesSystem,
-  sealifeSystem, driftSystem, islesSystem, skyRiversSystem, nightSeaSystem, lessonsSystem, hiddenSystem, natureSystem, cavesSystem, growthSystem, questsSystem];
+  sealifeSystem, driftSystem, islesSystem, skyRiversSystem, nightSeaSystem, lessonsSystem, hiddenSystem, natureSystem, cavesSystem, growthSystem, questsSystem, findsSystem, errandsSystem, loreSystem, oceanSystem, visitorsSystem, agesSystem];
 
 // Where each bird first flies, in its own land (earth.js toXZ: latitude, longitude): the
 // red-tail at a forest edge in the Finger Lakes, the osprey over a Scottish loch, the barn owl in
@@ -117,6 +124,7 @@ export function start(canvas, ui) {
   const G = {
     b, R, home, startOf, audio, music, input, store, t: 0, clock: 0, paused: false, parts: [], flags: store.get('flags3d', {}),
     settings: { sound: audio.on, music: store.get('music', true), invert: store.get('invert3d', false), fps: store.get('fps3d', false), fpsCap: store.get('fpsCap3d', store.get('fullRate3d', false) ? 90 : 60) },
+    age: AGE_ID, ageName, timeless: AGE_ID !== 'earth',   // the age (ages.js): meters stand still outside the present
     res: 1, systems: {}, fresh: !S0,   // fresh: a new journey (sys/lessons.js starts the first flight)
     on: (name, fn) => { if (!listeners.has(name)) listeners.set(name, []); listeners.get(name).push(fn); },
     emit: (name, ...a) => { for (const fn of listeners.get(name) || []) fn(...a); },
@@ -127,7 +135,7 @@ export function start(canvas, ui) {
   G.hud = createHud(G, ui, input);
   G.menu = createMenu(G, ui);
   const camera = createCamera(G);
-  const systems = SYSTEMS.map(f => f(G));
+  const systems = SYSTEMS.filter(f => !AGE_SKIP.has(f.name)).map(f => f(G));   // (some belong only to the present, or to a living Earth)
   for (const s of systems) G.systems[s.id] = s;
 
   // ---- save and resume -----------------------------------------------------------------
@@ -148,7 +156,8 @@ export function start(canvas, ui) {
   }
   function persist() {
     if (G.resetting) return;   // a new journey or world has cleared the save; the reload must not write it back
-    const sys = {}; for (const s of systems) if (s.save) sys[s.id] = s.save();
+    const sys = AGE_SKIP.size ? { ...(store.get('save3d')?.sys || {}) } : {};   // (what the systems left out of this age saved stays)
+    for (const s of systems) if (s.save) sys[s.id] = s.save();
     store.set('save3d', { p: b.p, yaw: b.yaw, stamina: b.stamina, clock: G.clock, perch: b.state === 'perch', home: G.home, sys });
     store.set('flags3d', G.flags);
   }

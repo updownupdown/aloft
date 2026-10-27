@@ -4,6 +4,7 @@
 // and latitude and longitude every 2 km. Pure functions of (x, z), so the chunk worker runs them
 // too. x east, z south; the wrap seam (x = +-W/2) runs down the open Pacific, the poles are the
 // strip's north and south edges, both ice.
+import { ageSnow } from './ages.js';
 import { EARTH, SDF, CELL, BIOME_IDS, CONTINENTS, LL, GRAIN, LAKE, LAKES, RIVERS } from './earthdata.js';
 export { EARTH, BIOME_IDS, CONTINENTS, LAKES };
 
@@ -306,4 +307,4 @@ export function snowAt(lat, yf) {
   return s(w * s((a - 24) / 24) + s((a - 55) / 25) * (.35 + .4 * w));
 }
 // the snowline in metres (the old 185 m in summer, down below the meadows in deep winter)
-export const snowLine = (lat, yf) => 185 - snowAt(lat, yf) * 200 + (Math.abs(lat) < 25 ? 70 : 0);
+export const snowLine = (lat, yf) => 185 - snowAt(lat, yf) * 200 + (Math.abs(lat) < 25 ? 70 : 0) + ageSnow(lat);   // (lower in the Ice, never in the Red Age: ages.js)

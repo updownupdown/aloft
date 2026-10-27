@@ -9,6 +9,7 @@ import { starPoints, starLines, GAL } from './stars.js';
 import { createClouds, mistOf } from './clouds.js';
 import { createRain } from './rain.js';
 import { LOOKS, GRADE_GLSL, LP_GLSL, gradeTint } from './look.js';
+import { AGE_ID } from './ages.js';
 
 // the sky's pole and the stars to steer by, until sys/nightsea.js sets them
 const POLE = [0, .64, -.768], NOGAZE = new Float32Array(20), NOMOON = [0, 1, 0, 0], DOWN = [0, -1, 0, 0];
@@ -784,7 +785,7 @@ export function createRenderer(gl) {
   let gen = 0, worker = null;
   const busy = new Map();   // key -> gen of a job in flight
   try {
-    worker = new Worker(new URL('./chunkwork.js', import.meta.url), { type: 'module' });
+    worker = new Worker(new URL('./chunkwork.js' + (AGE_ID !== 'earth' ? '?age=' + AGE_ID : ''), import.meta.url), { type: 'module' });   // (the worker builds the age's ground: ages.js)
     worker.onmessage = e => {
       const { k, cx, cz, cells, gen: g, data, far: isFar } = e.data;
       if (isFar) { const ring = rings[isFar === 2 ? 2 : 1]; ring.busy.delete(k); if (g === gen) placeFar(ring, k, cx, cz, data); return; }

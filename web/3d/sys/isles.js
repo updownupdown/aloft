@@ -48,6 +48,7 @@ export function islesSystem(G) {
     return { kind, name: `${SIGHT[kind][0].toUpperCase()}${SIGHT[kind].slice(1)} of ${sea}`, group: `${gx},${gz}` };
   }
   // how many archipelagos hold a sight, for the Map's count of landmarks (map.js, counted once)
+  G.isleNear = () => near;   // (sys/lore.js: the gannets' colony)
   G.isleSights = () => islesNear(0, 0, 1e5).filter(sightOf).length;
   function infoOf(I) {
     const k = keyOf(I); let o = info.get(k); if (o) return o;

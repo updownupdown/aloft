@@ -89,7 +89,7 @@ export function polesSystem(G) {
         cross.t += dt;
         if (!cross.moved && cross.t > P.out + .15) { over(); veil.classList.add('back'); veil.classList.remove('on'); }
         if (cross.moved && cross.t > P.out + .15 + P.back) end();
-      } else if (d < P.wall && b.state !== 'perch') begin(side > 0 ? 'n' : 's');
+      } else if (d < P.wall && b.state !== 'perch' && !G.ages?.gap()) begin(side > 0 ? 'n' : 's');   // (or the gap in the aurora: sys/ages.js)
       if (d < 40) b.p[2] = side > 0 ? NORTH + 40 : SOUTH - 40;   // (never off the world, whatever happens)
     },
     scene(S) {

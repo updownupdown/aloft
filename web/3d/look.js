@@ -10,6 +10,7 @@
 // shading, land detail, the grain choice.
 // ?look=foam (or ?look=all) tries them for one visit without saving.
 import { store } from './util.js';
+import { AGE } from './ages.js';
 
 export const LOOKS = [
   { id: 'reflect', letter: 'T', def: 'L_REFLECT', ultra: true, label: 'Mirror reflections' },
@@ -52,7 +53,8 @@ LP vec3 grade(LP vec3 c) {
   float l = dot(c, vec3(.3, .55, .15));
   c = mix(c, c * vec3(1.04, 1., .93) + vec3(.014, .009, 0.), 1. - smoothstep(.1, .5, l));
   c *= uGradeT * 1.07;
-  // the corners a touch darker, as a lens does (uGrain.zw is the screen's size, render.js)
+${AGE.desat ? `  c = mix(c, vec3(dot(c, vec3(.3, .55, .15))), ${AGE.desat.toFixed(3)});   // the age's own light (ages.js)
+` : ''}  // the corners a touch darker, as a lens does (uGrain.zw is the screen's size, render.js)
   c *= 1. - .2 * smoothstep(.3, .78, length(gl_FragCoord.xy / max(uGrain.zw, vec2(1.)) - .5));
   return c;
 }`;
@@ -60,5 +62,5 @@ const DAY = [1.015, 1, .975], GOLD = [1.07, .99, .86], NIGHT = [.93, .98, 1.06];
 // the tint: a touch warm by day, golden with the sun low, cool at night
 export function gradeTint(S) {
   const el = (S.sunSky || S.sun)[1], gold = Math.max(0, 1 - Math.abs(el - .06) / .22), n = S.night || 0;
-  return DAY.map((v, k) => { const g = v + (GOLD[k] - v) * gold; return g + (NIGHT[k] - g) * n; });
+  return DAY.map((v, k) => { const g = v + (GOLD[k] - v) * gold; return (g + (NIGHT[k] - g) * n) * (AGE.tint?.[k] ?? 1); });   // (and the age's, ages.js)
 }

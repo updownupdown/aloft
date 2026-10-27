@@ -188,6 +188,7 @@ export function songsSystem(G) {
   });
   G.hud.songLine = (msg, secs) => ui.say(msg, secs);
   G.compassMarks = () => marks;
+  G.callVisitor = sp => callVisitor(sp);   // (sys/visitors.js: the lost bird sings once it is safe)
 
   // ---- songbirds singing --------------------------------------------------------------------
   const storm = () => G.storm || 0, winter = () => G.season.winter;
