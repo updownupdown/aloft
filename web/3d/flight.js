@@ -10,6 +10,10 @@ export const FLY = {
   best: 12, maxS: 46, cd: .0058, cdTuck: .0024, cdFlare: .03, stall: 7.5, stallFlare: 3.6,
   climb: .55, dive: .9, roll: 1.0, yaw: 1.2, flapS: 3.0, flapUp: 1.3, flapHover: 3.2, flapCost: .065,
   perchR: 1.6, landS: 10.5, landRun: 2.5,
+  // a branch catches the hawk only when it asks to perch (wings spread and down, braking, or spread
+  // and up, floating in: perchIntent of either) or is this slow over the ground (perchSlow m/s), so
+  // flapping up out of a wood after take-off doesn't land it again (James, 2026-10-27)
+  perchIntent: .25, perchSlow: 6,
   shallow: .45,   // water shallower than this stands like ground: land and drink in it, hop through it
   skimH: 2.6, skimDrag: .45,   // ground effect: within skimH metres of water or flat ground, drag falls by up to skimDrag
   // flared with both thumbs up (float): flare drag falls by up to floatDrag, the stall speed by
@@ -318,7 +322,7 @@ function avoid(b, dt) {
 function trees(b, dt, E) {
   b.canopy = Math.max(0, b.canopy - dt * 2);
   if (b.noPerch > 0) b.noPerch -= dt;
-  const mayPerch = canPerch(b);
+  const mayPerch = canPerch(b) && wantsPerch(b);
   let below = 0;
   for (const t of treesNear(b.p[0], b.p[2], 14)) {
     const dx = b.p[0] - t.x, dz = b.p[2] - t.z, hd = Math.hypot(dx, dz), y = b.p[1] - t.y;
@@ -357,6 +361,10 @@ function trees(b, dt, E) {
 // towers, standing stones and cairns: hard sides, a perch on top; bushes (soft): brushed through, a perch on top
 // not right after taking off, nor while speeding up or tucked in a dive
 const canPerch = b => !(b.noPerch > 0) && !(b.acc > 1.2) && b.tuck < .4;
+// asking for a branch: the wings braking or floating in, or slow (FLY.perchIntent, perchSlow); aim.js
+// shows perch rings and lines the hawk up on one only then
+// Slowed by leaves doesn't count: in a wood the crowns brake the hawk, and that is not asking to stop
+export const wantsPerch = b => b.state === 'fly' && ((b.brake || 0) + (b.float || 0) > FLY.perchIntent || (groundSpeed(b) < FLY.perchSlow && !(b.canopy > 0)));
 // lined up on a perch (aim.js sets b.aimPerch, held a moment after the line loses it), the hawk
 // lands on that one only, never one it brushes past on the way
 let aimB = null;
