@@ -15,7 +15,7 @@ export function createAudio() {
   A.setKey = period => { A.key = KEYS[period] ?? 0; };
 
   A.unlock = () => {
-    if (A.ctx) { if (A.ctx.state === 'suspended' && !document.hidden) A.ctx.resume(); return; }
+    if (A.ctx) { if (A.ctx.state !== 'running' && A.ctx.state !== 'closed' && !document.hidden) A.ctx.resume(); return; }
     const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
     // 'balanced' asks for a bigger buffer than 'interactive' on phones, so a busy frame does not
     // starve the audio (the crackle when many birds sang at once)
@@ -111,8 +111,13 @@ export function createAudio() {
   // (called every frame, but the beds change slowly: a dozen updates a second is plenty, and
   // fewer automation events keeps the audio thread light)
   let nextFrog = 0, nextBug = 0, nextBed = 0, lastMenu = null;
+  let wokeAt = 0;
   A.ambience = (windAmt, rainAmt, scene = {}) => {
-    if (!A.ctx) return; const t = A.ctx.currentTime;
+    if (!A.ctx) return;
+    // the phone took the sound away (a call, another app, an overloaded moment): ask for it back,
+    // once a second, while the game is on screen (it no longer waits for the next touch)
+    if (A.ctx.state !== 'running' && A.ctx.state !== 'closed' && !document.hidden) { const now = performance.now(); if (now - wokeAt > 1000) { wokeAt = now; A.ctx.resume().catch(() => {}); } }
+    const t = A.ctx.currentTime;
     if (t < nextBed && !!scene.menu === lastMenu) return;
     nextBed = t + .08; lastMenu = !!scene.menu;
     const pines = scene.bio === 'forest' ? 1 : 0, surf = scene.bio === 'cliffs' || scene.bio === 'mountains' ? 1 : 0;

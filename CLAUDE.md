@@ -5,7 +5,7 @@ reads says Tiercel; the repo, the live URL (/aloft/), the `aloft.` storage keys,
 and `__aloft3d` keep the old name on purpose, so installs and saves carry over.
 
 **2026-10-20: the game is 3D** (James's decision); the 2D game was deleted (it is in git history
-before that date). `web/src/` keeps only `audio.js`, `music.js`, `birdvoice.js` and `songs.js`,
+before that date). `web/src/` keeps only `audio.js`, `music.js`, `birdvoice.js`, `reverb.js` and `songs.js`,
 shared by 3D and the labs.
 
 A cozy, zen 3D flight game (first made in 2D). You play a hawk (a red-tailed-hawk-like
@@ -67,7 +67,7 @@ web/3d/pics.js          still pictures of the game's own meshes (songbirdPic(sp,
 web/3d/app.js           Update, Graphics, Haptics, Quiet meters and Quit rows; wake lock; asks for full screen on each touch while not full screen
 web/3d/coach.js        the lessons' coach: a card with the thumbs doing the move, ghost thumbs on screen, the Skip pill
 web/3d/action.js        the one action button, bottom right (left of the note pad) on the ground or perched (Take off, Sleep from G.actions; swipe for the other)
-web/src/                audio.js (Web Audio synth; volumes A.vol/A.setVol: music, wind, fx buses), music.js (Valley, the generative music), birdvoice.js, songs.js (songbird species)
+web/src/                audio.js (Web Audio synth; volumes A.vol/A.setVol: music, wind, fx buses), music.js (Valley, the generative music), birdvoice.js, reverb.js (monoVerb: one mono convolution spread to both ears; long or stereo convolvers overloaded phones), songs.js (songbird species)
 web/birds.html          bird lab: every species side by side (3d/birdlab.js)
 web/icons/, web/fonts/  app icons (tools/icon.html + tools/make-icons.mjs), bundled fonts (SIL OFL)
 web/3d/sys/*.js         systems: air (thermal clouds/motes), rings, food (hunger, thirst, mice; the hunt's reach, mantling, misses), findwater (thirsty: fresh water on the compass), aim, flora (tufts, flowers, stones, reeds), bushes (world.js bushesNear; perch on top),
