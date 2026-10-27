@@ -119,10 +119,32 @@ function smoothLine(p) {
 }
 export const RIVER_LINES = RIVERS.map(([name, rank, p0], id) => {
   const p = p0.length > 4 ? smoothLine(p0) : p0;
-  const cum = [0]; for (let k = 0; k + 3 < p.length; k += 2) cum.push(cum[cum.length - 1] + Math.hypot(p[k + 2] - p[k], p[k + 3] - p[k + 1]));
-  return { id, name, rank, p, cum, len: cum[cum.length - 1], openA: false, openB: false };
+  return { id, name, rank, p, cum: null, len: 0, openA: false, openB: false };
 });
-const rbuckets = (() => {
+// a mouth that stops short of the sea (the baked line ends inland of the game's coast, sometimes
+// behind a cliff): carried on down to the water, the way the shore falls, till it is well out
+function toSea(L, end) {
+  const p = L.p, k = end ? p.length - 2 : 0;
+  let x = p[k], z = p[k + 1], c = coastDist(x, z);
+  if (c > 400 || c < -40 || lakeAt(x, z)) return;
+  // (not where it joins another river: that is a confluence, not a mouth)
+  for (const O of RIVER_LINES) if (O !== L) for (let i = 0; i < O.p.length; i += 2) if (Math.abs(O.p[i] - x) < 80 && Math.abs(O.p[i + 1] - z) < 80) return;
+  const add = [];
+  for (let i = 0; i < 40 && c > -40; i++) {
+    const e = 15, gx = coastDist(x + e, z) - coastDist(x - e, z), gz = coastDist(x, z + e) - coastDist(x, z - e), l = Math.hypot(gx, gz) || 1;
+    x -= gx / l * 20; z -= gz / l * 20; c = coastDist(x, z); add.push(x, z);
+  }
+  if (end) p.push(...add);
+  else for (let i = add.length - 2; i >= 0; i -= 2) p.unshift(add[i], add[i + 1]);
+}
+// built on the first query (coastDist is not ready while this module loads)
+let rbuckets = null;
+function riversReady() {
+  for (const L of RIVER_LINES) {
+    if (L.p.length > 2) { toSea(L, 0); toSea(L, 1); }
+    const p = L.p, cum = [0]; for (let k = 0; k + 3 < p.length; k += 2) cum.push(cum[cum.length - 1] + Math.hypot(p[k + 2] - p[k], p[k + 3] - p[k + 1]));
+    L.cum = cum; L.len = cum[cum.length - 1];
+  }
   const m = new Map();
   for (const L of RIVER_LINES) for (let k = 0; k + 3 < L.p.length; k += 2) {
     const ax = L.p[k], az = L.p[k + 1], bx = L.p[k + 2], bz = L.p[k + 3];
@@ -133,8 +155,8 @@ const rbuckets = (() => {
       a.push(L.id, k);
     }
   }
-  return m;
-})();
+  rbuckets = m;
+}
 // a line's end that stops on dry land (a source, not a mouth, a lake or another river) fades out
 let ended = false;
 function ends() {
@@ -148,6 +170,7 @@ function ends() {
 // the nearest great river within RM: { d (metres), side (+1/-1), t (along the segment 0..1), line, k (segment) } or null
 export const bakedRiver = (x, z) => bakedRiverOf(x, z, -1);
 function bakedRiverOf(x, z, not) {
+  if (!rbuckets) riversReady();
   if (!ended) ends();
   x = wrapX(x);
   const a = rbuckets.get(Math.floor((z - Z0) / RB) * RNX + mod(Math.floor((x - X0) / RB), RNX)); if (!a) return null;
