@@ -15,7 +15,8 @@
 //                                counter-clockwise rolls left; left up and right down, clockwise, right
 //   tap both at once             a full flap; one thumb alone flaps one wing (a weak flap and a nudge);
 //                                the closer together the two taps, the less the flap tires you (sync)
-// A single held thumb works as a small stick on its own (up/down pitch, left/right bank).
+// A single held thumb works as a small stick on its own (up/down pitch, left/right bank). Held still
+// in a thermal on the side the core lies, it circles the thermal on its own (flight.js circle).
 // Keyboard for desktop: W/S or Up/Down pitch, A/D or Left/Right bank, Shift fold, Q spread (both held
 // alongside WASD with the little finger),
 // Space flap, Z / X barrel roll left / right (T take off, E and Up/Down for the action button: action.js;
@@ -104,7 +105,7 @@ export function createInput(el) {
     }
     const L = I.L, R = I.R, l = L.id !== null, rr = R.id !== null;
     const barrel = l && rr ? circles(L, R) : I.keyBarrel || 0; I.keyBarrel = 0;
-    let pitch = 0, roll = 0, spread = 0, keyRoll = 0, yaw = 0;
+    let pitch = 0, roll = 0, spread = 0, keyRoll = 0, yaw = 0, one = 0, oneMag = 0;
     const k = I.invert ? -1 : 1;
     if (l && rr) {
       // Thumbs pulled together never move exactly alike, and they wander up and down as they
@@ -124,6 +125,9 @@ export function createInput(el) {
       yaw = clampU(side);
     } else if (l || rr) {
       const P = l ? L : R, dz = DEAD1; pitch = -dead(P.dy, dz) * k; roll = dead(P.dx, dz);
+      // which thumb flies alone (-1 left, 1 right) and how far it has moved: held still in rising
+      // air on the core's side, it circles the thermal (flight.js circle)
+      one = l ? -1 : 1; oneMag = Math.hypot(P.dx, P.dy);
     }
     const K = I.keys, key = (...c) => c.some(x => K.has(x));
     if (key('KeyW', 'ArrowUp')) pitch = 1 * k; if (key('KeyS', 'ArrowDown')) pitch = -1 * k;
@@ -150,7 +154,7 @@ export function createInput(el) {
     const dragX = I.drag / size(), dragY = I.dragY / size(), pinch = I.pinch; I.drag = I.dragY = 0; I.pinch = 1;
     const look = [-I.lk[0] / size() * 3 + I.gyro[0], I.lk[1] / size() * 2 + I.gyro[1]];   // drag grabs the view; the gyro turns it
     I.lk = [0, 0]; I.gyro = [0, 0];   // used up each frame (left running, a flight's two-thumb moves piled up and the view stuck looking up)
-    let out = { pitch: clampU(pitch), roll: clampU(roll), yaw, keyRoll, dragX, dragY, pinch, look, spread: clampU(spread), flap, held: l || rr || K.size > 0, both: l && rr, barrel };
+    let out = { pitch: clampU(pitch), roll: clampU(roll), yaw, keyRoll, dragX, dragY, pinch, look, spread: clampU(spread), flap, held: l || rr || K.size > 0, both: l && rr, barrel, one: K.size ? 0 : one, oneMag };
     // while both sticks are going round together the wings hold what they had: the circle passes
     // through tuck, bank and flare, and the hawk shouldn't lurch through each on the way
     const going = l && rr && Math.abs(L.turn) > .5 && Math.abs(R.turn) > .5 && Math.sign(L.turn) === Math.sign(R.turn);

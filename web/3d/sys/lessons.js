@@ -58,6 +58,7 @@ const CHAPTERS = [
   ] },
   { title: 'Rising air', page: 'air', icon: 'thermal', tasks: [
     { id: 'ride', text: 'Ride rising air 60 m up', say: 'Your companion circles where the air rises: leaves spiral there. Fly in, spread your wings wide and circle with it.', poll: rode, move: ['out', 'out', 'Soar', 'Thumbs out: wings wide. Tip one a little lower to circle.'], go: thermal },
+    { id: 'circle', text: 'Circle up with one thumb', say: 'In rising air, hold one thumb still on the side where the leaves spiral: your wings spread and you circle up on your own. Move the thumb, or add the other, to steer again.', poll: circled, move: ['hold', '', 'Circle', 'In rising air, hold one thumb still on the side of the core: you circle up on your own.'], go: thermal },
     { id: 'rings', text: 'Fly through three rings', say: 'Your companion flies through a ring of mist. Follow it: each ring gives you a burst of speed.', on: 'ring', n: 3, go: rings },
   ] },
   { title: 'Finding your way', page: 'way', icon: 'south', tasks: [
@@ -135,6 +136,7 @@ function rode(dt) {   // climbed 60 m in rising air (a dip out of it under 8 s k
   if (b.state === 'fly' && b.lift > .5) { if (P.y0 == null || P.out > 8) P.y0 = b.p[1]; P.out = 0; return b.p[1] - P.y0 > 60; }
   P.out = (P.out || 0) + dt; return false;
 }
+function circled(dt) { const b = G0.b; P.c = b.state === 'fly' && b.circ ? (P.c || 0) + dt : P.c || 0; return P.c > 8; }   // 8 s circling on one thumb, all told
 function zoomed(dt, c) { const b = G0.b; P.z = b.state === 'fly' && b.s > 18 && c.spread < -.35 && c.pitch > .35 ? (P.z || 0) + dt : 0; return P.z > .7; }
 function hovered(dt) { const b = G0.b; P.h = b.state === 'fly' && b.hover > .6 ? (P.h || 0) + dt : 0; return P.h > 1.5; }
 

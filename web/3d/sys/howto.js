@@ -72,6 +72,7 @@ const MOVES = [
   ['up', 'up', PIG.water, 'Climb', 'Both wings up. Climbing costs speed.', 'climb'],
   ['out up', 'out up', PIG.ochre, 'Float and hover', 'Spread and up: a slow float in to land. Slow right down and you hover on beating wings, which tires them.', 'hover'],
   ['out', 'out', PIG.ochre, 'Soar', 'Spread wide: slow and buoyant, turning tight. In rising air, tip one thumb a little lower to circle inside it and climb.', 'soar'],
+  ['hold', '', PIG.ochre, 'Circle a thermal', 'In rising air, hold one thumb still on the side the core lies, where the leaves spiral: the wings spread and you circle up on your own. Move it, or add the other thumb, to fly again.', 'circle'],
   ['out down', 'out down', PIG.ochre, 'Brake and land', 'Spread and down: the wings dump lift and you sink gently, feet out, onto a perch or the ground.', 'flare'],
   ['down', 'down', PIG.water, 'Dive', 'Both wings down: nose down, earning speed. (Invert in Settings swaps up and down.)', 'dive'],
   ['in', 'in', PIG.berry, 'Fast glide', 'Fold both in: less drag, a fast glide from one thermal to the next.', 'fast'],
@@ -141,7 +142,7 @@ export function howtoSystem(G) {
     card('night', 'Sleep', 'At night, on a branch at least a couple of metres up, the action button offers Sleep. The night passes under the stars and you wake at first light, rested. The ground and low bushes are too exposed to sleep on.'),
     card('mice', 'Your bars', 'Food lasts about twenty minutes, water nearly half an hour; Today, in the menu, shows both. When one runs low its bar warms and breathes, and your wings no longer fill all the way.'));
   cards('air',
-    card('thermal', 'Thermals', 'Leaves spiralling up under a cloud mark warm rising air. Fly in, spread your wings wide (thumbs out) and tip one a little lower to circle inside it. Red chevrons by your height show the lift: steer toward where they grow.'),
+    card('thermal', 'Thermals', 'Leaves spiralling up under a cloud mark warm rising air. Fly in, spread your wings wide (thumbs out) and tip one a little lower to circle inside it. Or hold one thumb still on the side the core lies: you circle up on your own. Red chevrons by your height show the lift: steer toward where they grow.'),
     card('slope', 'Ridges', 'Wind blowing up a slope lifts you too. Fly along the windward side of a ridge, close to the top, and ride it without a beat.'),
     card('ring', 'Rings of mist', 'Fly through a ring for a burst of speed. Rings come in courses: follow one to the next.'),
     card('thermal', 'Resting your wings', 'Flapping and hovering tire your wings; gliding rests them, and rising air rests them faster. Feathers make them last longer (see the Overview).'));

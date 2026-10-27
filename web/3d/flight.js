@@ -34,6 +34,29 @@ export const FLY = {
   // wet feathers (b.wet 0..1: rain, a plunge): more drag, a higher stall, weaker beats
   wetDrag: .3, wetStall: 1.2, wetFlap: .3,
 };
+// circling a thermal with one thumb (James, 2026-10-27): in rising air, one thumb held still (moved
+// less than still of its reach) on the side the core lies, or either thumb when the core is within
+// ahead radians of dead ahead, spreads the wings (spread) and banks round the core at radius
+// share of the thermal's own (between rMin and rMax m); move the thumb, add the other, or leave the
+// rising air, and the thumbs fly again. k: how hard it corrects toward that circle; bank: the most
+const CIRCLE = { still: .3, ahead: .5, spread: .8, radius: .35, rMin: 14, rMax: 32, k: 1.2, bank: .9 };
+// the speed a turn is reckoned at: in a stoop the tail and half-closed wings still steer, so the
+// turn doesn't fade with speed as a glide's does
+const sTurnOf = b => Math.max(5, b.s * (1 - .65 * b.tuck));
+// the bank that holds the circle, or null when the thumbs fly: the heading is steered so the core
+// sits square to the inner wing at the chosen radius, closer in when farther out
+function circle(b, c, sTurn) {
+  const T = b.inThermal;
+  if (!T || !c.one || c.oneMag > CIRCLE.still || c.both || b.tuck > .3) { b.circ = 0; return null; }
+  const f = fwd(b), fl = Math.hypot(f[0], f[2]) || 1, dx = (T.tx - b.p[0]) / (T.d || 1), dz = (T.tz - b.p[2]) / (T.d || 1);
+  const e = Math.atan2((f[0] * dz - f[2] * dx) / fl, (f[0] * dx + f[2] * dz) / fl);   // the core's bearing, + to the right
+  if (!b.circ) { if (Math.sign(e) !== c.one && Math.abs(e) > CIRCLE.ahead) return null; b.circ = c.one; }
+  const side = b.circ, R = Math.max(CIRCLE.rMin, Math.min(CIRCLE.rMax, T.t.r * CIRCLE.radius));
+  const want = side * (Math.PI / 2 - Math.max(-.6, Math.min(1.2, (T.d - R) / R)));
+  const w = side * b.s / R + CIRCLE.k * (e - want);
+  return Math.max(-CIRCLE.bank, Math.min(CIRCLE.bank, Math.atan(w * sTurn / (9.8 * (1 + b.flare * .3)))));
+}
+
 // speed over the ground: the airspeed's level part plus the wind
 export const groundSpeed = b => { const f = fwd(b), w = b.wind || [0, 0]; return Math.hypot(f[0] * b.s + w[0], f[2] * b.s + w[1]); };
 
@@ -55,6 +78,8 @@ export function step(b, c, dt, E) {
   // thumbs happen to slide doesn't swing the dive (and the aim's focus) about
   const tw = Math.min(1, Math.max(0, (-c.spread - .1) / .5)), tuckT = tw * tw * (3 - 2 * tw);
   b.tuck += (tuckT - b.tuck) * Math.min(1, dt * 5);
+  // circling a thermal with one thumb (circle, below): the wings spread to soar
+  if (b.circ && b.state === 'fly') c = { ...c, spread: Math.max(c.spread, CIRCLE.spread) };
   b.flare += (Math.max(0, c.spread) - b.flare) * Math.min(1, dt * 6);
   if (b.state !== 'fly') { b.spin = 0; b.barrel = null; return still(b, c, dt, E); }
   // the wing's shape with the thumbs up or down: spread and up floats (and hovers when slow), spread
@@ -127,9 +152,10 @@ export function step(b, c, dt, E) {
     rT += side * Math.max(0, Math.min(.12, (d - t.r * .35) * .006)) * soar * (1 - Math.min(1, Math.abs(c.roll) * 3));
     b.ride = soar > .5;
   }
+  const cr = circle(b, c, sTurnOf(b));
+  if (cr !== null) rT = cr;
   b.roll += (rT - b.roll) * Math.min(1, dt * 3.2);
-  // in a stoop the tail and half-closed wings still steer: the turn doesn't fade with speed as a glide's does
-  const sTurn = Math.max(5, b.s * (1 - .65 * b.tuck));
+  const sTurn = sTurnOf(b);
   const yawRate = Math.max(-1.9, Math.min(1.9, g * Math.tan(b.roll) / sTurn * (1 + b.flare * .3)));
   b.yaw += (yawRate + (c.yaw || 0) * FLY.yaw) * dt;   // both thumbs slid one way: a flat yaw on top
   b.steer = Math.min(1, Math.abs(c.yaw || 0) + Math.abs(c.roll || 0) * .6);   // how hard you are steering (aim.js lets go of a mouse for it)
