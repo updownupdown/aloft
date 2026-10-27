@@ -1,6 +1,7 @@
 // The pages that systems write in, shared: each system asks for a section by its place and fills it
 // when the menu opens; the place says which section and page it is on (James, 2026-10-23):
-//   before 10   Today (before 7 in its Next card: lessons 3, aims 5 the day's aim; then 7 your life)
+//   before 10   Today: on the right, Focus (lessons 3, the quest you follow 4, the day's aim 5, the season's 6,
+//               the ring course 6.5, your life 8: one picked, the rest suggested) and the quests 9; on the left, strength 7
 //   10-29       not shown (the old Log: daily records were too much)
 //   30-41       not shown (was Journal > Nest, removed 2026-10-26)
 //   42          Journal > Things: Keepsakes (the story's glinting things, the ruins' trinkets and
@@ -15,7 +16,7 @@
 import { icon } from './icons.js';
 
 const PAGES = {
-  quests: ['journal', 'Quests', 2], songs: ['journal', 'Songs', 5], places: ['journal', 'Places', 10], things: ['journal', 'Things', 20], everything: ['journal', 'Everything', 30],
+  songs: ['journal', 'Songs', 5], places: ['journal', 'Places', 10], things: ['journal', 'Things', 20], everything: ['journal', 'Everything', 30],
 };
 const pageOf = o => o < 10 ? 'today' : o < 42 ? null : o < 43 ? 'things' : o < 60 ? 'places' : 'things';
 // a section's heading where the page already says it
@@ -28,7 +29,7 @@ export function journal(G) {
   G.journal = {
     pane, page,
     section(order, title = '') {
-      const id = pageOf(order), host = id === 'today' ? (order < 7 ? G.menu.aims : G.menu.later || G.menu.aims) : id ? page(id) : document.createElement('div');
+      const id = pageOf(order), host = id === 'today' ? (order >= 7 && order < 8 ? G.menu.later || G.menu.aims : G.menu.aims) : id ? page(id) : document.createElement('div');
       const el = document.createElement('section');
       el.dataset.order = order;
       const t = RETITLE[title] ?? title; if (t) el.innerHTML = `<h3><span>${t}</span></h3>`;

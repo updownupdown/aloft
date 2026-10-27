@@ -37,14 +37,14 @@ const LOUD = new Set(['warn', 'reply', 'song', 'tutorial']);
 
 export function createHud(G, ui, input) {
   ui.insertAdjacentHTML('beforeend', `
-    <div class="hud3"><span class="meters"></span><span class="alt"><span class="tape"></span><span class="ptr"></span><span class="nums"><b class="m"></b><b class="v"></b><b class="k"></b><b class="w"></b></span></span></div>
+    <div class="hud3"><span class="meters"></span><span class="alt"><span class="arow3"><i class="ai3">${icon('height')}</i><b class="m"></b><b class="v"></b></span><span class="arow3 sp3"><i class="ai3">${icon('speed')}</i><b class="k"></b><b class="w"></b></span></span></div>
     <div class="corner3"><div class="fps3 hidden"></div></div>
     <div class="pad3 L"><i></i></div><div class="pad3 R"><i></i></div>
     <p class="toast3"><span class="ic3"></span><span class="tx3"></span><button class="set3" aria-label="Choose which messages show">${icon('settings')}</button></p>`);
   const q = s => ui.querySelector(s);
   const hud = q('.hud3'), meters = q('.meters'), toastEl = q('.toast3'), padL = q('.pad3.L'), padR = q('.pad3.R');
   const dial = createDial(q('.corner3'), { hub: true }), compass = createCompass(G, ui);
-  const alt = q('.alt'), tape = q('.alt .tape'), altM = q('.alt .m'), altV = q('.alt .v'), altK = q('.alt .k'), altW = q('.alt .w');
+  const alt = q('.alt'), altM = q('.alt .m'), altV = q('.alt .v'), altK = q('.alt .k'), altW = q('.alt .w');
   let vr = 0, lastY = null;   // the rise or sink, m/s, smoothed
   q('.corner3').prepend(q('.corner3 .dial'));
   // off: the groups of tips and kinds of message turned off on Journal > Messages ('tip:food',
@@ -52,6 +52,8 @@ export function createHud(G, ui, input) {
   const H = { off: store.get('hintsoff3d', {}), said: store.get('said3d', {}), tips: [], done: store.get('hints3d', {}), status: '', flight: null, counter: '', hidden: false };
   const bar = tipBar(G, ui, H);
   const all = [];   // every meter: { v, low }
+  // a small arrow, turned by a (radians clockwise from up)
+  const arrow = (a, cls = '') => `<svg class="ar3${cls}" viewBox="0 0 16 16" style="transform:rotate(${a.toFixed(2)}rad)"><path d="M8 1.5 13 8.5H9.6V14.5H6.4V8.5H3Z"/></svg>`;
   let toastT = 0, tipNow = null, tipT = 0, altKey = '', upAt = -1e9;
   // play: seconds of play (the menu open stops it); lastInfo: when the last piece of news showed
   let play = 0, lastInfo = -1e9;
@@ -67,6 +69,7 @@ export function createHud(G, ui, input) {
   H.next = (who, text, sub) => quiet.next(who, text, sub);
   H.nextDone = who => quiet.nextDone(who);
   H.nextRest = () => quiet.nextRest();
+  H.focus = who => quiet.focus(who);
   H.reply = (msg, secs = 3) => H.say(msg, { kind: 'reply', secs });
   // a first-time line by its level: a glint (default), a name and a glint ('n'), a warning ('w'), a tally ('t')
   // Once read, a notice's glint never comes again (James, 2026-10-24: 'Glass-off' each evening was
@@ -208,26 +211,25 @@ export function createHud(G, ui, input) {
       }
     }
     if (!tipNow || tipT <= .3 || H.done[tipNow]) bar.hide();
-    // the height ladder: a tape of ticks that slides with the height, the height, then the rise or
-    // sink and the speed when flying, or what the hawk is doing
+    // two rows, top left, no units (James 10-27): the height and the rise or sink (red chevrons in
+    // rising air, more for stronger); the speed and the wind (an arrow the way it blows as the camera
+    // looks: blue behind you, red in your face). Perched or on the ground: the height and what the hawk is doing
     const y = G.b.p[1];
     if (lastY !== null && dt > 0) vr += ((y - lastY) / dt - vr) * Math.min(1, dt * 2.5);
     lastY = y;
     const f = H.flight, h = f ? f.m : H.height ?? '', rate = Math.abs(vr) < .05 ? '0.0' : Math.abs(vr).toFixed(1);
-    // the wind, under the speed: an arrow the way it blows as the camera looks, and how hard; blue behind you, red in your face
     const W = f && H.wind, wk = W ? `${Math.round(W.a * 12)}|${W.kmh}|${W.tail > .35 ? 'tail' : W.tail < -.35 ? 'head' : 'side'}` : '';
     const ak = f ? `${h}|${f.kmh}|${f.lift}|${f.up}|${rate}|${vr > 0}|${wk}` : `${h}|${H.status}`;
     if (ak !== altKey) {
       altKey = ak;
       alt.classList.toggle('still', !f);
-      tape.style.backgroundPositionY = `${((+h || 0) * 2 % 10).toFixed(1)}px`;
-      altM.innerHTML = h !== '' ? `${h}<small>m</small>` : '';
+      altM.textContent = h;
       if (f) {
-        altV.innerHTML = `${f.up ? icon('updraft', 'up3 n' + f.up) : vr > .05 ? '↑' : vr < -.05 ? '↓' : ''} ${rate}<small>m/s</small>`;   // in rising air: red chevrons, more for stronger
+        altV.innerHTML = `${f.up ? icon('updraft', 'up3 n' + f.up) : arrow(vr < -.05 ? Math.PI : 0, Math.abs(vr) < .05 ? ' flat' : '')}${rate}`;
         altV.className = 'v' + (f.lift || vr > .3 ? ' rise' : vr < -.3 ? ' sink' : '');
-        altK.innerHTML = `${f.kmh}<small>km/h</small>`;
+        altK.textContent = f.kmh;
         altW.className = 'w ' + (wk.split('|')[2] || '');
-        altW.innerHTML = W ? `<svg viewBox="0 0 16 16" style="transform:rotate(${(Math.round(W.a * 12) / 12).toFixed(2)}rad)"><path d="M8 1.5 13 8.5H9.6V14.5H6.4V8.5H3Z"/></svg>${W.kmh}<small>km/h wind</small>` : '';
+        altW.innerHTML = W ? `${arrow(Math.round(W.a * 12) / 12)}${W.kmh}` : '';
       } else { altV.textContent = H.status; altV.className = 'v st'; altK.textContent = ''; altW.textContent = ''; }
     }
     compass.update(dt, G.menu?.open);

@@ -1,9 +1,10 @@
 // The menu's Today section: how am I, what now? On the left, your bird and how it is (food, water,
-// wings and health as slim bars, like the meters in flight), where and when, then your life goal
-// (journal sections from 7 on: aims.js) and things to do (G.menu.group('today')). On the right,
-// Next: the one open lesson, or the day's aim once the lessons are done (sections before 7:
-// lessons.js, aims.js), with Show me and Later, and the feathers earned so far (James, 10-24).
-// Filled each time the menu opens.
+// wings and health as slim bars, like the meters in flight), where and when, its strength (section 7:
+// growth.js) and things to do (G.menu.group('today')). On the right, Focus (James 10-27: one thing at a
+// time, picked by you): the lesson, the quest you follow, the day's aim, the season's, the ring course
+// or your life goal (journal sections 3-8), the one picked in full and the rest offered underneath; then
+// the quests (9, quests.js) and the feathers earned so far. The pick also leads the line under the
+// compass (quiet.js focus). Filled each time the menu opens.
 import { icon, birdIcon } from './icons.js';
 import { BIRD } from './hawk.js';
 import { BIRDS } from './birds.js';
@@ -35,29 +36,38 @@ export function createToday(G, M) {
       <section class="group3 todo3" data-group="today"></section>
     </div>
     <div class="tmain3">
-      <section class="tnext3"><h3>${icon('aim')}Next</h3><div class="aims3"></div><button class="nmore3" hidden></button><p class="nfeat3">${icon('feather')}<span></span></p></section>
+      <section class="tnext3"><h3>${icon('aim')}Focus</h3><div class="aims3"><div class="sugg3" data-order="8.9"></div></div><p class="nfeat3">${icon('feather')}<span></span></p></section>
     </div>
   </div>`;
   M.todo = pane.querySelector('.todo3');
   M.aims = pane.querySelector('.tnext3 .aims3'); M.later = pane.querySelector('.tmore3');
-  const next = pane.querySelector('.tnext3'), feat = next.querySelector('.nfeat3 span'), more = next.querySelector('.nmore3');
-  // one thing at a time (D of the review): the top of the ladder (lesson, quest, aim, season, course),
-  // the rest behind "N more"
-  let all = false;
-  more.addEventListener('click', () => { all = true; ladder(); });
+  const next = pane.querySelector('.tnext3'), feat = next.querySelector('.nfeat3 span'), sugg = next.querySelector('.sugg3');
+  // what can be the focus (journal sections by order), its slot on the line under the compass and its name
+  const SLOT = { 3: 'lesson', 4: 'quest', 5: 'aim', 6: 'season', 6.5: 'course', 8: null };
+  const NAME = { 3: 'Lesson', 4: 'Quest', 5: 'Today’s aim', 6: 'This season', 6.5: 'Ring course', 8: 'Your life' };
+  let focus = G.store.get('focus', null);
+  M.focus = o => { focus = String(o); G.store.set('focus', focus); G.hud?.focus?.(SLOT[o] ?? null); ladder(); };
+  setTimeout(() => G.hud?.focus?.(SLOT[focus] ?? null));
+  sugg.addEventListener('click', e => { const o = e.target.closest('[data-f]')?.dataset.f; if (o) M.focus(o); });
   function ladder() {
-    const vis = [...M.aims.children].filter(s => !s.classList.contains('hidden') && s.textContent.trim());
-    next.hidden = !vis.length;
-    vis.forEach((s, i) => s.classList.toggle('later3', i > 0 && !all));
-    more.hidden = all || vis.length < 2; more.textContent = `${vis.length - 1} more`;
+    const cand = [...M.aims.children].filter(s => s.tagName === 'SECTION' && s.dataset.order in SLOT);
+    const vis = cand.filter(s => !s.classList.contains('hidden') && s.textContent.trim());
+    const on = vis.find(s => s.dataset.order === focus) || vis[0];
+    for (const s of cand) s.classList.toggle('later3', s !== on);
+    const rest = vis.filter(s => s !== on);
+    sugg.innerHTML = rest.length ? `<p class="sugh3">Or focus on</p>${rest.map(s => {
+      const o = s.dataset.order, t = (s.querySelector('.ntask3, .life3t, .aim3 span')?.textContent || '').trim();
+      return `<button data-f="${o}"><small>${NAME[o]}</small><span>${t.replace(/[&<>"]/g, '')}</span></button>`;
+    }).join('')}` : '';
+    next.hidden = !vis.length && !M.aims.querySelector('section[data-order="9"]:not(.hidden)');
   }
   M.info('today', () => M.date());
   const who = pane.querySelector('.who3'), rows = Object.fromEntries([...pane.querySelectorAll('.bars3 li')].map(li => [li.dataset.k, li]));
   pane.querySelector('.chg3').addEventListener('click', () => M.set(true, 'play', 'journey'));
   M.onOpen(() => {
     const b = G.b;
-    // Next shows while it holds a lesson or an aim (after the systems' own refresh)
-    all = false; setTimeout(ladder);
+    // the focus and the rest offered (after the systems' own refresh)
+    setTimeout(ladder);
     // the feathers so far (sys/aims.js): each makes the wings last longer
     const nf = G.feathers?.() || 0;
     feat.textContent = nf ? `${nf} ${nf === 1 ? 'feather' : 'feathers'} for this bird: stamina +${Math.round(Math.min(nf, 20) * 3)}%. Lessons and the day’s aim earn them.` : 'No feathers yet for this bird. Each lesson chapter and each day’s aim earns one, and each makes its stamina last longer.';

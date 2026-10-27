@@ -151,12 +151,12 @@ export function questsSystem(G) {
   // the Map opened on a place (the Quests page, Show on map)
   G.showOnMap = (x, z) => { G.mapFocus = [x, z]; G.menu.set(true, 'map'); };
 
-  // ---- Journal > Quests --------------------------------------------------------------------------
-  const page = journal(G).page('quests');
+  // ---- Today > Quests (James 10-27: from the Journal): following one makes it Today's focus -------
+  const qSec = journal(G).section(9, 'Quests'), page = qSec.body;
   page.addEventListener('click', e => {
     const a = e.target.closest('[data-q]'); if (!a) return;
     const q = Q.list[a.dataset.id];
-    if (a.dataset.q === 'track' && q) { api.track(q.id); draw(); }
+    if (a.dataset.q === 'track' && q) { api.track(q.id); if (Q.tracked === q.id) G.menu.focus?.(4); G.menu.refresh(); }
     if (a.dataset.q === 'map' && q) G.showOnMap(q.x, q.z);
     if (a.dataset.q === 'ledge' && Q.ledge) G.showOnMap(Q.ledge.x, Q.ledge.z);
   });
@@ -182,6 +182,7 @@ export function questsSystem(G) {
         : `<section><h3><span>${title}</span><small class="count3">${L.length}</small></h3><ul class="qs3">${L.map(line).join('')}</ul></section>`;
     }
     page.innerHTML = html || '<p class="muted3">Nothing to go and do yet. Rumours from the songbirds, things to carry home and the long finds collect here, each with a place on the Map. Follow one and it shows on your compass.</p>';
+    qSec.count(open.length ? `${open.length} open` : '');
   }
   G.menu.onOpen(draw);
   // Today's Next card: the quest you follow, when no lesson is open
@@ -189,7 +190,7 @@ export function questsSystem(G) {
   nextSec.body.addEventListener('click', e => {
     const a = e.target.closest('[data-q]')?.dataset.q, q = Q.list[Q.tracked];
     if (a === 'map' && q) G.showOnMap(q.x, q.z);
-    if (a === 'all') G.menu.set(true, 'journal', 'quests');
+    if (a === 'all') qSec.el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     if (a === 'stop') { Q.tracked = null; nextSec.el.classList.add('hidden'); }
     if (a === 'show' && q) showMe(q);
   });

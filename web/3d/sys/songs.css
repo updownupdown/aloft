@@ -254,11 +254,15 @@
 
 /* Journal > Songs: each bird's songs under its card (round nine): a play button for each song
    you know (its words and dialects beside it), a question mark for each still to find */
-.songs3 { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
-.songs3 > li.seen { flex-wrap: wrap; align-items: flex-start; }
-.songs3 > li.seen > div:nth-child(2) { flex: 1; min-width: 0; }
-.sglist3 { list-style: none; margin: 2px 0 0; padding: 0; width: 100%; display: flex; flex-direction: column; gap: 6px; }
-.sglist3 li { display: flex; align-items: center; gap: 10px; padding: 0; background: none; }
+/* one bird to a row (James 10-27): its picture, then its name and gift, its songs under them, each with
+   room round its play button */
+.songs3 { grid-template-columns: minmax(0, 1fr); }
+.songs3 > li { padding: 12px 16px 12px 12px; }
+.songs3 > li.seen { display: grid; grid-template-columns: 72px minmax(0, 1fr); column-gap: 14px; align-items: start; }
+.songs3 > li.seen > .pic { grid-row: span 2; }
+.sglist3 { grid-column: 2; list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.guide3 .sglist3 li { display: flex; align-items: center; gap: 12px; padding: 6px 0; border: 0; border-radius: 0; background: none; }
+.guide3 .sglist3 li + li { border-top: 1px solid var(--rule); }
 .sglist3 b { font-size: 13px; }
 .sglist3 small { display: block; color: var(--ink2, #4c5d69); }
 .sglist3 .sgnotes3 { margin: 3px 0 2px; height: 16px; }
@@ -303,3 +307,6 @@
    a song you know, amber for one that could teach you (the colour comes with the mark) */
 .compass3 .mk.song { width: 18px; height: 18px; margin-left: -9px; top: 7px; background: currentColor; }
 .compass3 .mk.song svg { width: 12px; height: 12px; }
+/* Journal > Songs: the way to Lessons > Songs, where singing is explained (James 10-27) */
+.sghowbtn3 { display: inline-flex; align-items: center; gap: 8px; height: 38px; margin: 0 0 8px; padding: 0 16px 0 12px; border: 1.5px solid var(--btnedge); border-radius: 19px; background: var(--btn); color: var(--ink); font: 600 13.5px var(--text); cursor: pointer; }
+.sghowbtn3 svg { width: 18px; height: 18px; fill: none; stroke: var(--moss); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
