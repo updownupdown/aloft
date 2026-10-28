@@ -7,7 +7,7 @@
 // get green rings: tap one to hop across. Aiming is forgiving: a dive leans toward its mouse, and a slow
 // approach lined up with a perch is drawn onto it.
 import { height, WATER, treesNear, perchesOf, solidsNear, ringsNear } from '../world.js';
-import { FLY, fwd, hopPerches, hopTo, hopDown, wantsPerch } from '../flight.js';
+import { FLY, fwd, hopPerches, hopTo, hopDown, wantsPerch, turnRate } from '../flight.js';
 import { clamp, smooth } from '../util.js';
 
 const T = 2.6, STEPS = 16, g = 9.8;
@@ -125,7 +125,7 @@ export function aimSystem(G) {
       A.look = (A.look || 0) + (want - (A.look || 0)) * Math.min(1, dt * 5);
       if (b.state !== 'fly' || b.s < 3) { A.perches = []; return; }
       // fly the path ahead with today's bank and pitch held
-      const yawRate = clamp(g * Math.tan(b.roll) / Math.max(b.s * (1 - .65 * b.tuck), 5), -1.9, 1.9);
+      const yawRate = turnRate(b);
       let yaw = b.yaw, p = [...b.p];
       const horizon = T + A.focus * 3.5, n = STEPS + Math.round(A.focus * 10), dt2 = horizon / n;
       A.path.push([...p]);

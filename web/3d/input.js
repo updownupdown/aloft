@@ -31,6 +31,8 @@ const TAP_TIME = .3, TAP_MOVE = .06, PAIR = .2;
 // a stick's full move, as a share of the screen's short side (James, 10-25: between the study's
 // Normal .13 and Long .17); a dead zone on a thumb flying alone, so a resting thumb doesn't drift the heading
 const REACH = .15, DEAD1 = .08;
+// steering folded: how far the slide's response curves (0 straight, 1 squared) and how much bank it adds
+const TUCK_CURVE = .7, TUCK_BANK = 1.2;
 // the barrel roll: a stick counts as turning past ROLL_ON of its reach (and stops below ROLL_OFF);
 // both must turn ROLL_TURN of a circle the same way within ROLL_TIME seconds, from the start
 // poses give or take ROLL_START radians
@@ -116,12 +118,15 @@ export function createInput(el) {
       // landed, which a tuck almost never is: no steering in a stoop.) The mean takes the shifts
       // unclamped: thumbs pulled in past the stick's reach were clamped at it, so their slide
       // together counted only on the thumb coming back out, at half strength, and a deep tuck
-      // couldn't steer at all.
+      // couldn't steer at all. Folded, the slide is curved too (TUCK_CURVE): a few pixels turn the
+      // stoop a little and a firm slide still turns it well, so a dive can be lined up on a mouse
+      // (James, 10-28: slight motions swung it far too much).
       spread = (R.dx - L.dx) / 2;
-      const tk = Math.max(0, -spread), dz = .08 + tk * .14;
-      const side = dead(clampU((L.rx + R.rx) / 2), .12);
+      const tk = Math.max(0, -spread), dz = .08 + tk * .14, e = tk * TUCK_CURVE;
+      let side = dead(clampU((L.rx + R.rx) / 2), .12 + tk * .06);
+      side *= 1 - e + e * Math.abs(side);
       pitch = -dead((L.dy + R.dy) / 2, dz) * k;
-      roll = clampU(dead((R.dy - L.dy) / 2, dz) + side * tk * 1.6);
+      roll = clampU(dead((R.dy - L.dy) / 2, dz) + side * tk * TUCK_BANK);
       yaw = clampU(side);
     } else if (l || rr) {
       const P = l ? L : R, dz = DEAD1; pitch = -dead(P.dy, dz) * k; roll = dead(P.dx, dz);
