@@ -161,12 +161,12 @@ void main() {
   float sun = dot(w, S), day = smoothstep(-.14, .12, sun);
   c = mix(c * vec3(.36, .42, .6), c, day) + vec3(.5, .28, .12) * (1. - abs(sun) / .14) * step(abs(sun), .14) * .12;
   c *= paper(gl_FragCoord.xy);
-  // the lines every 30 degrees: thin, straight and plain, white at 80% (James, 10-27)
+  // the lines every 30 degrees: thin, straight and plain, white at 24% (James, 10-27; 10-28 a third of the 80%)
   vec2 ll = vec2(lat, lon) / (PI / 6.);
   vec2 g = abs(fract(ll + .5) - .5) / max(fwidth(ll), vec2(1e-5)) / dpr;
   float lonFade = smoothstep(1.4, 1.2, abs(lat));
   float line = max((1. - smoothstep(.35, 1.1, g.x)), (1. - smoothstep(.35, 1.1, g.y)) * lonFade);
-  c = mix(c, vec3(1.), line * .8);
+  c = mix(c, vec3(1.), line * .24);
   c += vec3(.45, .65, .85) * pow(1. - v.z, 3.) * .35;   // the air at the edge
   o = vec4(mix(c, bg + vec3(.45, .65, .85) * .55, smoothstep(1. - aa, 1. + aa, r)), 1.);
 }`;

@@ -57,18 +57,18 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .alt .ai3 svg { display: block; width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; opacity: .9; }
 .alt .ai3 { grid-column: 1; }
 .alt b { display: block; white-space: nowrap; font-size: 19px; font-weight: 600; line-height: 1.1; }
-.alt b.v, .alt b.w { display: flex; align-items: center; gap: 3px; margin-left: 4px; font-size: 14px; font-weight: 600; }
+.alt b.v, .alt b.w { display: flex; align-items: center; gap: 3px; margin-left: -3px; font-size: 14px; font-weight: 600; }
 .alt .ar3 { width: 12px; height: 12px; fill: currentColor; }
 .alt .ar3.flat { opacity: 0; }
 .alt b.m, .alt b.k { display: flex; align-items: baseline; }
-.alt small { display: inline; margin-left: 2px; font-size: .62em; font-weight: 500; opacity: .8; }
+.alt small { display: inline; margin-left: 2px; font-size: .62em; font-weight: 500; color: #fff; }   /* white like the numbers, whatever colour they are */
 .alt .wa3 { display: inline-block; perspective: 30px; margin: -3px 2px -3px 0; }
 .alt .wa3 .ar3 { display: block; width: 20px; height: 20px; filter: drop-shadow(0 2px 0 rgba(0, 0, 0, .5)); }   /* a lit top over its own dark edge */
 .alt b.v.rise { color: #c9f5b0; }
 .alt b.v.sink { color: #ffd0bc; }
 .alt .up3 { width: 18px; height: 18px; color: #ff4136; stroke-width: 2.8; filter: drop-shadow(0 0 3px rgba(255, 65, 54, .45)); }
 .alt .up3.n1 .u2, .alt .up3.n1 .u3, .alt .up3.n2 .u3 { opacity: .2; }
-.alt b.v.st { margin-left: 4px; font-weight: 500; }
+.alt b.v.st { margin-left: 0; font-weight: 500; }
 .alt b.w.tail { color: #9fcaff; }   /* the wind behind you */
 .alt b.w.head { color: #ff9e8a; }   /* in your face */
 .alt b.w { grid-column: 2 / 4; margin-left: 0; font-size: 16px; }   /* its own row under the speed */
@@ -94,6 +94,8 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .compass3 .mk.therm { background: #c8742e; }
 .compass3 .mk.ring, .compass3 .mk.course { background: #7f98a8; }
 .compass3 .mk.water { background: var(--water); }
+.compass3 .mk.quest, .compass3 .mk.rumour, .compass3 .mk.way { width: 28px; height: 28px; margin-left: -14px; top: 2px; background: var(--clay); box-shadow: 0 0 0 2px #fff, 0 0 10px 2px rgba(255, 215, 150, .7); z-index: 2; }   /* the quest you follow (James 10-28) */
+.compass3 .mk.quest svg, .compass3 .mk.rumour svg, .compass3 .mk.way svg { width: 17px; height: 17px; }
 .compass3 .mk.find { background: #b0791f; box-shadow: 0 0 0 1.5px #fff; }
 .compass3 .mid { position: absolute; left: 50%; top: 0; width: 2px; height: 6px; margin-left: -1px; border-radius: 1px; background: #fff; box-shadow: 0 0 3px rgba(10, 20, 28, .5); }
 
@@ -638,7 +640,9 @@ small { display: block; font-size: 12.5px; color: var(--ink2); }
 .mapbtn3 .mapme3 { margin-bottom: 6px; border-radius: 50%; }
 /* Dev: every place, tagged (map.js devDraw), top middle */
 .mapdev3 { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); height: 32px; padding: 0 14px; border: 0; border-radius: 999px; background: var(--glass2); color: var(--ink2); font: 600 12.5px var(--text); box-shadow: 0 1px 4px rgba(40, 30, 20, .15); cursor: pointer; }
-.mapdev3.on { background: var(--moss); color: #fff; }   /* where you are: above the zoom */
+.mapdev3.on { background: var(--moss); color: #fff; }
+select.mapdev3 { appearance: none; -webkit-appearance: none; max-width: 46%; text-overflow: ellipsis; cursor: pointer; }
+select.mapdev3 option { color: var(--ink); background: #fff; }   /* where you are: above the zoom */
 .mapbtn3 button { width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: 14px; background: var(--glass2); box-shadow: 0 1px 4px rgba(40, 30, 20, .15); cursor: pointer; }
 .mapbtn3 svg { width: 28px; height: 28px; fill: none; stroke: var(--ink); stroke-width: 2; stroke-linecap: round; }
 .mapbtn3 svg .dot { fill: var(--ink); stroke: none; }

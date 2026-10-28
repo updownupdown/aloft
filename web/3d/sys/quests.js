@@ -139,7 +139,7 @@ export function questsSystem(G) {
   const here = q => q.x != null && (q.age || 'earth') === age();
   (G.marks ||= []).push(() => {
     const out = [], q = Q.list[Q.tracked];
-    if (q && !q.done && here(q)) out.push([q.group === 'rumour' ? 'rumour' : 'quest', q.x, q.z, q.title]);
+    if (q && !q.done && here(q)) out.push([q.group === 'rumour' ? 'rumour' : 'quest', q.x, q.z, q.title, null, q.icon]);
     if (Q.ledge && Math.hypot(wrapX(Q.ledge.x - b.p[0]), Q.ledge.z - b.p[2]) > 80) out.push(['ledge', Q.ledge.x, Q.ledge.z, 'Your ledge']);
     return out;
   });
