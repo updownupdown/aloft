@@ -351,7 +351,8 @@ export function blend(x, z) {
     near.push([d, c]); if (d < d1) d1 = d;
   }
   const out = []; let tot = 0;
-  for (const [d, c] of near) { const w = smooth(BLEND, 0, d - d1); if (w > .002) { out.push({ name: c.name, b: c.b, w, cx: c.cx, cz: c.cz, gx: c.gx, gz: c.gz, cont: c.cont, lat: c.lat, lon: c.lon }); tot += w; } }
+  // (less the cut-off, so a land comes in from nothing: a far mountain cell at its first .002 lifted the ground 60 cm at once)
+  for (const [d, c] of near) { const w = smooth(BLEND, 0, d - d1) - .002; if (w > 0) { out.push({ name: c.name, b: c.b, w, cx: c.cx, cz: c.cz, gx: c.gx, gz: c.gz, cont: c.cont, lat: c.lat, lon: c.lon }); tot += w; } }
   for (const e of out) e.w /= tot;
   return out.sort((a, b) => b.w - a.w);
 }

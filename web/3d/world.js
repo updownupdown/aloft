@@ -83,7 +83,7 @@ export function baseHeight(x, z) {
   const bl = blend(x, z), B = { big: fbm(x / 520, z / 520, 1, 3), mid: fbm(x / 150, z / 150, 2, 3), fine: fbm(x / 32, z / 32, 5, 2) };
   let h = 0;
   for (const e of bl) h += e.w * e.b.h(x, z, B, e);
-  if (!bl[0].b.flat) h += B.fine * 1.6 * (1 - share(bl, 'saltflat'));
+  h += B.fine * 1.6 * (1 - weightOf(bl, 'flat'));   // (weighed, not switched on the strongest land: that left a step where two lands met)
   h = shore(x, z, h, bl);
   h = riverCut(x, z, h);
   return shapeAt(x, z, h, baseHeight);   // the real wonders' shapes (realplaces.js)
@@ -96,7 +96,8 @@ function shore(x, z, h, bl) {
   if (c > 1400) return h;
   const s = c + fbm(x / 430, z / 430, 31, 3) * 300 + fbm(x / 90, z / 90, 32, 2) * 55;
   const cliff = Math.min(1, weightOf(bl, 'cliff')), w = 75 - 62 * cliff;
-  const land = h * (.12 + .88 * cliff + (1 - cliff) * .88 * smooth(0, 900, s)) + 1.2 * (1 - cliff);
+  // (the lift by the shore fades out before 1400 m, where the shore stops: a hard edge there was a straight step)
+  const land = h * (.12 + .88 * cliff + (1 - cliff) * .88 * smooth(0, 900, s)) + 1.2 * (1 - cliff) * smooth(1400, 1000, c);
   const bed = -3 - 32 * smooth(0, 1800, -s);
   let y = bed + (land - bed) * smooth(-w, w, s);
   if (s < 400) y = Math.max(y, isles(x, z));   // (a real island the coastline has too rises from it)
@@ -130,9 +131,12 @@ function isleCell(gx, gz) {
 function isleH(I, x, z) {
   const d = Math.hypot(x - I.x, z - I.z) / I.r * (1 + fbm(x / 90, z / 90, 347, 2) * .18);
   if (d > 1.6) return -99;
-  if (I.kind === 'atoll') return Math.max(-3.5 + 3 * smooth(.9, .6, d), 1.8 * Math.exp(-(((d - .82) / .13) ** 2)) - 6 * smooth(.95, 1.5, d));
+  // (and all of it sinks below the deepest sea floor by the edge of its reach: a reef's flat or a
+  // shelf at the waterline ran out to there and ended in a ring of wall)
+  const drop = 40 * smooth(1.1, 1.6, d);
+  if (I.kind === 'atoll') return Math.max(-3.5 + 3 * smooth(.9, .6, d), 1.8 * Math.exp(-(((d - .82) / .13) ** 2)) - 6 * smooth(.95, 1.5, d)) - drop;
   const cone = I.kind === 'high' ? (1 - d * d) * I.H : I.H * smooth(1.05, .1, d) ** 1.5 - (I.kind === 'volcano' ? 6 * smooth(.16, 0, d) : 0);
-  return Math.max(-30 * smooth(1, 1.6, d), cone + 2 * smooth(1.1, .9, d));
+  return Math.max(-30 * smooth(1, 1.6, d), cone + 2 * smooth(1.1, .9, d)) - drop;
 }
 export function islesNear(x, z, r) {
   if (!isleList) {
@@ -171,9 +175,10 @@ export function greatRiverAt(x, z) {
   // the drawn line wanders a little more: bends of its own along the real course
   const mx = fbm(x / 170, z / 170, RIVER.seed + 51, 2) * 26 + fbm(x / 48, z / 48, RIVER.seed + 53, 1) * 7;
   const mz = fbm(x / 170, z / 170, RIVER.seed + 55, 2) * 26 + fbm(x / 48, z / 48, RIVER.seed + 57, 1) * 7;
-  const r = bakedRiver(x + mx, z + mz); if (!r || r.fade <= 0) return null;
-  const u = fbm(x / 380, z / 380, RIVER.seed + 59, 1) * .5 + .5, w = GREAT_W[Math.min(4, r.line.rank)] * (.75 + .5 * u) * smooth(0, 1, r.fade);
-  return { d: r.d, w, m: .02 + r.fade * .98, side: r.side, lean: clamp(fbm(x / 260, z / 260, RIVER.seed + 19, 1) * 2.2, -1, 1), name: r.line.name, great: true };
+  const r = bakedRiver(x + mx, z + mz); if (!r) return null;
+  const u = fbm(x / 380, z / 380, RIVER.seed + 59, 1) * .5 + .5, lean = clamp(fbm(x / 260, z / 260, RIVER.seed + 19, 1) * 2.2, -1, 1);
+  const of = r => r && r.fade > 0 ? { d: r.d, w: GREAT_W[Math.min(4, r.line.rank)] * (.75 + .5 * u) * smooth(0, 1, r.fade), m: .02 + r.fade * .98, side: r.side, lean, name: r.line.name, great: true } : null;
+  const g = of(r); if (g) g.next = of(r.next); return g;
 }
 export function riverAt(x, z) {
   const g = greatRiverAt(x, z), n = noiseRiverAt(x, z);
@@ -198,12 +203,17 @@ function noiseRiverAt(x, z) {
   return { d: Math.abs(v) * RIVER.scale * .55, w: RIVER.half * wide * smooth(.02, .2, m), m, side: v < 0 ? -1 : 1, lean: clamp(fbm(x / 260, z / 260, RIVER.seed + 19, 1) * 2.2, -1, 1) };
 }
 function riverCut(x, z, h) {
-  return cutBy(noiseRiverAt(x, z), cutBy(greatRiverAt(x, z), h));
+  // (by the two nearest great rivers alike, the lower of the two cuts: cut by the nearer only, the
+  // ground stepped where one river's valley met another's, half-way between them)
+  const g = greatRiverAt(x, z);
+  return cutBy(noiseRiverAt(x, z), g?.next ? Math.min(cutBy(g, h), cutBy(g.next, h)) : cutBy(g, h));
 }
 function cutBy(r, h) {
   if (!r || h < RIVER.bed) return h;
-  const s1 = r.side * r.lean;   // +1 on the outer (cut) bank, -1 on the inner one
-  const bank = (r.w + 22 + Math.max(0, h) * 1.1) * (1 - s1 * .45); if (r.d > bank) return h;
+  const s1 = r.side * r.lean * smooth(0, r.w * .5 + .5, r.d);   // +1 on the outer (cut) bank, -1 on the inner one (none mid-stream: the bed stepped there)
+  // (a great river is only found within 320 m of its line, earth.js RM: its valley stops short of that, or high
+  // ground, where the valley is widest, ended in a straight wall where the lookup gave out)
+  const bank = Math.min((r.w + 22 + Math.max(0, h) * 1.1) * (1 - s1 * .45), r.great ? 300 : 1e9); if (r.d > bank) return h;
   // the bed: deepest under the outer bank, up to the waterline at the edge; where the river
   // fades it shallows to a dry gully
   const k = smooth(.02, .2, r.m), u = r.w > .5 ? Math.min(1, r.d / r.w) : 1, deep = 1 + s1 * .35;

@@ -167,14 +167,15 @@ function ends() {
     const o = bakedRiverOf(x, z, L.id); L[end ? 'openB' : 'openA'] = !o || o.d > 60;
   }
 }
-// the nearest great river within RM: { d (metres), side (+1/-1), t (along the segment 0..1), line, k (segment) } or null
+// the nearest great river within RM: { d (metres), side (+1/-1), t (along the segment 0..1), line, k (segment), fade,
+// next: the nearest other river, the same, or null } or null
 export const bakedRiver = (x, z) => bakedRiverOf(x, z, -1);
 function bakedRiverOf(x, z, not) {
   if (!rbuckets) riversReady();
   if (!ended) ends();
   x = wrapX(x);
   const a = rbuckets.get(Math.floor((z - Z0) / RB) * RNX + mod(Math.floor((x - X0) / RB), RNX)); if (!a) return null;
-  let best = null, bd = RM * RM;
+  let best = null, bd = RM * RM, next = null, nd = RM * RM;
   for (let n = 0; n < a.length; n += 2) {
     const L = RIVER_LINES[a[n]], k = a[n + 1], p = L.p;
     if (L.id === not) continue;
@@ -183,10 +184,27 @@ function bakedRiverOf(x, z, not) {
     if (ax - x > W / 2) { ax -= W; bx -= W; } else if (x - ax > W / 2) { ax += W; bx += W; }
     const ux = bx - ax, uz = bz - az, l2 = ux * ux + uz * uz || 1;
     const t = clamp(((x - ax) * ux + (z - az) * uz) / l2, 0, 1), dx = x - ax - ux * t, dz = z - az - uz * t, d2 = dx * dx + dz * dz;
-    if (d2 < bd) { bd = d2; best = { d: 0, side: ux * (z - az) - uz * (x - ax) < 0 ? -1 : 1, t, line: L, k }; }
+    if (d2 >= nd) continue;
+    const h = { d: d2, t, line: L, k, side: 0 };
+    if (d2 < bd) { if (best && best.line !== L) { next = best; nd = bd; } bd = d2; best = h; } else if (L !== best.line) { next = h; nd = d2; }
   }
-  if (best) { best.d = Math.sqrt(bd); const L = best.line, at = L.cum[best.k / 2] + best.t * (L.cum[best.k / 2 + 1] - L.cum[best.k / 2]); best.fade = Math.min(L.openA ? at / 500 : 1, L.openB ? (L.len - at) / 500 : 1, 1); }
-  return best;
+  if (!best) return null;
+  best.next = next && finish(next, x, z);
+  return finish(best, x, z);
+}
+// which side the point is on: across the segment's way, or past its end across the way along the
+// bend (the two segments' ways added), so both sides of a bend agree (a point off the outside of a
+// bend was on one side of the one segment and the other of the next: the valley's banks swapped there)
+function finish(h, x, z) {
+  const L = h.line, p = L.p, k = h.k, way = (i) => { const ux = p[i + 2] - p[i], uz = p[i + 3] - p[i + 1], l = Math.hypot(ux, uz) || 1; return [ux / l, uz / l]; };
+  let [ux, uz] = way(k);
+  if (h.t <= 0 && k > 0) { const [vx, vz] = way(k - 2); ux += vx; uz += vz; } else if (h.t >= 1 && k + 4 < p.length) { const [vx, vz] = way(k + 2); ux += vx; uz += vz; }
+  let ax = p[k] + (p[k + 2] - p[k]) * h.t, az = p[k + 1] + (p[k + 3] - p[k + 1]) * h.t;
+  if (ax - x > W / 2) ax -= W; else if (x - ax > W / 2) ax += W;
+  h.side = ux * (z - az) - uz * (x - ax) < 0 ? -1 : 1;
+  h.d = Math.sqrt(h.d);
+  const at = L.cum[k / 2] + h.t * (L.cum[k / 2 + 1] - L.cum[k / 2]); h.fade = Math.min(L.openA ? at / 500 : 1, L.openB ? (L.len - at) / 500 : 1, 1);
+  return h;
 }
 
 // ---- latitude and longitude ----------------------------------------------------------------
