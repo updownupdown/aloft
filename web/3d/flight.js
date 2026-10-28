@@ -26,6 +26,10 @@ export const FLY = {
   // folded in: level, a fast glide between thermals (nose down tuckGlide); folded and down, the
   // stoop; folded and up, a swept zoom climb that carries speed (climb x 1+tuckZoom)
   tuckGlide: .1, tuckStoop: .35, tuckZoom: .3,
+  // steering folded (James, 10-28: hunting was twitchy): how much the tuck sharpens a turn (the speed
+  // it is reckoned at, x 1-tuckTurn), how far it lowers the most turn (1.9 - tuckTurnMax rad/s), and
+  // how much it calms the flat yaw and slows the bank's swing
+  tuckTurn: .5, tuckTurnMax: .7, tuckYaw: .4, tuckRoll: .35,
   // the barrel roll (both sticks turned a full circle together, input.js): seconds, speed kept
   barrelT: 1.1, barrelKeep: .93,
   // flared, thumbs up and slow (under hoverS): the hawk hangs on beating wings (hoverBeat seconds
@@ -46,7 +50,12 @@ export const FLY = {
 const CIRCLE = { still: .3, ahead: .5, spread: .8, radius: .35, rMin: 14, rMax: 32, k: 1.2, bank: .9 };
 // the speed a turn is reckoned at: in a stoop the tail and half-closed wings still steer, so the
 // turn doesn't fade with speed as a glide's does
-const sTurnOf = b => Math.max(5, b.s * (1 - .65 * b.tuck));
+const sTurnOf = b => Math.max(5, b.s * (1 - FLY.tuckTurn * b.tuck));
+// the turn a bank gives (rad/s); folded it tops out lower, so a stoop leans round firmly but never whips
+export const turnRate = (b, sTurn = sTurnOf(b)) => {
+  const m = 1.9 - FLY.tuckTurnMax * b.tuck;
+  return Math.max(-m, Math.min(m, g * Math.tan(b.roll) / sTurn * (1 + b.flare * .3)));
+};
 // the bank that holds the circle, or null when the thumbs fly: the heading is steered so the core
 // sits square to the inner wing at the chosen radius, closer in when farther out
 function circle(b, c, sTurn) {
@@ -158,10 +167,8 @@ export function step(b, c, dt, E) {
   }
   const cr = circle(b, c, sTurnOf(b));
   if (cr !== null) rT = cr;
-  b.roll += (rT - b.roll) * Math.min(1, dt * 3.2);
-  const sTurn = sTurnOf(b);
-  const yawRate = Math.max(-1.9, Math.min(1.9, g * Math.tan(b.roll) / sTurn * (1 + b.flare * .3)));
-  b.yaw += (yawRate + (c.yaw || 0) * FLY.yaw) * dt;   // both thumbs slid one way: a flat yaw on top
+  b.roll += (rT - b.roll) * Math.min(1, dt * 3.2 * (1 - FLY.tuckRoll * b.tuck));
+  b.yaw += (turnRate(b) + (c.yaw || 0) * FLY.yaw * (1 - FLY.tuckYaw * b.tuck)) * dt;   // both thumbs slid one way: a flat yaw on top
   b.steer = Math.min(1, Math.abs(c.yaw || 0) + Math.abs(c.roll || 0) * .6);   // how hard you are steering (aim.js lets go of a mouse for it)
 
   // stall sink and flap lift live in vy, which settles back to zero
