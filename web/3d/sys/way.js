@@ -18,7 +18,6 @@ export function waySystem(G) {
     get at() { return W && [W.x, W.y, W.z]; }, get title() { return W?.title; },
     show(x, y, z, o = {}) {
       W = { x, y: y ?? Math.max(height(x, z), WATER) + 20, z, title: o.title || 'The way', t: o.secs ?? WAY.secs, near: o.near ?? WAY.near, done: o.done, beacon: !!o.beacon, age: 0 };
-      G.hud?.name?.(`The way to ${W.title}`, 'aim');
     },
     stop() { W = null; },
   };

@@ -189,7 +189,7 @@ export function songsSystem(G) {
     onPick: pick, onLook: lookAt, onCall: call, onNext: nextSong, onCoachSkip: () => coachDone(),
   });
   G.hud.songLine = (msg, secs) => ui.say(msg, secs);
-  G.compassMarks = () => marks;
+  G.compassMarks = () => ui.open ? marks : [];   // singers on the compass only while Sing is open (James 10-28)
   G.callVisitor = sp => callVisitor(sp);   // (sys/visitors.js: the lost bird sings once it is safe)
 
   // ---- songbirds singing --------------------------------------------------------------------

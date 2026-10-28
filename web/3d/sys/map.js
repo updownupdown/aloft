@@ -90,7 +90,7 @@ export function mapView(G, J) {
   pane.classList.add('mappane3', 'flush3');
   pane.innerHTML = `<div class="mapbox3"><canvas></canvas><div class="mapsum3"></div><div class="mapday3"><div class="mapseason3"></div><small class="mapyear3"></small></div>
       <div class="mapbtn3"><button data-z="me" class="mapme3" aria-label="Centre on the hawk">${icon('me')}</button><button data-z="in" aria-label="Zoom in">${icon('zoomin')}</button><button data-z="out" aria-label="Zoom out">${icon('zoomout')}</button></div>
-      <button class="mapdev3" aria-pressed="false">Dev: every place</button><div class="mapnote3 hidden"></div></div>`;
+      <select class="mapdev3" aria-label="Dev: show one kind of place"><option value="">Dev: places</option></select><div class="mapnote3 hidden"></div></div>`;
   const sum = pane.querySelector('.mapsum3'), box = pane.querySelector('.mapbox3'), cv = box.querySelector('canvas'), note = box.querySelector('.mapnote3');
   const yearEl = box.querySelector('.mapyear3');
   // top right, the same day dial as in flight, and the season in more detail beneath it
@@ -244,9 +244,21 @@ export function mapView(G, J) {
   // world in slices while the map is open, then a dot and a tag for each (the tag when there is room)
   const DEVCOL = { cave: '#6a4fa0', icecave: '#6a4fa0', seacave: '#6a4fa0', tube: '#6a4fa0', cenote: '#6a4fa0', tarn: '#3f78a8', adit: '#6a4fa0',
     shelter: '#2f7f8f', oasis: '#2f7f8f', ledge: '#2f7f8f', rings: '#d0643a', wonder: '#d39a2a', volcano: '#c0533f', nature: '#7f9a4e' };
-  let devOn = false, dev = null, devK = 0;
+  // one kind at a time, picked from a list (every place at once was too much: James 10-28)
+  let devOn = false, dev = null, devK = 0, devKind = '', devOpts = '';
   const devAt = box.querySelector('.mapdev3');
-  devAt.addEventListener('click', () => { devOn = !devOn; devAt.classList.toggle('on', devOn); devAt.setAttribute('aria-pressed', devOn); if (devOn) devScan(); draw(); });
+  devAt.addEventListener('pointerdown', () => devScan());
+  devAt.addEventListener('focus', () => devScan());
+  devAt.addEventListener('change', () => { devKind = devAt.value; devOn = !!devKind; devAt.classList.toggle('on', devOn); draw(); });
+  function devList() {
+    if (!dev.done) { devAt.options[0].text = `Dev: gathering ${Math.round(devK / (Math.ceil(EARTH.W / LM_TILE) * Math.ceil(EARTH.H / LM_TILE)) * 100)}%`; return; }   // (the list once whole: rebuilt while open it shut)
+    const n = {};
+    for (const d of dev.all.values()) n[d.kind] = (n[d.kind] || 0) + 1;
+    const k = Object.keys(n).sort().map(kd => `${kd}:${n[kd]}`).join('|');
+    if (k === devOpts) return; devOpts = k;
+    devAt.innerHTML = `<option value="">Dev: places</option>` + Object.keys(n).sort().map(kd => `<option value="${kd}">${kd} (${n[kd]})</option>`).join('');
+    devAt.value = devKind;
+  }
   function devScan() {
     if (dev?.done || dev?.busy) return;
     dev ||= { all: new Map(), busy: false, done: false };
@@ -262,18 +274,20 @@ export function mapView(G, J) {
         for (const cv of cavesNear(cx, cz, r)) add(cv.id, cv.mouth.x, cv.mouth.z, cv.kind, cv.name || cv.kind);
         for (const q of W.ringsNear(cx, cz, r)) if (q.k === 0) add('rg' + q.circuit, q.x, q.z, 'rings', `${q.of} rings${q.level === 'hard' ? ', hard' : ''}`);
       }
+      devList();
       if (devK < nx * nz) { if (devOn) draw(); setTimeout(step, 30); return; }
-      dev.busy = false; dev.done = true; draw();
+      dev.busy = false; dev.done = true; devList(); draw();
     };
     step();
   }
   function devDraw(x, label) {
     const close = V.R > rMax() * .2;
     for (const d of dev?.all.values() || []) {
+      if (d.kind !== devKind) continue;
       const [px, py, front] = at(d.x, d.z); if (!front || px < 0 || py < 0 || px > V.w || py > V.h) continue;
       x.fillStyle = DEVCOL[d.kind] || '#2a2420'; x.beginPath(); x.arc(px, py, 3, 0, 6.283); x.fill();
       x.strokeStyle = '#fff'; x.lineWidth = 1; x.stroke();
-      if (close) label(px, py, `${d.kind}: ${d.name}`);
+      if (close) label(px, py, d.name || d.kind);
     }
     if (dev && !dev.done) { x.fillStyle = '#fff'; x.fillText(`Gathering places… ${Math.round(devK / (Math.ceil(EARTH.W / LM_TILE) * Math.ceil(EARTH.H / LM_TILE)) * 100)}%`, V.w / 2 - 60, 56); }
   }

@@ -95,7 +95,7 @@ export function createQuiet(G, ui, H) {
       if ((tallyT -= dt) <= 0) tallyEl.classList.remove('show');
       // the next step: the open lesson, else the aim; a done one fades after its tick
       if (doneT > 0 && (doneT -= dt) <= 0) for (const w in slots) if (slots[w]?.done) slots[w] = null;
-      const s = (focus && slots[focus]) || slots.lesson || slots.quest || slots.aim || slots.season || slots.course, on = !!s && !rest && !H.off['say:next'];
+      const s = slots.lesson, on = !!s && !rest && !H.off['say:next'];
       const k = on ? `${s.text}|${s.sub}|${s.done ? 1 : 0}` : '';
       if (k !== nextKey) {
         nextKey = k;

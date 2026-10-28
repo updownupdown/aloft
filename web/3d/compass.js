@@ -55,6 +55,9 @@ export function createCompass(G, ui) {
     // functions, each giving [kind, x, z, title]: findwater.js the nearest fresh water, rings.js today's course)
     for (const m of G.compassMarks?.() || []) out.push(m);
     for (const f of G.marks || []) out.push(...f());
+    // the way to the quest you follow shows once, as the quest's own mark
+    const qs = new Set(out.filter(m => m[0] === 'quest' || m[0] === 'rumour').map(m => m[3]));
+    for (let i = out.length; i--;) if (out[i][0] === 'way' && qs.has(out[i][3])) out.splice(i, 1);
     const d = m => Math.hypot(wrapX(m[1] - x), m[2] - z);
     const kept = out.map(m => [m, (FIRST[m[0]] ?? 3) * 1e6 + d(m)]).sort((a, c) => a[1] - c[1]).slice(0, MOST).map(([m]) => m);
     return seenT > 0 ? [...kept, ...seen] : kept;
@@ -63,9 +66,9 @@ export function createCompass(G, ui) {
     const k = list.map(m => m[0] + m[3]).join('|');
     if (k === key) { list.forEach((m, i) => { marks[i].x = m[1]; marks[i].z = m[2]; }); return; }
     key = k; for (const m of marks) m.el.remove();
-    marks = list.map(([kind, x, z, title, col]) => {
+    marks = list.map(([kind, x, z, title, col, ic]) => {
       const e = document.createElement('span'); e.className = 'mk ' + kind; e.title = title; if (col) e.style.color = col;
-      e.innerHTML = icon(MARK[kind]); strip.append(e);
+      e.innerHTML = icon(ic || MARK[kind]); strip.append(e);
       return { el: e, x, z, call: kind === 'therm' || kind === 'ring' || kind === 'find' };
     });
   }

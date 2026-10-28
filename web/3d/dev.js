@@ -7,6 +7,7 @@
 import { store } from './util.js';
 import { icon } from './icons.js';
 import { BIRD } from './hawk.js';
+import { AGES, AGE_ID } from './ages.js';
 
 export const AREAS = ['Flight', 'Ground and perch', 'World', 'Wildlife', 'Food and water', 'Songs and music', 'HUD', 'Menu and map',
   'Journal and story', 'Settings and performance', 'Birds'];
@@ -154,6 +155,9 @@ export function createDev(G, M) {
       G.store.set('devMode', v); if (v === 'off') return;
       G.menu.set(false); G.emit('mock', +v / 100); G.persist(); G.resetting = true; location.reload();
     } });
+  // World: go to another age of the Earth now, where you are (sys/ages.js go(); James 10-28)
+  M.choice('play', { label: 'World', group: 'dev', options: Object.entries(AGES).map(([id, a]) => [id, a.short || a.name]), sub: () => 'go to another age now, from where you are',
+    get: () => AGE_ID, set: v => { if (v === AGE_ID) return; G.menu.set(false); G.ages?.go(v, { via: 'dev' }); } });
   const SPANS = [['Dawn', .2, .33], ['Day', .33, .68], ['Dusk', .68, .8], ['Night', .8, .2]];
   const clock = t => { const m = Math.round(t * 24 * 60) % 1440; return `${String(m / 60 | 0).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`; };
   const tbox = document.createElement('div'); tbox.className = 'tod3';
