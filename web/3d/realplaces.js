@@ -118,6 +118,9 @@ function frame(P, x, z, long = 1) {
   return [(dx * c + dz * s) / (P.r * long), (-dx * s + dz * c) / P.r];
 }
 const mesaProfile = (d, edge = .9) => smooth(1, edge, d);
+// a shape raised over the ground so far, eased into it by k (1 inside .. 0 at its edge): each shape stands on its
+// own ground level, and where the land round it fell lower (a river's valley) its edge was a sheer wall
+const lift = (h, v, k) => Math.max(h, h + (v - h) * k);
 // h: the terrain so far; base(x, z): the terrain without the shapes (world.js baseHeight)
 export function shapeAt(x, z, h, base) {
   if (inside) return h;
@@ -129,21 +132,21 @@ export function shapeAt(x, z, h, base) {
         const [u, v] = frame(P, x, z, o.long), d = Math.hypot(u, v) * (1 + fbm(x / 40, z / 40, 621, 2) * .06);
         if (d >= 1.05) break;
         const t = d < 1 ? (1 - d ** 5) ** .35 : 0, gully = Math.abs(fbm(x / 18, z / 18, 622, 1)) * 3 * t;
-        h = Math.max(h, ground(P, base) + P.h * t - gully);
+        h = lift(h, ground(P, base) + P.h * t - gully, smooth(1.05, .9, d));
         break;
       }
       case 'tepui': {   // a tableland with sheer walls, a broken rim, a pale talus round its foot
         const [u, v] = frame(P, x, z, o.long || 1), d = Math.hypot(u, v) * (1 + fbm(x / 70, z / 70, 623, 2) * .1);
         if (d >= 1.5) break;
         const top = mesaProfile(d, .95) * (1 + fbm(x / 50, z / 50, 624, 2) * .05), talus = smooth(1.45, 1, d) * .16;
-        h = Math.max(h, ground(P, base) + P.h * Math.max(top, talus));
+        h = lift(h, ground(P, base) + P.h * Math.max(top, talus), smooth(1.5, 1.25, d));
         break;
       }
       case 'tower': {   // Devils Tower: a fluted column on a skirt of fallen rubble
         const d = Math.hypot(x - P.x, z - P.z) / P.r, flute = Math.cos(Math.atan2(z - P.z, x - P.x) * 14) * .025;
         if (d >= 3) break;
         const col = mesaProfile(d + flute, .9) * (1 - .12 * d), skirt = smooth(3, 1, d) ** 1.6 * .22;
-        h = Math.max(h, ground(P, base) + P.h * Math.max(col, skirt));
+        h = lift(h, ground(P, base) + P.h * Math.max(col, skirt), smooth(3, 2.4, d));
         break;
       }
       case 'buttes': case 'spires': {
@@ -152,14 +155,14 @@ export function shapeAt(x, z, h, base) {
           const d = Math.hypot(x - B.x, z - B.z) / B.r * (1 + fbm(x / 30, z / 30, 625, 2) * .08);
           if (d >= 2.2) continue;
           const t = P.form === 'buttes' ? Math.max(mesaProfile(d, .9), smooth(2.2, 1, d) ** 1.5 * .28) : Math.max(0, 1 - d) ** .7 * (1 + fbm(x / 12, z / 12, 626, 1) * .08);
-          h = Math.max(h, y0 + B.h * t);
+          h = lift(h, y0 + B.h * t, smooth(2.2, 1.8, d));
         }
         break;
       }
       case 'horn': {   // a pyramid of four faces, sharp edges and a crooked summit
         const [u, v] = frame(P, x, z), d = (Math.abs(u + v) + Math.abs(u - v)) * .5 ** .5 * (1 + fbm(x / 60, z / 60, 627, 2) * .1);
         if (d >= 1) break;
-        h = Math.max(h, ground(P, base) * .7 + P.h * (1 - d) ** 1.35 + Math.abs(fbm(x / 20, z / 20, 628, 1)) * 4 * (1 - d));
+        h = lift(h, ground(P, base) * .7 + P.h * (1 - d) ** 1.35 + Math.abs(fbm(x / 20, z / 20, 628, 1)) * 4 * (1 - d), smooth(1, .7, d));
         break;
       }
       case 'falls': {   // a plateau broken by a horseshoe gorge: the river falls over its lip
@@ -167,8 +170,8 @@ export function shapeAt(x, z, h, base) {
         const d = Math.hypot(u, v);
         if (d >= 1.3) break;
         const lip = smooth(0, 6, g) * smooth(1.3, .8, d) * (u < o.gorge / P.r ? 1 : smooth(o.gorge * 1.6 / P.r, o.gorge / P.r, u));
-        if (lip > 0) h = Math.max(h, ground(P, base) + o.drop * lip - (1 - lip) * 2);
-        else if (g < 0) h = Math.min(h, Math.max(-2.5, h - 4));   // the plunge pool below
+        if (lip > 0) h = lift(h, ground(P, base) + o.drop, lip);
+        else if (g < 0) h = Math.min(h, Math.max(-2.5, h - 4 * smooth(0, -3, g) * smooth(1.3, 1.1, d)));   // the plunge pool below
         break;
       }
       case 'seacliff': {   // Moher: the land shoulders up into a long wall over the sea
@@ -181,7 +184,7 @@ export function shapeAt(x, z, h, base) {
         const d = Math.hypot(x - P.x, z - P.z) / P.r; if (d >= 1) break;
         const w = fbm(x / 120, z / 120, 631, 2) * 3;
         const rid = Math.max((1 - Math.abs(Math.sin((x + z) * .7 / 62 + w))) ** 3, (1 - Math.abs(Math.sin((x - z) * .7 / 75 + w))) ** 3);
-        h = Math.max(h, ground(P, base) + P.h * smooth(1, .15, d) * (.3 + .7 * rid));
+        h = lift(h, ground(P, base) + P.h * smooth(1, .15, d) * (.3 + .7 * rid), smooth(1, .8, d));
         break;
       }
       case 'geyser': {   // a level basin of sinter round the vent
@@ -192,7 +195,7 @@ export function shapeAt(x, z, h, base) {
       case 'terraces': {   // Pamukkale: a white hillside of travertine steps, each holding a pool
         const d = Math.hypot(x - P.x, z - P.z) / P.r; if (d >= 1) break;
         const t = P.h * smooth(1, 0, d + fbm(x / 40, z / 40, 632, 2) * .1), st = 2.6;
-        h = Math.max(h, ground(P, base) + Math.floor(t / st) * st + smooth(.8, 1, (t / st) % 1) * st);
+        h = lift(h, ground(P, base) + Math.floor(t / st) * st + smooth(.8, 1, (t / st) % 1) * st, smooth(1, .85, d));
         break;
       }
     }

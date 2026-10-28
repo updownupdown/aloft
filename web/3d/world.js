@@ -8,7 +8,7 @@ import { store } from './util.js';
 import { AGE } from './ages.js';
 import { ih, fbm, smooth, clamp, WORLD, newWorld } from './noise.js';
 import { BIOMES, PAL, blend, weightOf, share, rollBiome, cellsNear, setIsleOf } from './biomes.js';
-import { coastDist, latLon, latAt, oceanKey, regionAt, wrapX, toXZ, EARTH, NORTH, SOUTH, seasonAt, snowLine, dryAt, bakedRiver, lakeAt } from './earth.js';
+import { coastDist, latLon, latAt, oceanKey, regionAt, wrapX, toXZ, EARTH, NORTH, SOUTH, seasonAt, snowLine, dryAt, bakedRiver, bakedRivers, lakeAt } from './earth.js';
 import { cut as caveCut, roofAt, nearCave, inHollow, caveShade, setCutting } from './caves.js';
 import { realPlaces, shapeAt, colourAt as realColour, volcanoName } from './realplaces.js';
 import { railCut, railShade, railNear, railSolids, railLandmarks } from './rail.js';
@@ -104,7 +104,7 @@ function shore(x, z, h, bl) {
   if (y < 1 && (z < NORTH + 5500 || z > SOUTH - 4200)) {   // the pack ice, with leads of open water
     const k = z < 0 ? smooth(NORTH + 5500, NORTH + 2500, z) : smooth(SOUTH - 4200, SOUTH - 1800, z);
     const floe = smooth(-.1, .12, fbm(x / 160, z / 160, 33, 3) + k * .5 - .25);
-    y = y + (Math.max(y, .9 + fbm(x / 30, z / 30, 34, 1) * .25) - y) * floe * smooth(0, .3, k);
+    y = y + (Math.max(y, .9 + fbm(x / 30, z / 30, 34, 1) * .25) - y) * floe * smooth(0, .3, k) * smooth(1400, 1000, c);   // (none past the shore's reach: a lake there was iced to the brim up to 1400 m in, then dropped)
   }
   return y;
 }
@@ -175,10 +175,13 @@ export function greatRiverAt(x, z) {
   // the drawn line wanders a little more: bends of its own along the real course
   const mx = fbm(x / 170, z / 170, RIVER.seed + 51, 2) * 26 + fbm(x / 48, z / 48, RIVER.seed + 53, 1) * 7;
   const mz = fbm(x / 170, z / 170, RIVER.seed + 55, 2) * 26 + fbm(x / 48, z / 48, RIVER.seed + 57, 1) * 7;
-  const r = bakedRiver(x + mx, z + mz); if (!r) return null;
+  const rs = bakedRivers(x + mx, z + mz); if (!rs) return null;
   const u = fbm(x / 380, z / 380, RIVER.seed + 59, 1) * .5 + .5, lean = clamp(fbm(x / 260, z / 260, RIVER.seed + 19, 1) * 2.2, -1, 1);
-  const of = r => r && r.fade > 0 ? { d: r.d, w: GREAT_W[Math.min(4, r.line.rank)] * (.75 + .5 * u) * smooth(0, 1, r.fade), m: .02 + r.fade * .98, side: r.side, lean, name: r.line.name, great: true } : null;
-  const g = of(r); if (g) g.next = of(r.next); return g;
+  const of = r => r.fade > 0 ? { d: r.d, w: GREAT_W[Math.min(4, r.line.rank)] * (.75 + .5 * u) * smooth(0, 1, r.fade), m: .02 + r.fade * .98, side: r.side, lean: lean * smooth(.5, 1, r.fade) * r.across, name: r.line.name, great: true } : null;
+  // every line near (a river is several lines end to end, and meets others): the nearest one that flows, with all of them
+  // (its banks lean apart only where it runs full, and not past a line's end, where the side it is on flips)
+  const all = rs.map(of).filter(Boolean); if (!all.length) return null;
+  all[0].all = all; return all[0];
 }
 export function riverAt(x, z) {
   const g = greatRiverAt(x, z), n = noiseRiverAt(x, z);
@@ -203,17 +206,23 @@ function noiseRiverAt(x, z) {
   return { d: Math.abs(v) * RIVER.scale * .55, w: RIVER.half * wide * smooth(.02, .2, m), m, side: v < 0 ? -1 : 1, lean: clamp(fbm(x / 260, z / 260, RIVER.seed + 19, 1) * 2.2, -1, 1) };
 }
 function riverCut(x, z, h) {
-  // (by the two nearest great rivers alike, the lower of the two cuts: cut by the nearer only, the
-  // ground stepped where one river's valley met another's, half-way between them)
+  // (by every great river line near alike, the lowest of their cuts: cut by the nearest only, the ground
+  // stepped where one's valley met another's, half-way between them, or where a river's lines join)
   const g = greatRiverAt(x, z);
-  return cutBy(noiseRiverAt(x, z), g?.next ? Math.min(cutBy(g, h), cutBy(g.next, h)) : cutBy(g, h));
+  let y = h; if (g) for (const r of g.all) y = Math.min(y, cutBy(r, h));
+  return cutBy(noiseRiverAt(x, z), y);
 }
 function cutBy(r, h) {
   if (!r || h < RIVER.bed) return h;
-  const s1 = r.side * r.lean * smooth(0, r.w * .5 + .5, r.d);   // +1 on the outer (cut) bank, -1 on the inner one (none mid-stream: the bed stepped there)
+  // +1 on the outer (cut) bank, -1 on the inner one: by the water only (none mid-stream, where the bed stepped; and
+  // none far out, where the nearest reach can be the other side of a meander's loop and the valley's side swapped
+  // in a sheer wall)
+  const s1 = r.side * r.lean * smooth(0, r.w * .5 + .5, r.d) * smooth(r.w + 16, r.w + 7, r.d);
   // (a great river is only found within 320 m of its line, earth.js RM: its valley stops short of that, or high
   // ground, where the valley is widest, ended in a straight wall where the lookup gave out)
-  const bank = Math.min((r.w + 22 + Math.max(0, h) * 1.1) * (1 - s1 * .45), r.great ? 300 : 1e9); if (r.d > bank) return h;
+  // (and the valley always reaches past the water: narrowed on the inner side, a broad river's could end inside
+  // its own channel, and the bed stood up out of it in a wall)
+  const bank = Math.min(r.w + (22 + Math.max(0, h) * 1.1) * (1 - s1 * .45), r.great ? 300 : 1e9); if (r.d > bank) return h;
   // the bed: deepest under the outer bank, up to the waterline at the edge; where the river
   // fades it shallows to a dry gully
   const k = smooth(.02, .2, r.m), u = r.w > .5 ? Math.min(1, r.d / r.w) : 1, deep = 1 + s1 * .35;
@@ -588,6 +597,7 @@ export function treesIn(cx, cz) {
     if (l.kind === 'sight') continue;
     const clear = l.kind === 'falls' ? 26 : l.r + 8;
     for (let i = t.length - 1; i >= 0; i--) if (Math.hypot(t[i].x - l.x, t[i].z - l.z) < clear) t.splice(i, 1);
+    if (l.kind === 'falls') for (let i = t.length - 1; i >= 0; i--) if (nearBrook(l, t[i].x, t[i].z, 6)) t.splice(i, 1);   // and none in its brook
     if (l.kind !== 'oak' && l.kind !== 'willow' && l.kind !== 'giant') continue;
     if (Math.floor(l.x / CHUNK) !== cx || Math.floor(l.z / CHUNK) !== cz) continue;
     const look = l.kind === 'giant' ? LOOK.redwood : l.kind === 'willow' ? LOOK.willow : LOOK.oak;
@@ -650,7 +660,7 @@ export function bushesIn(cx, cz) {
   }
   for (const l of landmarksNear((cx + .5) * CHUNK, (cz + .5) * CHUNK, CHUNK / 2 + 30)) {
     if (l.kind === 'sight') continue;
-    for (let i = out.length - 1; i >= 0; i--) if (Math.hypot(out[i].x - l.x, out[i].z - l.z) < (l.kind === 'falls' ? 26 : l.r + 6)) out.splice(i, 1);
+    for (let i = out.length - 1; i >= 0; i--) if (Math.hypot(out[i].x - l.x, out[i].z - l.z) < (l.kind === 'falls' ? 26 : l.r + 6) || (l.kind === 'falls' && nearBrook(l, out[i].x, out[i].z, 5))) out.splice(i, 1);
   }
   bushCache.set(key, out);
   if (bushCache.size > 600) bushCache.delete(bushCache.keys().next().value);
@@ -758,18 +768,43 @@ function finishLandmark(l, seed) {
   [l.h, l.r] = SIZE[l.kind];
   return l;
 }
-// a waterfall wants a sheer drop: look around for the steepest step down
+// the brook that feeds a fall: from just behind its lip back up the high ground, leaning toward the rise as it goes,
+// to where the ground levels out (or a wall rises), where its spring is: [[x, z, y], ...] from the lip up
+export function brookOf(l) {
+  if (l.brook) return l.brook;
+  const P = l.brook = [];
+  let x = l.x - l.dx * 3, z = l.z - l.dz * 3, ux = -l.dx, uz = -l.dz, y = height0(x, z), top = y;
+  for (let s = 0, most = l.part ? 50 : 170; s < most; s += 2) {
+    P.push([x, z, y]);
+    const e = 2, gx = height0(x + e, z) - height0(x - e, z), gz = height0(x, z + e) - height0(x, z - e), gl = Math.hypot(gx, gz);
+    if (gl > .02) { ux += gx / gl * .3; uz += gz / gl * .3; }
+    let ul = Math.hypot(ux, uz); ux /= ul; uz /= ul;
+    // but always away from the edge: never more than 45 degrees off straight back from the lip
+    const back = -(ux * l.dx + uz * l.dz); if (back < .7) { const sd = ux * -l.dz + uz * l.dx > 0 ? 1 : -1; ux = -l.dx * .7 - l.dz * .714 * sd; uz = -l.dz * .7 + l.dx * .714 * sd; }
+    const nx = x + ux * 2, nz = z + uz * 2, ny = height0(nx, nz);
+    if (s > 6 && (ny > y + 1.2 || ny < top - .4)) break;   // a wall rises, or the ground tips down again
+    x = nx; z = nz; y = ny; top = Math.max(top, y);
+  }
+  return P;
+}
+const nearBrook = (l, x, z, r) => { if (Math.hypot(x - l.x, z - l.z) > 180) return false; for (const p of brookOf(l)) if (Math.abs(p[0] - x) < r && Math.abs(p[1] - z) < r && Math.hypot(p[0] - x, p[1] - z) < r) return true; return false; };
+// a waterfall wants a sheer drop: look around for the steepest step down (of the hill itself: a cave cut
+// under the lip leaves the fall pouring over its mouth)
+const normal0 = (x, z) => { const e = 1.5, hx = height0(x + e, z) - height0(x - e, z), hz = height0(x, z + e) - height0(x, z - e), l = Math.hypot(hx, 2 * e, hz); return [-hx / l, 2 * e / l, -hz / l]; };
 function fallsSpot(x, z) {
   let best = null;
   for (let i = 0; i < 40; i++) {
-    const a = i * 2.39996, r = 20 + i * 14, px = x + Math.cos(a) * r, pz = z + Math.sin(a) * r, n = normalAt(px, pz);
+    const a = i * 2.39996, r = 20 + i * 14, px = x + Math.cos(a) * r, pz = z + Math.sin(a) * r, n = normal0(px, pz);
     if (n[1] > .5) continue;
-    const dl = Math.hypot(n[0], n[2]), dx = n[0] / dl, dz = n[2] / dl, top = height(px - dx * 6, pz - dz * 6), bot = height(px + dx * 14, pz + dz * 14);
+    const dl = Math.hypot(n[0], n[2]), dx = n[0] / dl, dz = n[2] / dl, bot = height0(px + dx * 14, pz + dz * 14);
+    // the lip is the top of the sheer face: while the ground behind still climbs steeply, the fall begins higher
+    let lx = px - dx * 6, lz = pz - dz * 6, top = height0(lx, lz);
+    for (let s = 0; s < 80; s += 1.5) { const ny = height0(lx - dx * 1.5, lz - dz * 1.5); if (ny < top + .9) break; lx -= dx * 1.5; lz -= dz * 1.5; top = ny; }
     if (top - bot <= 18 || (best && top - bot <= best.drop)) continue;
-    // the water needs somewhere to come from: high ground going on behind the lip and to both
-    // sides of it (an upland or a valley), not a lone peak or a narrow spur falling away
-    const lx = px - dx * 6, lz = pz - dz * 6, at = (s, w) => height(lx - dx * s - dz * w, lz - dz * s + dx * w);
-    if (at(40, 0) < top - 8 || at(90, 0) < top - 14 || at(30, 30) < top - 12 || at(30, -30) < top - 12) continue;
+    // the water needs somewhere to come from: high ground going on behind the lip (rising or level
+    // for its brook, never dipping away) and to both sides of it, not a lone peak or a narrow spur
+    const at = (s, w) => height0(lx - dx * s - dz * w, lz - dz * s + dx * w);
+    if (at(12, 0) < top - 1 || at(25, 0) < top - 2 || at(40, 0) < top - 4 || at(90, 0) < top - 14 || at(30, 30) < top - 12 || at(30, -30) < top - 12) continue;
     best = { x: lx, z: lz, drop: top - bot, dx, dz };
   }
   return best;

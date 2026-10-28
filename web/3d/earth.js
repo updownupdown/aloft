@@ -167,30 +167,45 @@ function ends() {
     const o = bakedRiverOf(x, z, L.id); L[end ? 'openB' : 'openA'] = !o || o.d > 60;
   }
 }
-// the nearest great river within RM: { d (metres), side (+1/-1), t (along the segment 0..1), line, k (segment), fade,
-// next: the nearest other river, the same, or null } or null
+// the nearest great river within RM: { d (metres), side (+1/-1), t (along the segment 0..1), line, k (segment), fade } or null
 export const bakedRiver = (x, z) => bakedRiverOf(x, z, -1);
-function bakedRiverOf(x, z, not) {
+// the nearest point of every stretch of river line within RM, nearest first (null if none)
+export const bakedRivers = (x, z) => bakedRiverOf(x, z, -1, true);
+const HN = 64, hL = new Int32Array(HN), hP = new Int32Array(HN), hK = new Int32Array(HN), hD = new Float64Array(HN), hT = new Float64Array(HN);
+function bakedRiverOf(x, z, not, every) {
   if (!rbuckets) riversReady();
   if (!ended) ends();
   x = wrapX(x);
   const a = rbuckets.get(Math.floor((z - Z0) / RB) * RNX + mod(Math.floor((x - X0) / RB), RNX)); if (!a) return null;
-  let best = null, bd = RM * RM, next = null, nd = RM * RM;
-  for (let n = 0; n < a.length; n += 2) {
-    const L = RIVER_LINES[a[n]], k = a[n + 1], p = L.p;
+  let n = 0;
+  for (let j = 0; j < a.length; j += 2) {
+    const li = a[j], L = RIVER_LINES[li], k = a[j + 1], p = L.p;
     if (L.id === not) continue;
     let ax = p[k], az = p[k + 1], bx = p[k + 2], bz = p[k + 3];
     // (a line across the seam: brought to this side)
     if (ax - x > W / 2) { ax -= W; bx -= W; } else if (x - ax > W / 2) { ax += W; bx += W; }
     const ux = bx - ax, uz = bz - az, l2 = ux * ux + uz * uz || 1;
     const t = clamp(((x - ax) * ux + (z - az) * uz) / l2, 0, 1), dx = x - ax - ux * t, dz = z - az - uz * t, d2 = dx * dx + dz * dz;
-    if (d2 >= nd) continue;
-    const h = { d: d2, t, line: L, k, side: 0 };
-    if (d2 < bd) { if (best && best.line !== L) { next = best; nd = bd; } bd = d2; best = h; } else if (L !== best.line) { next = h; nd = d2; }
+    if (d2 >= RM * RM) continue;
+    // (the nearest point of each stretch of 4 segments (some 130 m) of each line: a river is several lines end to end, they meet
+    // others, and a line can pass a point twice, its stretches far apart along it)
+    const part = k >> 3;
+    let i = 0; while (i < n && (hL[i] !== li || hP[i] !== part)) i++;
+    if (i === n) { if (n === HN) continue; hL[i] = li; hP[i] = part; hD[i] = Infinity; n++; }
+    if (d2 < hD[i]) { hD[i] = d2; hT[i] = t; hK[i] = k; }
   }
-  if (!best) return null;
-  best.next = next && finish(next, x, z);
-  return finish(best, x, z);
+  if (!n) return null;
+  const one = i => finish({ d: hD[i], t: hT[i], line: RIVER_LINES[hL[i]], k: hK[i], side: 0 }, x, z);
+  if (!every) { let b = 0; for (let i = 1; i < n; i++) if (hD[i] < hD[b]) b = i; return one(b); }
+  // (but a stretch whose nearest point is its end, where the next stretch of the line comes nearer, is that same arm going on,
+  // unless the line is fading there, near a source, where the farther point can be the wider river)
+  const all = []; for (let i = 0; i < n; i++) {
+    const L = RIVER_LINES[hL[i]], k0 = hP[i] << 3, at = L.cum[hK[i] / 2] + hT[i] * (L.cum[hK[i] / 2 + 1] - L.cum[hK[i] / 2]);
+    const edge = (L.openA && at < 600) || (L.openB && L.len - at < 600) ? 0 : hT[i] === 0 && hK[i] === k0 ? -1 : hT[i] === 1 && hK[i] === k0 + 6 ? 1 : 0;
+    let on = false; if (edge) for (let j = 0; j < n && !on; j++) on = j !== i && hL[j] === hL[i] && hP[j] === hP[i] + edge && (hD[j] < hD[i] || (hD[j] === hD[i] && j < i));
+    if (!on) all.push(one(i));
+  }
+  return all.sort((p, q) => p.d - q.d);
 }
 // which side the point is on: across the segment's way, or past its end across the way along the
 // bend (the two segments' ways added), so both sides of a bend agree (a point off the outside of a
@@ -201,8 +216,11 @@ function finish(h, x, z) {
   if (h.t <= 0 && k > 0) { const [vx, vz] = way(k - 2); ux += vx; uz += vz; } else if (h.t >= 1 && k + 4 < p.length) { const [vx, vz] = way(k + 2); ux += vx; uz += vz; }
   let ax = p[k] + (p[k + 2] - p[k]) * h.t, az = p[k + 1] + (p[k + 3] - p[k + 1]) * h.t;
   if (ax - x > W / 2) ax -= W; else if (x - ax > W / 2) ax += W;
-  h.side = ux * (z - az) - uz * (x - ax) < 0 ? -1 : 1;
+  const cr = ux * (z - az) - uz * (x - ax);
+  h.side = cr < 0 ? -1 : 1;
   h.d = Math.sqrt(h.d);
+  // how squarely across the line the point is: 1 beside it, falling to 0 straight on past its very end, where the side flips
+  h.across = (h.t <= 0 && k === 0) || (h.t >= 1 && k + 4 >= p.length) ? Math.min(1, Math.abs(cr) / (Math.hypot(ux, uz) * h.d || 1)) : 1;
   const at = L.cum[k / 2] + h.t * (L.cum[k / 2 + 1] - L.cum[k / 2]); h.fade = Math.min(L.openA ? at / 500 : 1, L.openB ? (L.len - at) / 500 : 1, 1);
   return h;
 }

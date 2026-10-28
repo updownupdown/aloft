@@ -3,7 +3,7 @@
 // keeps it; the farms and villages are sys/ruins.js), and
 // waterfalls spilling over the cliffs with mist at their feet. The giant oaks and willows are
 // trees (world.js treesIn). Finding them and the journal belong to journey.js.
-import { landmarksNear, rocksNear, fencesNear, height, WATER, PAL, GROUND, GROUND_SET, setGroundDetail } from '../world.js';
+import { landmarksNear, rocksNear, fencesNear, brookOf, height, height0, WATER, PAL, GROUND, GROUND_SET, setGroundDetail } from '../world.js';
 import { store } from '../util.js';
 import { builder, blob, prism, tube, reseed, rnd } from '../shapes.js';
 
@@ -55,10 +55,10 @@ function lighthouse() {
 // out: how far the curtain hangs clear of the face down the sheer part (a ledge behind it, sys/hidden.js)
 function fallsMesh(l, out = 0) {
   const B = builder(), W = [.86, .92, .95], W2 = [.76, .86, .92], w = l.w || 3.2, pts = [];
-  let s = -3, y0 = height(l.x - l.dx * 3, l.z - l.dz * 3);
+  let s = -3, y0 = height0(l.x - l.dx * 3, l.z - l.dz * 3);
   pts.push([s, y0 + .5]);
   for (s = 0; s < 120; s += 1.5) {
-    const y = height(l.x + l.dx * s, l.z + l.dz * s);
+    const y = height0(l.x + l.dx * s, l.z + l.dz * s);
     pts.push([s + (out && y0 - y >= 1 ? out : 0), y + .7]);
     if (s > 6 && y0 - y < 1) break;     // the fall has reached the bottom: it runs out flat
     y0 = y;
@@ -69,7 +69,24 @@ function fallsMesh(l, out = 0) {
     B.tri([a, ya - yTop, -ww], [b, yb - yTop, -ww], [b, yb - yTop, ww], i & 1 ? W : W2);
     B.tri([a, ya - yTop, -ww], [b, yb - yTop, ww], [a, ya - yTop, ww], i & 1 ? W2 : W);
   }
+  brook(B, l, yTop, w);
   return { tris: B.out(), top: yTop, foot: [l.x + l.dx * pts[pts.length - 1][0], l.z + l.dz * pts[pts.length - 1][0]] };
+}
+// what feeds a fall (James 10-28: never a fall from nowhere): its brook (world.js brookOf) back from the lip to the
+// spring pool it rises from (local coordinates as fallsMesh)
+function brook(B, l, yTop, w) {
+  const C = [.5, .66, .74], C2 = [.58, .73, .8], P = brookOf(l);
+  const loc = (px, pz) => { const X = px - l.x, Z = pz - l.z; return [l.dx * X + l.dz * Z, -l.dz * X + l.dx * Z]; };
+  for (let i = 0; i + 1 < P.length; i++) {
+    const [ax, az, ay] = P[i], [bx, bz, by] = P[i + 1], k = i / P.length, wa = w * (.8 - .45 * k), wb = w * (.8 - .45 * (i + 1) / P.length);
+    const [a0, a1] = loc(ax, az), [b0, b1] = loc(bx, bz), tx = b0 - a0, tz = b1 - a1, tl = Math.hypot(tx, tz) || 1, nx = -tz / tl, nz = tx / tl;
+    const A = [a0 + nx * wa, ay + .22 - yTop, a1 + nz * wa], A2 = [a0 - nx * wa, ay + .22 - yTop, a1 - nz * wa];
+    const Bq = [b0 + nx * wb, by + .22 - yTop, b1 + nz * wb], B2 = [b0 - nx * wb, by + .22 - yTop, b1 - nz * wb];
+    B.tri(A, Bq, B2, i & 1 ? C : C2); B.tri(A, B2, A2, i & 1 ? C2 : C);
+  }
+  // the spring's pool, level, at the brook's head (sunk a little so its rim meets the ground)
+  const [hx, hz, hy] = P[P.length - 1], [c0, c1] = loc(hx, hz), r = l.part ? 0 : Math.min(3.2 + w * .5, Math.hypot(c0, c1) - 1.5);
+  if (r) { const yp = hy + .18 - yTop, n = 9; for (let i = 0; i < n; i++) { const a = i / n * 6.283, b = (i + 1) / n * 6.283; B.tri([c0, yp, c1], [c0 + Math.cos(b) * r, yp, c1 + Math.sin(b) * r], [c0 + Math.cos(a) * r, yp, c1 + Math.sin(a) * r], i & 1 ? C : C2); } }
 }
 
 // rocks of the open country (world.js rocksNear), all unit height: a granite tor of stacked
