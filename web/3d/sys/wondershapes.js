@@ -5,7 +5,7 @@ import { builder, blob, prism, tube, reseed, rnd } from '../shapes.js';
 import { box } from './ruinshapes.js';
 import { CAP_SPOTS, METEORA } from '../wonders.js';
 
-const DARK = [.11, .11, .12], IVY = [.3, .44, .26], IVY2 = [.36, .5, .28], MOSS = [.44, .5, .33];
+const DARK = [.11, .11, .12], IVY = [.3, .44, .26], IVY2 = [.36, .5, .28], WEAR = [.43, .41, .38];
 const pick = a => a[Math.floor(rnd() * a.length)];
 // a builder whose points pass through f first (a lean, a turn)
 const bent = f => { const B0 = builder(); return { tri: (p, q, r, c, j) => B0.tri(f(p), f(q), f(r), c, j), out: B0.out }; };
@@ -97,7 +97,7 @@ export function colosseum() {
       const n = s === 1 ? tiers : Math.min(tiers, 3);
       for (let k = 0; k < n; k++) {
         const y = k * 10, h = k === 3 ? 7 : 10 - (broken && k === n - 1 ? rnd() * 4 : 0);
-        box(B, x, y, z, L, h, 2.2, a, pick(T), rnd() < .2 ? MOSS : pick(T));
+        box(B, x, y, z, L, h, 2.2, a, pick(T), rnd() < .2 ? WEAR : pick(T));
         if (k < 3 && s === 1) box(B, x + Math.sin(a) * 1.15, y + 1.2, z - Math.cos(a) * 1.15, L * .55, 6.4, .1, a, [.24, .2, .18]);
       }
     }
@@ -176,15 +176,15 @@ export function stonehenge() {
   for (let i = 0; i < N; i++) {
     const a = i / N * 6.283, x = Math.cos(a) * R, z = Math.sin(a) * R, ok = rnd() < .62;
     up.push(ok);
-    if (ok) box(B, x, -.3, z, 1.2, 4.4, 2.1, a, pick(S), MOSS);
-    else if (rnd() < .6) box(B, x + Math.cos(a) * 2.4, -.3, z + Math.sin(a) * 2.4, 4.2, 1.1, 2, a, pick(S), MOSS);
+    if (ok) box(B, x, -.3, z, 1.2, 4.4, 2.1, a, pick(S), WEAR);
+    else if (rnd() < .6) box(B, x + Math.cos(a) * 2.4, -.3, z + Math.sin(a) * 2.4, 4.2, 1.1, 2, a, pick(S), WEAR);
   }
-  for (let i = 0; i < N; i++) if (up[i] && up[(i + 1) % N]) { const a = (i + .5) / N * 6.283; box(B, Math.cos(a) * R, 4.1, Math.sin(a) * R, 3.3, .8, 1, a + Math.PI / 2, pick(S), MOSS); }
+  for (let i = 0; i < N; i++) if (up[i] && up[(i + 1) % N]) { const a = (i + .5) / N * 6.283; box(B, Math.cos(a) * R, 4.1, Math.sin(a) * R, 3.3, .8, 1, a + Math.PI / 2, pick(S), WEAR); }
   for (let i = 0; i < 5; i++) {
     const a = Math.PI * .75 + i / 4 * Math.PI * 1.5, r = 8, x = Math.cos(a) * r, z = Math.sin(a) * r, h = 6 + (i === 2 ? 1.5 : 0);
     if (i === 3) { box(B, x, -.3, z, 6, 1.4, 2.4, a, pick(S)); continue; }
-    for (const k of [-1.1, 1.1]) box(B, x - Math.sin(a) * k, -.3, z + Math.cos(a) * k, 1.4, h, 1.9, a, pick(S), MOSS);
-    box(B, x, h - .3, z, 1.2, 1, 4, a, pick(S), MOSS);
+    for (const k of [-1.1, 1.1]) box(B, x - Math.sin(a) * k, -.3, z + Math.cos(a) * k, 1.4, h, 1.9, a, pick(S), WEAR);
+    box(B, x, h - .3, z, 1.2, 1, 4, a, pick(S), WEAR);
   }
   return B.out();
 }
@@ -212,7 +212,7 @@ export function picchu() {
   box(B, 0, -12, 0, 96, 12, 64, 0, pick(S), G);                 // the plaza
   for (let i = 0; i < 16; i++) {
     const x = -38 + (i % 8) * 11 + (rnd() - .5) * 2, z = (i < 8 ? -18 : 18) + (rnd() - .5) * 4, a = (rnd() - .5) * .2, L = 7, W = 5, h = 2.4 + rnd() * 1.2;
-    for (const [u, w, l, t] of [[0, -W / 2, L, .6], [0, W / 2, L, .6], [-L / 2, 0, .6, W], [L / 2, 0, .6, W]]) box(B, x + Math.cos(a) * u - Math.sin(a) * w, 0, z + Math.sin(a) * u + Math.cos(a) * w, l, h, t, a, pick(S), MOSS);
+    for (const [u, w, l, t] of [[0, -W / 2, L, .6], [0, W / 2, L, .6], [-L / 2, 0, .6, W], [L / 2, 0, .6, W]]) box(B, x + Math.cos(a) * u - Math.sin(a) * w, 0, z + Math.sin(a) * u + Math.cos(a) * w, l, h, t, a, pick(S), WEAR);
     for (const k of [-1, 1]) prism(B, x + Math.cos(a) * k * L / 2, z + Math.sin(a) * k * L / 2, .01, 0, h, h + 1.6, 3, pick(S));   // the gable points
   }
   box(B, 30, 0, 0, 8, 4.8, 8, .3, [.66, .63, .56], G);          // the sun temple

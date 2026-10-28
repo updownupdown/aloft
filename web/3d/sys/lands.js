@@ -7,7 +7,7 @@ import { landmarksNear, rocksNear, fencesNear, height, WATER, PAL, GROUND, GROUN
 import { store } from '../util.js';
 import { builder, blob, prism, tube, reseed, rnd } from '../shapes.js';
 
-const STONE = [.6, .59, .56], STONE2 = [.5, .5, .49], MOSS = [.45, .52, .36];
+const STONE = [.6, .59, .56], STONE2 = [.5, .5, .49], WEAR = [.44, .42, .39];
 
 function stones() {
   reseed(61); const B = builder();
@@ -15,7 +15,7 @@ function stones() {
     const a = i / 9 * 6.283, h = 2.6 + (i * 37 % 10) / 10 * 1.8, x = Math.cos(a) * 8, z = Math.sin(a) * 8;
     prism(B, x, z, .55, .42, -.4, h, 7, i % 3 ? STONE : STONE2);
   }
-  prism(B, 0, 0, .9, .8, -.3, .5, 8, MOSS);     // the low altar stone
+  prism(B, 0, 0, .9, .8, -.3, .5, 8, WEAR);     // the low altar stone
   return B.out();
 }
 function cairn() {
@@ -30,6 +30,8 @@ function tower() {
     const p = (a, r, y) => [Math.cos(a) * r, y, Math.sin(a) * r];
     for (const r of [4, 3.3]) { B.tri(p(a0, r, -.5), p(a1, r, -.5), p(a1, r * .92, h), r > 3.5 ? W : D); B.tri(p(a0, r, -.5), p(a1, r * .92, h), p(a0, r * .92, h), r > 3.5 ? W : D); }
     B.tri(p(a0, 3.68, h), p(a1, 3.68, h), p(a1, 3.03, h), W); B.tri(p(a0, 3.68, h), p(a1, 3.03, h), p(a0, 3.03, h), W);
+    // the wall's broken ends, closing the gap between its faces where the next piece stands lower
+    for (const a of [a0, a1]) { B.tri(p(a, 4, -.5), p(a, 3.68, h), p(a, 3.3, -.5), W); B.tri(p(a, 3.3, -.5), p(a, 3.68, h), p(a, 3.03, h), W); }
     if (i % 3 === 1) { const y = 9 + i; B.tri(p(a0 + .2, 4.02, y), p(a0 + .3, 4.02, y), p(a0 + .3, 4.02, y + 2), D); B.tri(p(a0 + .2, 4.02, y), p(a0 + .3, 4.02, y + 2), p(a0 + .2, 4.02, y + 2), D); }
   }
   return B.out();
@@ -38,7 +40,7 @@ function lighthouse() {
   reseed(64); const B = builder(), white = [.86, .84, .78], red = [.62, .28, .22], dark = [.2, .2, .22], glass = [.2, .25, .28], gone = [.07, .08, .09];
   const bands = [[-1, 5, white], [5, 9, red], [9, 15, white], [15, 19, red]];
   for (const [y0, y1, c] of bands) prism(B, 0, 0, 3.2 - y0 * .04, 3.2 - y1 * .04, y0, y1, 10, c);
-  prism(B, 0, 0, 3.3, 3.2, -1, .8, 10, MOSS);                  // moss and lichen round its foot
+  prism(B, 0, 0, 3.3, 3.2, -1, .8, 10, WEAR);                  // weathered dark round its foot
   prism(B, 0, 0, 2.8, 2.8, 19, 19.6, 10, dark);                // the gallery
   // the lantern, long dark: dull panes, two of them broken out
   for (let i = 0; i < 8; i++) {
@@ -188,7 +190,7 @@ function fenceMesh(f) {
   } else {
     // dry stone, laid in uneven courses to the height at each post (world.js), with stones fallen
     // off the low, tumbled stretches lying in the grass on either side
-    const st = [.58, .56, .52], st2 = [.5, .49, .46], st3 = [.64, .62, .57], moss = [.46, .5, .36], cols = [st, st2, st3];
+    const st = [.58, .56, .52], st2 = [.5, .49, .46], st3 = [.64, .62, .57], moss = [.44, .42, .39], cols = [st, st2, st3];
     let n = 0;
     for (let i = 0; i + 1 < P.length; i++) {
       const [x0, y0, z0, h0] = P[i], [x1, y1, z1, h1] = P[i + 1], a = Math.atan2(z1 - z0, x1 - x0), L = Math.hypot(x1 - x0, z1 - z0);

@@ -5,7 +5,7 @@
 import { builder, blob, prism, tube, reseed, rnd } from '../shapes.js';
 import { DIM, WALL_LEFT, POLE } from '../settle.js';
 
-const STONE = [[.6, .58, .53], [.54, .52, .48], [.66, .63, .57]], MOSS = [.44, .5, .33], MOSS2 = [.38, .46, .3];
+const STONE = [[.6, .58, .53], [.54, .52, .48], [.66, .63, .57]], WEAR = [.43, .41, .38], WEAR2 = [.37, .355, .335];
 const SLATE = [.37, .38, .41], SLATE2 = [.31, .33, .36], DARK = [.11, .11, .12], WOOD = [.45, .39, .32], WOOD2 = [.37, .32, .27];
 const IVY = [.3, .44, .26], IVY2 = [.36, .5, .28];
 
@@ -29,7 +29,7 @@ function wall(B, x0, z0, x1, z1, y0, h, t, cols, ragged = 0, holes = []) {
     const u0 = i / n, u1 = (i + 1) / n, um = (u0 + u1) / 2;
     if (holes.some(([p, q]) => um > p && um < q)) continue;
     const hh = ragged ? h * (1 - ragged * (.25 + .75 * rnd()) * (.6 + .4 * Math.sin(i * 1.7 + x0))) : h;
-    box(B, x0 + (x1 - x0) * um, y0, z0 + (z1 - z0) * um, L / n + .02, hh - y0, t, a, pick(cols), rnd() < .3 ? MOSS : pick(cols));
+    box(B, x0 + (x1 - x0) * um, y0, z0 + (z1 - z0) * um, L / n + .02, hh - y0, t, a, pick(cols), rnd() < .3 ? WEAR : pick(cols));
   }
 }
 // a dark pane of glass or an empty doorway, set into the wall face (local x along the wall)
@@ -71,13 +71,13 @@ function house(o) {
         tube(B, [(s + e) / 2, H - .1, (w + .3) * k], [(s + e) / 2, R - .4, 0], .07, WOOD2);
         continue;
       }
-      slope(k, s, e, rnd() < (o.moss ?? .3) ? (rnd() < .5 ? MOSS : MOSS2) : (rnd() < .5 ? o.roof[0] : o.roof[1]));
+      slope(k, s, e, rnd() < (o.moss ?? .3) ? (rnd() < .5 ? WEAR : WEAR2) : (rnd() < .5 ? o.roof[0] : o.roof[1]));
     }
     if (v === 1) tube(B, [-l, R - .4, 0], [l, R - .4, 0], .09, WOOD2);   // the ridge beam
     if (o.chimney !== false && v === 0) box(B, l - .5, H, 0, .7, R - H + 1, .7, 0, pick(cols));
   } else {
     // rubble fallen inside and out
-    for (let k = 0; k < 7; k++) box(B, (rnd() - .5) * L * 1.1, -.3, (rnd() - .5) * W * 1.3, .4 + rnd() * .4, .3 + rnd() * .3, .3 + rnd() * .4, rnd() * 6, pick(cols), rnd() < .4 ? MOSS : pick(cols));
+    for (let k = 0; k < 7; k++) box(B, (rnd() - .5) * L * 1.1, -.3, (rnd() - .5) * W * 1.3, .4 + rnd() * .4, .3 + rnd() * .3, .3 + rnd() * .4, rnd() * 6, pick(cols), rnd() < .4 ? WEAR : pick(cols));
   }
   ivy(B, l - .2, 0, w - .2, Math.min(H, 3) * (v === 2 ? .7 : 1));
   if (rnd() < .6) ivy(B, -l + .2, 0, -w + .2, H * .8);
@@ -162,7 +162,7 @@ export function chapel(v) {
   const B = builder(), tx = -d.L / 2 - 2, cols = STONE;
   box(B, tx, -1.2, 0, 4, 13.2, 4, 0, pick(cols));
   for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2; opening(B, tx + Math.cos(a) * 2.03, 9.2, Math.sin(a) * 2.03, a + Math.PI / 2, 1, 1.8); }
-  for (const [i, j] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) box(B, tx + i * 1.65, 12, j * 1.65, .7, 1, .7, 0, pick(cols), MOSS);
+  for (const [i, j] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) box(B, tx + i * 1.65, 12, j * 1.65, .7, 1, .7, 0, pick(cols), WEAR);
   opening(B, d.L / 2 + .22, -.2, 0, Math.PI / 2, 1.4, 2.8);   // the west door, in the +x end
   for (const y of [2, 5]) opening(B, tx - 2.03, y, 0, Math.PI / 2, .5, 1.3);
   ivy(B, tx + 1.8, 0, 1.8, 6);
@@ -174,7 +174,7 @@ export function well() {
   prism(B, 0, 0, .7, .7, .5, .76, 10, DARK);                       // the dark water far down
   for (const k of [-1, 1]) box(B, k * .85, .7, 0, .14, 1.5, .14, 0, WOOD);
   tube(B, [-.85, 2, 0], [.85, 2, 0], .06, WOOD2);
-  for (const k of [-1, 1]) quad(B, [-1.1, 2.05, 0], [1.1, 2.05, 0], [1.1, 1.75, .75 * k], [-1.1, 1.75, .75 * k], k > 0 ? SLATE : MOSS);
+  for (const k of [-1, 1]) quad(B, [-1.1, 2.05, 0], [1.1, 2.05, 0], [1.1, 1.75, .75 * k], [-1.1, 1.75, .75 * k], k > 0 ? SLATE : WEAR);
   return B.out();
 }
 // a farm wind pump, long still: the wheel jammed with half its vanes gone, the tail bent
@@ -229,14 +229,14 @@ export function bridge(g) {
     const u = -half + (i + .5) * seg, f = u / half;
     if (g.broken && Math.abs(f) < .22) continue;
     const under = g.y - 1 - (g.y - 1.6) * (1 - f * f) * .85, [px, pz] = at(u);
-    box(B, px, under, pz, seg + .03, g.y - under, 3.6, yaw, pick(STONE), rnd() < .2 ? MOSS : [.52, .5, .46]);
+    box(B, px, under, pz, seg + .03, g.y - under, 3.6, yaw, pick(STONE), rnd() < .2 ? WEAR : [.52, .5, .46]);
     // parapets, crumbled near a break
     const gone = g.broken && Math.abs(f) < .34;
-    for (const k of [-1.65, 1.65]) if (!gone || rnd() < .3) box(B, px - s * k, g.y, pz + c * k, seg + .03, .75 - (gone ? .4 : 0), .3, yaw, pick(STONE), rnd() < .3 ? MOSS : pick(STONE));
+    for (const k of [-1.65, 1.65]) if (!gone || rnd() < .3) box(B, px - s * k, g.y, pz + c * k, seg + .03, .75 - (gone ? .4 : 0), .3, yaw, pick(STONE), rnd() < .3 ? WEAR : pick(STONE));
   }
   // the abutments run down into the banks
   for (const k of [-1, 1]) { const [px, pz] = at(k * (half - 1.5)); box(B, px, g.y - 6, pz, 3, 6, 4.2, yaw, STONE[1]); }
-  if (g.broken) for (let k = 0; k < 6; k++) { const [px, pz] = at((rnd() - .5) * half * .5); box(B, px + (rnd() - .5) * 2, -1.8, pz + (rnd() - .5) * 2, .8, 1.4, .7, rnd() * 6, pick(STONE), MOSS); }
+  if (g.broken) for (let k = 0; k < 6; k++) { const [px, pz] = at((rnd() - .5) * half * .5); box(B, px + (rnd() - .5) * 2, -1.8, pz + (rnd() - .5) * 2, .8, 1.4, .7, rnd() * 6, pick(STONE), WEAR); }
   return { tris: B.out(), at: [mx, mz] };   // x, z about the middle, y as is
 }
 
@@ -354,7 +354,7 @@ export function chime() {
 export function spire() {
   reseed(631); const B = builder(), weed = [.3, .36, .28], weed2 = [.27, .32, .26], iron = [.25, .23, .22];
   box(B, 0, -1.2, 0, 4, 6.6, 4, 0, weed, weed2);
-  box(B, 0, 5.4, 0, 4, 8.6, 4, 0, pick(STONE), MOSS);
+  box(B, 0, 5.4, 0, 4, 8.6, 4, 0, pick(STONE), WEAR);
   for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2; opening(B, Math.cos(a) * 2.03, 10.6, Math.sin(a) * 2.03, a + Math.PI / 2, 1, 2); }
   box(B, 0, 13.9, 0, 4.5, .3, 4.5, 0, STONE[1]);
   const P = [[-2.1, -2.1], [2.1, -2.1], [2.1, 2.1], [-2.1, 2.1]];
