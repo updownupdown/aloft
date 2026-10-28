@@ -32,10 +32,16 @@ export const setCutting = on => { cutting = on; };
 
 const slope = (x, z) => { const e = 2, hx = H0(x + e, z) - H0(x - e, z), hz = H0(x, z + e) - H0(x, z - e), l = Math.hypot(hx, 2 * e, hz); return [-hx / l, 2 * e / l, -hz / l]; };
 const pt = (x, z, w, c, f) => ({ x, z, w, c, f });
+// how far past its side a hollow reaches into the ground round it: a tarn's bowl curves on up until it meets the
+// slope, and a tunnel's or a mine's way in is an open cutting where the hill is too thin to roof it (left sheer, a
+// bowl's rim and a cutting's sides stood as walls)
+const SLOPE_OUT = 9, made = cv => cv.kind === 'tunnel' || cv.kind === 'adit';
+const outside = cv => cv.bowl ? Math.max(...cv.pts.map(p => p.w)) : made(cv) ? SLOPE_OUT : 0;
 function finish(cv) {
   let x0 = 1e9, z0 = 1e9, x1 = -1e9, z1 = -1e9;
   for (const p of cv.pts) { x0 = Math.min(x0, p.x - p.w); z0 = Math.min(z0, p.z - p.w); x1 = Math.max(x1, p.x + p.w); z1 = Math.max(z1, p.z + p.w); }
-  Object.assign(cv, { x0: x0 - 4, z0: z0 - 4, x1: x1 + 4, z1: z1 + 4, holes: cv.holes || [] });
+  const m = 4 + outside(cv);
+  Object.assign(cv, { x0: x0 - m, z0: z0 - m, x1: x1 + m, z1: z1 + m, holes: cv.holes || [] });
   return cv;
 }
 
@@ -216,9 +222,12 @@ export function roofUnder(cv, x, z, q = local(cv, x, z)) {
 export function cut(x, z, h) {
   if (building || !cutting) return h;
   for (const cv of cavesAt(x, z)) {
-    const q = local(cv, x, z); if (q.d >= q.w) continue;
+    const q = local(cv, x, z); if (q.d >= q.w + (cv.bowl ? q.w : made(cv) ? SLOPE_OUT : 0)) continue;
     const fl = floorAt(cv, q, x, z);
-    if (h > fl) h = fl;
+    if (q.d < q.w || cv.bowl) { if (h > fl) h = fl; continue; }
+    // (sloped back as the hill thins below what holds a roof: sheer where the roof begins, open at the mouth)
+    const k = smooth(0, 2, (cv.lip ? H0(x, z) - cv.lip : vault(cv, q, x, z)) + .8 - H0(x, z));
+    if (k > 0) h = Math.min(h, h + (fl + (q.d - q.w) * 1.1 - h) * k);
   }
   return h;
 }
