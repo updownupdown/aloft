@@ -177,9 +177,9 @@ export function greatRiverAt(x, z) {
   const mz = fbm(x / 170, z / 170, RIVER.seed + 55, 2) * 26 + fbm(x / 48, z / 48, RIVER.seed + 57, 1) * 7;
   const rs = bakedRivers(x + mx, z + mz); if (!rs) return null;
   const u = fbm(x / 380, z / 380, RIVER.seed + 59, 1) * .5 + .5, lean = clamp(fbm(x / 260, z / 260, RIVER.seed + 19, 1) * 2.2, -1, 1);
-  const of = r => r.fade > 0 ? { d: r.d, w: GREAT_W[Math.min(4, r.line.rank)] * (.75 + .5 * u) * smooth(0, 1, r.fade), m: .02 + r.fade * .98, side: r.side, lean: lean * smooth(.5, 1, r.fade), name: r.line.name, great: true } : null;
+  const of = r => r.fade > 0 ? { d: r.d, w: GREAT_W[Math.min(4, r.line.rank)] * (.75 + .5 * u) * smooth(0, 1, r.fade), m: .02 + r.fade * .98, side: r.side, lean: lean * smooth(.5, 1, r.fade) * r.across, name: r.line.name, great: true } : null;
   // every line near (a river is several lines end to end, and meets others): the nearest one that flows, with all of them
-  // (its banks lean apart only where it runs full: past a source's end the side it is on flips)
+  // (its banks lean apart only where it runs full, and not past a line's end, where the side it is on flips)
   const all = rs.map(of).filter(Boolean); if (!all.length) return null;
   all[0].all = all; return all[0];
 }

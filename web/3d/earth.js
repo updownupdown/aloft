@@ -216,8 +216,11 @@ function finish(h, x, z) {
   if (h.t <= 0 && k > 0) { const [vx, vz] = way(k - 2); ux += vx; uz += vz; } else if (h.t >= 1 && k + 4 < p.length) { const [vx, vz] = way(k + 2); ux += vx; uz += vz; }
   let ax = p[k] + (p[k + 2] - p[k]) * h.t, az = p[k + 1] + (p[k + 3] - p[k + 1]) * h.t;
   if (ax - x > W / 2) ax -= W; else if (x - ax > W / 2) ax += W;
-  h.side = ux * (z - az) - uz * (x - ax) < 0 ? -1 : 1;
+  const cr = ux * (z - az) - uz * (x - ax);
+  h.side = cr < 0 ? -1 : 1;
   h.d = Math.sqrt(h.d);
+  // how squarely across the line the point is: 1 beside it, falling to 0 straight on past its very end, where the side flips
+  h.across = (h.t <= 0 && k === 0) || (h.t >= 1 && k + 4 >= p.length) ? Math.min(1, Math.abs(cr) / (Math.hypot(ux, uz) * h.d || 1)) : 1;
   const at = L.cum[k / 2] + h.t * (L.cum[k / 2 + 1] - L.cum[k / 2]); h.fade = Math.min(L.openA ? at / 500 : 1, L.openB ? (L.len - at) / 500 : 1, 1);
   return h;
 }
