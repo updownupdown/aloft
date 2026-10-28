@@ -32,7 +32,7 @@ const classOf = key => GRASSY.has(key) ? 3 : key === 'stone' ? 6 : BUILT.test(ke
 const FROSTY = new Set(['tuft', 'tuft1', 'tuft2', 'tuft3', 'scrub', 'bush', 'gorse', 'sage', 'thorn', 'heath', 'reeds', 'stone', 'flowerY', 'flowerW', 'flowerP', 'hay', 'hayLaid', 'bale', 'barrel']);
 // closed shapes whose back faces are left undrawn, with the trees'
 const CULLED = new Set(['bush', 'gorse', 'sage', 'thorn', 'heath']);
-// The value noise the shaders paint with (the land's hue drift, the mist's lumps, moss and rain
+// The value noise the shaders paint with (the land's hue drift, the mist's lumps, wear and rain
 // streaks on walls, slicks on the water, the sky's high haze), read from a small tiling picture
 // (NOISE_N lattice cells across, four texels to a cell): one texture read a sample, not four sines
 const NOISE_N = 64, NOISE_PX = 256;
@@ -325,11 +325,11 @@ void main() {
     float side = 1. - abs(n.y), along = dot(vPos.xz, normalize(vec2(-n.z, n.x) + 1e-4));
     col *= 1. - (1. - smoothstep(0., 1.4, vLy)) * .3;                                                  // damp at the foot
     float m = vn(vPos.xz * .9 + vPos.y * .4) * .6 + vn(vPos.xz * 3.1 + vPos.y) * .4;
-    col = mix(col, vec3(.33, .42, .22), smoothstep(.52, .72, m) * smoothstep(.45, .9, n.y) * .75);    // moss on what faces up
+    col *= 1. - smoothstep(.52, .72, m) * smoothstep(.45, .9, n.y) * .16;                               // weathered dark on what faces up
     float st = vn(vec2(along * 2.2, vPos.y * .12)) * vn(vec2(along * 5.3 + 3., vPos.y * .3));
     col *= 1. - smoothstep(.25, .5, st) * side * .22;                                                  // streaks where the rain ran down
     float iv = vn(vec2(along * 1.4, vPos.y * 1.2)) * .7 + vn(vec2(along * 4., vPos.y * 3.)) * .3;
-    col = mix(col, vec3(.21, .33, .16), smoothstep(.6, .66, iv + (1. - smoothstep(0., 3.5, vLy)) * .25 - .1) * side * .9);   // ivy from the ground up
+    col *= 1. - smoothstep(.55, .75, iv + (1. - smoothstep(0., 3.5, vLy)) * .25 - .1) * side * .14;   // worn dark from the ground up
   }
   if (uClass > 1.5 && uClass < 2.5 || uClass > 5.5) col = mix(col, vec3(.93, .95, .98), max(smoothstep(uSnowLine - 8., uSnowLine + 12., vPos.y), uSnowAll) * smoothstep(.35, .7, n.y) * .9);   // snow on roofs and stones
   bool wets = uClass > 4.5 && uClass < 5.5 || uClass > 1.5 && uClass < 2.5 || uClass > 5.5;

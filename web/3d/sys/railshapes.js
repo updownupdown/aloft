@@ -4,7 +4,7 @@
 import { builder, blob, tube, reseed, rnd } from '../shapes.js';
 import { box } from './ruinshapes.js';
 
-const STONE = [[.6, .58, .53], [.54, .52, .48], [.66, .63, .57]], MOSS = [.44, .5, .33], DARK = [.11, .11, .12];
+const STONE = [[.6, .58, .53], [.54, .52, .48], [.66, .63, .57]], WEAR = [.43, .41, .38], DARK = [.11, .11, .12];
 const RUST = [.46, .3, .22], RUST2 = [.38, .25, .2], SLEEPER = [.3, .27, .24], SLATE = [.37, .38, .41], SLATE2 = [.31, .33, .36];
 const pick = a => a[Math.floor(rnd() * a.length)];
 const GAUGE = .72;
@@ -36,12 +36,12 @@ export function viaduct(v) {
     for (let k = 0; k < N; k++) {
       const u = (k + .5) / N * L, f = Math.max(Math.abs(2 * k / N - 1), Math.abs(2 * (k + 1) / N - 1)), drop = 1.3 + 5.5 * (1 - Math.sqrt(Math.max(0, 1 - f * f))), [x, z] = at(u), y = gy(u);
       box(B, x, y - drop, z, L / N + .02, drop, 4.4, yaw, pick(STONE), [.5, .48, .44]);
-      for (const w of [-2.05, 2.05]) box(B, x - s * w, y, z + c * w, L / N + .02, .8, .3, yaw, pick(STONE), rnd() < .3 ? MOSS : pick(STONE));
+      for (const w of [-2.05, 2.05]) box(B, x - s * w, y, z + c * w, L / N + .02, .8, .3, yaw, pick(STONE), rnd() < .3 ? WEAR : pick(STONE));
     }
     // the pier at b (the far end is an abutment into the bank, drawn by the last point)
     if (i + 2 < P.length) {
       const [x, z] = at(L), top = b.g - 1.2, foot = Math.min(b.h, 0) - 2;
-      if (top > foot) box(B, x, foot, z, 2.6, top - foot, 4.8, yaw, pick(STONE), MOSS);
+      if (top > foot) box(B, x, foot, z, 2.6, top - foot, 4.8, yaw, pick(STONE), WEAR);
       if (b.h < 0) box(B, x, -.6, z, 3.2, .9, 5.4, yaw, [.36, .4, .32]);   // weed at the waterline
     }
   }
@@ -100,10 +100,17 @@ export function carriage(v) {
 // arch, and the hill above it
 export function portal() {
   reseed(741); const B = builder();
-  for (const k of [-1, 1]) box(B, 0, -1, k * 3.9, 1.6, 10, 3.4, 0, pick(STONE), MOSS);
-  box(B, 0, 5.4, 0, 1.6, 3.6, 4.4, 0, pick(STONE), MOSS);
+  for (const k of [-1, 1]) box(B, 0, -1, k * 3.9, 1.6, 10, 3.4, 0, pick(STONE), WEAR);
+  box(B, 0, 5.4, 0, 1.6, 3.6, 4.4, 0, pick(STONE), WEAR);
   for (let i = 0; i < 5; i++) { const a = i / 4 * Math.PI, r = 2.2; box(B, -.6, 4 + Math.sin(a) * 1.3, Math.cos(a) * r, .5, .4, .9, 0, STONE[2]); }
-  box(B, .4, -1, 0, .5, 6.4, 4.4, 0, DARK);
-  box(B, 0, 9, 0, 1.9, .4, 11.2, 0, STONE[1], MOSS);
+  // the bore going in: a lined passage darkening with depth to black, so the mouth reads open
+  for (let i = 0; i < 6; i++) {
+    const x0 = .8 + i * 3, k = .34 * Math.pow(.6, i), col = [k, k * .97, k * .93];
+    for (const w of [-2.35, 2.35]) box(B, x0 + 1.5, -1, w, 3, 6.4, .3, 0, col);
+    box(B, x0 + 1.5, 5.4, 0, 3, .3, 5, 0, col);
+    box(B, x0 + 1.5, -1.1, 0, 3, .1, 4.4, 0, [k * .8, k * .78, k * .74]);
+  }
+  box(B, 19, -1, 0, .3, 6.6, 4.8, 0, [.03, .03, .035]);
+  box(B, 0, 9, 0, 1.9, .4, 11.2, 0, STONE[1], WEAR);
   return B.out();
 }
